@@ -63,14 +63,24 @@ td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}td.l{d
 .lg{max-width:380px;margin:12vh auto;background:var(--card);border-radius:22px;padding:30px 26px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.12)}
 .lg img{height:62px;background:#1b1b1b;padding:10px 16px;border-radius:14px}.lg h2{margin:8px 0}.lg p{color:var(--mut);margin:0 0 16px}.lg input{width:100%;text-align:center;margin-bottom:10px;font-size:18px}.lg .bt{width:100%;padding:13px}.er{color:#c4362b;min-height:22px;margin-top:8px;font-size:14px}
 #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-140px);z-index:80;background:#1b1b1b;color:#fff;padding:12px 22px;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.3);transition:.35s;border:1px solid var(--acc)}#toast.on{transform:translateX(-50%) translateY(0)}
+.g{border-collapse:collapse;width:100%}.g th{padding:6px 8px;border-bottom:2px solid var(--acc);text-align:right;color:var(--mut);font-weight:500;font-size:13px}
+.g td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}.g .kc{font-size:24px;font-weight:700;border-inline-end:1px solid var(--line);vertical-align:top;width:1%;white-space:nowrap;direction:ltr}.g .tq{font-weight:700;font-size:20px;text-align:center}
+.ch{display:inline-flex;align-items:stretch;margin:3px 0 3px 6px;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}.ch i{font-style:normal;padding:3px 10px;background:var(--field);color:var(--mut)}.ch b{padding:3px 10px;background:var(--soft);color:var(--ink)}
+.bx2{display:inline-block;width:24px;height:24px;border:2.5px solid #666;border-radius:6px;vertical-align:middle}.cm3{color:var(--mut);font-size:14px}
+.grp{columns:auto;column-gap:0;overflow-x:auto;padding:6px 0 12px}
 #pa{display:none}
+#em{display:none;position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);overflow:auto;padding:18px}#em.on{display:block}
+.eb{max-width:920px;margin:0 auto;background:var(--card);border-radius:18px;padding:20px 22px}.eb h3{margin:0 0 4px}.eb label{display:block;color:var(--mut);font-size:13px;margin:14px 0 4px}
+.eb textarea{width:100%;background:var(--field);border:1.5px solid transparent;border-radius:11px;padding:10px 12px;min-height:60px;font:inherit;color:var(--ink)}
+.et td{padding:4px 3px;border:0}.et input{width:100%;padding:8px 8px;font-size:15px}.et td:nth-child(4) input{font-weight:700;text-align:center}.et th{border-bottom:2px solid var(--acc)}
+a.bt{text-decoration:none;display:inline-block;color:inherit}.tg{background:#f6edd2;color:#6b5314;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;margin-inline-start:6px}
 @media (max-width:760px){.stats{grid-template-columns:1fr 1fr}.row2{grid-template-columns:1fr}.hd h1{font-size:16px}.lg2{display:none}.bar span:first-child{width:96px}}
 @media print{
  @page{size:A4;margin:12mm 14mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
  body{background:#fff;color:#000}body>*:not(#pa){display:none!important}#pa{display:block!important;color:#000;font-size:12pt}
  #pa .ph{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:4mm;margin-bottom:5mm}#pa .ph img{height:16mm;filter:invert(1)}#pa h2{margin:0;font-size:19pt}
  #pa .rt{display:flex;gap:6mm;margin-bottom:5mm;align-items:center}#pa .rt div{flex:1;border:1.5px solid #000;border-radius:3mm;padding:2mm 4mm}#pa .rt small{display:block;font-size:9pt;color:#444}#pa .rt b{font-size:15pt}
- #pa .pg{columns:2;column-gap:10mm}#pa .cg{background:none;border:0;border-bottom:1px solid #999;border-radius:0;padding:0 0 3mm;margin-bottom:4mm}#pa .cg h4{font-size:19pt}#pa .cr{border-top-color:#999}#pa .cd b{font-size:19pt}#pa .cd i{border-color:#000;font-size:12pt}#pa .cl{font-size:12pt;width:24mm}
+ #pa .pg{}#pa .g th{color:#000;font-size:11pt}#pa .g td{border-color:#999;padding:2mm 2mm}#pa .g .kc{font-size:22pt}#pa .g .tq{font-size:20pt}#pa .ch{font-size:15pt;border-color:#555}#pa .ch i,#pa .ch b{background:none;color:#000}#pa .bx2{border-color:#333}#pa tr{break-inside:avoid}#pa thead{display:table-header-group}#pa .cg{background:none;border:0;border-bottom:1px solid #999;border-radius:0;padding:0 0 3mm;margin-bottom:4mm}#pa .cg h4{font-size:19pt}#pa .cr{border-top-color:#999}#pa .cd b{font-size:19pt}#pa .cd i{border-color:#000;font-size:12pt}#pa .cl{font-size:12pt;width:24mm}
  #pa .tt{display:flex;justify-content:space-between;border-top:2px solid #000;margin-top:4mm;padding-top:3mm;font-size:13pt}
  #pa .sg{display:flex;gap:16mm;margin-top:14mm}#pa .sg span{flex:1;border-top:1px solid #777;text-align:center;padding-top:5px;color:#444}
 }
@@ -79,6 +89,7 @@ td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}td.l{d
 <body>
 <div id="toast"></div>
 <div id="app"></div>
+<div id="em"></div>
 <div id="pa"></div>
 <script type="module">
 import {makeFb,emailOf,ADMIN_EMAIL,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
@@ -106,7 +117,13 @@ function groups(rows){
   return {k,cols,q:cols.reduce((a,x)=>a+x.rs.reduce((s,r)=>s+r.q,0),0)};
  });
 }
-const gHtml=rows=>groups((Array.isArray(rows)?rows:[]).map(r=>({k:String(r&&r.k||""),c:String(r&&r.c||""),z:String(r&&r.z||""),q:NUM(r&&r.q),n:String(r&&r.n||"")}))).map(x=>`<div class="cg"><h4><bdi dir="ltr">${E(x.k)}</bdi><span>${x.q} قطعة</span></h4>${x.cols.map(c=>`<div class="cr"><div class="cl"><bdi dir="ltr">${E(c.c)}</bdi></div><div class="cc">${c.rs.map(r=>`<div class="cd"><i>${E(r.z||"-")}</i><b>${r.q}</b></div>`).join("")}${c.n?`<div class="nt">${E(c.n)}</div>`:""}</div></div>`).join("")}</div>`).join("");
+const gHtml=rows=>{
+ const G=groups((Array.isArray(rows)?rows:[]).map(r=>({k:String(r&&r.k||""),c:String(r&&r.c||""),z:String(r&&r.z||""),q:NUM(r&&r.q),n:String(r&&r.n||"")})));
+ let h="";
+ G.forEach(x=>x.cols.forEach((c,i)=>{const tot=c.rs.reduce((a,r)=>a+r.q,0);
+  h+=`<tr>${i===0?`<td class="kc" rowspan="${x.cols.length}"><bdi dir="ltr">${E(x.k)}</bdi></td>`:""}<td><bdi dir="ltr">${E(c.c)}</bdi></td><td>${c.rs.map(r=>`<span class="ch">${r.z?`<i><bdi dir="ltr">${E(r.z)}</bdi></i>`:""}<b>${r.q}</b></span>`).join("")}</td><td class="tq">${tot}</td><td class="cm3">${E(c.n)}</td><td><span class="bx2"></span></td></tr>`}));
+ return `<table class="g"><thead><tr><th>الكود</th><th>اللون</th><th>المقاس / الكمية</th><th>الإجمالي</th><th>ملاحظات</th><th></th></tr></thead><tbody>${h}</tbody></table>`;
+};
 
 function login(msg){
  g("app").innerHTML=`<div class="lg"><img src="${LOGO1}" alt=""><h2>لوحة المستودع</h2><p>تسجيل دخول المسؤول</p><input id="la" type="password" placeholder="كلمة السر" autocomplete="current-password"><button class="bt p" id="lg">دخول</button><div class="er" id="le">${E(msg||"")}</div></div>`;
@@ -142,8 +159,8 @@ function stats(){
 function reqView(){
  const cnt=s=>R.filter(r=>s==="all"||r.st===s).length;
  let L=R.filter(r=>(fs==="all"||r.st===fs)&&(!fb||r.brn===fb)&&(!fd||dayKey(NUM(r.ts))===fd));
- return stats()+`<div class="fl">${["all","new","prep","done"].map(s=>`<button class="chip ${fs===s?"on":""}" data-s="${s}">${s==="all"?"الكل":LBL[s]} (${cnt(s)})</button>`).join("")}<select id="fb"><option value="">كل الفروع</option>${BR.map(b=>`<option ${fb===b?"selected":""}>${b}</option>`).join("")}</select><input id="fd" type="date" value="${fd}"></div>`+
- (L.length?L.map(r=>`<article class="rq ${ST(r.st)}"><div class="rh"><div><b>${E(r.brn)}</b><small>طلب <bdi dir="ltr">${E(r.no)}</bdi> · ${ago(NUM(r.ts))}</small></div><span class="chp">${LBL[ST(r.st)]}</span></div><div class="kp"><span><b>${NUM(r.codes)}</b> صنف</span><span><b>${NUM(r.pcs)}</b> قطعة</span>${r.dr?`<span>المسؤول: ${E(r.dr)}</span>`:""}</div><details data-id="${r.id}" ${openSet.has(r.id)||(r.st==="new"&&!openSet.has("-"+r.id))?"open":""}><summary>تفاصيل الطلب</summary>${r.gn?`<div class="gn">ملاحظات: ${E(r.gn)}</div>`:""}<div class="grp">${gHtml(r.rows)}</div></details><div class="rf">${r.st==="new"?`<button class="bt g" data-a="prep" data-id="${r.id}">بدء التجهيز</button>`:""}${r.st!=="done"?`<button class="bt p" data-a="done" data-id="${r.id}">تم التسليم</button>`:`<button class="bt" data-a="new" data-id="${r.id}">إعادة فتح</button>`}<button class="bt" data-a="print" data-id="${r.id}">🖨 طباعة</button><button class="bt r" data-a="del" data-id="${r.id}">حذف</button></div></article>`).join(""):'<div class="em">لا توجد طلبات مطابقة</div>');
+ return stats()+`<div class="fl">${["all","new","prep","done"].map(s=>`<button class="chip ${fs===s?"on":""}" data-s="${s}">${s==="all"?"الكل":LBL[s]} (${cnt(s)})</button>`).join("")}<select id="fb"><option value="">كل الفروع</option>${BR.map(b=>`<option ${fb===b?"selected":""}>${b}</option>`).join("")}</select><input id="fd" type="date" value="${fd}"><a class="bt g" href="./sheet.html" target="_blank" rel="noopener">➕ عمل ورقة نواقص بنفسي</a></div>`+
+ (L.length?L.map(r=>`<article class="rq ${ST(r.st)}"><div class="rh"><div><b>${E(r.brn)}</b>${r.edited?'<span class="tg">معدّل</span>':""}<small>طلب <bdi dir="ltr">${E(r.no)}</bdi> · ${ago(NUM(r.ts))}</small></div><span class="chp">${LBL[ST(r.st)]}</span></div><div class="kp"><span><b>${NUM(r.codes)}</b> صنف</span><span><b>${NUM(r.pcs)}</b> قطعة</span>${r.dr?`<span>المسؤول: ${E(r.dr)}</span>`:""}</div><details data-id="${r.id}" ${openSet.has(r.id)||(r.st==="new"&&!openSet.has("-"+r.id))?"open":""}><summary>تفاصيل الطلب</summary>${r.gn?`<div class="gn">ملاحظات: ${E(r.gn)}</div>`:""}<div class="grp">${gHtml(r.rows)}</div></details><div class="rf">${r.st==="new"?`<button class="bt g" data-a="prep" data-id="${r.id}">بدء التجهيز</button>`:""}${r.st!=="done"?`<button class="bt p" data-a="done" data-id="${r.id}">تم التسليم</button>`:`<button class="bt" data-a="new" data-id="${r.id}">إعادة فتح</button>`}<button class="bt" data-a="edit" data-id="${r.id}">✏️ تعديل</button><button class="bt" data-a="print" data-id="${r.id}">🖨 طباعة</button><button class="bt r" data-a="del" data-id="${r.id}">حذف</button></div></article>`).join(""):'<div class="em">لا توجد طلبات مطابقة</div>');
 }
 function brView(){
  const info={};BR.forEach(b=>info[code(b)]={n:0,p:0,t:0});
@@ -153,7 +170,7 @@ function brView(){
 function draw(){
  if(!authed)return;
  const keep=window.scrollY;
- g("app").innerHTML=`<div class="hd"><div class="hi"><div class="br"><img class="lg1" src="${LOGO1}" alt=""><img class="lg2" src="${LOGO2}" alt=""><div><h1>لوحة المستودع</h1><small>طلبات الفروع</small></div></div><div class="tabs"><button class="${tab==="req"?"on":""}" data-t="req">الطلبات</button><button class="${tab==="br"?"on":""}" data-t="br">الفروع</button></div><div style="display:flex;gap:12px;align-items:center"><div class="live"><i></i>مباشر</div><button class="tabs-out" id="logout" type="button">خروج</button></div></div></div><main>${tab==="req"?reqView():brView()}</main>`;
+ g("app").innerHTML=`<div class="hd"><div class="hi"><div class="br"><img class="lg1" src="${LOGO1}" alt=""><img class="lg2" src="${LOGO2}" alt=""><div><h1>لوحة المستودع</h1><small>طلبات الفروع</small></div></div><div class="tabs"><button class="${tab==="req"?"on":""}" data-t="req">الطلبات</button><button class="${tab==="br"?"on":""}" data-t="br">الفروع</button></div><div style="display:flex;gap:12px;align-items:center"><div class="live"><i></i>مباشر</div><a class="tabs-out" href="./sheet.html" target="_blank" rel="noopener" style="text-decoration:none">ورقة نواقص يدوية</a><button class="tabs-out" id="logout" type="button">خروج</button></div></div></div><main>${tab==="req"?reqView():brView()}</main>`;
  window.scrollTo(0,keep);
 }
 const msg=c=>{const b=BR.find(x=>code(x)===c);return `أهلاً فرع ${b}\nرابط طلب البضاعة من المستودع:\n${new URL("./index.html",location.href).href}\nاختار فرعك (${b}) واكتب كلمة السر: ${P[c]}`};
@@ -181,6 +198,29 @@ function printReq(r){
  g("pa").innerHTML=`<div class="ph"><img src="${LOGO1}" alt=""><h2>ورقة تحميل النواقص</h2><div>${E(r.dt||"")}</div></div><div class="rt"><div><small>من</small><b>المستودع الرئيسي</b></div><div style="flex:none;border:0;font-size:20pt">←</div><div><small>إلى</small><b><bdi dir="ltr">${E(r.brn)}</bdi></b></div></div><div class="pg">${gHtml(r.rows)}</div>${r.gn?`<p>ملاحظات: ${E(r.gn)}</p>`:""}<div class="tt"><span>عدد الأصناف ${NUM(r.codes)}</span><span>إجمالي القطع ${NUM(r.pcs)}</span><span>طلب ${E(r.no)}</span></div><div class="sg"><span>أمين المستودع</span><span>المستلم</span></div>`;
  setTimeout(()=>window.print(),80);
 }
+let ED=null;
+const blankRow=()=>({k:"",c:"",z:"",q:"",n:""});
+function openEdit(r){ED={id:r.id,no:r.no,brn:r.brn,gn:r.gn||"",rows:(Array.isArray(r.rows)?r.rows:[]).map(x=>({k:String(x&&x.k||""),c:String(x&&x.c||""),z:String(x&&x.z||""),q:NUM(x&&x.q),n:String(x&&x.n||"")}))};if(!ED.rows.length)ED.rows.push(blankRow());drawEd()}
+function drawEd(){
+ const m=g("em");if(!ED){m.className="";m.innerHTML="";return}
+ m.className="on";
+ const inp=(f,i,v,ex="")=>`<input data-f="${f}" data-i="${i}" value="${E(v)}" ${ex}>`;
+ m.innerHTML=`<div class="eb"><h3>تعديل طلب <bdi dir="ltr">${E(ED.no)}</bdi> — <bdi dir="ltr">${E(ED.brn)}</bdi></h3><div class="off" style="font-size:14px">أي تعديل هيظهر عند الفرع كمان، وهيتعلّم "عدّله المستودع".</div><div class="tw"><table class="et"><thead><tr><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th><th>ملاحظات</th><th></th></tr></thead><tbody>${ED.rows.map((x,i)=>`<tr><td>${inp("k",i,x.k,'dir="ltr" maxlength="40"')}</td><td>${inp("c",i,x.c,'dir="ltr" maxlength="40"')}</td><td>${inp("z",i,x.z,'dir="ltr" maxlength="20"')}</td><td>${inp("q",i,x.q,'type="number" min="0" max="99999" inputmode="numeric"')}</td><td>${inp("n",i,x.n,'maxlength="200"')}</td><td><button class="bt s r" data-rm="${i}" type="button">✕</button></td></tr>`).join("")}</tbody></table></div><button class="bt s" id="eadd" type="button">+ سطر</button><label for="egn">ملاحظات عامة</label><textarea id="egn" maxlength="1000">${E(ED.gn)}</textarea><div class="rf" style="margin-top:14px;border-radius:12px"><button class="bt p" id="esv" type="button">حفظ التعديلات</button><button class="bt" id="ecx" type="button">إلغاء</button></div></div>`;
+}
+g("em").addEventListener("input",e=>{const t=e.target;if(ED&&t.dataset&&t.dataset.f){ED.rows[+t.dataset.i][t.dataset.f]=t.value}if(ED&&t.id==="egn")ED.gn=t.value});
+g("em").addEventListener("click",async e=>{
+ const t=e.target.closest("[data-rm],#eadd,#esv,#ecx");if(!t||!ED)return;
+ if(t.dataset.rm!==undefined){ED.rows.splice(+t.dataset.rm,1);if(!ED.rows.length)ED.rows.push(blankRow());drawEd()}
+ else if(t.id==="eadd"){ED.rows.push(blankRow());drawEd()}
+ else if(t.id==="ecx"){ED=null;drawEd()}
+ else if(t.id==="esv"){
+  const rows=ED.rows.map(x=>({k:String(x.k).trim().slice(0,40),c:String(x.c).trim().slice(0,40),z:String(x.z).trim().slice(0,20),q:Math.min(99999,Math.max(0,NUM(x.q))),n:String(x.n).trim().slice(0,200)})).filter(x=>x.k&&x.q>0);
+  if(!rows.length){toast("الطلب فاضي. اكتب كود وكمية.");return}
+  if(rows.length>400){toast("أكتر من 400 سطر");return}
+  const codes=new Set(rows.map(x=>x.k)).size,pcs=rows.reduce((a,x)=>a+x.q,0);
+  try{await updateDoc(doc(db,"requests",ED.id),{rows,codes,pcs,gn:String(ED.gn||"").slice(0,1000),edited:true,eat:Date.now()});ED=null;drawEd();toast("تم حفظ التعديل")}catch(x){toast("تعذر الحفظ: "+(x&&x.code||x&&x.message))}
+ }
+});
 document.addEventListener("click",async e=>{
  const t=e.target.closest("[data-t],[data-s],[data-a],[data-sp],[data-mk],[data-tg],[data-pw],[data-ad],[data-cp],#genall,#cpall,#logout");if(!t)return;
  try{
@@ -189,6 +229,7 @@ document.addEventListener("click",async e=>{
  else if(t.id==="logout"){await signOut(auth)}
  else if(t.dataset.a){const r=R.find(x=>x.id===t.dataset.id),a=t.dataset.a;if(!r)return;
   if(a==="print")printReq(r);
+  else if(a==="edit")openEdit(r);
   else if(a==="del"){if(confirm(`حذف طلب ${r.no} نهائياً؟`))await deleteDoc(doc(db,"requests",r.id))}
   else if(["new","prep","done"].includes(a))await updateDoc(doc(db,"requests",r.id),{st:a,upd:Date.now()})}
  else if(t.dataset.sp){const c=t.dataset.sp,el=document.querySelector(`[data-pw-cell="${c}"]`);if(el){const shown=el.dataset.v==="1";el.textContent=shown?"••••••••":P[c];el.dataset.v=shown?"0":"1";t.textContent=shown?"إظهار":"إخفاء"}}
