@@ -11,7 +11,7 @@ const firebaseConfig = {
   appId: "1:463966731953:web:6b43696b49837494d82c90"
 };
 export const DOMAIN="tasooma.app";
-export const ADMIN_EMAIL="admin@"+DOMAIN;
+export const ADMIN_EMAIL="mohamedrgab20@gmail.com";
 export const emailOf=c=>`${c}@${DOMAIN}`;
 // كل صفحة بتفتح "تطبيق" باسم مختلف علشان جلسة الدخول ما تتخلطش (فرع / مستودع / إنشاء حسابات)
 export function makeFb(name){
