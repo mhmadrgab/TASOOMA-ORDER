@@ -41,9 +41,60 @@ service cloud.firestore {
       }
       allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode());
       allow create: if isAdmin() || (branchOn() && validNew());
-      // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)
-      allow update: if isAdmin() || (branchOn() && resource.data.br == myCode() && resource.data.st == 'new' && validNew());
+      // تأكيد الاستلام من الفرع: بس لما الطلب يبقى "تم التسليم"، ويغيّر st و rcv بس
+      function validRcv() {
+        let r = request.resource.data.rcv;
+        return r is map && r.keys().hasOnly(['at','ok','lines','note'])
+          && r.at is number && r.ok is bool
+          && r.lines is list && r.lines.size() <= 400
+          && (!('note' in r) || (r.note is string && r.note.size() <= 500));
+      }
+      // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)، أو يأكد الاستلام
+      allow update: if isAdmin() || (branchOn() && resource.data.br == myCode() && (
+          (resource.data.st == 'new' && validNew())
+          || (resource.data.st == 'done' && request.resource.data.st == 'recv'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','rcv'])
+              && validRcv())
+        ));
       allow delete: if isAdmin();
+    }
+
+    // العهدة: حركات (عهدة مستلمة / مصروف)
+    match /ledger/{id} {
+      function validEntry() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['br','type','amt','cat','note','dt','ts','st','img'])
+          && d.keys().hasAll(['br','type','amt','cat','dt','ts','st'])
+          && d.br == myCode()
+          && (d.type == 'exp' || d.type == 'in')
+          && d.st == 'pending'
+          && d.amt is number && d.amt > 0 && d.amt <= 1000000
+          && d.cat is string && d.cat.size() <= 40
+          && d.dt is string && d.dt.size() <= 12
+          && (!('note' in d) || (d.note is string && d.note.size() <= 300))
+          && (!('img' in d) || (d.img is string && d.img.size() <= 250000));
+      }
+      allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode());
+      allow create: if isAdmin() || (branchOn() && validEntry());
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (branchOn() && resource.data.br == myCode() && resource.data.st == 'pending');
+    }
+
+    // تسويات العهدة
+    match /settlements/{id} {
+      function validSet() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['br','no','from','to','opening','ins','exps','bal','ids','st','ts'])
+          && d.keys().hasAll(['br','no','from','to','opening','ins','exps','bal','ids','st','ts'])
+          && d.br == myCode() && d.st == 'pending'
+          && d.ids is list && d.ids.size() > 0 && d.ids.size() <= 500
+          && d.no is string && d.no.size() <= 40
+          && d.from is string && d.to is string
+          && d.opening is number && d.ins is number && d.exps is number && d.bal is number;
+      }
+      allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode());
+      allow create: if isAdmin() || (branchOn() && validSet());
+      allow update, delete: if isAdmin();
     }
 
     // أي حاجة تانية ممنوعة

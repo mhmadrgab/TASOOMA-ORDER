@@ -2,8 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://*.firebaseapp.com https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
-<meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://*.firebaseapp.com https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
+<link rel="manifest" href="./manifest.json"><meta name="theme-color" content="#1b1b1b"><link rel="apple-touch-icon" href="./icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>طلب بضاعة من المستودع - تاسومة</title>
@@ -440,14 +440,17 @@ loadUI();
 
 <script type="module">
 import {makeFb,emailOf,withTimeout,collection,doc,getDoc,setDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
+import {initBranch,stopBranch} from "./br-extra.js";
+import {notify,beep,badge} from "./notify.js";
 const {db,auth}=makeFb("branch");
-const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم"};
+const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام"};
 const ST=x=>LBL[x]?x:"new";
 const g=id=>document.getElementById(id);
-let B=null,unsub=null,prev=null,tt;const opn=new Set();
+let B=null,unsub=null,prev=null,tt,REQS={};const opn=new Set();
 const lines=rows=>{const m=new Map();(Array.isArray(rows)?rows:[]).forEach(r=>{const k=String(r&&r.k||"");if(!m.has(k))m.set(k,[]);m.get(k).push(r)});return [...m].map(([k,rs])=>`<div><b><bdi dir="ltr">${E(k)}</bdi></b> — ${rs.map(r=>`<bdi dir="ltr">${E(String(r.c||"-"))} ${E(String(r.z||""))} × ${+r.q||0}</bdi>`).join(" · ")}</div>`).join("")};
 document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"&&d.dataset.id){d.open?opn.add(d.dataset.id):opn.delete(d.dataset.id)}},true);
 const code=b=>b.split("-")[0];
+const rcvInfo=r=>{const v=r.rcv;if(!v||typeof v!=="object")return "";const ls=Array.isArray(v.lines)?v.lines.filter(x=>x&&typeof x==="object"):[];return `<div class="rcn" style="margin-top:6px">${v.ok?"✅ استلمت الطلب كامل":"📝 ملاحظات الاستلام:"}${ls.map(x=>`<div><bdi dir="ltr">${E(x.k)} ${E(x.c||"")} ${E(x.z||"")}</bdi>: مطلوب ${+x.q||0} · استلمت ${+x.r||0}</div>`).join("")}${v.note?`<div>${E(v.note)}</div>`:""}</div>`};
 const toast=(m,er)=>{const t=g("toast");t.textContent=m;t.className="on"+(er?" er":"");clearTimeout(tt);tt=setTimeout(()=>t.className="",er?5000:3200)};
 const ask=(o)=>new Promise(r=>{g("mi").textContent=o.i||"📤";g("mt").textContent=o.t;g("mp").textContent=o.p||"";g("mn").style.display=o.one?"none":"";g("my2").textContent=o.ok||"تأكيد";g("md").className="on";g("my2").onclick=()=>{g("md").className="";r(true)};g("mn").onclick=()=>{g("md").className="";r(false)}});
 g("gb").innerHTML=BR.map(b=>`<option value="${E(b)}">${E(b)}</option>`).join("");
@@ -458,9 +461,10 @@ function listen(){
  if(unsub)unsub();prev=null;
  unsub=onSnapshot(query(collection(db,"requests"),where("br","==",code(B))),sn=>{
   const rs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.ts-a.ts).slice(0,12);
-  if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st)toast(`طلب ${r.no}: ${LBL[ST(r.st)]}`);else if((+r.eat||0)>o.eat)toast(`المستودع عدّل طلب ${r.no}`)});
+  if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${LBL[ST(r.st)]}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
+  REQS={};rs.forEach(r=>REQS[r.id]=r);badge(rs.filter(r=>r.st==="done").length);
   prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0});
-  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.edited?`<span class="ed-tag">عدّله المستودع${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span><details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div></details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
+  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.edited?`<span class="ed-tag">عدّله المستودع${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span>${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
  },e=>{if(e&&e.code==="permission-denied"){signOut(auth).then(()=>showErr("الحساب ده اتعطّل. كلّم المستودع."))}else toast("تعذر قراءة الطلبات، اتأكد من الإنترنت","er")});
 }
 function enter(b){
@@ -468,8 +472,9 @@ function enter(b){
  if(pb&&pb!==b){lib.sheets=[];lib.cur=null;lib.n=0;st=mk({br:b});lib.cur=st.id}   // جهاز اتغيّر عليه الفرع: ما نورّيش أوراق الفرع اللي قبله
  B=b;localStorage.setItem("tb",b);document.body.classList.add("lock");g("gate").className="";
  st.br=b;st.ty="load";save();loadUI();g("mb").innerHTML=`<bdi dir="ltr">${E(b)}</bdi>`;listen();
+ initBranch({db,code:()=>code(B),brn:()=>B,toast,ask,reqs:()=>REQS,logo:(document.querySelector(".lg1")||{}).src||""});
 }
-function gateOn(){B=null;if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBranch();REQS={};if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");
