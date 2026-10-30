@@ -205,7 +205,7 @@ body[data-ty="tr"] .rc:not(.to) small{color:#7fd0dc}
  tr{break-inside:avoid}thead{display:table-header-group}
 }
 
-.lock #ty,.lock #fr,.lock #br{display:none}.lock .ed{display:none}
+.lock #ty,.lock #fr,.lock #br{display:none}.lock .ed{display:none}.pvl{display:none!important}.mr details{width:100%}.mr summary{cursor:pointer;color:var(--acc);font-size:13px}.ln{font-size:14px;line-height:1.9;padding:4px 0}.ln b{font-size:15px}.ed-tag{background:#f6edd2;color:#6b5314;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;margin-inline-start:6px}@media (prefers-color-scheme:dark){.ed-tag{background:#3a3115;color:#e8cf8a}}.mr{flex-wrap:wrap}
 #me{display:none;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border-radius:14px;padding:10px 16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);border-inline-start:4px solid var(--acc)}
 .lock #me{display:flex}#me b{font-size:17px}#me small{color:var(--mut);display:block;font-size:12px}
 #me button{background:none;border:0;color:var(--mut);text-decoration:underline;cursor:pointer;font:inherit;font-size:13px}
@@ -295,7 +295,7 @@ const nt=(k,c,z)=>[...new Set(st.rows.filter(r=>r.k.trim()===k&&((r.c||"").trim(
 const ORD=["XXS","XS","S","M","L","XL","XXL","2XL","3XL","4XL"];
 const sk=z=>{const n=parseFloat(z);return isNaN(n)?(ORD.indexOf(String(z).toUpperCase())+1||99)+1000:n};
 function pv(){
- if(!$("#cm").checked)return pvT();
+ return pvT();
  const G=new Map();
  st.rows.filter(r=>r.k&&+r.q>0).forEach(r=>{const k=r.k.trim(),c=(r.c||"").trim()||"-",z=(r.z||"").trim()||"-";const C=G.get(k)||new Map();G.set(k,C);const Z=C.get(c)||new Map();C.set(c,Z);Z.set(z,(Z.get(z)||0)+ +r.q)});
  let h="";
@@ -444,7 +444,9 @@ const {db,auth}=makeFb("branch");
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم"};
 const ST=x=>LBL[x]?x:"new";
 const g=id=>document.getElementById(id);
-let B=null,unsub=null,prev=null,tt;
+let B=null,unsub=null,prev=null,tt;const opn=new Set();
+const lines=rows=>{const m=new Map();(Array.isArray(rows)?rows:[]).forEach(r=>{const k=String(r&&r.k||"");if(!m.has(k))m.set(k,[]);m.get(k).push(r)});return [...m].map(([k,rs])=>`<div><b><bdi dir="ltr">${E(k)}</bdi></b> — ${rs.map(r=>`<bdi dir="ltr">${E(String(r.c||"-"))} ${E(String(r.z||""))} × ${+r.q||0}</bdi>`).join(" · ")}</div>`).join("")};
+document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"&&d.dataset.id){d.open?opn.add(d.dataset.id):opn.delete(d.dataset.id)}},true);
 const code=b=>b.split("-")[0];
 const toast=(m,er)=>{const t=g("toast");t.textContent=m;t.className="on"+(er?" er":"");clearTimeout(tt);tt=setTimeout(()=>t.className="",er?5000:3200)};
 const ask=(o)=>new Promise(r=>{g("mi").textContent=o.i||"📤";g("mt").textContent=o.t;g("mp").textContent=o.p||"";g("mn").style.display=o.one?"none":"";g("my2").textContent=o.ok||"تأكيد";g("md").className="on";g("my2").onclick=()=>{g("md").className="";r(true)};g("mn").onclick=()=>{g("md").className="";r(false)}});
@@ -456,9 +458,9 @@ function listen(){
  if(unsub)unsub();prev=null;
  unsub=onSnapshot(query(collection(db,"requests"),where("br","==",code(B))),sn=>{
   const rs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.ts-a.ts).slice(0,12);
-  if(prev)rs.forEach(r=>{if(prev[r.id]&&prev[r.id]!==r.st)toast(`طلب ${r.no}: ${LBL[ST(r.st)]}`)});
-  prev={};rs.forEach(r=>prev[r.id]=r.st);
-  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b><small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
+  if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st)toast(`طلب ${r.no}: ${LBL[ST(r.st)]}`);else if((+r.eat||0)>o.eat)toast(`المستودع عدّل طلب ${r.no}`)});
+  prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0});
+  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.edited?`<span class="ed-tag">عدّله المستودع${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span><details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div></details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
  },e=>{if(e&&e.code==="permission-denied"){signOut(auth).then(()=>showErr("الحساب ده اتعطّل. كلّم المستودع."))}else toast("تعذر قراءة الطلبات، اتأكد من الإنترنت","er")});
 }
 function enter(b){

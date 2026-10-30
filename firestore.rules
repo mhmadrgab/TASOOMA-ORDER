@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn()   { return request.auth != null && request.auth.token.email != null; }
-    function isAdmin()    { return signedIn() && request.auth.token.email == 'admin@tasooma.app'; }
+    function isAdmin()    { return signedIn() && request.auth.token.email == 'mohamedrgab20@gmail.com'; }
     function isBranch()   { return signedIn() && request.auth.token.email.matches('^[0-9]{3}@tasooma[.]app$'); }
     function myCode()     { return request.auth.token.email.split('@')[0]; }
     function branchOn()   {
