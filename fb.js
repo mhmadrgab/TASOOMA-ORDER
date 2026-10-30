@@ -1,6 +1,7 @@
 // إعدادات Firebase لمشروع TASOOMA (مشتركة بين صفحة الفرع وصفحة المستودع)
-import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {initializeApp,getApps} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getFirestore,collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDSMJmTT9Ed3hQYIe2zGhEUKKt0qTL3ZwM",
   authDomain: "tasooma-ad4fe.firebaseapp.com",
@@ -9,8 +10,13 @@ const firebaseConfig = {
   messagingSenderId: "463966731953",
   appId: "1:463966731953:web:6b43696b49837494d82c90"
 };
-export const app=initializeApp(firebaseConfig);
-export const db=getFirestore(app);
-export const sha=async s=>{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("tasooma|"+s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")};
+export const DOMAIN="tasooma.app";
+export const ADMIN_EMAIL="admin@"+DOMAIN;
+export const emailOf=c=>`${c}@${DOMAIN}`;
+// كل صفحة بتفتح "تطبيق" باسم مختلف علشان جلسة الدخول ما تتخلطش (فرع / مستودع / إنشاء حسابات)
+export function makeFb(name){
+  const app=getApps().find(a=>a.name===name)||initializeApp(firebaseConfig,name);
+  return {app,db:getFirestore(app),auth:getAuth(app)};
+}
 export const withTimeout=(p,ms=15000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
-export {collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where};
+export {collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword};

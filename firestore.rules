@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()   { return request.auth != null && request.auth.token.email != null; }
+    function isAdmin()    { return signedIn() && request.auth.token.email == 'admin@tasooma.app'; }
+    function isBranch()   { return signedIn() && request.auth.token.email.matches('^[0-9]{3}@tasooma[.]app$'); }
+    function myCode()     { return request.auth.token.email.split('@')[0]; }
+    function branchOn()   {
+      return isBranch()
+        && exists(/databases/$(database)/documents/branches/$(myCode()))
+        && get(/databases/$(database)/documents/branches/$(myCode())).data.enabled == true;
+    }
+
+    // حالة الفرع (مفعّل/معطّل): الفرع يقرأ حالته بس، والمستودع يتحكم
+    match /branches/{code} {
+      allow read:  if isAdmin() || (isBranch() && myCode() == code);
+      allow write: if isAdmin();
+    }
+
+    // كلمات سر الفروع (للمستودع فقط، علشان يقدر يعيد إرسالها)
+    match /secrets/{code} {
+      allow read, write: if isAdmin();
+    }
+
+    // طلبات الفروع
+    match /requests/{id} {
+      function validNew() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['br','brn','no','dt','dr','gn','rows','codes','pcs','st','ts'])
+          && d.keys().hasAll(['br','brn','no','dt','rows','codes','pcs','st','ts'])
+          && d.br == myCode()
+          && d.st == 'new'
+          && d.rows is list && d.rows.size() > 0 && d.rows.size() <= 400
+          && d.codes is number && d.pcs is number && d.pcs > 0 && d.pcs <= 100000
+          && d.no is string && d.no.size() <= 40
+          && d.brn is string && d.brn.size() <= 40
+          && d.dt is string && d.dt.size() <= 12
+          && (!('gn' in d) || (d.gn is string && d.gn.size() <= 1000))
+          && (!('dr' in d) || (d.dr is string && d.dr.size() <= 100));
+      }
+      allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode());
+      allow create: if isAdmin() || (branchOn() && validNew());
+      // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)
+      allow update: if isAdmin() || (branchOn() && resource.data.br == myCode() && resource.data.st == 'new' && validNew());
+      allow delete: if isAdmin();
+    }
+
+    // أي حاجة تانية ممنوعة
+  }
+}
