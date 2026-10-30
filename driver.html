@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://*.firebaseapp.com https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
+<link rel="manifest" href="./manifest-driver.json"><meta name="theme-color" content="#1b1b1b"><link rel="apple-touch-icon" href="./icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>تطبيق السائق - تاسومة</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#efede9;--card:#fff;--ink:#1b1b1b;--mut:#6f6b64;--line:#e6e2db;--acc:#a8832f;--soft:#f6f2e9;--field:#f3f1ed;--ring:rgba(168,131,47,.22);--ok:#2f8f3e;--go:#6a56c9}
+@media (prefers-color-scheme:dark){:root{--bg:#0f0f0f;--card:#1a1a1a;--ink:#f1efec;--mut:#9d9a94;--line:#2f2f2f;--acc:#d4ae5c;--soft:#221f18;--field:#242424;--ring:rgba(212,174,92,.25);--ok:#5cc06c;--go:#a597ee}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 "IBM Plex Sans Arabic",Tahoma,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+button,input,select{font:inherit;color:var(--ink)}
+input,select{width:100%;background:var(--field);border:1.5px solid transparent;border-radius:12px;padding:13px 14px}
+input:focus,select:focus{outline:0;border-color:var(--acc);box-shadow:0 0 0 4px var(--ring)}
+label{display:block;color:var(--mut);font-size:14px;margin:12px 0 4px}
+.hd{background:#1b1b1b;border-bottom:3px solid var(--acc);padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.hd img{height:38px}.hd b{color:#fff;display:block;line-height:1.2}.hd small{color:#cdb67a}
+.hd .sp{flex:1}.hd button{background:none;border:1.5px solid #444;color:#ddd;border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer}
+main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
+.card{background:var(--card);border-radius:18px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.card h3{margin:0 0 6px;font-size:18px}
+.b{border:1.5px solid var(--line);background:var(--card);border-radius:14px;padding:14px 18px;font-weight:700;cursor:pointer;width:100%}
+.b.p{background:var(--ink);color:var(--bg);border-color:var(--ink)}.b.g{background:var(--acc);border-color:var(--acc);color:#1b1b1b}.b.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.b:disabled{opacity:.5}.row{display:flex;gap:10px;margin-top:12px}.row .b{flex:1}
+.stop{display:flex;gap:12px;align-items:center;justify-content:space-between;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.stop.done{background:var(--soft);border-color:var(--ok)}.stop b{font-size:19px;direction:ltr;display:inline-block}.stop small{display:block;color:var(--mut)}
+.stop .b{width:auto;padding:11px 14px;white-space:nowrap}
+.pick{display:flex;gap:12px;align-items:center;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;cursor:pointer}.pick input{width:24px;height:24px;flex:none}
+.pill{border-radius:999px;padding:2px 12px;font-size:13px;font-weight:700;background:#e4def7;color:#44348a}
+.kp{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.kp span{background:var(--soft);border-radius:10px;padding:4px 12px;font-size:15px}
+.mut{color:var(--mut);font-size:14px}.er{color:#c4362b;min-height:22px;font-size:15px;margin-top:8px}
+#gate{max-width:380px;margin:10vh auto;padding:0 18px;text-align:center}#gate .card{padding:26px 22px}#gate img{height:62px;background:#1b1b1b;padding:10px 16px;border-radius:14px}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-140px);z-index:80;background:#1b1b1b;color:#fff;padding:12px 22px;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.3);transition:.35s;border:1px solid var(--acc);max-width:92vw;text-align:center}#toast.on{transform:translateX(-50%) translateY(0)}#toast.er{border-color:#c4362b}
+.mdl{display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);overflow:auto;padding:16px}.mdl.on{display:block}.mdl .card{max-width:480px;margin:6vh auto}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div id="gate"><div class="card"><img src="./icon-192.png" alt=""><h2 style="margin:10px 0 2px">تطبيق السائق</h2><p class="mut" style="margin:0 0 12px">سجّل دخولك علشان تبدأ الرحلة</p>
+<input id="gu" placeholder="اسم المستخدم (مثلاً drv1)" autocomplete="username" autocapitalize="none" dir="ltr" style="text-align:center"><div style="height:10px"></div><input id="gp" type="password" placeholder="كلمة السر" autocomplete="current-password" style="text-align:center"><div style="height:12px"></div><button class="b p" id="gg" type="button">دخول</button><div class="er" id="ge"></div></div></div>
+<div id="app" hidden><div class="hd"><img src="./icon-192.png" alt=""><div><b id="nm"></b><small>سائق التوصيل</small></div><div class="sp"></div><button id="bell" type="button"></button><button data-install type="button" hidden>📲</button><button id="out" type="button">خروج</button></div><main id="mn"></main></div>
+<div class="mdl" id="md"></div>
+<script type="module">
+import {makeFb,emailOf,withTimeout,collection,doc,getDoc,addDoc,updateDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
+import {wireButtons,regSW,notify,beep} from "./notify.js";
+import {shrink} from "./cust.js";
+const {db,auth}=makeFb("drv");
+const g=id=>document.getElementById(id);
+const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const N=x=>Number.isFinite(+x)?+x:0;
+const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
+const hm=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+const dur=ms=>{const m=Math.max(0,Math.round(N(ms)/60000)),h=Math.floor(m/60);return h?`${h}س ${m%60}د`:`${m}د`};
+const today=()=>new Date().toLocaleDateString("en-CA");
+const codeOf=b=>String(b||"").split("-")[0];
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+let me=null,CARS=[],REQ=[],TR=[],FU=[],GEO={br:{},wh:null},un=[],off=new Set(),odoV=null,tt,tick=null;
+const toast=(m,er)=>{const t=g("toast");t.textContent=m;t.className="on"+(er?" er":"");clearTimeout(tt);tt=setTimeout(()=>t.className="",er?5000:3200)};
+const ERR=c=>({"auth/invalid-credential":"اسم المستخدم أو كلمة السر غلط","auth/user-disabled":"الحساب معطّل. كلّم المستودع.","auth/too-many-requests":"محاولات كتير، استنى شوية","auth/network-request-failed":"مفيش اتصال بالإنترنت","auth/invalid-email":"اسم المستخدم غير صحيح"}[c]||"تعذر الدخول، جرّب تاني.");
+const active=()=>TR.find(t=>t.st==="active");
+// ---------- موقع لحظي (عند الضغط فقط، من غير تتبع في الخلفية) ----------
+const here=()=>new Promise(r=>{if(!("geolocation" in navigator))return r(null);navigator.geolocation.getCurrentPosition(p=>r({lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5)}),()=>r(null),{enableHighAccuracy:true,timeout:9000,maximumAge:0})});
+const km2=(a,b)=>{const R=6371,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lng-a.lng),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
+// ترتيب أقرب فرع فأقرب (لو مواقع الفروع معروفة)
+function order(rs,from){
+ const ok=rs.filter(r=>GEO.br[codeOf(r.brn)]),no=rs.filter(r=>!GEO.br[codeOf(r.brn)]);
+ let cur=from||GEO.wh;if(!cur||!ok.length)return rs.slice();
+ const left=ok.slice(),out=[];
+ while(left.length){let bi=0,bd=1e9;left.forEach((r,i)=>{const d=km2(cur,GEO.br[codeOf(r.brn)]);if(d<bd){bd=d;bi=i}});const r=left.splice(bi,1)[0];out.push(r);cur=GEO.br[codeOf(r.brn)]}
+ return out.concat(no);
+}
+// وقت الوصول المتوقع لكل فرع (من متوسط الرحلات السابقة)
+function etas(list,from){let t=from;const o={};for(const x of list){const a=GEO.br[codeOf(x.brn)];if(!a||!a.avg)break;t+=a.avg*60000;o[x.rid||x.id]=t}return o}
+const mapLink=list=>{const pts=list.map(x=>GEO.br[codeOf(x.brn)]).filter(Boolean);if(!pts.length)return "";const d=pts[pts.length-1],w=pts.slice(0,-1).map(p=>p.lat+","+p.lng).join("|");return `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}${w?"&waypoints="+encodeURIComponent(w):""}&travelmode=driving`};
+// ---------- دخول ----------
+g("gg").onclick=async()=>{
+ const u=g("gu").value.trim().toLowerCase(),p=g("gp").value;g("ge").textContent="";
+ if(!/^drv\d{1,2}$/.test(u)||!p){g("ge").textContent="اكتب اسم المستخدم (drv1) وكلمة السر";return}
+ g("gg").disabled=true;
+ try{await withTimeout(signInWithEmailAndPassword(auth,emailOf(u),p),15000)}catch(x){g("ge").textContent=x&&x.message==="timeout"?"الاتصال بطيء، جرّب تاني":ERR(x&&x.code)}
+ g("gg").disabled=false;
+};
+g("gp").addEventListener("keydown",e=>{if(e.key==="Enter")g("gg").click()});
+g("out").onclick=()=>{const a=active();if(a&&!confirm("عندك رحلة شغّالة. تخرج برضو؟ (الرحلة هتفضل مفتوحة)"))return;signOut(auth)};
+onAuthStateChanged(auth,async u=>{
+ if(!u){stopAll();g("app").hidden=true;g("gate").hidden=false;return}
+ const id=(u.email||"").split("@")[0];
+ if(!/^drv\d{1,2}$/.test(id)){await signOut(auth);g("ge").textContent="حساب غير صالح لهذه الصفحة";return}
+ try{
+  const d=await withTimeout(getDoc(doc(db,"drivers",id)),12000);
+  if(!d.exists()||d.data().enabled!==true){await signOut(auth);g("ge").textContent="الحساب معطّل. كلّم المستودع.";return}
+  me={id,name:String(d.data().name||id)};
+ }catch(e){await signOut(auth);g("ge").textContent="تعذر التحقق. اتأكد من الإنترنت وجرّب تاني.";return}
+ g("gate").hidden=true;g("app").hidden=false;g("nm").textContent=me.name;wireButtons();startAll();
+});
+let firstReq=true;
+function startAll(){
+ stopAll();firstReq=true;
+ un.push(onSnapshot(collection(db,"cars"),sn=>{CARS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(c=>c.active!==false);draw()},()=>toast("تعذر قراءة السيارات","er")));
+ un.push(onSnapshot(doc(db,"geo","main"),d=>{const v=d.exists()?d.data():null;GEO={br:(v&&v.br&&typeof v.br==="object")?v.br:{},wh:v&&v.wh||null};draw()},()=>{}));
+ un.push(onSnapshot(query(collection(db,"requests"),where("asg.drv","==",me.id)),sn=>{
+  const old=new Set(REQ.map(r=>r.id));
+  REQ=sn.docs.map(d=>({id:d.id,...d.data()}));
+  if(!firstReq)REQ.forEach(r=>{if(!old.has(r.id)&&r.st==="prep"){toast(`طلب جديد: ${r.brn}`);notify("🚚 توصيلة جديدة",r.brn,"q"+r.id);beep()}});
+  firstReq=false;draw();
+ },()=>toast("تعذر قراءة الطلبات","er")));
+ un.push(onSnapshot(query(collection(db,"trips"),where("drv","==",me.id)),sn=>{TR=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>toast("تعذر قراءة الرحلات","er")));
+ un.push(onSnapshot(query(collection(db,"fuel"),where("drv","==",me.id)),sn=>{FU=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
+}
+function stopAll(){un.forEach(f=>typeof f==="function"&&f());un=[];CARS=[];REQ=[];TR=[];FU=[];off=new Set();odoV=null;clearInterval(tick)}
+// ---------- الواجهة ----------
+function draw(){
+ if(!me||g("md").className.includes("on"))return;
+ const a=active(),mn=g("mn");
+ if(a){
+  const st=Array.isArray(a.stops)?a.stops:[],done=st.filter(s=>s.arr).length,pend=st.filter(s=>!s.arr),ml=mapLink(pend);
+  mn.innerHTML=`<div class="card"><h3>🚚 رحلة شغّالة <span class="pill">${E(a.carn)}</span></h3><div class="kp"><span>بدأت ${hm(a.start)}</span><span id="el">${dur(Date.now()-N(a.start))}</span><span>سلّمت ${done} من ${st.length}</span></div><div class="mut">📍 بنسجّل موقعك لما تضغط (وصلت / إنهاء) بس — مش محتاج تسيب الشاشة مفتوحة.</div>${ml?`<a class="b g" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="${E(ml)}" target="_blank" rel="noopener noreferrer">🗺 افتح المسار في خرائط جوجل</a>`:""}</div>
+  ${st.map(s=>`<div class="stop ${s.arr?"done":""}"><div><b>${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small></div>${s.arr?"":`<button class="b ok" data-arr="${E(s.rid)}" type="button">وصلت وسلّمت ✅</button>`}</div>`).join("")}
+  <div class="row"><button class="b" id="bf" type="button">⛽ بنزين</button><button class="b p" id="be" type="button">🏁 إنهاء الرحلة</button></div>`;
+  g("bf").onclick=fuelForm;g("be").onclick=endForm;
+  mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));
+  clearInterval(tick);tick=setInterval(()=>{const e=g("el"),t=active();if(e&&t)e.textContent=dur(Date.now()-N(t.start))},30000);
+  return;
+ }
+ clearInterval(tick);
+ const rs=REQ.filter(r=>r.st==="prep").sort((a,b)=>N(a.ts)-N(b.ts));
+ const lastCar=lsGet("drv_car")||"",cid=CARS.some(c=>c.id===lastCar)?lastCar:(CARS[0]&&CARS[0].id)||"";
+ const dayTr=TR.filter(t=>t.st==="done"&&new Date(N(t.start)).toLocaleDateString("en-CA")===today()).sort((a,b)=>N(b.start)-N(a.start));
+ mn.innerHTML=`<div class="card"><h3>رحلة جديدة</h3>
+ <label>السيارة</label><select id="sc">${CARS.map(c=>`<option value="${E(c.id)}" ${c.id===cid?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")||'<option value="">لا توجد سيارات — كلّم المستودع</option>'}</select>
+ <label>قراءة العداد الحالية (كم)</label><input id="so" inputmode="numeric" value="${E(odoV!==null?odoV:lsGet("drv_odo_"+cid)||"")}" placeholder="مثلاً 85230">
+ <label>التوصيلات (${rs.length}) — الترتيب بيتظبط تلقائياً على أقرب مسار</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1"><b style="direction:ltr;display:inline-block">${E(r.brn)}</b><small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small></span></label>`).join(""):'<div class="mut">مفيش توصيلات معيّنة ليك دلوقتي. استنى المستودع يعيّن.</div>'}
+ <button class="b g" id="bs" type="button" style="margin-top:10px" ${rs.length?"":"disabled"}>🚚 ابدأ الرحلة</button></div>
+ <div class="row" style="margin:0 0 14px"><button class="b" id="bf" type="button">⛽ تسجيل بنزين</button></div>
+ ${dayTr.length?`<div class="card"><h3>رحلات النهاردة</h3>${dayTr.map(t=>`<div class="mut" style="padding:6px 0;border-bottom:1px solid var(--line)">${hm(t.start)} ← ${hm(t.end)} · ${dur(N(t.end)-N(t.start))} · ${Math.max(0,N(t.odo1)-N(t.odo0))} كم · ${(t.stops||[]).filter(s=>s.arr).length} توصيلة</div>`).join("")}</div>`:""}`;
+ g("sc").onchange=()=>{lsSet("drv_car",g("sc").value);odoV=null;draw()};g("so").oninput=()=>{odoV=g("so").value};
+ mn.querySelectorAll("[data-r]").forEach(c=>c.onchange=()=>{c.checked?off.delete(c.dataset.r):off.add(c.dataset.r)});
+ g("bf").onclick=fuelForm;g("bs").onclick=startTrip;
+}
+async function startTrip(){
+ const c=CARS.find(x=>x.id===g("sc").value),odo=N(toEn(g("so").value)),sel=REQ.filter(r=>r.st==="prep"&&!off.has(r.id)).slice(0,30);
+ if(!c){toast("اختر السيارة","er");return}
+ if(!(odo>0)){toast("اكتب قراءة العداد","er");return}
+ if(!sel.length){toast("اختر توصيلة واحدة على الأقل","er");return}
+ g("bs").disabled=true;g("bs").textContent="جاري تحديد الموقع...";
+ const loc=await here(),ts=Date.now(),rs=order(sel,loc),et=etas(rs,ts);
+ try{
+  const b=writeBatch(db),tr=doc(collection(db,"trips")),t={drv:me.id,drvn:me.name,car:c.id,carn:c.name+(c.plate?" "+c.plate:""),st:"active",start:ts,odo0:odo,stops:rs.map(r=>{const s={rid:r.id,no:String(r.no||"").slice(0,40),brn:String(r.brn||"").slice(0,40),pcs:N(r.pcs)};if(et[r.id])s.eta=et[r.id];return s})};
+  if(loc){t.loc0=loc;t.loc={...loc,ts}}
+  b.set(tr,t);rs.forEach(r=>{const u={st:"go",dep:ts,upd:ts};if(et[r.id])u.eta=et[r.id];b.update(doc(db,"requests",r.id),u)});
+  await withTimeout(b.commit(),15000);lsSet("drv_car",c.id);lsSet("drv_odo_"+c.id,String(odo));odoV=null;toast("بدأت الرحلة. سلامتك 🚚");
+ }catch(e){const x=g("bs");if(x){x.disabled=false;x.textContent="🚚 ابدأ الرحلة"}toast(e&&e.code==="permission-denied"?"مش مسموح. ممكن المستودع غيّر الطلب.":"لم تبدأ الرحلة، جرّب تاني","er")}
+}
+// ---------- نوافذ ----------
+const openM=h=>{g("md").innerHTML=`<div class="card">${h}</div>`;g("md").className="mdl on"};
+const closeM=()=>{g("md").className="mdl";g("md").innerHTML="";draw()};
+// تسليم: اسم المستلم + توقيع + صورة
+function podForm(rid){
+ const a=active();if(!a)return;const s=(a.stops||[]).find(x=>x.rid===rid);if(!s)return;let img="",busy=false,drawn=false;
+ openM(`<h3>تسليم — <span style="direction:ltr;display:inline-block">${E(s.brn)}</span></h3>
+ <label>اسم المستلم في الفرع</label><input id="pn" maxlength="60" autocomplete="off" placeholder="مثلاً: أحمد محمد">
+ <label>توقيع المستلم (بصباعك)</label><canvas id="pc" width="320" height="130" style="width:100%;height:130px;background:#fff;border:1.5px dashed var(--line);border-radius:12px;touch-action:none"></canvas><button class="b" id="pcl" type="button" style="margin-top:6px;padding:8px">مسح التوقيع</button>
+ <label>صورة البضاعة / التسليم (اختياري)</label><input id="pf" type="file" accept="image/*"><small class="mut" id="ph"></small>
+ <div class="row"><button class="b" id="p0" type="button">رجوع</button><button class="b ok" id="p1" type="button">تأكيد التسليم ✅</button></div>`);
+ const cv=g("pc"),cx=cv.getContext("2d");cx.lineWidth=2.4;cx.lineCap="round";cx.strokeStyle="#111";let dn=false;
+ const pt=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
+ cv.onpointerdown=e=>{dn=true;drawn=true;const [x,y]=pt(e);cx.beginPath();cx.moveTo(x,y);cx.lineTo(x+.1,y+.1);cx.stroke();try{cv.setPointerCapture(e.pointerId)}catch(x){}};
+ cv.onpointermove=e=>{if(!dn)return;const [x,y]=pt(e);cx.lineTo(x,y);cx.stroke()};
+ cv.onpointerup=cv.onpointercancel=()=>{dn=false};
+ g("pcl").onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);drawn=false};
+ g("pf").onchange=async()=>{const f=g("pf").files[0];img="";if(!f)return;busy=true;g("ph").textContent="جاري ضغط الصورة...";try{img=await shrink(f,800,120000);g("ph").textContent="تم تجهيز الصورة ✅"}catch(e){g("pf").value="";g("ph").textContent="الصورة مش صالحة"}busy=false};
+ g("p0").onclick=closeM;
+ g("p1").onclick=async()=>{
+  const nm=g("pn").value.trim();if(!nm){toast("اكتب اسم المستلم","er");return}
+  if(busy){toast("استنى الصورة تخلص","er");return}
+  g("p1").disabled=true;g("p1").textContent="جاري الحفظ...";
+  const ts=Date.now(),loc=await here(),pod={name:nm.slice(0,60),at:ts};
+  if(drawn){const sg=cv.toDataURL("image/png");if(sg.length<=40000)pod.sig=sg}
+  if(img)pod.img=img;
+  try{
+   const st=(a.stops||[]).map(x=>{if(x.rid!==rid)return x;const o={...x,arr:ts,rcvr:nm.slice(0,60)};if(loc){o.lat=loc.lat;o.lng=loc.lng}return o});
+   const rem=st.filter(x=>!x.arr),et=etas(rem,ts);
+   const stt=st.map(x=>et[x.rid]?{...x,eta:et[x.rid]}:x);
+   const b=writeBatch(db),tu={stops:stt};if(loc)tu.loc={...loc,ts};
+   b.update(doc(db,"trips",a.id),tu);b.update(doc(db,"requests",rid),{st:"done",dlv:ts,upd:ts,pod});
+   rem.forEach(x=>{if(et[x.rid])b.update(doc(db,"requests",x.rid),{eta:et[x.rid]})});
+   await withTimeout(b.commit(),15000);closeM();toast("تم تسجيل التسليم ✅");
+  }catch(e){const x=g("p1");if(x){x.disabled=false;x.textContent="تأكيد التسليم ✅"}toast(e&&e.code==="permission-denied"?"مش مسموح. ممكن المستودع غيّر حالة الطلب.":"لم يتسجل، جرّب تاني","er")}
+ };
+}
+function fuelForm(){
+ const a=active(),cid=a?a.car:(g("sc")&&g("sc").value)||lsGet("drv_car")||"",c=CARS.find(x=>x.id===cid)||CARS[0];
+ openM(`<h3>⛽ تسجيل بنزين</h3><label>السيارة</label><select id="fcar">${CARS.map(x=>`<option value="${E(x.id)}" ${c&&x.id===c.id?"selected":""}>${E(x.name)}</option>`).join("")}</select>
+ <label>اللترات</label><input id="fl" inputmode="decimal"><label>المبلغ</label><input id="fm" inputmode="decimal"><label>قراءة العداد (كم)</label><input id="fo" inputmode="numeric" value="${E(a?"":lsGet("drv_odo_"+(c?c.id:""))||"")}">
+ <label style="display:flex;gap:10px;align-items:center"><input id="ff" type="checkbox" style="width:24px;height:24px"> ملّيت التانك فُل</label>
+ <div class="row"><button class="b" id="f0" type="button">رجوع</button><button class="b p" id="f1" type="button">حفظ</button></div>`);
+ g("f0").onclick=closeM;
+ g("f1").onclick=async()=>{
+  const cc=CARS.find(x=>x.id===g("fcar").value),l=N(toEn(g("fl").value)),m=N(toEn(g("fm").value)),o=N(toEn(g("fo").value));
+  if(!cc||!(l>0)||l>500||m<0||!(o>0)){toast("اكتب اللترات والمبلغ والعداد","er");return}
+  g("f1").disabled=true;
+  try{await withTimeout(addDoc(collection(db,"fuel"),{drv:me.id,drvn:me.name,car:cc.id,carn:cc.name,ts:Date.now(),dt:today(),liters:l,cost:m,odo:o,full:g("ff").checked}),15000);lsSet("drv_odo_"+cc.id,String(o));closeM();toast("تم تسجيل البنزين ✅")}
+  catch(e){g("f1").disabled=false;toast("لم يتسجل، جرّب تاني","er")}
+ };
+}
+function endForm(){
+ const a=active();if(!a)return;const un2=(a.stops||[]).filter(s=>!s.arr);
+ openM(`<h3>🏁 إنهاء الرحلة</h3>${un2.length?`<div class="mut" style="color:#c4362b;font-weight:700">فيه ${un2.length} توصيلة لسه ما اتسلمتش (${un2.map(s=>E(s.brn)).join("، ")}) — هترجع للمستودع.</div>`:""}
+ <label>قراءة العداد دلوقتي (كم) — كانت ${N(a.odo0)} في البداية</label><input id="eo" inputmode="numeric"><label>ملاحظة (اختياري)</label><input id="en" maxlength="300">
+ <div class="row"><button class="b" id="e0" type="button">رجوع</button><button class="b p" id="e1" type="button">إنهاء</button></div>`);
+ g("e0").onclick=closeM;
+ g("e1").onclick=async()=>{
+  const o=N(toEn(g("eo").value));if(!(o>=N(a.odo0))||o>9999999){toast("قراءة العداد لازم تكون أكبر من البداية ("+N(a.odo0)+")","er");return}
+  g("e1").disabled=true;const ts=Date.now(),loc=await here();
+  try{
+   const b=writeBatch(db),u={st:"done",end:ts,odo1:o},n=g("en").value.trim().slice(0,300);if(n)u.note=n;if(loc)u.loc={...loc,ts};
+   b.update(doc(db,"trips",a.id),u);un2.forEach(s=>b.update(doc(db,"requests",s.rid),{st:"prep",upd:ts}));
+   await withTimeout(b.commit(),15000);lsSet("drv_odo_"+a.car,String(o));closeM();toast("تم إنهاء الرحلة. الله يعطيك العافية 👏");
+  }catch(e){g("e1").disabled=false;toast("لم تنتهِ الرحلة، جرّب تاني","er")}
+ };
+}
+regSW();
+</script>
+</body>
+</html>

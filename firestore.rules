@@ -12,6 +12,14 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/branches/$(myCode())).data.enabled == true;
     }
 
+    function isDriver()   { return signedIn() && request.auth.token.email.matches('^drv[0-9]{1,2}@tasooma[.]app$'); }
+    function myDrv()      { return request.auth.token.email.split('@')[0]; }
+    function drvOn()      {
+      return isDriver()
+        && exists(/databases/$(database)/documents/drivers/$(myDrv()))
+        && get(/databases/$(database)/documents/drivers/$(myDrv())).data.enabled == true;
+    }
+
     // حالة الفرع (مفعّل/معطّل): الفرع يقرأ حالته بس، والمستودع يتحكم
     match /branches/{code} {
       allow read:  if isAdmin() || (isBranch() && myCode() == code);
@@ -39,8 +47,18 @@ service cloud.firestore {
           && (!('gn' in d) || (d.gn is string && d.gn.size() <= 1000))
           && (!('dr' in d) || (d.dr is string && d.dr.size() <= 100));
       }
-      allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode());
+      allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode())
+                    || (drvOn() && resource.data.asg.drv == myDrv());
       allow create: if isAdmin() || (branchOn() && validNew());
+      // إثبات التسليم من السائق: اسم المستلم + توقيع + صورة (اختياري)
+      function validPod() {
+        let p = request.resource.data.pod;
+        return p is map && p.keys().hasOnly(['name','sig','img','at'])
+          && p.name is string && p.name.size() <= 60
+          && (!('sig' in p) || (p.sig is string && p.sig.size() <= 40000))
+          && (!('img' in p) || (p.img is string && p.img.size() <= 160000))
+          && (!('at' in p) || p.at is number);
+      }
       // تأكيد الاستلام من الفرع: بس لما الطلب يبقى "تم التسليم"، ويغيّر st و rcv بس
       function validRcv() {
         let r = request.resource.data.rcv;
@@ -50,7 +68,15 @@ service cloud.firestore {
           && (!('note' in r) || (r.note is string && r.note.size() <= 500));
       }
       // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)، أو يأكد الاستلام
-      allow update: if isAdmin() || (branchOn() && resource.data.br == myCode() && (
+      // السائق: يغيّر حالة الطلب المعيّن له بس (في الطريق / تم التسليم / رجوع للتجهيز)
+      allow update: if isAdmin()
+        || (drvOn() && resource.data.asg.drv == myDrv()
+            && resource.data.st in ['prep','go']
+            && request.resource.data.st in ['prep','go','done']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','dep','dlv','pod','eta'])
+            && (!('pod' in request.resource.data) || validPod())
+            && (!('eta' in request.resource.data) || request.resource.data.eta is number))
+        || (branchOn() && resource.data.br == myCode() && (
           (resource.data.st == 'new' && validNew())
           || (resource.data.st == 'done' && request.resource.data.st == 'recv'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','rcv'])
@@ -59,41 +85,59 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // العهدة: حركات (عهدة مستلمة / مصروف)
-    match /ledger/{id} {
-      function validEntry() {
-        let d = request.resource.data;
-        return d.keys().hasOnly(['br','type','amt','cat','note','dt','ts','st','img'])
-          && d.keys().hasAll(['br','type','amt','cat','dt','ts','st'])
-          && d.br == myCode()
-          && (d.type == 'exp' || d.type == 'in')
-          && d.st == 'pending'
-          && d.amt is number && d.amt > 0 && d.amt <= 1000000
-          && d.cat is string && d.cat.size() <= 40
-          && d.dt is string && d.dt.size() <= 12
-          && (!('note' in d) || (d.note is string && d.note.size() <= 300))
-          && (!('img' in d) || (d.img is string && d.img.size() <= 250000));
-      }
-      allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode());
-      allow create: if isAdmin() || (branchOn() && validEntry());
-      allow update: if isAdmin();
-      allow delete: if isAdmin() || (branchOn() && resource.data.br == myCode() && resource.data.st == 'pending');
-    }
+    // عهدة المستودع وفواتيرها وإقفالاتها: للمستودع (الأدمن) فقط
+    match /ledger/{id}      { allow read, write: if isAdmin(); }
+    match /settlements/{id} { allow read, write: if isAdmin(); }
 
-    // تسويات العهدة
-    match /settlements/{id} {
-      function validSet() {
+    // السواقين والسيارات والرحلات والبنزين
+    match /drivers/{code} {
+      allow read:  if isAdmin() || (isDriver() && myDrv() == code);
+      allow write: if isAdmin();
+    }
+    // مواقع الفروع ومتوسط زمن الوصول (المستودع يحسبها، والسائق يقرأها)
+    match /geo/{id} {
+      allow read:  if isAdmin() || drvOn();
+      allow write: if isAdmin();
+    }
+    match /cars/{id} {
+      allow read:  if isAdmin() || drvOn();
+      allow write: if isAdmin();
+    }
+    match /trips/{id} {
+      function validTrip() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['br','no','from','to','opening','ins','exps','bal','ids','st','ts'])
-          && d.keys().hasAll(['br','no','from','to','opening','ins','exps','bal','ids','st','ts'])
-          && d.br == myCode() && d.st == 'pending'
-          && d.ids is list && d.ids.size() > 0 && d.ids.size() <= 500
-          && d.no is string && d.no.size() <= 40
-          && d.from is string && d.to is string
-          && d.opening is number && d.ins is number && d.exps is number && d.bal is number;
+        return d.keys().hasOnly(['drv','drvn','car','carn','st','start','odo0','stops','loc','loc0'])
+          && d.keys().hasAll(['drv','drvn','car','carn','st','start','odo0','stops'])
+          && d.drv == myDrv() && d.st == 'active'
+          && d.start is number && d.odo0 is number && d.odo0 >= 0 && d.odo0 <= 9999999
+          && d.stops is list && d.stops.size() <= 30
+          && d.drvn is string && d.drvn.size() <= 60 && d.carn is string && d.carn.size() <= 60
+          && d.car is string && d.car.size() <= 40;
       }
-      allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode());
-      allow create: if isAdmin() || (branchOn() && validSet());
+      allow read:   if isAdmin() || (drvOn() && resource.data.drv == myDrv());
+      allow create: if isAdmin() || (drvOn() && validTrip());
+      allow update: if isAdmin()
+        || (drvOn() && resource.data.drv == myDrv() && resource.data.st == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stops','loc','st','end','odo1','note'])
+            && request.resource.data.st in ['active','done']
+            && request.resource.data.stops is list && request.resource.data.stops.size() <= 30
+            && (!('odo1' in request.resource.data) || (request.resource.data.odo1 is number && request.resource.data.odo1 >= resource.data.odo0 && request.resource.data.odo1 <= 9999999))
+            && (!('note' in request.resource.data) || (request.resource.data.note is string && request.resource.data.note.size() <= 300)));
+      allow delete: if isAdmin();
+    }
+    match /fuel/{id} {
+      function validFuel() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['drv','drvn','car','carn','ts','dt','liters','cost','odo','full'])
+          && d.keys().hasAll(['drv','car','ts','dt','liters','cost','odo'])
+          && d.drv == myDrv()
+          && d.liters is number && d.liters > 0 && d.liters <= 500
+          && d.cost is number && d.cost >= 0 && d.cost <= 100000
+          && d.odo is number && d.odo >= 0 && d.odo <= 9999999
+          && d.dt is string && d.dt.size() <= 12 && d.car is string && d.car.size() <= 40;
+      }
+      allow read:   if isAdmin() || (drvOn() && resource.data.drv == myDrv());
+      allow create: if isAdmin() || (drvOn() && validFuel());
       allow update, delete: if isAdmin();
     }
 

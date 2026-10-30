@@ -1,5 +1,5 @@
 // أدوات العهدة المشتركة بين صفحة الفرع وصفحة المستودع
-export const CATS=["مواصلات","نظافة","ضيافة","صيانة","مستلزمات","اتصالات","أخرى"];
+export const CATS=["بنزين","صيانة سيارات","نقل وشحن","مستلزمات تعبئة","نظافة","ضيافة","اتصالات","أخرى"];
 export const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 export const N=x=>Number.isFinite(+x)?+x:0;
 export const fmt=x=>N(x).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2});
@@ -18,15 +18,15 @@ export function calc(L,S){
  return {opening,ins,exps,bal:opening+ins-exps,pin,pexp,open,last};
 }
 // ضغط صورة الإيصال لـ JPEG صغيرة تتخزن جوه الداتابيز
-export function shrink(file,max=900){
+export function shrink(file,max=900,cap=200000){
  return new Promise((res,rej)=>{
   const url=URL.createObjectURL(file),im=new Image();
   im.onload=()=>{
    let w=im.naturalWidth,h=im.naturalHeight,k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
    const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);URL.revokeObjectURL(url);
    let q=.7,d=c.toDataURL("image/jpeg",q);
-   while(d.length>200000&&q>.25){q-=.1;d=c.toDataURL("image/jpeg",q)}
-   if(d.length>240000)rej(new Error("big"));else res(d);
+   while(d.length>cap&&q>.2){q-=.1;d=c.toDataURL("image/jpeg",q)}
+   if(d.length>cap+40000)rej(new Error("big"));else res(d);
   };
   im.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("bad"))};
   im.src=url;
@@ -38,12 +38,12 @@ export function stmtHtml(info,logo){
  const rows=(info.rows||[]).slice().sort((a,b)=>N(a.ts)-N(b.ts)).filter(e=>e.st!=="rejected");
  const body=rows.map((e,i)=>{
   const isIn=e.type==="in",a=N(e.amt);if(isIn){run+=a;ti+=a}else{run-=a;te+=a}
-  return `<tr><td>${i+1}</td><td>${E(e.dt)}</td><td>${E(e.cat||"")}${e.img?" 📎":""}</td><td>${E(e.note||"")}</td><td class="n">${isIn?fmt(a):""}</td><td class="n">${isIn?"":fmt(a)}</td><td class="n">${fmt(run)}</td></tr>`}).join("");
+  return `<tr><td>${i+1}</td><td>${E(e.dt)}</td><td>${E(e.cat||"")}${e.img?" 📎":""}</td><td>${E([e.note,e.inv?"فاتورة "+e.inv:"",e.carn].filter(Boolean).join(" — "))}</td><td class="n">${isIn?fmt(a):""}</td><td class="n">${isIn?"":fmt(a)}</td><td class="n">${fmt(run)}</td></tr>`}).join("");
  return `<div class="st"><div class="ph">${logo?`<img src="${logo}" alt="">`:""}<h2>${E(info.title||"كشف حساب العهدة")}</h2><div>${E(info.to||today())}</div></div>
- <div class="rt"><div><small>الفرع</small><b><bdi dir="ltr">${E(info.brn)}</bdi></b></div><div><small>الفترة</small><b style="white-space:nowrap;font-size:11pt">${E(info.from||"—")} ← ${E(info.to||today())}</b></div><div><small>الرصيد الافتتاحي</small><b>${fmt(info.opening)}</b></div></div>
+ <div class="rt"><div><small>${E(info.lbl||"الفرع")}</small><b><bdi dir="ltr">${E(info.brn)}</bdi></b></div><div><small>الفترة</small><b style="white-space:nowrap;font-size:11pt">${E(info.from||"—")} ← ${E(info.to||today())}</b></div><div><small>الرصيد الافتتاحي</small><b>${fmt(info.opening)}</b></div></div>
  <table class="stt"><thead><tr><th>#</th><th>التاريخ</th><th>البند</th><th>البيان</th><th>عهدة (له)</th><th>مصروف (عليه)</th><th>الرصيد</th></tr></thead><tbody>${body||'<tr><td colspan="7" style="text-align:center">لا توجد حركات</td></tr>'}</tbody></table>
  <div class="tt"><span>الافتتاحي ${fmt(info.opening)}</span><span>إجمالي العهدة ${fmt(ti)}</span><span>إجمالي المصروفات ${fmt(te)}</span><span><b>الرصيد المتبقي ${fmt(run)}</b></span></div>
- <div class="sg"><span>أمين الفرع</span><span>المحاسب</span><span>المدير</span></div></div>`;
+ <div class="sg"><span>${E(info.sg1||"أمين الفرع")}</span><span>المحاسب</span><span>المدير</span></div></div>`;
 }
 const CSS=`#pa{display:none}
 @media print{
