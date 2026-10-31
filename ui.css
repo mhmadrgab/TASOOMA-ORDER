@@ -1,6 +1,25 @@
 /* تصميم وحركات مشتركة لكل الصفحات. بيتحمّل بعد ستايل الصفحة، فبيعدّل عليه من غير ما يغيّر الهيكل */
 
 /* ---------- عام ---------- */
+/* الموبايل: مفيش سحب يمين وشمال للصفحة كلها (الجداول ليها سكرول خاص بيها) */
+html{overflow-x:hidden}
+.hi>*{min-width:0;max-width:100%}
+@media (max-width:760px){
+ .hi{padding:10px 12px;row-gap:8px}
+ .tabs{order:3;flex:1 0 100%;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);padding-inline:6px}
+ .tabs::-webkit-scrollbar{display:none}
+ .tabs button{flex:none;white-space:nowrap;padding:7px 14px}
+}
+/* الموبايل: أزرار الورقة اللي تحت بقت سطر واحد بيتسحب، وزرار الإرسال ثابت أوله، بدل ما تغطي نص الشاشة */
+@media (max-width:560px){
+ .act{flex-wrap:nowrap;overflow-x:auto;gap:8px;padding:8px;margin-inline:-6px;border-radius:18px;scrollbar-width:none;
+  background:var(--card);background:color-mix(in srgb,var(--card) 82%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  box-shadow:0 10px 28px rgba(0,0,0,.14),0 0 0 1px var(--line)}
+ .act::-webkit-scrollbar{display:none}
+ .act button.b{flex:none;white-space:nowrap;padding:11px 16px}
+ .act button.b.sd,.act button.b.p{position:sticky;inset-inline-start:0;z-index:1;box-shadow:0 0 0 6px var(--card)}
+}
 body{animation:ui-fade .45s ease both;-webkit-font-smoothing:antialiased}
 ::selection{background:var(--ring)}
 input,select,textarea{transition:border-color .2s,box-shadow .2s,background-color .2s}

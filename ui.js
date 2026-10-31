@@ -33,6 +33,9 @@
   const gate=document.getElementById("gate");
   if(gate&&gate.classList.contains("ui-stage")!==(ov===gate))gate.classList.toggle("ui-stage",ov===gate);
  };
+ // الموبايل: شريط التبويبات بيتسحب؛ بعد كل تحديث للصفحة نخلي التبويب المفتوح باين
+ const keepTab=()=>{const on=document.querySelector(".tabs button.on"),t=on&&on.parentElement;if(!t||t.scrollWidth<=t.clientWidth)return;
+  const a=on.getBoundingClientRect(),b=t.getBoundingClientRect();if(a.left<b.left+10||a.right>b.right-10)t.scrollLeft+=(a.left+a.width/2)-(b.left+b.width/2)};
  const mo=new MutationObserver(ms=>{
   const add=new Set();let err=null;
   for(const m of ms){
@@ -44,7 +47,7 @@
   const list=[...add].filter(el=>{const p=el.parentElement&&el.parentElement.closest(SEL);return !(p&&add.has(p))});
   if(list.length)enter(list);
   if(err)shake(err);
-  stage();
+  stage();keepTab();
  });
  mo.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class","hidden"]});
  stage();enter([...document.querySelectorAll(SEL)]);
