@@ -20,6 +20,20 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/drivers/$(myDrv())).data.enabled == true;
     }
 
+    // موظفو المستودع (محاسبين) بصلاحيات محددة: staff/{email} = {name, enabled, p:{req, cus, fl}}
+    function staffDoc()   { return get(/databases/$(database)/documents/staff/$(request.auth.token.email)).data; }
+    function isStaff()    {
+      return signedIn()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.token.email))
+        && staffDoc().enabled == true;
+    }
+    function perm(k)      { return isStaff() && staffDoc().p.get(k, false) == true; }
+
+    match /staff/{email} {
+      allow read:  if isAdmin() || (signedIn() && request.auth.token.email == email);
+      allow write: if isAdmin();
+    }
+
     // حالة الفرع (مفعّل/معطّل): الفرع يقرأ حالته بس، والمستودع يتحكم
     match /branches/{code} {
       allow read:  if isAdmin() || (isBranch() && myCode() == code);
@@ -48,6 +62,7 @@ service cloud.firestore {
           && (!('dr' in d) || (d.dr is string && d.dr.size() <= 100));
       }
       allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode())
+                    || perm('req') || perm('fl')
                     || (drvOn() && resource.data.asg.drv == myDrv());
       allow create: if isAdmin() || (branchOn() && validNew());
       // إثبات التسليم من السائق: اسم المستلم + توقيع + صورة (اختياري)
@@ -70,6 +85,8 @@ service cloud.firestore {
       // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)، أو يأكد الاستلام
       // السائق: يغيّر حالة الطلب المعيّن له بس (في الطريق / تم التسليم / رجوع للتجهيز)
       allow update: if isAdmin()
+        || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat']))
+        || (perm('fl') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asg','st','upd']))
         || (drvOn() && resource.data.asg.drv == myDrv()
             && resource.data.st in ['prep','go']
             && request.resource.data.st in ['prep','go','done']
@@ -86,21 +103,30 @@ service cloud.firestore {
     }
 
     // عهدة المستودع وفواتيرها وإقفالاتها: للمستودع (الأدمن) فقط
-    match /ledger/{id}      { allow read, write: if isAdmin(); }
-    match /settlements/{id} { allow read, write: if isAdmin(); }
+    // المحاسب (perm cus): يقرأ ويسجّل ويعدّل حركات الفترة المفتوحة بس. الحذف والإقفال للمدير فقط.
+    match /ledger/{id} {
+      allow read:   if isAdmin() || perm('cus');
+      allow create: if isAdmin() || (perm('cus') && !('sid' in request.resource.data));
+      allow update: if isAdmin() || (perm('cus') && !('sid' in resource.data) && !('sid' in request.resource.data));
+      allow delete: if isAdmin();
+    }
+    match /settlements/{id} {
+      allow read:  if isAdmin() || perm('cus');
+      allow write: if isAdmin();
+    }
 
     // السواقين والسيارات والرحلات والبنزين
     match /drivers/{code} {
-      allow read:  if isAdmin() || (isDriver() && myDrv() == code);
+      allow read:  if isAdmin() || perm('fl') || (isDriver() && myDrv() == code);
       allow write: if isAdmin();
     }
     // مواقع الفروع ومتوسط زمن الوصول (المستودع يحسبها، والسائق يقرأها)
     match /geo/{id} {
-      allow read:  if isAdmin() || drvOn();
-      allow write: if isAdmin();
+      allow read:  if isAdmin() || perm('fl') || drvOn();
+      allow write: if isAdmin() || perm('fl');
     }
     match /cars/{id} {
-      allow read:  if isAdmin() || drvOn();
+      allow read:  if isAdmin() || perm('fl') || drvOn();
       allow write: if isAdmin();
     }
     match /trips/{id} {
@@ -114,7 +140,7 @@ service cloud.firestore {
           && d.drvn is string && d.drvn.size() <= 60 && d.carn is string && d.carn.size() <= 60
           && d.car is string && d.car.size() <= 40;
       }
-      allow read:   if isAdmin() || (drvOn() && resource.data.drv == myDrv());
+      allow read:   if isAdmin() || perm('fl') || (drvOn() && resource.data.drv == myDrv());
       allow create: if isAdmin() || (drvOn() && validTrip());
       allow update: if isAdmin()
         || (drvOn() && resource.data.drv == myDrv() && resource.data.st == 'active'
@@ -136,8 +162,8 @@ service cloud.firestore {
           && d.odo is number && d.odo >= 0 && d.odo <= 9999999
           && d.dt is string && d.dt.size() <= 12 && d.car is string && d.car.size() <= 40;
       }
-      allow read:   if isAdmin() || (drvOn() && resource.data.drv == myDrv());
-      allow create: if isAdmin() || (drvOn() && validFuel());
+      allow read:   if isAdmin() || perm('fl') || (drvOn() && resource.data.drv == myDrv());
+      allow create: if isAdmin() || perm('fl') || (drvOn() && validFuel());
       allow update, delete: if isAdmin();
     }
 
