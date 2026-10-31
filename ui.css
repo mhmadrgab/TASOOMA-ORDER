@@ -1,0 +1,103 @@
+/* تصميم وحركات مشتركة لكل الصفحات. بيتحمّل بعد ستايل الصفحة، فبيعدّل عليه من غير ما يغيّر الهيكل */
+
+/* ---------- عام ---------- */
+body{animation:ui-fade .45s ease both;-webkit-font-smoothing:antialiased}
+::selection{background:var(--ring)}
+input,select,textarea{transition:border-color .2s,box-shadow .2s,background-color .2s}
+button{transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .22s,background-color .22s,border-color .22s,color .22s,opacity .22s}
+button:not(:disabled):active{transform:scale(.97)}
+.b.p:not(:disabled):hover,.bt.p:not(:disabled):hover,.bt.g:not(:disabled):hover,.b.g:not(:disabled):hover,button.b.sd:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.16)}
+.tabs button.on{box-shadow:0 4px 14px rgba(212,174,92,.35)}
+.fl .chip{transition:background-color .2s,color .2s,border-color .2s,transform .16s}
+
+/* الكروت: رفعة خفيفة مع الماوس */
+.rq,.sc,.pan,.hist,#my,.auto{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
+@media (hover:hover){
+ .rq:hover,.sc:hover,.pan:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.09)}
+}
+
+/* الهيدر: خط ذهبي بيلمع */
+.sheet>.hd{position:relative}
+.hd::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:3px;pointer-events:none;
+ background:linear-gradient(90deg,transparent,rgba(255,236,190,.95),transparent) no-repeat;background-size:35% 100%;animation:ui-sweep 7s ease-in-out infinite}
+
+/* طلب جديد: نبض هادي على الحالة */
+.rq.new .chp,.chp.new{animation:ui-glow 2.6s ease-in-out infinite}
+
+/* النوافذ المنبثقة */
+#md.on,#em.on,.mdl.on{animation:ui-fade .22s ease both;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+#md.on .mb,#em.on .eb,.mdl.on .card{animation:ui-pop .38s cubic-bezier(.2,.9,.3,1.2) both}
+
+/* الإشعار العلوي */
+#toast{transition:transform .5s cubic-bezier(.2,.9,.3,1.25),border-color .3s,background-color .3s}
+
+/* ---------- شاشات الدخول ---------- */
+.ui-stage{background:#0b0b0b!important}
+.ui-stage::before,.ui-stage::after{content:"";position:fixed;pointer-events:none;z-index:0}
+.ui-stage::before{inset:-25%;
+ background:radial-gradient(38% 34% at 72% 28%,rgba(212,174,92,.22),transparent 70%),
+  radial-gradient(34% 30% at 26% 74%,rgba(29,138,153,.16),transparent 70%),
+  radial-gradient(24% 22% at 50% 50%,rgba(212,174,92,.07),transparent 70%);
+ animation:ui-drift 22s ease-in-out infinite alternate}
+.ui-stage::after{inset:0;
+ background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+ background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse at center,#000 10%,transparent 70%);mask-image:radial-gradient(ellipse at center,#000 10%,transparent 70%)}
+body.ui-stage #gate,.lg,.gc{position:relative;z-index:1}
+
+.ui-stage .lg,.ui-stage .gc,.ui-stage #gate .card{
+ background:rgba(22,22,22,.74);color:#f1efec;border:1px solid rgba(212,174,92,.22);border-radius:24px;overflow:hidden;
+ -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+ box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);
+ animation:ui-rise .75s cubic-bezier(.2,.8,.2,1) both}
+.ui-stage .lg::before,.ui-stage .gc::before,.ui-stage #gate .card::before{content:"";position:absolute;top:0;left:12%;right:12%;height:2px;
+ background:linear-gradient(90deg,transparent,#d4ae5c,transparent);opacity:.9}
+.ui-stage .lg>*,.ui-stage .gc>*,.ui-stage #gate .card>*{animation:ui-up .6s cubic-bezier(.2,.8,.2,1) both}
+.ui-stage .lg>:nth-child(1),.ui-stage .gc>:nth-child(1),.ui-stage #gate .card>:nth-child(1){animation:ui-pop .7s cubic-bezier(.2,.9,.3,1.25) .15s both,ui-float 5s ease-in-out 1s infinite}
+.ui-stage .lg>:nth-child(2),.ui-stage .gc>:nth-child(2),.ui-stage #gate .card>:nth-child(2){animation-delay:.25s}
+.ui-stage .lg>:nth-child(3),.ui-stage .gc>:nth-child(3),.ui-stage #gate .card>:nth-child(3){animation-delay:.32s}
+.ui-stage .lg>:nth-child(4),.ui-stage .gc>:nth-child(4),.ui-stage #gate .card>:nth-child(4){animation-delay:.39s}
+.ui-stage .lg>:nth-child(5),.ui-stage .gc>:nth-child(5),.ui-stage #gate .card>:nth-child(5){animation-delay:.46s}
+.ui-stage .lg>:nth-child(6),.ui-stage .gc>:nth-child(6),.ui-stage #gate .card>:nth-child(6){animation-delay:.53s}
+.ui-stage .lg>:nth-child(n+7),.ui-stage .gc>:nth-child(n+7),.ui-stage #gate .card>:nth-child(n+7){animation-delay:.6s}
+.ui-stage .lg img,.ui-stage .gc img,.ui-stage #gate .card img{filter:drop-shadow(0 8px 22px rgba(212,174,92,.28))}
+.ui-stage .lg p,.ui-stage .gc p,.ui-stage #gate .mut{color:#9d9a94}
+.ui-stage .lg input,.ui-stage .gc input,.ui-stage .gc select,.ui-stage #gate input{
+ background:rgba(255,255,255,.045);color:#f1efec;border:1.5px solid rgba(255,255,255,.09)}
+.ui-stage .lg input:focus,.ui-stage .gc input:focus,.ui-stage .gc select:focus,.ui-stage #gate input:focus{
+ border-color:#d4ae5c;background:rgba(255,255,255,.07);box-shadow:0 0 0 4px rgba(212,174,92,.18)}
+.ui-stage .gc select option{background:#1a1a1a;color:#f1efec}
+.ui-stage input::placeholder{color:#77736c}
+.ui-stage .er{color:#ff8a7a}
+
+/* زرار الدخول الذهبي + لمعة + مؤشر تحميل */
+.ui-stage .gc .go,.ui-stage .lg .bt.p,.ui-stage #gate .b.p{
+ position:relative;overflow:hidden;border:0;color:#1b1b1b;
+ background:linear-gradient(135deg,#ebcd84,#c49a3e);box-shadow:0 10px 26px rgba(212,174,92,.28)}
+.ui-stage .gc .go::before,.ui-stage .lg .bt.p::before,.ui-stage #gate .b.p::before{content:"";position:absolute;top:0;bottom:0;width:45%;left:-60%;
+ background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-18deg);animation:ui-shine 3.8s ease-in-out 1.2s infinite}
+.ui-stage .gc .go:not(:disabled):hover,.ui-stage .lg .bt.p:not(:disabled):hover,.ui-stage #gate .b.p:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(212,174,92,.38)}
+.ui-stage .gc .go:disabled::after,.ui-stage .lg .bt.p:disabled::after,.ui-stage #gate .b.p:disabled::after{content:"";display:inline-block;width:15px;height:15px;margin-inline-start:10px;vertical-align:-2px;
+ border:2.5px solid rgba(27,27,27,.25);border-top-color:#1b1b1b;border-radius:50%;animation:ui-spin .7s linear infinite}
+
+/* ---------- الحركات ---------- */
+@keyframes ui-fade{from{opacity:0}to{opacity:1}}
+@keyframes ui-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes ui-rise{from{opacity:0;transform:translateY(28px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes ui-pop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:none}}
+@keyframes ui-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes ui-drift{0%{transform:translate(0,0) rotate(0)}50%{transform:translate(3%,-2%) rotate(6deg)}100%{transform:translate(-3%,3%) rotate(-5deg)}}
+@keyframes ui-sweep{0%{background-position:-40% 0}60%,100%{background-position:140% 0}}
+@keyframes ui-shine{0%{left:-60%}35%,100%{left:130%}}
+@keyframes ui-spin{to{transform:rotate(360deg)}}
+@keyframes ui-glow{0%,100%{box-shadow:0 0 0 0 rgba(212,174,92,.45)}60%{box-shadow:0 0 0 7px rgba(212,174,92,0)}}
+
+/* اللي مفعّل "تقليل الحركة" في جهازه، أو وقت حفظ الصورة والطباعة */
+@media (prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+.shot *,.shot *::before,.shot *::after{animation:none!important;transition:none!important}
+.shot .hd::after{display:none}
+@media print{
+ *,*::before,*::after{animation:none!important;transition:none!important}
+ .hd::after,.ui-stage::before,.ui-stage::after{display:none!important}
+}

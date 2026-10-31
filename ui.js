@@ -1,0 +1,50 @@
+// حركات الواجهة: ظهور الكروت الجديدة بنعومة، عدّاد للأرقام، اهتزاز كارت الدخول لو فيه خطأ، وخلفية شاشة الدخول.
+// مابيغيّرش أي بيانات، بيتفرّج على الصفحة بس.
+(()=>{
+ const RM=matchMedia("(prefers-reduced-motion: reduce)");
+ const SEL=".rq,.sc,.pan,.bar,.mr,.hr,.stop,.pick,.card,.tw tbody>tr";
+ const seen=new Set();let lastTap=0;
+ addEventListener("pointerdown",()=>lastTap=Date.now(),true);
+ const vis=el=>el.getClientRects().length>0;
+ const key=el=>el.className+"|"+el.textContent.replace(/\s+/g," ").slice(0,160);
+ const ease="cubic-bezier(.2,.8,.2,1)";
+ // عدّاد من صفر للرقم (للإحصائيات)
+ const count=b=>{const t=b.textContent.trim();if(!/^\d{1,5}$/.test(t)||t==="0")return;const n=+t,t0=performance.now();
+  const step=now=>{const p=Math.min(1,(now-t0)/700);b.textContent=String(Math.round(n*(1-Math.pow(1-p,3))));if(p<1)requestAnimationFrame(step)};requestAnimationFrame(step)};
+ // الكارت يظهر بحركة لو جديد، أو لو المستخدم لسه ضاغط حاجة (تبويب، فلتر...). التحديث اللحظي لنفس البيانات مابيتحرّكش.
+ function enter(list){
+  const tap=Date.now()-lastTap<900;let i=0;
+  for(const el of list){
+   const k=key(el),isNew=!seen.has(k);seen.add(k);
+   if(RM.matches||!(tap||isNew)||!vis(el)||el.closest(".shot,.mdl,#md,#em"))continue;
+   el.animate([{opacity:0,transform:"translateY(12px) scale(.985)"},{opacity:1,transform:"none"}],{duration:420,delay:Math.min(i++,12)*40,easing:ease,fill:"backwards"});
+   if(el.matches(".sc"))el.querySelectorAll("b").forEach(count);
+   if(el.matches(".bar"))el.querySelectorAll("i").forEach(b=>{b.style.transformOrigin="right";b.animate([{transform:"scaleX(0)"},{transform:"scaleX(1)"}],{duration:800,delay:120,easing:ease,fill:"backwards"})});
+  }
+  if(seen.size>4000)seen.clear();
+ }
+ const shake=e=>{if(RM.matches)return;const c=e.closest(".gc,.lg,.card,.mb,.eb")||e;
+  c.animate([{transform:"translateX(0)"},{transform:"translateX(-9px)"},{transform:"translateX(8px)"},{transform:"translateX(-6px)"},{transform:"translateX(4px)"},{transform:"translateX(0)"}],{duration:420,easing:"ease-in-out"})};
+ // خلفية شاشة الدخول: على #gate لو هو طبقة فوق الصفحة (صفحة الفرع)، وإلا على الصفحة كلها
+ const stage=()=>{const els=[...document.querySelectorAll("#gate,.lg")].filter(vis);
+  const ov=els.find(e=>getComputedStyle(e).position==="fixed"),body=document.body,on=els.length>0&&!ov;
+  if(body.classList.contains("ui-stage")!==on)body.classList.toggle("ui-stage",on);
+  const gate=document.getElementById("gate");
+  if(gate&&gate.classList.contains("ui-stage")!==(ov===gate))gate.classList.toggle("ui-stage",ov===gate);
+ };
+ const mo=new MutationObserver(ms=>{
+  const add=new Set();let err=null;
+  for(const m of ms){
+   const t=m.target.nodeType===1?m.target:m.target.parentElement,e=t&&t.closest&&t.closest(".er");
+   if(e&&m.type!=="attributes"&&e.textContent.trim())err=e;
+   for(const n of m.addedNodes){if(n.nodeType!==1)continue;if(n.matches(SEL))add.add(n);n.querySelectorAll(SEL).forEach(x=>add.add(x))}
+  }
+  // لو كارت جوه كارت اتضاف، نحرّك الكبير بس
+  const list=[...add].filter(el=>{const p=el.parentElement&&el.parentElement.closest(SEL);return !(p&&add.has(p))});
+  if(list.length)enter(list);
+  if(err)shake(err);
+  stage();
+ });
+ mo.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class","hidden"]});
+ stage();enter([...document.querySelectorAll(SEL)]);
+})();
