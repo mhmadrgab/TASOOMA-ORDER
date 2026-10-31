@@ -1,5 +1,5 @@
 // لوحة المستودع: السيارات والسواقين والرحلات والبنزين
-import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
+import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,writeBatch,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep} from "./notify.js";
 import {ledger} from "./ad-extra.js";
@@ -12,6 +12,11 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
 const mapUrl=(la,ln)=>`https://www.google.com/maps?q=${N(la)},${N(ln)}`;
 let X=null,CARS=[],DRV=[],TR=[],FU=[],PW={},GEOD=null,geoReady=false,un=[],pT=null,pF=null,mode="",fday="",fmon="",ctxEd=null;
+let BK=new Set(),bkD="",bkC="";// الطلبات المتعلّم عليها للتعيين الجماعي، والسائق والسيارة المختارين
+// رقم الموبايل: 05xxxxxxxx أو 5xxxxxxxx ← 9665xxxxxxxx (لواتساب)
+const waNum=p=>{let d=toEn(p).replace(/\D/g,"");if(d.startsWith("00"))d=d.slice(2);if(/^05\d{8}$/.test(d))d="966"+d.slice(1);else if(/^5\d{8}$/.test(d))d="966"+d;return d};
+const telBtn=d=>d&&d.phone?`<a class="bt s" href="tel:${E(toEn(d.phone).replace(/[^\d+]/g,""))}">📞 اتصال</a>`:"";
+const isImg=s=>typeof s==="string"&&/^data:image\/(png|jpe?g|webp);base64,/.test(s);
 const CSS=`
 .fm{display:none;position:fixed;inset:0;z-index:76;background:rgba(0,0,0,.55);overflow:auto;padding:18px}.fm.on{display:block}
 .fk{max-width:560px;margin:4vh auto;background:var(--card);border-radius:18px;padding:20px 22px}.fk h3{margin:0 0 4px}.fk label{display:block;color:var(--mut);font-size:13px;margin:12px 0 4px}.fk input,.fk select{width:100%}.fk .bt{width:auto}
@@ -59,16 +64,18 @@ export function view(){
  const dTr=TR.filter(t=>dk(t.start)===fday).sort((a,b)=>N(a.start)-N(b.start));
  const dOpt=(a,sel)=>a.map(([v,l])=>`<option value="${E(v)}" ${v===sel?"selected":""}>${E(l)}</option>`).join("");
  const dr=DRV.filter(d=>d.enabled);
+ BK=new Set([...BK].filter(id=>openR.some(r=>r.id===id)));
  return `${A.length?A.map(a=>`<div class="${a.l}">${a.t}</div>`).join(""):""}
  <h3 class="sub" style="margin-top:4px">🚚 على الطريق دلوقتي</h3>
  ${act.length?act.map(t=>{const st=Array.isArray(t.stops)?t.stops:[];let p=N(t.start);const done=st.filter(s=>s.arr).length;
   return `<div class="tr"><h4>${E(t.drvn)} — ${E(t.carn)} <span class="pill go">في رحلة</span></h4><div class="off" style="font-size:14px">بدأ ${hm(t.start)} · بقاله ${dur(Date.now()-N(t.start))} · سلّم ${done} من ${st.length}${t.loc?` · <a href="${mapUrl(t.loc.lat,t.loc.lng)}" target="_blank" rel="noopener noreferrer">📍 آخر موقع مسجّل (${ago(t.loc.ts)})</a>`:" · <span>لسه مفيش موقع مسجّل</span>"}</div>
-  <div class="st1">${st.map(s=>{if(s.arr){const l=N(s.arr)-p;p=N(s.arr);return `<span class="ok">✔ ${E(s.brn)} ${hm(s.arr)} (${dur(l)})</span>`}const a=lg[s.brn];return `<span>⏳ ${E(s.brn)}${s.eta?` · متوقع ~${hm(s.eta)}`:a?` · متوقع ~${hm(p+a)}`:""}</span>`}).join("")}</div></div>`}).join(""):'<div class="pan off">مفيش سيارة على الطريق دلوقتي.</div>'}
- <h3 class="sub">📦 تعيين التوصيلات</h3><div class="pan"><div class="tw"><table><thead><tr><th>الفرع</th><th>الطلب</th><th>قطع</th><th>المعيّن</th><th>سائق</th><th>سيارة</th><th></th></tr></thead><tbody>${openR.length?openR.map(r=>`<tr><td class="l">${E(r.brn)}</td><td><bdi dir="ltr">${E(r.no)}</bdi></td><td>${N(r.pcs)}</td><td>${r.asg&&r.asg.drvn?`<span class="pill go">${E(r.asg.drvn)} · ${E(r.asg.carn||"")}</span>`:'<span class="off">—</span>'}</td><td><select data-asd="${E(r.id)}"><option value="">اختر</option>${dOpt(dr.map(d=>[d.id,d.name]),r.asg&&r.asg.drv)}</select></td><td><select data-asc="${E(r.id)}"><option value="">اختر</option>${dOpt(CARS.filter(c=>c.active!==false).map(c=>[c.id,c.name+(c.plate?" "+c.plate:"")]),r.asg&&r.asg.car)}</select></td><td style="white-space:nowrap"><button class="bt s g" data-fl="asg" data-id="${E(r.id)}" type="button">تعيين</button>${r.asg&&r.asg.drv?` <button class="bt s" data-fl="unasg" data-id="${E(r.id)}" type="button">إلغاء</button>`:""}</td></tr>`).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">مفيش طلبات مفتوحة</td></tr>'}</tbody></table></div><p class="off" style="font-size:13px;margin:8px 0 0">بعد التعيين الطلب بيظهر عند السائق في تطبيقه، والفرع بيشوف "في الطريق" لما السائق يبدأ الرحلة.</p></div>
+  <div class="st1">${st.map(s=>{if(s.arr){const l=N(s.arr)-p;p=N(s.arr);return `<span class="ok">✔ ${E(s.brn)} ${hm(s.arr)} (${dur(l)})</span>`}const a=lg[s.brn];return `<span>⏳ ${E(s.brn)}${s.eta?` · متوقع ~${hm(s.eta)}`:a?` · متوقع ~${hm(p+a)}`:""}</span>`}).join("")}</div>
+  <div class="fl2" style="margin:0">${telBtn(DRV.find(d=>d.id===t.drv))}<button class="bt s" data-fl="trd" data-id="${E(t.id)}" type="button">تفاصيل</button><button class="bt s r" data-fl="tend" data-id="${E(t.id)}" type="button">⏹ إنهاء الرحلة من المستودع</button></div></div>`}).join(""):'<div class="pan off">مفيش سيارة على الطريق دلوقتي.</div>'}
+ <h3 class="sub">📦 تعيين التوصيلات</h3><div class="pan">${openR.length>1?`<div class="fl2 bk"><label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="bkall" style="width:auto" ${openR.every(r=>BK.has(r.id))?"checked":""}> الكل</label><span class="off">متعلّم <b id="bkn">${BK.size}</b></span><select id="bkd"><option value="">السائق</option>${dOpt(dr.map(d=>[d.id,d.name]),bkD)}</select><select id="bkc"><option value="">السيارة</option>${dOpt(CARS.filter(c=>c.active!==false).map(c=>[c.id,c.name+(c.plate?" "+c.plate:"")]),bkC)}</select><button class="bt s g" data-fl="bulk" type="button">تعيين المتعلّم عليهم</button></div>`:""}<div class="tw"><table><thead><tr>${openR.length>1?"<th></th>":""}<th>الفرع</th><th>الطلب</th><th>قطع</th><th>المعيّن</th><th>سائق</th><th>سيارة</th><th></th></tr></thead><tbody>${openR.length?openR.map(r=>`<tr>${openR.length>1?`<td><input type="checkbox" data-bk="${E(r.id)}" style="width:20px;height:20px" ${BK.has(r.id)?"checked":""}></td>`:""}<td class="l">${E(r.brn)}</td><td><bdi dir="ltr">${E(r.no)}</bdi></td><td>${N(r.pcs)}</td><td>${r.asg&&r.asg.drvn?`<span class="pill go">${E(r.asg.drvn)} · ${E(r.asg.carn||"")}</span>`:'<span class="off">—</span>'}</td><td><select data-asd="${E(r.id)}"><option value="">اختر</option>${dOpt(dr.map(d=>[d.id,d.name]),r.asg&&r.asg.drv)}</select></td><td><select data-asc="${E(r.id)}"><option value="">اختر</option>${dOpt(CARS.filter(c=>c.active!==false).map(c=>[c.id,c.name+(c.plate?" "+c.plate:"")]),r.asg&&r.asg.car)}</select></td><td style="white-space:nowrap"><button class="bt s g" data-fl="asg" data-id="${E(r.id)}" type="button">تعيين</button>${r.asg&&r.asg.drv?` <button class="bt s" data-fl="unasg" data-id="${E(r.id)}" type="button">إلغاء</button>`:""}</td></tr>`).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">مفيش طلبات مفتوحة</td></tr>'}</tbody></table></div><p class="off" style="font-size:13px;margin:8px 0 0">بعد التعيين الطلب بيظهر عند السائق في تطبيقه، والفرع بيشوف "في الطريق" لما السائق يبدأ الرحلة.</p></div>
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🚗 السيارات</h3>${X.admin?'<button class="bt s g" data-fl="car" type="button" style="margin-inline-start:auto">➕ إضافة سيارة</button>':""}<button class="bt s" data-fl="fuel" type="button" ${X.admin?"":'style="margin-inline-start:auto"'}>⛽ تسجيل بنزين</button></div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السيارة</th><th>العداد</th><th>كم الشهر</th><th>بنزين الشهر</th><th>كم/لتر</th><th>تكلفة/كم</th><th>الزيت</th><th>التأمين / الرخصة</th><th></th></tr></thead><tbody>${CARS.length?CARS.map(c=>{const s=carStat(c),due=N(c.oilLast)+N(c.oilEvery||5000);return `<tr><td class="l" style="direction:rtl">${E(c.name)}<small class="off" style="display:block;direction:ltr">${E(c.plate||"")}</small></td><td>${s.odo?fmt(s.odo):"—"}</td><td>${fmt(s.km)}</td><td>${fmt(s.fl)} لتر<small class="off" style="display:block">${fmt(s.fc)}</small></td><td>${s.kmpl?s.kmpl.toFixed(1):"—"}</td><td>${s.cpk!==null?s.cpk.toFixed(2):"—"}</td><td>${c.oilEvery&&s.odo?(due-s.odo<=0?`<span style="color:#c4362b;font-weight:700">متأخر</span>`:`باقي ${fmt(due-s.odo)} كم`):"—"}</td><td style="font-size:13px">${E(c.insExp||"—")}<br>${E(c.licExp||"—")}</td><td>${X.admin?`<button class="bt s" data-fl="car" data-id="${E(c.id)}" type="button">تعديل</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="9" class="off" style="text-align:center;padding:20px">أضف السيارتين من زرار "إضافة سيارة"</td></tr>'}</tbody></table></div></div>
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">👷 السواقين</h3>${X.admin?'<button class="bt s g" data-fl="drv" type="button" style="margin-inline-start:auto">➕ إضافة سائق</button>':""}</div>
- <div class="pan"><div class="tw"><table><thead><tr><th>السائق</th><th>اسم الدخول</th><th>الحالة</th><th>رحلات الشهر</th><th>كم الشهر</th><th>كلمة السر</th><th></th></tr></thead><tbody>${DRV.length?DRV.map(d=>{const m=dk(Date.now()).slice(0,7),t=TR.filter(x=>x.drv===d.id&&x.st==="done"&&monthOf(x.start)===m);return `<tr><td><b>${E(d.name)}</b></td><td class="l">${E(d.id)}</td><td><span class="pill ${d.enabled?"":"off2"}">${d.enabled?"مفعّل":"معطّل"}</span></td><td>${t.length}</td><td>${fmt(t.reduce((a,x)=>a+Math.max(0,N(x.odo1)-N(x.odo0)),0))}</td><td>${PW[d.id]?`<span class="pin" data-fpw="${E(d.id)}">••••••••</span> <button class="bt s" data-fl="spw" data-id="${E(d.id)}" type="button">إظهار</button>`:'<span class="off">—</span>'}</td><td style="white-space:nowrap">${X.admin?`<button class="bt s" data-fl="dtg" data-id="${E(d.id)}" type="button">${d.enabled?"تعطيل":"تفعيل"}</button> <button class="bt s" data-fl="dpw" data-id="${E(d.id)}" type="button">كلمة سر جديدة</button> <button class="bt s" data-fl="dcp" data-id="${E(d.id)}" type="button">نسخ رسالة</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">لسه مفيش سواقين</td></tr>'}</tbody></table></div></div>
+ <div class="pan"><div class="tw"><table><thead><tr><th>السائق</th><th>اسم الدخول</th><th>الحالة</th><th>رحلات الشهر</th><th>كم الشهر</th><th>كلمة السر</th><th></th></tr></thead><tbody>${DRV.length?DRV.map(d=>{const m=dk(Date.now()).slice(0,7),t=TR.filter(x=>x.drv===d.id&&x.st==="done"&&monthOf(x.start)===m);return `<tr><td><b>${E(d.name)}</b>${d.phone?`<small class="off" style="display:block;direction:ltr;text-align:right">${E(d.phone)}</small>`:""}</td><td class="l">${E(d.id)}</td><td><span class="pill ${d.enabled?"":"off2"}">${d.enabled?"مفعّل":"معطّل"}</span></td><td>${t.length}</td><td>${fmt(t.reduce((a,x)=>a+Math.max(0,N(x.odo1)-N(x.odo0)),0))}</td><td>${PW[d.id]?`<span class="pin" data-fpw="${E(d.id)}">••••••••</span> <button class="bt s" data-fl="spw" data-id="${E(d.id)}" type="button">إظهار</button>`:'<span class="off">—</span>'}</td><td style="white-space:nowrap">${telBtn(d)} ${X.admin?`<button class="bt s" data-fl="dwa" data-id="${E(d.id)}" type="button">📲 واتساب</button> <button class="bt s" data-fl="dedit" data-id="${E(d.id)}" type="button">تعديل</button> <button class="bt s" data-fl="dtg" data-id="${E(d.id)}" type="button">${d.enabled?"تعطيل":"تفعيل"}</button> <button class="bt s" data-fl="dpw" data-id="${E(d.id)}" type="button">كلمة سر جديدة</button> <button class="bt s" data-fl="dcp" data-id="${E(d.id)}" type="button">نسخ رسالة</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">لسه مفيش سواقين</td></tr>'}</tbody></table></div></div>
 ${evalView()}
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🗓 سجل الرحلات</h3><select id="fday" style="margin-inline-start:auto">${days.length?days.map(d=>`<option ${d===fday?"selected":""}>${d}</option>`).join(""):`<option>${today()}</option>`}</select><button class="bt s" data-fl="rep" type="button">🖨 تقرير اليوم</button></div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السائق / السيارة</th><th>من ← إلى</th><th>المدة</th><th>كم</th><th>التسليمات</th><th></th></tr></thead><tbody>${dTr.length?dTr.map(t=>{const st=Array.isArray(t.stops)?t.stops:[];return `<tr><td><b>${E(t.drvn)}</b><small class="off" style="display:block">${E(t.carn)}</small></td><td>${hm(t.start)} ← ${t.end?hm(t.end):'<span class="pill go">شغّال</span>'}</td><td>${t.end?dur(N(t.end)-N(t.start)):dur(Date.now()-N(t.start))}</td><td>${t.st==="done"?fmt(Math.max(0,N(t.odo1)-N(t.odo0))):"—"}</td><td>${st.filter(s=>s.arr).length}/${st.length} · ${st.reduce((a,s)=>a+N(s.pcs),0)} قطعة</td><td style="white-space:nowrap"><button class="bt s" data-fl="trd" data-id="${E(t.id)}" type="button">تفاصيل</button> ${X.admin?`<button class="bt s" data-fl="trx" data-id="${E(t.id)}" type="button">حذف</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="6" class="off" style="text-align:center;padding:20px">مفيش رحلات في اليوم ده</td></tr>'}</tbody></table></div></div>
@@ -130,12 +137,19 @@ function fuelForm(){
  <label style="display:flex;gap:8px;align-items:center"><input id="ff" type="checkbox" style="width:auto"> التانك اتملّى فُل (علشان نحسب الاستهلاك)</label>
  <div class="fl2" style="margin-top:16px"><button class="bt p" data-fl="fuelsave" type="button">حفظ</button><button class="bt" data-fl="cancel" type="button">رجوع</button></div>`);
 }
+// إثبات التسليم (التوقيع والصورة) محفوظ في الطلب نفسه
+function podHtml(rid){
+ const r=X.R().find(x=>x.id===rid),p=r&&r.pod;if(!p||typeof p!=="object")return "";
+ const sg=isImg(p.sig)?`<img src="${E(p.sig)}" alt="توقيع" style="height:56px;background:#fff;border:1px solid var(--line);border-radius:8px">`:"";
+ const im=isImg(p.img)?`<img src="${E(p.img)}" alt="صورة التسليم" style="max-width:100%;max-height:220px;border-radius:10px">`:"";
+ return sg||im?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:6px">${sg}${im}</div>`:"";
+}
 function tripDetail(id){
  const t=TR.find(x=>x.id===id);if(!t)return;const st=Array.isArray(t.stops)?t.stops:[];let p=N(t.start);
  const fu=FU.filter(f=>f.drv===t.drv&&f.car===t.car&&N(f.ts)>=N(t.start)&&(!t.end||N(f.ts)<=N(t.end)+36e5));
  openM(`<h3>${E(t.drvn)} — ${E(t.carn)}</h3><div class="off">${dk(t.start)} · ${hm(t.start)} ← ${t.end?hm(t.end):"شغّال"} · عداد ${fmt(t.odo0)}${t.st==="done"?` ← ${fmt(t.odo1)} (${fmt(N(t.odo1)-N(t.odo0))} كم)`:""}</div>
- <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.rcvr?" · استلم: "+E(s.rcvr):""}</small></div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}</small>${s.lat?`<a href="${mapUrl(s.lat,s.lng)}" target="_blank" rel="noopener noreferrer">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}</div>
- ${t.note?`<div class="gn">ملاحظة السائق: ${E(t.note)}</div>`:""}${fu.length?`<div class="off">⛽ بنزين في الرحلة: ${fu.map(f=>fmt(f.liters)+" لتر / "+fmt(f.cost)).join(" · ")}</div>`:""}
+ <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.rcvr?" · استلم: "+E(s.rcvr):""}</small>${podHtml(s.rid)}</div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}</small>${s.lat?`<a href="${mapUrl(s.lat,s.lng)}" target="_blank" rel="noopener noreferrer">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}</div>
+ ${t.note?`<div class="gn">${t.forced?"⏹ ":"ملاحظة السائق: "}${E(t.note)}</div>`:""}${fu.length?`<div class="off">⛽ بنزين في الرحلة: ${fu.map(f=>fmt(f.liters)+" لتر / "+fmt(f.cost)).join(" · ")}</div>`:""}
  <div class="fl2" style="margin-top:14px"><button class="bt" data-fl="cancel" type="button">إغلاق</button></div>`);
 }
 function report(){
@@ -146,11 +160,11 @@ function report(){
  <table class="stt"><thead><tr><th>السائق / السيارة</th><th>من ← إلى</th><th>المدة</th><th>كم</th><th>الفروع</th></tr></thead><tbody>${body||'<tr><td colspan="5" style="text-align:center">لا توجد رحلات</td></tr>'}</tbody></table><div class="sg"><span>مسؤول المستودع</span><span>المحاسب</span><span>المدير</span></div></div>`);
 }
 // ---------- حسابات السواقين ----------
-async function mkDriver(name){
+async function mkDriver(name,phone){
  let n=1;while(DRV.some(d=>d.id==="drv"+n)||PW["drv"+n])n++;if(n>99)throw new Error("max");
  const code="drv"+n,pw=genPw(),a=makeFb("sec").auth;
  try{await createUserWithEmailAndPassword(a,emailOf(code),pw)}finally{try{await signOut(a)}catch(e){}}
- await setDoc(doc(X.db,"secrets",code),{pw});await setDoc(doc(X.db,"drivers",code),{name,enabled:true});return code;
+ await setDoc(doc(X.db,"secrets",code),{pw});await setDoc(doc(X.db,"drivers",code),phone?{name,phone,enabled:true}:{name,enabled:true});return code;
 }
 const dmsg=d=>`أهلاً ${d.name}\nتطبيق السائق:\n${new URL("./driver.html",location.href).href}\nاسم المستخدم: ${d.id}\nكلمة السر: ${PW[d.id]}`;
 const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم النسخ")}catch(e){prompt("انسخ الرسالة:",t)}};
@@ -158,7 +172,7 @@ const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم ا�
 async function click(e){
  const t=e.target.closest("[data-fl]");if(!t)return;const a=t.dataset.fl,id=t.dataset.id;
  try{
-  if(!X.admin&&["car","carsave","cardel","fx","trx","drv","dtg","dpw","dcp","spw"].includes(a)){X.toast("الصلاحية دي للمدير فقط");return}
+  if(!X.admin&&["car","carsave","cardel","fx","trx","drv","dtg","dpw","dcp","spw","dedit","dsave","dwa"].includes(a)){X.toast("الصلاحية دي للمدير فقط");return}
   if(a==="cancel")closeM();
   else if(a==="car")carForm(id);
   else if(a==="carsave"){
@@ -185,9 +199,33 @@ async function click(e){
    await updateDoc(doc(X.db,"requests",id),u);X.toast("تم التعيين: "+dv.name);
   }
   else if(a==="unasg"){await updateDoc(doc(X.db,"requests",id),{asg:null,upd:Date.now()});X.toast("اتلغى التعيين")}
-  else if(a==="drv"){const nm=(prompt("اسم السائق:","")||"").trim();if(!nm)return;const c=await mkDriver(nm.slice(0,60));X.toast("تم إنشاء حساب "+c)}
+  else if(a==="bulk"){
+   const dv=DRV.find(x=>x.id===bkD),c=CARS.find(x=>x.id===bkC),rs=X.R().filter(r=>BK.has(r.id)&&(r.st==="new"||r.st==="prep"));
+   if(!rs.length){X.toast("علّم على طلب واحد على الأقل");return}
+   if(!dv||!c){X.toast("اختر السائق والسيارة");return}
+   const b=writeBatch(X.db),ts=Date.now(),asg={drv:dv.id,drvn:dv.name,car:c.id,carn:c.name+(c.plate?" "+c.plate:"")};
+   rs.forEach(r=>{const u={asg,upd:ts};if(r.st==="new")u.st="prep";b.update(doc(X.db,"requests",r.id),u)});
+   await b.commit();BK.clear();X.toast(`تم تعيين ${rs.length} طلب لـ ${dv.name}`);
+  }
+  else if(a==="tend"){
+   // رحلة السائق نسي يقفلها: المستودع يقفلها، والفروع اللي ماوصلهاش ترجع "قيد التجهيز"
+   const t0=TR.find(x=>x.id===id);if(!t0||t0.st!=="active")return;const left=(t0.stops||[]).filter(s=>!s.arr);
+   const o=prompt(`إنهاء رحلة ${t0.drvn}.\n${left.length?`فيه ${left.length} توصيلة ما اتسلمتش وهترجع "قيد التجهيز".\n`:""}اكتب قراءة العداد في آخر الرحلة (سيبها فاضية لو مش معروفة):`,"");if(o===null)return;
+   const odo=N(toEn(o))||N(t0.odo0);if(odo<N(t0.odo0)){X.toast("العداد لازم يكون أكبر من البداية ("+fmt(t0.odo0)+")");return}
+   const b=writeBatch(X.db),ts=Date.now();
+   b.update(doc(X.db,"trips",id),{st:"done",end:ts,odo1:odo,forced:true,note:"أنهاها المستودع"+(N(toEn(o))?"":" (العداد غير معروف)")});
+   left.forEach(s=>b.update(doc(X.db,"requests",s.rid),{st:"prep",upd:ts}));
+   await b.commit();X.toast("تم إنهاء الرحلة");
+  }
+  else if(a==="drv"){const nm=(prompt("اسم السائق:","")||"").trim();if(!nm)return;const ph=(prompt("رقم موبايل السائق (اختياري، مثلاً 0551234567):","")||"").trim();const c=await mkDriver(nm.slice(0,60),toEn(ph).slice(0,20));X.toast("تم إنشاء حساب "+c)}
+  else if(a==="dedit"){const d=DRV.find(x=>x.id===id);if(!d)return;ctxEd=id;
+   openM(`<h3>تعديل بيانات السائق (${E(id)})</h3><label>الاسم</label><input id="dn" maxlength="60" value="${E(d.name||"")}"><label>رقم الموبايل</label><input id="dph" maxlength="20" inputmode="tel" dir="ltr" placeholder="0551234567" value="${E(d.phone||"")}">
+   <div class="fl2" style="margin-top:16px"><button class="bt p" data-fl="dsave" type="button">حفظ</button><button class="bt" data-fl="cancel" type="button">رجوع</button></div>`)}
+  else if(a==="dsave"){const nm=g("dn").value.trim();if(!nm){X.toast("اكتب الاسم");return}await setDoc(doc(X.db,"drivers",ctxEd),{name:nm.slice(0,60),phone:toEn(g("dph").value).trim().slice(0,20)},{merge:true});closeM();X.toast("تم الحفظ")}
+  else if(a==="dwa"){const d=DRV.find(x=>x.id===id);if(!d)return;const n=waNum(d.phone);if(!n){X.toast("سجّل رقم موبايل السائق الأول من تعديل");return}
+   window.open(`https://wa.me/${n}?text=${encodeURIComponent(PW[id]?dmsg(d):"أهلاً "+d.name)}`,"_blank","noopener")}
   else if(a==="spw"){const el=document.querySelector(`[data-fpw="${id}"]`);if(el){const sh=el.dataset.v==="1";el.textContent=sh?"••••••••":PW[id];el.dataset.v=sh?"0":"1";t.textContent=sh?"إظهار":"إخفاء"}}
-  else if(a==="dtg"){const d=DRV.find(x=>x.id===id);if(d&&(!d.enabled||confirm("تعطيل السائق؟")))await setDoc(doc(X.db,"drivers",id),{name:d.name,enabled:!d.enabled})}
+  else if(a==="dtg"){const d=DRV.find(x=>x.id===id);if(d&&(!d.enabled||confirm("تعطيل السائق؟")))await setDoc(doc(X.db,"drivers",id),{enabled:!d.enabled},{merge:true})}
   else if(a==="dpw"){
    const d=DRV.find(x=>x.id===id);if(!d||!PW[id]){X.toast("كلمة السر الحالية مش متسجلة");return}
    const nw=(prompt("كلمة السر الجديدة (6 حروف على الأقل). سيبها فاضية لتوليد واحدة:","")||"").trim()||genPw();
@@ -202,7 +240,12 @@ export function alertsCount(){return X?alerts().length:0}
 export function initFleet(ctx){
  X=ctx;stop();
  if(!g("fl-css")){const s=document.createElement("style");s.id="fl-css";s.textContent=CSS;document.head.appendChild(s);ensurePrintCss()}
- if(!window.__flc){window.__flc=1;document.addEventListener("click",click);document.addEventListener("change",e=>{if(e.target.id==="fday"){fday=e.target.value;X.redraw()}if(e.target.id==="fmon"){fmon=e.target.value;X.redraw()}})}
+ if(!window.__flc){window.__flc=1;document.addEventListener("click",click);document.addEventListener("change",e=>{const t=e.target;if(t.id==="fday"){fday=t.value;X.redraw()}if(t.id==="fmon"){fmon=t.value;X.redraw()}
+  // التعيين الجماعي: بنحفظ الاختيار في الذاكرة علشان التحديث اللحظي مايمسحوش
+  if(t.id==="bkd")bkD=t.value;if(t.id==="bkc")bkC=t.value;
+  if(t.dataset&&t.dataset.bk){t.checked?BK.add(t.dataset.bk):BK.delete(t.dataset.bk)}
+  if(t.id==="bkall")document.querySelectorAll("[data-bk]").forEach(c=>{c.checked=t.checked;t.checked?BK.add(c.dataset.bk):BK.delete(c.dataset.bk)});
+  if(t.id==="bkall"||(t.dataset&&t.dataset.bk)){const n=g("bkn");if(n)n.textContent=BK.size}})}
  pT=null;pF=null;
  const draw=()=>{if(X.tab()==="fl"&&mode==="")X.redraw()};
  un.push(onSnapshot(collection(X.db,"cars"),sn=>{CARS=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));

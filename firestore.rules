@@ -143,6 +143,12 @@ service cloud.firestore {
       allow read:   if isAdmin() || perm('fl') || (drvOn() && resource.data.drv == myDrv());
       allow create: if isAdmin() || (drvOn() && validTrip());
       allow update: if isAdmin()
+        // المحاسب (perm fl) يقدر يقفل رحلة السائق نسي يقفلها
+        || (perm('fl') && resource.data.st == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','end','odo1','note','forced'])
+            && request.resource.data.st == 'done' && request.resource.data.forced == true
+            && request.resource.data.odo1 is number && request.resource.data.odo1 >= resource.data.odo0 && request.resource.data.odo1 <= 9999999
+            && request.resource.data.note is string && request.resource.data.note.size() <= 300)
         || (drvOn() && resource.data.drv == myDrv() && resource.data.st == 'active'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stops','loc','st','end','odo1','note'])
             && request.resource.data.st in ['active','done']

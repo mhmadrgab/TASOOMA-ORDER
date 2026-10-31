@@ -4,7 +4,8 @@
  const RM=matchMedia("(prefers-reduced-motion: reduce)");
  const SEL=".rq,.sc,.pan,.bar,.mr,.hr,.stop,.pick,.card,.tw tbody>tr";
  const seen=new Set();let lastTap=0;
- addEventListener("pointerdown",()=>lastTap=Date.now(),true);
+ // بس أزرار التنقل (تبويبات، فلاتر) بتعيد حركة الكروت؛ زرار زي "تعيين" مابيحرّكش الصفحة كلها
+ addEventListener("pointerdown",e=>{if(e.target.closest&&e.target.closest(".tabs,.chip,[data-t],[data-s],#fday,#fmon"))lastTap=Date.now()},true);
  const vis=el=>el.getClientRects().length>0;
  const key=el=>el.className+"|"+el.textContent.replace(/\s+/g," ").slice(0,160);
  const ease="cubic-bezier(.2,.8,.2,1)";
