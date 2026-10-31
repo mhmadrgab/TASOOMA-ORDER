@@ -93,7 +93,7 @@ a.bt{text-decoration:none;display:inline-block;color:inherit}.tg{background:#f6e
 <div id="em"></div>
 <div id="pa"></div>
 <script type="module">
-import {makeFb,emailOf,ADMIN_EMAIL,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
+import {makeFb,emailOf,ADMIN_EMAIL,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
 const {db,auth}=makeFb("admin");
 import {initExtra,view as cusView,stop as stopExtra,adminHdr} from "./ad-extra.js";
 import {initFleet,view as fleetView,stop as stopFleet,cars as fleetCars} from "./fleet.js";
@@ -143,18 +143,44 @@ function login(msg){
   if(g("lg"))g("lg").disabled=false};
  g("lg").onclick=go;[g("la"),g("lm")].forEach(i=>i.addEventListener("keydown",e=>{if(e.key==="Enter")go()}));g((g("lm").value?"la":"lm")).focus();
 }
-function stop(){stopExtra();stopFleet();stopStaff();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={}}
+function stop(){stopExtra();stopFleet();stopStaff();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+// الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
+// (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 60 يوم. وزرار "الأقدم" بيحمّل الباقي عند الحاجة.
+const DAYS=60;let RQ={o:new Map(),r:new Map()},RQ1={o:true,r:true},seenReq=new Set(),ALLREQ=false,unOld=null;
+const cutoff=()=>Date.now()-DAYS*864e5;
+function listenReqs(){
+ const err=()=>toast("تعذر قراءة الطلبات. تأكد من القواعد (Rules) في Firebase");
+ unsubs.push(onSnapshot(query(collection(db,"requests"),where("st","in",["new","prep","go","done"])),sn=>onReqs("o",sn),err));
+ unOld=onSnapshot(query(collection(db,"requests"),where("ts",">=",cutoff())),sn=>onReqs("r",sn),err);unsubs.push(()=>unOld&&unOld());
+}
+// زرار "الطلبات الأقدم": نبدّل سماع آخر 60 يوم بسماع كل الطلبات (للجلسة دي بس)
+function loadAllReqs(){
+ if(ALLREQ)return;ALLREQ=true;if(unOld)unOld();RQ1.r=true;RQ.r=new Map();
+ unOld=onSnapshot(collection(db,"requests"),sn=>onReqs("r",sn),()=>toast("تعذر تحميل الطلبات القديمة"));
+ toast("جاري تحميل كل الطلبات القديمة...");
+}
+function onReqs(k,sn){
+ const was1=RQ1[k];RQ1[k]=false;
+ sn.docChanges().forEach(c=>{if(c.type==="removed")RQ[k].delete(c.doc.id);else RQ[k].set(c.doc.id,{id:c.doc.id,...c.doc.data()})});
+ const m=new Map(RQ.o);RQ.r.forEach((v,id)=>m.set(id,v));
+ R=[...m.values()].sort((a,b)=>NUM(b.ts)-NUM(a.ts));
+ const ready=!RQ1.o&&!RQ1.r;
+ if(!was1&&ready){
+  // طلب جديد: أول مرة نشوفه، ولسه "جديد"
+  const nw=sn.docChanges().filter(c=>c.type==="added"&&!seenReq.has(c.doc.id)&&c.doc.data().st==="new");
+  if(nw.length){const d=nw[0].doc.data();beep();toast(`طلب جديد من ${d.brn}`);notify("🔔 طلب جديد",d.brn,"n"+nw[0].doc.id);document.title="🔔 طلب جديد - تاسومة"}
+  if(k==="r")sn.docChanges().filter(c=>c.type==="modified").forEach(c=>{const d=c.doc.data();if(d.st==="recv"&&d.rcv&&d.rcv.ok===false){beep();toast(`${d.brn} استلم طلب ${d.no} بملاحظات`);notify("⚠ استلام بملاحظات",d.brn+" — "+d.no,"r"+c.doc.id)}else if(d.st==="recv"){toast(`${d.brn} أكّد استلام ${d.no}`)}});
+ }
+ R.forEach(r=>seenReq.add(r.id));
+ if(!ready)return;
+ adminHdr();first=false;draw();
+}
+document.addEventListener("click",e=>{if(e.target.closest("#oldreq"))loadAllReqs()});
+document.addEventListener("change",e=>{if(e.target.id==="fd"&&e.target.value&&new Date(e.target.value).getTime()<cutoff())loadAllReqs()});
 function start(){
  if(authed)return;authed=true;
  if(!okTab(tab))tab=(TABS.find(a=>a[2]())||["req"])[0];
- if(ROLE.admin||can("req")||can("fl"))unsubs.push(onSnapshot(collection(db,"requests"),sn=>{
-  const nw=sn.docChanges().filter(c=>c.type==="added");
-  R=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>NUM(b.ts)-NUM(a.ts));
-  if(!first&&nw.length){beep();toast(`طلب جديد من ${nw[0].doc.data().brn}`);notify("🔔 طلب جديد",nw[0].doc.data().brn,"n"+nw[0].doc.id);document.title="🔔 طلب جديد - تاسومة"}
-  if(!first)sn.docChanges().filter(c=>c.type==="modified").forEach(c=>{const d=c.doc.data();if(d.st==="recv"&&d.rcv&&d.rcv.ok===false){beep();toast(`${d.brn} استلم طلب ${d.no} بملاحظات`);notify("⚠ استلام بملاحظات",d.brn+" — "+d.no,"r"+c.doc.id)}else if(d.st==="recv"){toast(`${d.brn} أكّد استلام ${d.no}`)}});
-  adminHdr();
-  first=false;draw();
- },()=>toast("تعذر قراءة الطلبات. تأكد من القواعد (Rules) في Firebase")));
+ if(ROLE.admin||can("req")||can("fl"))listenReqs();
  if(ROLE.admin)unsubs.push(onSnapshot(collection(db,"branches"),sn=>{B={};sn.docs.forEach(d=>B[d.id]=d.data().enabled===true);if(tab==="br")draw()}));
  if(ROLE.admin)unsubs.push(onSnapshot(collection(db,"secrets"),sn=>{P={};sn.docs.forEach(d=>P[d.id]=d.data().pw);if(tab==="br"||tab==="stf")draw()}));
  const adm=ROLE.admin;
@@ -182,7 +208,7 @@ const rcvHtml=r=>{const v=r.rcv;if(r.st!=="recv"||!v||typeof v!=="object")return
 function reqView(){
  const cnt=s=>R.filter(r=>s==="all"||r.st===s).length;
  let L=R.filter(r=>(fs==="all"||r.st===fs)&&(!fb||r.brn===fb)&&(!fd||dayKey(NUM(r.ts))===fd));
- return stats()+`<div class="fl">${["all","new","prep","go","done","recv"].map(s=>`<button class="chip ${fs===s?"on":""}" data-s="${s}">${s==="all"?"الكل":LBL[s]} (${cnt(s)})</button>`).join("")}<select id="fb"><option value="">كل الفروع</option>${BR.map(b=>`<option ${fb===b?"selected":""}>${b}</option>`).join("")}</select><input id="fd" type="date" value="${fd}"><button class="bt g" data-t="sh" type="button">➕ عمل ورقة نواقص بنفسي</button></div>`+
+ return stats()+`<div class="fl">${["all","new","prep","go","done","recv"].map(s=>`<button class="chip ${fs===s?"on":""}" data-s="${s}">${s==="all"?"الكل":LBL[s]} (${cnt(s)})</button>`).join("")}<select id="fb"><option value="">كل الفروع</option>${BR.map(b=>`<option ${fb===b?"selected":""}>${b}</option>`).join("")}</select><input id="fd" type="date" value="${fd}"><button class="bt g" data-t="sh" type="button">➕ عمل ورقة نواقص بنفسي</button>${ALLREQ?"":`<button class="bt" id="oldreq" type="button" title="بنعرض المفتوح وآخر ${DAYS} يوم بس، علشان اللوحة تفضل سريعة">📂 الطلبات الأقدم</button>`}</div>`+
  (L.length?L.map(r=>`<article class="rq ${ST(r.st)}"><div class="rh"><div><b>${E(r.brn)}</b>${r.edited?'<span class="tg">معدّل</span>':""}<small>طلب <bdi dir="ltr">${E(r.no)}</bdi> · ${ago(NUM(r.ts))}</small></div><span class="chp">${LBL[ST(r.st)]}</span></div><div class="kp"><span><b>${NUM(r.codes)}</b> صنف</span><span><b>${NUM(r.pcs)}</b> قطعة</span>${r.dr?`<span>المسؤول: ${E(r.dr)}</span>`:""}${r.asg&&r.asg.drvn?`<span>🚚 ${E(r.asg.drvn)} · ${E(r.asg.carn||"")}</span>`:""}${NUM(r.dlv)?`<span>وصل ${new Date(NUM(r.dlv)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</span>`:""}</div>${rcvHtml(r)}${podHtml(r)}<details data-id="${r.id}" ${openSet.has(r.id)||(r.st==="new"&&!openSet.has("-"+r.id))?"open":""}><summary>تفاصيل الطلب</summary>${r.gn?`<div class="gn">ملاحظات: ${E(r.gn)}</div>`:""}<div class="grp">${gHtml(r.rows)}</div></details><div class="rf">${r.st==="new"?`<button class="bt g" data-a="prep" data-id="${r.id}">بدء التجهيز</button>`:""}${!isDn(r)?`<button class="bt p" data-a="done" data-id="${r.id}">تم التسليم</button>`:`<button class="bt" data-a="new" data-id="${r.id}">إعادة فتح</button>`}<button class="bt" data-a="edit" data-id="${r.id}">✏️ تعديل</button><button class="bt" data-a="print" data-id="${r.id}">🖨 طباعة</button>${ROLE.admin?`<button class="bt r" data-a="del" data-id="${r.id}">حذف</button>`:""}</div></article>`).join(""):'<div class="em">لا توجد طلبات مطابقة</div>');
 }
 function brView(){
@@ -192,11 +218,27 @@ function brView(){
 }
 function draw(){
  if(!authed)return;
- const keep=window.scrollY;
+ const keep=window.scrollY,ui=snapUi();
  g("app").innerHTML=`<div class="hd"><div class="hi"><div class="br"><img class="lg1" src="${LOGO1}" alt=""><img class="lg2" src="${LOGO2}" alt=""><div><h1>لوحة المستودع</h1><small>${ROLE.admin?"طلبات الفروع":E(ROLE.name||"محاسب")}</small></div></div><div class="tabs">${TABS.filter(a=>a[2]()).map(a=>`<button class="${tab===a[0]?"on":""}" data-t="${a[0]}">${a[1]}</button>`).join("")}</div><div style="display:flex;gap:12px;align-items:center"><div class="live"><i></i>مباشر</div><div class="tools"><button id="bell" type="button" hidden>🔔</button><button data-install type="button" hidden>📲 تثبيت</button></div><button class="tabs-out" id="logout" type="button">خروج</button></div></div></div><main>${tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="stf"?staffView():brView()}</main>`;
  showSheet();
  wireButtons();document.getElementById("bell").hidden=!("Notification" in window);adminHdr();
- window.scrollTo(0,keep);
+ window.scrollTo(0,keep);restoreUi(ui);
+}
+// التحديث اللحظي بيعيد رسم الصفحة كلها: نحفظ اللي المستخدم كان مختاره أو بيكتبه (ولسه ماحفظهوش)، ومكان سكرول الجداول، والخانة اللي كان واقف فيها، ونرجّعهم
+const uiKey=el=>el.id?"#"+el.id:[...el.attributes].filter(a=>a.name.startsWith("data-")).map(a=>a.name+"="+a.value).join("&");
+const dirty=el=>el.type==="checkbox"||el.type==="radio"?el.checked!==el.defaultChecked:el.tagName==="SELECT"?!el.multiple&&el.options.length>0&&el.value!==([...el.options].find(o=>o.defaultSelected)||el.options[0]).value:el.value!==el.defaultValue;
+function snapUi(){
+ const m=document.querySelector("#app main");if(!m)return null;const s={tab,vals:[],tw:[...m.querySelectorAll(".tw")].map(t=>t.scrollLeft),focus:null};
+ m.querySelectorAll("input,select,textarea").forEach(el=>{const k=uiKey(el);if(k&&el.type!=="file"&&dirty(el))s.vals.push([k,el.type==="checkbox"||el.type==="radio"?el.checked:el.value])});
+ const a=document.activeElement;if(a&&m.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){const k=uiKey(a);if(k)s.focus=[k,a.selectionStart,a.selectionEnd]}
+ return s;
+}
+function restoreUi(s){
+ const m=document.querySelector("#app main");if(!s||!m||s.tab!==tab)return;
+ const find=k=>[...m.querySelectorAll("input,select,textarea")].find(el=>uiKey(el)===k);
+ s.vals.forEach(([k,v])=>{const el=find(k);if(!el)return;if(typeof v==="boolean")el.checked=v;else if(el.tagName!=="SELECT"||[...el.options].some(o=>o.value===v))el.value=v});
+ m.querySelectorAll(".tw").forEach((t,i)=>{if(s.tw[i])t.scrollLeft=s.tw[i]});
+ if(s.focus){const el=find(s.focus[0]);if(el){el.focus({preventScroll:true});try{if(s.focus[1]!=null)el.setSelectionRange(s.focus[1],s.focus[2])}catch(e){}}}
 }
 // الورقة اليدوية: iframe واحد ثابت (ما بيتعملوش له إعادة رسم علشان الشغل اللي فيه ما يضيعش)
 function showSheet(){
