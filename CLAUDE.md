@@ -31,6 +31,7 @@
 | `sheet.html` | ورقة النواقص اليدوية (localStorage فقط) |
 | `fb.js`, `cust.js`, `notify.js`, `br-extra.js`, `ad-extra.js`, `fleet.js`, `staff.js`, `workers.js` | وحدات مشتركة |
 | `ui.css`, `ui.js` | التصميم والحركات المشتركة لكل الصفحات |
+| `splash/` + `#boot` في أول كل صفحة | شاشة البداية للتطبيق المثبّت: خطوط لوجو الديب (متتبّعة من `icon-512.png`) بترسم نفسها، وصور خلفية غامقة للآيفون بدل الشاشة البيضا |
 | `sw.js` + 3 manifests + أيقونات | تثبيت PWA |
 | `firestore.rules` | قواعد الأمان |
 

@@ -54,4 +54,8 @@
  addEventListener("online",net);addEventListener("offline",net);net();
  mo.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class","hidden"]});
  stage();enter([...document.querySelectorAll(SEL)]);
+ // شاشة البداية (التطبيق المثبّت): تختفي بعد ما رسمة اللوجو تكمل (حوالي 1.7 ثانية من فتح التطبيق)
+ const boot=document.getElementById("boot");
+ if(boot){if(getComputedStyle(boot).display==="none")boot.remove();
+  else setTimeout(()=>{boot.classList.add("out");setTimeout(()=>boot.remove(),600)},Math.max(0,1700-performance.now()))}
 })();
