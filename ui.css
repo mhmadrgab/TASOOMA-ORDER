@@ -44,8 +44,13 @@ button:not(:disabled):active{transform:scale(.97)}
 .rq.new .chp,.chp.new{animation:ui-glow 2.6s ease-in-out infinite}
 
 /* النوافذ المنبثقة */
-#md.on,#em.on,.mdl.on{animation:ui-fade .22s ease both;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
-#md.on .mb,#em.on .eb,.mdl.on .card{animation:ui-pop .38s cubic-bezier(.2,.9,.3,1.2) both}
+#md.on,#em.on,.mdl.on,.wkm.on{animation:ui-fade .22s ease both;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+#md.on .mb,#em.on .eb,.mdl.on .card,.wkm.on .wkk{animation:ui-pop .38s cubic-bezier(.2,.9,.3,1.2) both}
+
+/* فلتر الطلبات بالتاريخ: من / إلى */
+.drg{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.drg label{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:13px;margin:0}
+.fl .drg input{margin-inline-start:0;padding:8px 10px}
 
 /* النت فاصل */
 .ui-offline .live{font-size:0;color:#ff9c8f}

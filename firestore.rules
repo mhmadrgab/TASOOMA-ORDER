@@ -74,6 +74,14 @@ service cloud.firestore {
           && (!('img' in p) || (p.img is string && p.img.size() <= 160000))
           && (!('at' in p) || p.at is number);
       }
+      // مين جهّز الطلب (عمال المستودع): {by:[ids], names:[...], at}
+      function validPrep() {
+        let p = request.resource.data.prep;
+        return p is map && p.keys().hasOnly(['by','names','at'])
+          && p.by is list && p.by.size() <= 10
+          && p.names is list && p.names.size() <= 10
+          && p.at is number;
+      }
       // تأكيد الاستلام من الفرع: بس لما الطلب يبقى "تم التسليم"، ويغيّر st و rcv بس
       function validRcv() {
         let r = request.resource.data.rcv;
@@ -85,7 +93,8 @@ service cloud.firestore {
       // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)، أو يأكد الاستلام
       // السائق: يغيّر حالة الطلب المعيّن له بس (في الطريق / تم التسليم / رجوع للتجهيز)
       allow update: if isAdmin()
-        || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat']))
+        || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat','prep'])
+            && (!('prep' in request.resource.data) || validPrep()))
         || (perm('fl') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asg','st','upd']))
         || (drvOn() && resource.data.asg.drv == myDrv()
             && resource.data.st in ['prep','go']
@@ -119,6 +128,15 @@ service cloud.firestore {
     match /drivers/{code} {
       allow read:  if isAdmin() || perm('fl') || (isDriver() && myDrv() == code);
       allow write: if isAdmin();
+    }
+    // عمال المستودع (أسماء بس، من غير حسابات): المدير يضيف ويعدّل، والمحاسب يقرأ علشان يختار مين جهّز
+    match /workers/{id} {
+      allow read:  if isAdmin() || perm('req') || perm('fl');
+      allow write: if isAdmin();
+    }
+    // تقييم المدير الشهري للعمال (نجوم): wrate/{YYYY-MM} = {stars:{workerId: 1..5}}
+    match /wrate/{mo} {
+      allow read, write: if isAdmin();
     }
     // مواقع الفروع ومتوسط زمن الوصول (المستودع يحسبها، والسائق يقرأها)
     match /geo/{id} {
