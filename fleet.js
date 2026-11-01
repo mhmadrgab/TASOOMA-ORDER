@@ -106,8 +106,13 @@ function monthReport(){
  <div class="sg"><span>مسؤول المستودع</span><span>المحاسب</span><span>المدير</span></div></div>`);
 }
 // ---------- مواقع الفروع ومتوسط الوصول (المستودع يحسبها، والسائق يقرأها) ----------
+// مهم: Firebase بيرجّع المفاتيح مترتبة أبجدياً، فالمقارنة لازم ماتتأثرش بترتيب المفاتيح.
+// المقارنة القديمة (JSON.stringify) كانت بتشوف فرق كل مرة، فتكتب، فيوصل تحديث، فتكتب تاني... لحد ما الحصة اليومية خلصت.
+const canon=v=>v&&typeof v==="object"?"{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}":JSON.stringify(v);
+let geoAt=0,geoBusy=false;
 function syncGeo(){
- if(!geoReady||!TR.length)return;
+ // حماية إضافية: كتابة واحدة بالكتير كل 10 دقايق من الجهاز ده (والقواعد بتمنع أكتر من كده من أي جهاز)
+ if(!geoReady||!TR.length||geoBusy||Date.now()-geoAt<10*6e4)return;
  const acc={},lg=legs(),lgc={},wh={la:0,ln:0,n:0};
  TR.filter(t=>t.st==="done").forEach(t=>{
   (Array.isArray(t.stops)?t.stops:[]).forEach(x=>{if(x&&x.arr&&Number.isFinite(+x.lat)&&Number.isFinite(+x.lng)){const c=String(x.brn||"").split("-")[0],a=acc[c]||(acc[c]={la:0,ln:0,n:0});a.la+=+x.lat;a.ln+=+x.lng;a.n++}});
@@ -117,7 +122,9 @@ function syncGeo(){
  const br={};Object.entries(acc).forEach(([c,a])=>{const o={lat:+(a.la/a.n).toFixed(5),lng:+(a.ln/a.n).toFixed(5),n:a.n};if(lgc[c])o.avg=Math.max(1,Math.round(lgc[c].reduce((x,y)=>x+y,0)/lgc[c].length/6e4));br[c]=o});
  const nw={br};if(wh.n)nw.wh={lat:+(wh.la/wh.n).toFixed(5),lng:+(wh.ln/wh.n).toFixed(5)};
  const cur=GEOD?{br:GEOD.br||{},...(GEOD.wh?{wh:GEOD.wh}:{})}:null;
- if(JSON.stringify(cur)!==JSON.stringify(nw))setDoc(doc(X.db,"geo","main"),{...nw,upd:Date.now()}).catch(()=>{});
+ if(canon(cur)===canon(nw))return;
+ geoBusy=true;geoAt=Date.now();
+ setDoc(doc(X.db,"geo","main"),{...nw,upd:Date.now()}).catch(()=>{}).finally(()=>{geoBusy=false});
 }
 // ---------- النوافذ ----------
 function box(){let m=g("flm");if(!m){m=document.createElement("div");m.id="flm";m.className="fm";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}

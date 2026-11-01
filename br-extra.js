@@ -1,5 +1,5 @@
 // صفحة الفرع: تأكيد الاستلام + التنبيهات + تثبيت التطبيق
-import {doc,updateDoc,withTimeout} from "./fb.js";
+import {doc,updateDoc,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {E,N} from "./cust.js";
 import {wireButtons,regSW} from "./notify.js";
 const g=id=>document.getElementById(id);
@@ -45,7 +45,7 @@ function openRcv(id){
   if(!note)delete rcv.note;
   g("rc1").disabled=true;
   try{await withTimeout(updateDoc(doc(X.db,"requests",id),{st:"recv",rcv}),15000);closeX();X.toast(rcv.ok?"تم تأكيد الاستلام ✅":"تم تسجيل الاستلام مع الملاحظات ✅")}
-  catch(e){g("rc1").disabled=false;X.toast(e&&e.code==="permission-denied"?"مش مسموح. ممكن المستودع غيّر حالة الطلب.":"لم يتم الحفظ، جرّب تاني","er")}
+  catch(e){g("rc1").disabled=false;const why=await failReason(e);X.toast(why==="denied"?"مش مسموح. ممكن المستودع غيّر حالة الطلب.":FAIL_MSG[why],"er")}
  };
 }
 export function initBranch(ctx){X=ctx;ui()}

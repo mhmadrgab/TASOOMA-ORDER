@@ -49,6 +49,9 @@
   if(err)shake(err);
   stage();keepTab();
  });
+ // النت: لو فصل، علامة "مباشر" تقلب أحمر ويظهر تنبيه. Firebase بيكمّل لوحده أول ما النت يرجع
+ const net=()=>document.documentElement.classList.toggle("ui-offline",!navigator.onLine);
+ addEventListener("online",net);addEventListener("offline",net);net();
  mo.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class","hidden"]});
  stage();enter([...document.querySelectorAll(SEL)]);
 })();

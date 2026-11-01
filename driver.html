@@ -48,7 +48,7 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
 <div id="app" hidden><div class="hd"><img src="./icon-192.png" alt=""><div><b id="nm"></b><small>سائق التوصيل</small></div><div class="sp"></div><button id="bell" type="button"></button><button data-install type="button" hidden>📲</button><button id="out" type="button">خروج</button></div><main id="mn"></main></div>
 <div class="mdl" id="md"></div>
 <script type="module">
-import {makeFb,emailOf,withTimeout,collection,doc,getDoc,addDoc,updateDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
+import {makeFb,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,addDoc,updateDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {wireButtons,regSW,notify,beep} from "./notify.js";
 import {shrink} from "./cust.js";
 const {db,auth}=makeFb("drv");
@@ -65,6 +65,8 @@ let me=null,CARS=[],REQ=[],TR=[],FU=[],GEO={br:{},wh:null},un=[],off=new Set(),o
 const toast=(m,er)=>{const t=g("toast");t.textContent=m;t.className="on"+(er?" er":"");clearTimeout(tt);tt=setTimeout(()=>t.className="",er?5000:3200)};
 const ERR=c=>({"auth/invalid-credential":"اسم المستخدم أو كلمة السر غلط","auth/user-disabled":"الحساب معطّل. كلّم المستودع.","auth/too-many-requests":"محاولات كتير، استنى شوية","auth/network-request-failed":"مفيش اتصال بالإنترنت","auth/invalid-email":"اسم المستخدم غير صحيح"}[c]||"تعذر الدخول، جرّب تاني.");
 const active=()=>TR.find(t=>t.st==="active");
+// لما الحفظ يفشل نقول السبب الحقيقي (الحد اليومي لـ Firebase / مفيش نت / بطء)
+const fail=async(e,deny)=>{const w=await failReason(e);toast(w==="denied"?deny:FAIL_MSG[w],"er")};
 // ---------- موقع لحظي (عند الضغط فقط، من غير تتبع في الخلفية) ----------
 const here=()=>new Promise(r=>{if(!("geolocation" in navigator))return r(null);navigator.geolocation.getCurrentPosition(p=>r({lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5)}),()=>r(null),{enableHighAccuracy:true,timeout:9000,maximumAge:0})});
 const km2=(a,b)=>{const R=6371,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lng-a.lng),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
@@ -167,7 +169,7 @@ async function startTrip(){
   if(loc){t.loc0=loc;t.loc={...loc,ts}}
   b.set(tr,t);rs.forEach(r=>{const u={st:"go",dep:ts,upd:ts};if(et[r.id])u.eta=et[r.id];b.update(doc(db,"requests",r.id),u)});
   await withTimeout(b.commit(),15000);lsSet("drv_car",c.id);lsSet("drv_odo_"+c.id,String(odo));odoV=null;toast("بدأت الرحلة. سلامتك 🚚");
- }catch(e){const x=g("bs");if(x){x.disabled=false;x.textContent="🚚 ابدأ الرحلة"}toast(e&&e.code==="permission-denied"?"مش مسموح. ممكن المستودع غيّر الطلب.":"لم تبدأ الرحلة، جرّب تاني","er")}
+ }catch(e){const x=g("bs");if(x){x.disabled=false;x.textContent="🚚 ابدأ الرحلة"}fail(e,"مش مسموح. ممكن المستودع غيّر الطلب.")}
 }
 // ---------- نوافذ ----------
 const openM=h=>{g("md").innerHTML=`<div class="card">${h}</div>`;g("md").className="mdl on"};
@@ -203,7 +205,7 @@ function podForm(rid){
    b.update(doc(db,"trips",a.id),tu);b.update(doc(db,"requests",rid),{st:"done",dlv:ts,upd:ts,pod});
    rem.forEach(x=>{if(et[x.rid])b.update(doc(db,"requests",x.rid),{eta:et[x.rid]})});
    await withTimeout(b.commit(),15000);closeM();toast("تم تسجيل التسليم ✅");
-  }catch(e){const x=g("p1");if(x){x.disabled=false;x.textContent="تأكيد التسليم ✅"}toast(e&&e.code==="permission-denied"?"مش مسموح. ممكن المستودع غيّر حالة الطلب.":"لم يتسجل، جرّب تاني","er")}
+  }catch(e){const x=g("p1");if(x){x.disabled=false;x.textContent="تأكيد التسليم ✅"}fail(e,"مش مسموح. ممكن المستودع غيّر حالة الطلب.")}
  };
 }
 function fuelForm(){
@@ -218,7 +220,7 @@ function fuelForm(){
   if(!cc||!(l>0)||l>500||m<0||!(o>0)){toast("اكتب اللترات والمبلغ والعداد","er");return}
   g("f1").disabled=true;
   try{await withTimeout(addDoc(collection(db,"fuel"),{drv:me.id,drvn:me.name,car:cc.id,carn:cc.name,ts:Date.now(),dt:today(),liters:l,cost:m,odo:o,full:g("ff").checked}),15000);lsSet("drv_odo_"+cc.id,String(o));closeM();toast("تم تسجيل البنزين ✅")}
-  catch(e){g("f1").disabled=false;toast("لم يتسجل، جرّب تاني","er")}
+  catch(e){g("f1").disabled=false;fail(e,"مش مسموح بالتسجيل.")}
  };
 }
 function endForm(){
@@ -234,7 +236,7 @@ function endForm(){
    const b=writeBatch(db),u={st:"done",end:ts,odo1:o},n=g("en").value.trim().slice(0,300);if(n)u.note=n;if(loc)u.loc={...loc,ts};
    b.update(doc(db,"trips",a.id),u);un2.forEach(s=>b.update(doc(db,"requests",s.rid),{st:"prep",upd:ts}));
    await withTimeout(b.commit(),15000);lsSet("drv_odo_"+a.car,String(o));closeM();toast("تم إنهاء الرحلة. الله يعطيك العافية 👏");
-  }catch(e){g("e1").disabled=false;toast("لم تنتهِ الرحلة، جرّب تاني","er")}
+  }catch(e){g("e1").disabled=false;fail(e,"مش مسموح بإنهاء الرحلة.")}
  };
 }
 regSW();

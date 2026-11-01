@@ -47,6 +47,23 @@ button:not(:disabled):active{transform:scale(.97)}
 #md.on,#em.on,.mdl.on{animation:ui-fade .22s ease both;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 #md.on .mb,#em.on .eb,.mdl.on .card{animation:ui-pop .38s cubic-bezier(.2,.9,.3,1.2) both}
 
+/* النت فاصل */
+.ui-offline .live{font-size:0;color:#ff9c8f}
+.ui-offline .live::after{content:"غير متصل";font-size:13px}
+.ui-offline .live i{background:#ef4444;animation:none;box-shadow:none}
+html.ui-offline::after{content:"⚠ النت فاصل — أول ما يرجع، الجديد هيظهر لوحده من غير ريفرش";position:fixed;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:0;right:0;margin-inline:auto;z-index:95;
+ background:#3a1512;color:#fff;border:1px solid #c4362b;padding:10px 18px;border-radius:14px;font:500 14px/1.5 "IBM Plex Sans Arabic",Tahoma,sans-serif;box-shadow:0 12px 30px rgba(0,0,0,.35);width:max-content;max-width:92vw;text-align:center;animation:ui-up .35s ease both}
+@media print{html.ui-offline::after{display:none}}
+
+/* الحد اليومي المجاني لـ Firebase خلص: شريط واضح فوق بدل رسالة "النت ضعيف" */
+.ui-quota .live{font-size:0;color:#f6c770}
+.ui-quota .live::after{content:"متوقف مؤقتاً";font-size:13px}
+.ui-quota .live i{background:#f59e0b;animation:none;box-shadow:none}
+html.ui-quota::before{content:"⚠ Firebase واقف مؤقتاً: الحد اليومي المجاني خلص (مش النت). بيرجع لوحده لما الحصة تتجدد (حوالي 11 الصبح بتوقيت السعودية)، والصفحة هتكمّل لوحدها.";
+ position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:0;right:0;margin-inline:auto;z-index:96;background:#3a2a08;color:#fff;border:1px solid #d4ae5c;padding:10px 18px;border-radius:14px;
+ font:500 14px/1.6 "IBM Plex Sans Arabic",Tahoma,sans-serif;box-shadow:0 12px 30px rgba(0,0,0,.35);width:max-content;max-width:92vw;text-align:center;animation:ui-up .35s ease both;pointer-events:none}
+@media print{html.ui-quota::before{display:none}}
+
 /* الإشعار العلوي */
 #toast{transition:transform .5s cubic-bezier(.2,.9,.3,1.25),border-color .3s,background-color .3s}
 

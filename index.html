@@ -440,7 +440,7 @@ loadUI();
 </script>
 
 <script type="module">
-import {makeFb,emailOf,withTimeout,collection,doc,getDoc,setDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
+import {makeFb,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,setDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {initBranch,stopBranch} from "./br-extra.js";
 import {notify,beep,badge} from "./notify.js";
 const {db,auth}=makeFb("branch");
@@ -514,7 +514,12 @@ g("sd").onclick=async()=>{
   await ask({i:"✅",t:"وصل طلبك للمستودع",p:`رقم الطلب ${no} — تقدر تتابع حالته تحت في "طلباتي وحالتها"`,ok:"تمام",one:true});
   st.sent=no;delete st.rid;delete st.rno;
   st=mk({br:st.br,dr:st.dr,ty:"load"});lib.cur=st.id;save();loadUI();window.scrollTo(0,0);
- }catch(x){toast(x&&x.code==="permission-denied"?"مش مصرّح لك بإرسال الطلب. كلّم المستودع.":"لم يتأكد الإرسال (النت ضعيف). اضغط إرسال مرة تانية — مش هيتكرر الطلب.","er")}
+ }catch(x){
+  // نعرف السبب الحقيقي بدل ما نقول "النت ضعيف" على كل حاجة
+  const why=await failReason(x);
+  await ask({i:why==="slow"?"⏳":"⚠️",t:why==="quota"?"الإرسال واقف مؤقتاً":why==="offline"?"مفيش إنترنت":why==="denied"?"مش مسموح بالإرسال":"لسه مااتأكدش الإرسال",
+   p:why==="denied"?"مش مصرّح لك بإرسال الطلب ده. كلّم المستودع.":why==="quota"?FAIL_MSG.quota:why==="offline"?FAIL_MSG.offline:"الاتصال بطيء. ورقتك محفوظة زي ما هي، اضغط إرسال مرة تانية ومش هيتكرر الطلب.",ok:"تمام",one:true});
+ }
  g("sd").disabled=false;
 };
 </script>

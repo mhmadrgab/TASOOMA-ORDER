@@ -123,7 +123,13 @@ service cloud.firestore {
     // مواقع الفروع ومتوسط زمن الوصول (المستودع يحسبها، والسائق يقرأها)
     match /geo/{id} {
       allow read:  if isAdmin() || perm('fl') || drvOn();
-      allow write: if isAdmin() || perm('fl');
+      // كتابة واحدة بالكتير كل 10 دقايق، حتى لو صفحة قديمة فاتحة فيها خطأ بيكرر الكتابة (ده اللي خلّص الحصة اليومية)
+      // (شرط الوقت الأول، علشان الطلب المرفوض مايعملش قراءة لصلاحيات المحاسب ويستهلك من الحصة)
+      allow write: if request.resource.data.upd is number
+        && request.resource.data.upd > request.time.toMillis() - 600000
+        && request.resource.data.upd < request.time.toMillis() + 600000
+        && (resource == null || request.time.toMillis() > resource.data.get('upd', 0) + 600000)
+        && (isAdmin() || perm('fl'));
     }
     match /cars/{id} {
       allow read:  if isAdmin() || perm('fl') || drvOn();
