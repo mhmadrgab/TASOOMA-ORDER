@@ -40,7 +40,7 @@ async function add(){
   const adm=f.r==="adm";
   await setDoc(doc(X.db,"staff",e),{name:n,enabled:true,admin:adm,p:{req:true,cus:true,fl:true}});
   f={e:"",n:"",p:"",r:"acc"};X.toast("تمت إضافة "+n+(adm?" كمدير":" — راجع الصلاحيات"));
- }catch(x){X.toast(AERR(x))}
+ }catch(x){if(!(window.uiAuthErr&&uiAuthErr(x,"الموظف")))X.toast(AERR(x))}
  busy=false;X.redraw();
 }
 async function click(e){

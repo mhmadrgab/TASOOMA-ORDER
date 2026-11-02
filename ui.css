@@ -47,6 +47,17 @@ button:not(:disabled):active{transform:scale(.97)}
 #md.on,#em.on,.mdl.on,.wkm.on{animation:ui-fade .22s ease both;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 #md.on .mb,#em.on .eb,.mdl.on .card,.wkm.on .wkk{animation:ui-pop .38s cubic-bezier(.2,.9,.3,1.2) both}
 
+/* زرار "تنزيل الصورة" في ورقة الطلب */
+.ov a.b{display:inline-block;text-decoration:none;font:inherit;font-weight:700;border-radius:12px;padding:13px 22px;border:1.5px solid #d4ae5c;background:#d4ae5c;color:#1b1b1b}
+
+/* نافذة "افتح التسجيل في Firebase" */
+#uim{display:none;position:fixed;inset:0;z-index:98;background:rgba(0,0,0,.55);overflow:auto;padding:18px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+#uim.on{display:block;animation:ui-fade .22s ease both}
+.uik{max-width:460px;margin:8vh auto;background:var(--card);color:var(--ink);border-radius:20px;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.35);animation:ui-pop .38s cubic-bezier(.2,.9,.3,1.2) both}
+.uik .uii{font-size:40px;line-height:1}.uik h3{margin:8px 0 6px}.uik p{margin:0 0 8px;color:var(--mut)}
+.uik ol{margin:0 0 16px;padding-inline-start:20px;line-height:2}
+.uib{display:flex;gap:10px;flex-wrap:wrap}.uib .bt{text-decoration:none;display:inline-block}
+
 /* كارت الترحيب */
 .hello{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
  background:linear-gradient(135deg,#1b1b1b 0%,#2b2416 100%);color:#fff;border-radius:20px;padding:18px 22px;margin-bottom:16px;

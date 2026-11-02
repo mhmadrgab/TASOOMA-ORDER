@@ -350,12 +350,12 @@ document.addEventListener("click",async e=>{
   const todo=BR.map(code).filter(c=>!(c in B));if(!todo.length){toast("كل الحسابات منشأة");return}
   if(!confirm(`إنشاء ${todo.length} حساب فرع؟`))return;
   let ok=0;const bad=[];
-  for(const c of todo){try{await mkBranch(c);ok++}catch(x){bad.push(c+": "+AERR(x))}await sleep(300)}
+  for(const c of todo){try{await mkBranch(c);ok++}catch(x){if(x&&x.code==="auth/admin-restricted-operation"){window.uiSignupOff&&uiSignupOff("حسابات الفروع");return}bad.push(c+": "+AERR(x))}await sleep(300)}
   toast(`تم إنشاء ${ok} حساب`+(bad.length?` — فشل ${bad.length}`:""));
   if(bad.length)alert("الحسابات اللي فشلت:\n"+bad.join("\n"));
  }
  else if(t.id==="cpall")cpy(BR.filter(b=>P[code(b)]&&B[code(b)]).map(b=>msg(code(b))).join("\n\n———\n\n"));
- }catch(x){toast(AERR(x))}
+ }catch(x){if(!(window.uiAuthErr&&uiAuthErr(x,"الفرع")))toast(AERR(x))}
 });
 document.addEventListener("change",e=>{if(e.target.id==="fb"){fb=e.target.value;draw()}if(e.target.id==="fdf"||e.target.id==="fdt"){if(e.target.id==="fdf")fdf=e.target.value;else fdt=e.target.value;if(fdf&&fdt&&fdf>fdt)[fdf,fdt]=[fdt,fdf];draw()}});
 document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"&&d.dataset.id){const id=d.dataset.id;if(d.open){openSet.add(id);openSet.delete("-"+id)}else{openSet.delete(id);openSet.add("-"+id)}}},true);

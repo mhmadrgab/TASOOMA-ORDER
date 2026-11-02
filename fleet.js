@@ -240,7 +240,7 @@ async function click(e){
    await setDoc(doc(X.db,"secrets",id),{pw:nw});X.toast("تم تغيير كلمة السر");
   }
   else if(a==="dcp"){const d=DRV.find(x=>x.id===id);if(d&&PW[id])cpy(dmsg(d))}
- }catch(x){X.toast("تعذر التنفيذ: "+(x&&x.code||x&&x.message))}
+ }catch(x){if(!(window.uiAuthErr&&uiAuthErr(x,"السائق")))X.toast("تعذر التنفيذ: "+(x&&x.code||x&&x.message))}
 }
 function note(t,b,tag){X.toast(b?t+" — "+b:t);notify(t,b,tag);beep()}
 export function alertsCount(){return X?alerts().length:0}

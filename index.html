@@ -281,7 +281,7 @@ button.b.sd{background:var(--acc);border-color:var(--acc);color:#1b1b1b;flex:2}
 <div class="hist" id="hist"><div class="hh"><h3>سجل الأوراق</h3><div class="hf"><input id="hq" placeholder="ابحث: رقم أو فرع أو تاريخ"><input id="hd" type="date" aria-label="اليوم"></div></div><div id="hs"></div><div id="hl"></div><div class="hb"><button class="b sm2" id="bk" type="button">نسخة احتياطية</button><button class="b sm2" id="rs2" type="button">استعادة</button></div></div>
 <p class="tip">نصيحة: انسخ 4 أعمدة (كود، لون، مقاس، كمية) من إكسل والصقهم في أول خانة كود، والورقة تتملي لوحدها. و Enter بينقلك للخانة اللي بعدها.</p>
 <div class="sb" id="sb"><button class="b p" id="sv" type="button">📷 حفظ كصورة (جودة عالية)</button><button class="b" id="xs" type="button">رجوع</button></div>
-<div class="ov" id="ov"><div class="ob"><p>الصورة جاهزة. اضغط مطولاً عليها (أو كليك يمين) واختار حفظ الصورة.</p><img id="oi" alt="الورقة"><div class="act2"><button class="b" id="os" type="button" hidden>مشاركة</button><button class="b p" id="oc" type="button">إغلاق</button></div></div></div>
+<div class="ov" id="ov"><div class="ob"><p>الصورة جاهزة بأعلى جودة ✅ التنزيل بدأ لوحده. لو مانزلتش اضغط "تنزيل الصورة".</p><img id="oi" alt="الورقة"><div class="act2"><a class="b p" id="od" href="#" download>⬇️ تنزيل الصورة</a><button class="b" id="oc" type="button">إغلاق</button></div></div></div>
 <datalist id="dc"></datalist><datalist id="dz"></datalist><div class="act"><button class="b sd" id="sd" type="button">📤 إرسال للمستودع</button><button class="b" id="pr" type="button">طباعة الورقة</button><button class="b" id="add" type="button">+ سطر</button><button class="b" id="cp" type="button">نسخ كنص</button><button class="b" id="so" type="button">رتّب حسب الكود</button><button class="b" id="sh" type="button">وضع الصورة</button><button class="b" id="clr" type="button">+ ورقة جديدة</button></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -442,19 +442,20 @@ async function snap(){
  b.disabled=true;b.textContent="جاري تجهيز الصورة...";
  try{
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
-  const cv=await html2canvas($(".sheet"),{scale:Math.min(4,Math.max(3,(window.devicePixelRatio||1)*1.5)),backgroundColor:getComputedStyle(document.body).backgroundColor,useCORS:true,logging:false});
+  // أعلى جودة يقدر الموبايل يتحمّلها: لحد 6 أضعاف، من غير ما نعدّي حد حجم الصورة في الآيفون (حوالي 16 مليون بكسل)
+  const sh=$(".sheet"),ar=Math.max(1,sh.offsetWidth*sh.offsetHeight),sc=Math.max(2,Math.min(6,Math.sqrt(16e6/ar)));
+  const cv=await html2canvas(sh,{scale:sc,backgroundColor:getComputedStyle(document.body).backgroundColor,useCORS:true,logging:false});
   const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
   lastBlob=blob;lastName=`tasooma-sheet-${st.no}-${st.dt}.png`;
   let done=false;
-  try{const dl=window.claude&&claude.use?await claude.use("downloads"):null;if(dl){await dl.save({filename:lastName,data:blob});done=true}}catch(e){if(e&&e.code==="declined")done=true}
-  if(!done){$("#oi").src=URL.createObjectURL(blob);$("#ov").classList.add("on");
-   const f=new File([blob],lastName,{type:"image/png"});$("#os").hidden=!(navigator.canShare&&navigator.canShare({files:[f]}))}
+
+  if(!done){const u=URL.createObjectURL(blob),a=$("#od");$("#oi").src=u;a.href=u;a.download=lastName;$("#ov").classList.add("on");a.click()}// تنزيل مباشر كملف PNG
  }catch(e){b.textContent="تعذر عمل الصورة";setTimeout(()=>b.textContent=t,2500);b.disabled=false;return}
  b.disabled=false;b.textContent=t;
 }
 $("#sv").addEventListener("click",snap);
 $("#oc").addEventListener("click",()=>$("#ov").classList.remove("on"));
-$("#os").addEventListener("click",()=>{if(lastBlob)navigator.share({files:[new File([lastBlob],lastName,{type:"image/png"})]}).catch(()=>{})});
+
 $("#sh").addEventListener("click",()=>{document.body.classList.add("shot");window.scrollTo(0,0)});
 $("#xs").addEventListener("click",()=>document.body.classList.remove("shot"));
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.body.classList.remove("shot");$("#ov").classList.remove("on")}});
