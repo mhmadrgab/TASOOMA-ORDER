@@ -1,7 +1,7 @@
 // إعدادات Firebase لمشروع TASOOMA (مشتركة بين صفحة الفرع وصفحة المستودع)
 import {initializeApp,getApps} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getFirestore,collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getAuth,initializeAuth,browserSessionPersistence,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDSMJmTT9Ed3hQYIe2zGhEUKKt0qTL3ZwM",
   authDomain: "tasooma-ad4fe.firebaseapp.com",
@@ -16,7 +16,9 @@ export const emailOf=c=>`${c}@${DOMAIN}`;
 // كل صفحة بتفتح "تطبيق" باسم مختلف علشان جلسة الدخول ما تتخلطش (فرع / مستودع / إنشاء حسابات)
 export function makeFb(name){
   const app=getApps().find(a=>a.name===name)||initializeApp(firebaseConfig,name);
-  return {app,db:getFirestore(app),auth:getAuth(app)};
+  // الدخول بيتنسي أول ما الصفحة أو التطبيق يتقفل: كل مرة تفتح لازم تكتب كلمة السر (مفيش فتح لوحده)
+  let auth;try{auth=initializeAuth(app,{persistence:browserSessionPersistence})}catch(e){auth=getAuth(app)}
+  return {app,db:getFirestore(app),auth};
 }
 export const withTimeout=(p,ms=15000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
 // ---------- الحد اليومي المجاني لـ Firebase ----------

@@ -2,13 +2,14 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<!-- شاشة البداية للتطبيق المثبّت: خطوط لوجو تاسومة بترسم نفسها بدل الشاشة البيضا -->
-<script>if(navigator.standalone||matchMedia("(display-mode: standalone)").matches)document.documentElement.classList.add("app");setTimeout(function(){var b=document.getElementById("boot");if(b)b.remove()},6000)</script>
+<!-- شاشة البداية: خطوط لوجو تاسومة بترسم نفسها. ومحتوى الصفحة مخفي (aw) لحد ما نعرف مين داخل، علشان مايبانش حاجة قبل تسجيل الدخول -->
+<script>(function(){var h=document.documentElement;h.classList.add("aw");if(navigator.standalone||matchMedia("(display-mode: standalone)").matches)h.classList.add("app");setTimeout(function(){if(!h.classList.contains("aw"))return;var g=document.getElementById("gate");if(g&&!document.body.classList.contains("lock"))g.classList.add("on");h.classList.remove("aw");var b=document.getElementById("boot");if(b)b.remove()},10000)})()</script>
 <style>
 html.app{background:#1b1b1b}
 #boot{display:none}
-html.app #boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(55% 40% at 50% 45%,#2b2315 0%,#1b1b1b 70%);transition:opacity .5s ease,visibility .5s}
-html.app #boot.out{opacity:0;visibility:hidden}
+html.aw body>*:not(#boot){visibility:hidden!important}
+html.app #boot,html.aw #boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(55% 40% at 50% 45%,#2b2315 0%,#1b1b1b 70%);transition:opacity .5s ease,visibility .5s}
+#boot.out{opacity:0;visibility:hidden}
 #boot svg{width:136px;height:136px;overflow:visible;filter:drop-shadow(0 0 18px rgba(212,174,92,.25))}
 #boot .l{fill:none;stroke:#d4ae5c;stroke-width:5;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:bd .75s calc(var(--i)*55ms) cubic-bezier(.55,.1,.25,1) forwards,bl .5s 1.4s ease forwards}
 #boot .f{fill:#fff;fill-rule:evenodd;opacity:0;animation:bf .55s 1.15s ease forwards}
@@ -518,13 +519,13 @@ g("gg").onclick=async()=>{
 };
 g("gp").addEventListener("keydown",e=>{if(e.key==="Enter")g("gg").click()});
 onAuthStateChanged(auth,async u=>{
- if(!u){gateOn();return}
+ if(!u){gateOn();window.uiReady&&uiReady();return}
  const c=(u.email||"").split("@")[0],b=BR.find(x=>code(x)===c);
  if(!b){await signOut(auth);showErr("حساب غير صالح لهذه الصفحة");return}
  try{
   const d=await withTimeout(getDoc(doc(db,"branches",c)),12000);
   if(!d.exists()||d.data().enabled!==true){await signOut(auth);showErr("الفرع ده معطّل. كلّم المستودع.");return}
-  enter(b);
+  enter(b);window.uiReady&&uiReady();
  }catch(e){await signOut(auth);showErr("تعذر التحقق من الفرع. اتأكد من الإنترنت وجرّب تاني.")}
 });
 const mkNo=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");return `${code(B)}-${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`};

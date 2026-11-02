@@ -54,8 +54,12 @@
  addEventListener("online",net);addEventListener("offline",net);net();
  mo.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class","hidden"]});
  stage();enter([...document.querySelectorAll(SEL)]);
- // شاشة البداية (التطبيق المثبّت): تختفي بعد ما رسمة اللوجو تكمل (حوالي 1.7 ثانية من فتح التطبيق)
- const boot=document.getElementById("boot");
- if(boot){if(getComputedStyle(boot).display==="none")boot.remove();
-  else setTimeout(()=>{boot.classList.add("out");setTimeout(()=>boot.remove(),600)},Math.max(0,1700-performance.now()))}
+ // شاشة البداية + انتظار الدخول: محتوى الصفحة مخفي (aw) لحد ما الصفحة تقول "عرفنا مين داخل" بـ uiReady()
+ // في التطبيق المثبّت بنستنى كمان رسمة اللوجو تكمل (حوالي 1.7 ثانية)
+ const H=document.documentElement,boot=document.getElementById("boot");
+ let ready=false,minDone=!H.classList.contains("app");
+ const hide=()=>{if(!ready||!minDone||!boot||!boot.isConnected||boot.classList.contains("out"))return;boot.classList.add("out");setTimeout(()=>boot.remove(),600)};
+ if(!minDone)setTimeout(()=>{minDone=true;hide()},Math.max(0,1700-performance.now()));
+ window.uiReady=()=>{if(ready)return;ready=true;H.classList.remove("aw");hide()};
+ if(!H.classList.contains("aw"))window.uiReady();// صفحات من غير تسجيل دخول
 })();
