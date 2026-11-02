@@ -72,7 +72,7 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
 <div class="mdl" id="md"></div>
 <script type="module">
 import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,addDoc,updateDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
-import {wireButtons,regSW,notify,beep} from "./notify.js";
+import {wireButtons,regSW,notify,beep,autoPush} from "./notify.js";
 import {shrink} from "./cust.js";
 const {app,db,auth}=makeFb("drv");
 const g=id=>document.getElementById(id);
@@ -102,7 +102,13 @@ function order(rs,from){
  return out.concat(no);
 }
 // وقت الوصول المتوقع لكل فرع (من متوسط الرحلات السابقة)
-function etas(list,from){let t=from;const o={};for(const x of list){const a=GEO.br[codeOf(x.brn)];if(!a||!a.avg)break;t+=a.avg*60000;o[x.rid||x.id]=t}return o}
+// الوقت المتوقع: حسب "من فين لفين" (المستودع←الملقا غير غرناطة←الملقا)، ولو المشوار أول مرة نقدّره من المسافة
+function legMin(prev,code){
+ const pr=GEO.pairs&&GEO.pairs[prev+">"+code];if(pr)return pr;
+ const a=prev==="WH"?GEO.wh:GEO.br[prev],b=GEO.br[code];if(a&&b)return km2(a,b)*1.3/35*60+5;
+ return b&&b.avg?b.avg:null;
+}
+function etas(list,from,prev="WH"){let t=from;const o={};for(const x of list){const c=codeOf(x.brn),m=legMin(prev,c);if(!m)break;t+=m*60000;o[x.rid||x.id]=t;prev=c}return o}
 const mapLink=list=>{const pts=list.map(x=>GEO.br[codeOf(x.brn)]).filter(Boolean);if(!pts.length)return "";const d=pts[pts.length-1],w=pts.slice(0,-1).map(p=>p.lat+","+p.lng).join("|");return `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}${w?"&waypoints="+encodeURIComponent(w):""}&travelmode=driving`};
 // ---------- دخول ----------
 g("gg").onclick=async()=>{
@@ -124,13 +130,13 @@ onAuthStateChanged(auth,async u=>{
   me={id,name:String(d.data().name||id)};
  }catch(e){await signOut(auth);g("ge").textContent="تعذر التحقق. اتأكد من الإنترنت وجرّب تاني.";return}
  g("gate").hidden=true;g("app").hidden=false;g("nm").textContent=me.name;wireButtons();startAll();window.uiReady&&uiReady();
- window.__push=()=>pushRegister(app,db,{role:"driver",key:me.id,email:u.email});window.__push();// إشعارات الموبايل للسائق
+ window.__push=()=>pushRegister(app,db,{role:"driver",key:me.id,email:u.email});autoPush();// إشعارات الموبايل للسائق
 });
 let firstReq=true;
 function startAll(){
  stopAll();firstReq=true;
  un.push(onSnapshot(collection(db,"cars"),sn=>{CARS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(c=>c.active!==false);draw()},()=>toast("تعذر قراءة السيارات","er")));
- un.push(onSnapshot(doc(db,"geo","main"),d=>{const v=d.exists()?d.data():null;GEO={br:(v&&v.br&&typeof v.br==="object")?v.br:{},wh:v&&v.wh||null};draw()},()=>{}));
+ un.push(onSnapshot(doc(db,"geo","main"),d=>{const v=d.exists()?d.data():null;GEO={br:(v&&v.br&&typeof v.br==="object")?v.br:{},wh:v&&v.wh||null,pairs:(v&&v.pairs&&typeof v.pairs==="object")?v.pairs:{}};draw()},()=>{}));
  // توفير القراءات: السائق محتاج بس الطلبات اللي لسه عنده (قيد التجهيز / في الطريق)، مش كل اللي سلّمه من أول يوم
  un.push(onSnapshot(query(collection(db,"requests"),where("asg.drv","==",me.id),where("st","in",["prep","go"])),sn=>{
   const old=new Set(REQ.map(r=>r.id));
@@ -231,7 +237,7 @@ function podForm(rid){
   if(img)pod.img=img;
   try{
    const st=(a.stops||[]).map(x=>{if(x.rid!==rid)return x;const o={...x,arr:ts,rcvr:nm.slice(0,60)};if(loc){o.lat=loc.lat;o.lng=loc.lng}return o});
-   const rem=st.filter(x=>!x.arr),et=etas(rem,ts);
+   const rem=st.filter(x=>!x.arr),et=etas(rem,ts,codeOf(s.brn));// الباقي محسوب من الفرع اللي اتسلّم دلوقتي
    const stt=st.map(x=>et[x.rid]?{...x,eta:et[x.rid]}:x);
    const b=writeBatch(db),tu={stops:stt};if(loc)tu.loc={...loc,ts};
    b.update(doc(db,"trips",a.id),tu);b.update(doc(db,"requests",rid),{st:"done",dlv:ts,upd:ts,pod});
