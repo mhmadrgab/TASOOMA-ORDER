@@ -203,7 +203,7 @@ async function click(e){
    const dv=DRV.find(x=>x.id===document.querySelector(`[data-asd="${id}"]`).value),c=CARS.find(x=>x.id===document.querySelector(`[data-asc="${id}"]`).value),r=X.R().find(x=>x.id===id);
    if(!dv||!c){X.toast("اختر السائق والسيارة");return}
    const u={asg:{drv:dv.id,drvn:dv.name,car:c.id,carn:c.name+(c.plate?" "+c.plate:"")},upd:Date.now()};if(r&&r.st==="new")u.st="prep";
-   await updateDoc(doc(X.db,"requests",id),u);X.toast("تم التعيين: "+dv.name);
+   await updateDoc(doc(X.db,"requests",id),u);if(X.ping)X.ping([id]);X.toast("تم التعيين: "+dv.name);
   }
   else if(a==="unasg"){await updateDoc(doc(X.db,"requests",id),{asg:null,upd:Date.now()});X.toast("اتلغى التعيين")}
   else if(a==="bulk"){
@@ -212,7 +212,7 @@ async function click(e){
    if(!dv||!c){X.toast("اختر السائق والسيارة");return}
    const b=writeBatch(X.db),ts=Date.now(),asg={drv:dv.id,drvn:dv.name,car:c.id,carn:c.name+(c.plate?" "+c.plate:"")};
    rs.forEach(r=>{const u={asg,upd:ts};if(r.st==="new")u.st="prep";b.update(doc(X.db,"requests",r.id),u)});
-   await b.commit();BK.clear();X.toast(`تم تعيين ${rs.length} طلب لـ ${dv.name}`);
+   await b.commit();if(X.ping)X.ping(rs.map(r=>r.id));BK.clear();X.toast(`تم تعيين ${rs.length} طلب لـ ${dv.name}`);
   }
   else if(a==="tend"){
    // رحلة السائق نسي يقفلها: المستودع يقفلها، والفروع اللي ماوصلهاش ترجع "قيد التجهيز"

@@ -44,7 +44,7 @@ function openRcv(id){
   const note=g("rn").value.trim().slice(0,500),rcv={at:Date.now(),ok:!lines.length&&!note,lines,note};
   if(!note)delete rcv.note;
   g("rc1").disabled=true;
-  try{await withTimeout(updateDoc(doc(X.db,"requests",id),{st:"recv",rcv}),15000);closeX();X.toast(rcv.ok?"تم تأكيد الاستلام ✅":"تم تسجيل الاستلام مع الملاحظات ✅")}
+  try{await withTimeout(updateDoc(doc(X.db,"requests",id),{st:"recv",rcv}),15000);if(X.ping)X.ping([id]);closeX();X.toast(rcv.ok?"تم تأكيد الاستلام ✅":"تم تسجيل الاستلام مع الملاحظات ✅")}
   catch(e){g("rc1").disabled=false;const why=await failReason(e);X.toast(why==="denied"?"مش مسموح. ممكن المستودع غيّر حالة الطلب.":FAIL_MSG[why],"er")}
  };
 }

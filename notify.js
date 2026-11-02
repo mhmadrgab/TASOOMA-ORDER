@@ -16,7 +16,9 @@ export function wireButtons(){
   const bell=document.getElementById("bell"),ins=document.querySelectorAll("[data-install]");
   const paint=()=>{if(!bell)return;if(!canNotify()){bell.hidden=true;return}bell.textContent=Notification.permission==="granted"?"🔔 التنبيهات مفعّلة":"🔔 تفعيل التنبيهات";bell.dataset.on=Notification.permission==="granted"?"1":"0"};
   paint();
-  if(bell)bell.onclick=async()=>{if(Notification.permission==="denied"){alert("التنبيهات مقفولة من إعدادات المتصفح. افتح إعدادات الموقع (القفل جنب الرابط) وفعّل الإشعارات.");return}await askNotify();paint()};
+  if(bell)bell.onclick=async()=>{if(Notification.permission==="denied"){alert("التنبيهات مقفولة من إعدادات المتصفح. افتح إعدادات الموقع (القفل جنب الرابط) وفعّل الإشعارات.");return}
+   if(isIOS()&&!isStandalone()){alert("على الآيفون: الإشعارات بتشتغل بس من التطبيق المثبّت. دوس زرار المشاركة ثم «إضافة إلى الشاشة الرئيسية»، وافتح التطبيق من هناك وفعّل التنبيهات.");return}
+   await askNotify();paint();if(Notification.permission==="granted"&&window.__push)window.__push()};// تسجيل الجهاز لإشعارات الموبايل
   ins.forEach(b=>b.onclick=async()=>{if(!(await install())&&isIOS()){alert("على الآيفون: دوس زرار المشاركة (المربع والسهم) ثم اختار «إضافة إلى الشاشة الرئيسية».")}});
   if(isIOS()&&!isStandalone())ins.forEach(b=>b.hidden=false);
 }

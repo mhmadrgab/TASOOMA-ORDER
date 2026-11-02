@@ -21,6 +21,32 @@ export function makeFb(name){
   return {app,db:getFirestore(app),auth};
 }
 export const withTimeout=(p,ms=15000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
+// ---------- إشعارات الموبايل (حتى والتطبيق مقفول) ----------
+// بعد الدخول وتفعيل التنبيهات: الجهاز بيسجّل نفسه في push/{token}، والسيرفر بيبعتله.
+// info = {role: "staff"|"branch"|"driver", key: الإيميل أو كود الفرع أو اسم السائق, email}
+export async function pushRegister(app,db,info){
+  try{
+    if(!("Notification" in window)||Notification.permission!=="granted"||!("serviceWorker" in navigator))return false;
+    const m=await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js");
+    if(!(await m.isSupported()))return false;
+    const reg=await navigator.serviceWorker.ready;
+    const tok=await m.getToken(m.getMessaging(app),{serviceWorkerRegistration:reg});
+    if(!tok)return false;
+    await setDoc(doc(db,"push",tok),{role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),ts:Date.now()});
+    return true;
+  }catch(e){console.warn("push",e);return false}
+}
+// ---------- تنبيه سيرفر الإشعارات (Cloudflare) إن طلب اتغيّر، علشان يبعت للموبايلات في نفس الثانية ----------
+// السيرفر بيقرا الطلب بنفسه ويقرر يبعت لمين؛ هنا بس بنقوله "بص على الطلبات دي" ومعانا توكن الدخول
+export const PUSH_URL="https://tasooma-push.tasooma.workers.dev";// سيرفر الإشعارات على Cloudflare (مجلد push-server)
+export async function ping(auth,ids){
+  try{
+    ids=[...new Set((ids||[]).filter(Boolean))];if(!PUSH_URL||!ids.length)return;
+    const u=auth&&auth.currentUser;if(!u)return;
+    const t=await u.getIdToken();
+    fetch(PUSH_URL+"/notify",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({ids}),keepalive:true}).catch(()=>{});
+  }catch(e){}
+}
 // ---------- الحد اليومي المجاني لـ Firebase ----------
 // لما الحد يخلص، Firebase بيفضل يعيد المحاولة في صمت، فكانت الصفحة بتقول "النت ضعيف" وهو مش ضعيف.
 // بنسأل السيرفر سؤال صغير (من غير دخول) ونشوف رده: 429 = الحد خلص.

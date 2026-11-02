@@ -106,12 +106,12 @@ export function pick(r){
  const save=async by=>{
   const t=Date.now(),u={prep:{by,names:by.map(nm),at:N(r.prep&&r.prep.at)||(start?t:N(r.upd)||t)}};
   if(start){u.st="prep";u.upd=t}
-  try{await updateDoc(doc(X.db,"requests",r.id),u);close();X.toast(start?"بدأ التجهيز":"تم الحفظ")}catch(e){X.toast("تعذر الحفظ: "+(e&&e.code||e&&e.message))}
+  try{await updateDoc(doc(X.db,"requests",r.id),u);if(X.ping)X.ping([r.id]);close();X.toast(start?"بدأ التجهيز":"تم الحفظ")}catch(e){X.toast("تعذر الحفظ: "+(e&&e.code||e&&e.message))}
  };
  g("wkok").onclick=()=>{const by=[...m.querySelectorAll("input:checked")].map(i=>i.value).slice(0,10);
   if(!by.length){X.toast("اختار عامل واحد على الأقل");return}
   try{localStorage.setItem("wk_last",JSON.stringify(by))}catch(e){}save(by)};
- if(g("wkno"))g("wkno").onclick=async()=>{try{await updateDoc(doc(X.db,"requests",r.id),{st:"prep",upd:Date.now()});close()}catch(e){X.toast("تعذر الحفظ: "+(e&&e.code||e&&e.message))}};
+ if(g("wkno"))g("wkno").onclick=async()=>{try{await updateDoc(doc(X.db,"requests",r.id),{st:"prep",upd:Date.now()});if(X.ping)X.ping([r.id]);close()}catch(e){X.toast("تعذر الحفظ: "+(e&&e.code||e&&e.message))}};
 }
 // ---------- التقارير ----------
 function report(){

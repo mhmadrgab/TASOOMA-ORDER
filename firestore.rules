@@ -200,6 +200,20 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // أجهزة إشعارات الموبايل: كل جهاز بيسجّل نفسه باسم صاحبه بس (السيرفر بيقرا بصلاحياته الخاصة)
+    match /push/{tok} {
+      function okPush() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['role','key','email','ts'])
+          && d.email == request.auth.token.email && d.ts is number && d.key is string && d.key.size() <= 120
+          && ((d.role == 'branch' && isBranch() && d.key == myCode())
+            || (d.role == 'driver' && isDriver() && d.key == myDrv())
+            || (d.role == 'staff' && !isBranch() && !isDriver() && d.key == request.auth.token.email));
+      }
+      allow create, update: if signedIn() && tok.size() <= 400 && okPush();
+      allow delete: if signedIn() && resource.data.email == request.auth.token.email;
+    }
+
     // أي حاجة تانية ممنوعة
   }
 }

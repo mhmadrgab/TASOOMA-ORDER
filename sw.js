@@ -1,5 +1,5 @@
 // خدمة بسيطة: شبكة أولاً، ولو النت قطع تفتح آخر نسخة من الصفحة. مفيش تخزين لبيانات Firebase.
-const V="tasooma-v21";
+const V="tasooma-v23";
 const SHELL=["./index.html","./admin.html","./ui.css","./ui.js","./workers.js","./fb.js","./cust.js","./notify.js","./br-extra.js","./ad-extra.js","./fleet.js","./staff.js","./driver.html","./manifest-driver.json","./icon-192.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
@@ -8,3 +8,9 @@ self.addEventListener("fetch",e=>{
  const u=new URL(r.url);if(u.origin!==location.origin)return;
  e.respondWith(fetch(r).then(res=>{if(res.ok){const cp=res.clone();caches.open(V).then(c=>c.put(r,cp))}return res}).catch(()=>caches.match(r,{ignoreSearch:true})));
 });
+// إشعارات الموبايل والتطبيق مقفول (Firebase Cloud Messaging): المكتبة بتعرض الإشعار لوحدها، والضغط عليه بيفتح الصفحة
+try{
+ importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js","https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js");
+ firebase.initializeApp({apiKey:"AIzaSyDSMJmTT9Ed3hQYIe2zGhEUKKt0qTL3ZwM",authDomain:"tasooma-ad4fe.firebaseapp.com",projectId:"tasooma-ad4fe",storageBucket:"tasooma-ad4fe.firebasestorage.app",messagingSenderId:"463966731953",appId:"1:463966731953:web:6b43696b49837494d82c90"});
+ firebase.messaging();
+}catch(e){}
