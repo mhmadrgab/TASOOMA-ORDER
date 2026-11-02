@@ -299,6 +299,14 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.email == request.auth.token.email;
     }
 
+    // آخر نسخة احتياطية إمتى (meta/backup = {at, n}): لمالك النظام بس
+    match /meta/{id} {
+      allow read:  if isOwner();
+      allow write: if isOwner() && id == 'backup'
+        && request.resource.data.keys().hasOnly(['at','n'])
+        && request.resource.data.at is number && request.resource.data.n is number;
+    }
+
     // أي حاجة تانية ممنوعة
   }
 }

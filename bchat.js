@@ -34,6 +34,7 @@ const STYLE=`
 .bcg.me .bcvo button{background:#fff;color:#1b1b1b}
 .bcvo span.bar{flex:1;height:5px;border-radius:9px;background:rgba(0,0,0,.15);overflow:hidden}.bcvo span.bar b{display:block;height:100%;width:0;background:currentColor;transition:width .2s linear}
 .bcvo span.du{font-size:12.5px;font-weight:700;opacity:.8}
+.bcgone{font-size:13px;opacity:.75;font-style:italic}
 .bcmore{align-self:center;font:inherit;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 14px;cursor:pointer}
 .bcq{display:flex;gap:6px;overflow-x:auto;padding:8px 10px 0;scrollbar-width:none;flex:none}.bcq::-webkit-scrollbar{display:none}
 .bcq button{font:inherit;font-size:13px;white-space:nowrap;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:5px 12px;cursor:pointer;flex:none}
@@ -159,7 +160,8 @@ function paintMsgs(){
   if(!MSGS.length)h+=`<div class="bcmt ok">💬 مفيش رسايل لسه.<br>${X.by==="br"?"اكتب للمستودع أي حاجة، أو دوس 🎤 وسجّل رسالة صوتية.":"ابدأ المحادثة مع الفرع."}</div>`;
   MSGS.forEach(m=>{const dd=dayOf(m.ts);if(dd!==d){d=dd;h+=`<div class="bcday">${E(dd)}</div>`}
     const me=m.by===X.by,who=m.by==="wh"?"المستودع"+(m.n?" · "+m.n:""):"الفرع"+(m.n?" · "+m.n:"");
-    const body=m.v?`<div class="bcvo"><button data-play="${E(m.id)}" type="button" aria-label="تشغيل">${PLAY.id===m.id?"⏸":"▶"}</button><span class="bar"><b id="bcpb-${E(m.id)}"></b></span><span class="du">${mmss(m.d)}</span></div>`:E(m.t||"");
+    // gone: السيرفر مسح الصوت بعد 30 يوم (علشان مساحة Firebase المجانية)
+    const body=m.v&&m.gone?`<div class="bcgone">🎤 رسالة صوتية (${mmss(m.d)}) · اتمسحت تلقائياً بعد 30 يوم</div>`:m.v?`<div class="bcvo"><button data-play="${E(m.id)}" type="button" aria-label="تشغيل">${PLAY.id===m.id?"⏸":"▶"}</button><span class="bar"><b id="bcpb-${E(m.id)}"></b></span><span class="du">${mmss(m.d)}</span></div>`:E(m.t||"");
     h+=`<div class="bcg ${me?"me":"ot"}">${me?"":`<i>${E(who)}</i>`}${body}<small>${hm(m.ts)}${me?(N(m.ts)<=seen?" <em>✓✓</em>":" ✓"):""}</small></div>`});
   box.innerHTML=h;
   if(keepTop){box.scrollTop=box.scrollHeight-keepTop.h+keepTop.t;keepTop=null}
@@ -248,9 +250,10 @@ async function play(id){
   let a=AUD.get(key);
   if(!a){
     const b=btn();if(b)b.textContent="⏳";
-    try{const s=await withTimeout(getDoc(doc(X.db,"chats",code,"aud",id)),15000);a=s.exists()?String(s.data().a||""):""}catch(e){a=""}
+    let none=false;
+    try{const s=await withTimeout(getDoc(doc(X.db,"chats",code,"aud",id)),15000);none=!s.exists();a=none?"":String(s.data().a||"")}catch(e){a=""}
     if(my!==GEN||PLAY.au!==au)return;
-    if(!/^data:audio\//.test(a)){stopPlay();return void X.toast("تعذر تحميل الرسالة الصوتية",true)}
+    if(!/^data:audio\//.test(a)){stopPlay();return void X.toast(none?"الرسالة الصوتية دي اتمسحت (أقدم من 30 يوم)":"تعذر تحميل الرسالة الصوتية",true)}
     AUD.set(key,a);if(AUD.size>40)AUD.delete(AUD.keys().next().value);
   }
   au.src=a;
