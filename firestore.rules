@@ -93,11 +93,29 @@ service cloud.firestore {
           && r.lines is list && r.lines.size() <= 400
           && (!('note' in r) || (r.note is string && r.note.size() <= 500));
       }
+      // المحادثة جوه الطلب: msgs = [{id, by, n, t, ts}]. مسموح بس "إضافة رسالة واحدة في الآخر":
+      // الرسايل القديمة ماتتغيّرش ولا تتمسح، والرسالة الجديدة باسم الطرف اللي بيكتب (br = الفرع، wh = المستودع)
+      function chatAdd(by) {
+        let o = resource.data.get('msgs', []);
+        let n = request.resource.data.get('msgs', []);
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['msgs'])
+          && n is list && n.size() == o.size() + 1 && n.size() <= 200
+          && n[o.size()] is map
+          && n.removeAll([n[o.size()]]) == o
+          && n[o.size()].keys().hasOnly(['id','by','n','t','ts'])
+          && n[o.size()].keys().hasAll(['id','by','n','t','ts'])
+          && n[o.size()].by == by
+          && n[o.size()].id is string && n[o.size()].id.size() <= 30
+          && n[o.size()].n is string && n[o.size()].n.size() <= 60
+          && n[o.size()].t is string && n[o.size()].t.size() > 0 && n[o.size()].t.size() <= 500
+          && n[o.size()].ts is number;
+      }
       // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)، أو يأكد الاستلام
       // السائق: يغيّر حالة الطلب المعيّن له بس (في الطريق / تم التسليم / رجوع للتجهيز)
       allow update: if isAdmin()
         || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat','prep'])
             && (!('prep' in request.resource.data) || validPrep()))
+        || (perm('req') && chatAdd('wh'))
         || (perm('fl') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asg','st','upd']))
         || (drvOn() && resource.data.asg.drv == myDrv()
             && resource.data.st in ['prep','go']
@@ -106,7 +124,8 @@ service cloud.firestore {
             && (!('pod' in request.resource.data) || validPod())
             && (!('eta' in request.resource.data) || request.resource.data.eta is number))
         || (branchOn() && resource.data.br == myCode() && (
-          (resource.data.st == 'new' && validNew())
+          chatAdd('br')
+          || (resource.data.st == 'new' && validNew())
           || (resource.data.st == 'done' && request.resource.data.st == 'recv'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','rcv'])
               && validRcv())
@@ -201,16 +220,18 @@ service cloud.firestore {
     }
 
     // أجهزة إشعارات الموبايل: كل جهاز بيسجّل نفسه باسم صاحبه بس (السيرفر بيقرا بصلاحياته الخاصة)
-    match /push/{tok} {
+    // push/{role__token}: نفس الموبايل ممكن يتسجّل بأكتر من دور (مستودع + فرع على نفس الجهاز)
+    match /push/{pid} {
       function okPush() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['role','key','email','ts'])
+        return d.keys().hasOnly(['role','key','email','ts','tok'])
           && d.email == request.auth.token.email && d.ts is number && d.key is string && d.key.size() <= 120
+          && d.tok is string && d.tok.size() <= 400 && pid == d.role + '__' + d.tok
           && ((d.role == 'branch' && isBranch() && d.key == myCode())
             || (d.role == 'driver' && isDriver() && d.key == myDrv())
             || (d.role == 'staff' && !isBranch() && !isDriver() && d.key == request.auth.token.email));
       }
-      allow create, update: if signedIn() && tok.size() <= 400 && okPush();
+      allow create, update: if signedIn() && okPush();
       allow delete: if signedIn() && resource.data.email == request.auth.token.email;
     }
 

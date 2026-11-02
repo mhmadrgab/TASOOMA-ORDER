@@ -50,6 +50,13 @@ button:not(:disabled):active{transform:scale(.97)}
 /* زرار "تنزيل الصورة" في ورقة الطلب */
 .ov a.b{display:inline-block;text-decoration:none;font:inherit;font-weight:700;border-radius:12px;padding:13px 22px;border:1.5px solid #d4ae5c;background:#d4ae5c;color:#1b1b1b}
 
+/* نافذة "فعّل الإشعارات" بنفس شكل نافذة التسجيل */
+#npm{display:none;position:fixed;inset:0;z-index:97;background:rgba(0,0,0,.55);overflow:auto;padding:18px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+#npm.on{display:block;animation:ui-fade .22s ease both}
+#npm .uik{text-align:center}#npm .uik ol{text-align:right}#npm .uib{justify-content:center}
+#npm .bt{font:inherit;font-weight:700;border-radius:12px;padding:11px 20px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+#npm .bt.p{background:#d4ae5c;border-color:#d4ae5c;color:#1b1b1b}
+
 /* نافذة "افتح التسجيل في Firebase" */
 #uim{display:none;position:fixed;inset:0;z-index:98;background:rgba(0,0,0,.55);overflow:auto;padding:18px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 #uim.on{display:block;animation:ui-fade .22s ease both}

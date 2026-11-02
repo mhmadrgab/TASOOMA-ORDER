@@ -1,6 +1,6 @@
 // إعدادات Firebase لمشروع TASOOMA (مشتركة بين صفحة الفرع وصفحة المستودع)
 import {initializeApp,getApps} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getFirestore,collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getFirestore,collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,arrayUnion} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {getAuth,initializeAuth,browserSessionPersistence,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDSMJmTT9Ed3hQYIe2zGhEUKKt0qTL3ZwM",
@@ -34,7 +34,8 @@ export async function pushRegister(app,db,info){
     const reg=await withTimeout(navigator.serviceWorker.ready,20000);
     const tok=await withTimeout(m.getToken(m.getMessaging(app),{serviceWorkerRegistration:reg}),20000);
     if(!tok)return false;
-    await setDoc(doc(db,"push",tok),{role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),ts:Date.now()});
+    // نفس الموبايل ممكن يبقى مستودع وفرع وسائق مع بعض (نفس الموقع = نفس رقم الجهاز)، فكل دور ليه تسجيل لوحده
+    await setDoc(doc(db,"push",info.role+"__"+tok),{role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),tok,ts:Date.now()});
     return true;
   }catch(e){console.warn("push",e);return false}
 }
@@ -81,4 +82,4 @@ if(typeof document!=="undefined"){
   addEventListener("online",chk);
   if(/admin/.test(location.pathname))setInterval(chk,20*6e4);// لوحة المستودع بتفضل مفتوحة طول اليوم
 }
-export {collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword};
+export {collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,arrayUnion,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword};

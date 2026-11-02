@@ -466,12 +466,13 @@ loadUI();
 <script type="module">
 import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,setDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {initBranch,stopBranch} from "./br-extra.js";
-import {notify,beep,badge} from "./notify.js";
+import {notify,beep,badge,autoPush} from "./notify.js";
+import {initChat,chatBtn,chatSync,stopChat,unreadAll} from "./chat.js";
 const {app,db,auth}=makeFb("branch");
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام",go:"في الطريق إليك 🚚"};
 const ST=x=>LBL[x]?x:"new";
 const g=id=>document.getElementById(id);
-let B=null,unsub=null,prev=null,tt,REQS={};const opn=new Set();
+let B=null,unsub=null,prev=null,tt,REQS={},paint=()=>{};const opn=new Set();
 const lines=rows=>{const m=new Map();(Array.isArray(rows)?rows:[]).forEach(r=>{const k=String(r&&r.k||"");if(!m.has(k))m.set(k,[]);m.get(k).push(r)});return [...m].map(([k,rs])=>`<div><b><bdi dir="ltr">${E(k)}</bdi></b> — ${rs.map(r=>`<bdi dir="ltr">${E(String(r.c||"-"))} ${E(String(r.z||""))} × ${+r.q||0}</bdi>`).join(" · ")}</div>`).join("")};
 document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"&&d.dataset.id){d.open?opn.add(d.dataset.id):opn.delete(d.dataset.id)}},true);
 const code=b=>b.split("-")[0];
@@ -504,9 +505,15 @@ function listen(){
   const all=[...m.values()],rs=all.slice().sort((a,b)=>b.ts-a.ts).slice(0,12);
   hello(all);
   if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${LBL[ST(r.st)]}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
-  REQS={};rs.forEach(r=>REQS[r.id]=r);badge(rs.filter(r=>r.st==="done").length);
+  REQS={};rs.forEach(r=>REQS[r.id]=r);
+  chatSync(rs);// رسالة جديدة من المستودع؟
+  badge(rs.filter(r=>r.st==="done").length+unreadAll(rs));
   prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0});
-  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.edited?`<span class="ed-tag">عدّله المستودع${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span>${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}${+r.eta?" · وصول متوقع حوالي "+new Date(+r.eta).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):""}</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
+  paint();
+ }
+ // بنرسم القائمة لوحدها كمان لما المحادثة تتقفل (علشان رقم الرسايل الجديدة يتحدّث)
+ paint=()=>{const rs=Object.values(REQS).sort((a,b)=>b.ts-a.ts);
+  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.edited?`<span class="ed-tag">عدّله المستودع${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span>${chatBtn(r)}${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}${+r.eta?" · وصول متوقع حوالي "+new Date(+r.eta).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):""}</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
  }
 }
 function enter(b){
@@ -515,8 +522,10 @@ function enter(b){
  B=b;localStorage.setItem("tb",b);document.body.classList.add("lock");g("gate").className="";
  st.br=b;st.ty="load";save();loadUI();g("mb").innerHTML=`<bdi dir="ltr">${E(b)}</bdi>`;hello(null);listen();
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
+ // المحادثة مع المستودع على كل طلب
+ initChat({db,by:"br",me:"br"+code(b),name:()=>String(st&&st.dr||"").trim(),label:r=>"فرع "+String(r.brn||""),get:id=>REQS[id],toast,beep,notify,ping:ids=>ping(auth,ids),onChange:()=>{paint();badge(Object.values(REQS).filter(r=>r.st==="done").length+unreadAll(Object.values(REQS)))}});
 }
-function gateOn(){B=null;stopBranch();REQS={};if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBranch();stopChat();REQS={};if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");
@@ -535,7 +544,7 @@ onAuthStateChanged(auth,async u=>{
   const d=await withTimeout(getDoc(doc(db,"branches",c)),12000);
   if(!d.exists()||d.data().enabled!==true){await signOut(auth);showErr("الفرع ده معطّل. كلّم المستودع.");return}
   enter(b);window.uiReady&&uiReady();
-  window.__push=()=>pushRegister(app,db,{role:"branch",key:c,email:u.email});window.__push();// إشعارات الموبايل للفرع
+  window.__push=()=>pushRegister(app,db,{role:"branch",key:c,email:u.email});autoPush();// إشعارات الموبايل للفرع
  }catch(e){await signOut(auth);showErr("تعذر التحقق من الفرع. اتأكد من الإنترنت وجرّب تاني.")}
 });
 const mkNo=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");return `${code(B)}-${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`};
