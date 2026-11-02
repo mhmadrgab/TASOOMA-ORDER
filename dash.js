@@ -43,11 +43,9 @@ const STYLE=`
 .dz-ring p{margin:0;font-size:12.5px;color:var(--dz-ink2)}
 .dz-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--dz-track);color:var(--dz-ink2)}
 .dz-pill i{width:8px;height:8px;border-radius:50%;flex:none}
-.dz-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
-.dz-kpi{display:flex;flex-direction:column;gap:2px;padding:14px 16px}
-.dz-kpi small{font-size:13px;color:var(--dz-mut);display:flex;align-items:center;gap:6px}
-.dz-kpi b{font-size:28px;line-height:1.25}
-.dz-kpi em{font-style:normal;font-size:12.5px;color:var(--dz-ink2)}
+.dz-sum{display:flex;flex-wrap:wrap;gap:8px;margin:-2px 0 12px}
+.dz-sum span{display:inline-flex;align-items:center;gap:5px;background:var(--dz-card);border-radius:999px;padding:6px 13px;font-size:13.5px;color:var(--dz-ink2);box-shadow:var(--dz-shadow)}
+.dz-sum b{color:var(--dz-ink);font-size:15px}
 .dz-flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .dz-st{position:relative;font:inherit;text-align:start;border:1px solid var(--dz-grid);background:var(--dz-card);color:var(--dz-ink);border-radius:14px;padding:12px 14px 12px;cursor:pointer;overflow:hidden;transition:transform .15s,box-shadow .15s}
 .dz-st:hover,.dz-st:focus-visible{transform:translateY(-2px);box-shadow:var(--dz-shadow);outline:none}
@@ -86,8 +84,8 @@ const STYLE=`
 .dz-grow2 .t i{animation:dzBar .9s cubic-bezier(.22,.9,.24,1) both}
 @keyframes dzBar{from{transform:scaleX(0)}}
 .dz-none{color:var(--dz-mut);font-size:13.5px;padding:8px 0}
-@media (max-width:900px){.dz-rings,.dz-kpis{grid-template-columns:1fr 1fr}.dz-row{grid-template-columns:1fr}}
-@media (max-width:560px){.dz-flow{grid-template-columns:1fr 1fr}.dz-st:nth-child(2):after{display:none}.dz-ring .w{width:108px;height:108px}.dz-ring .ct b{font-size:25px}.dz-kpi b{font-size:24px}.dz-card{padding:14px}}
+@media (max-width:900px){.dz-rings{grid-template-columns:1fr 1fr}.dz-row{grid-template-columns:1fr}}
+@media (max-width:560px){.dz-flow{grid-template-columns:1fr 1fr}.dz-st:nth-child(2):after{display:none}.dz-ring .w{width:108px;height:108px}.dz-ring .ct b{font-size:25px}.dz-card{padding:14px}}
 @media (prefers-reduced-motion:reduce){.dz *{animation:none!important;transition:none!important}}`;
 
 export function initDash(ctx){
@@ -120,7 +118,8 @@ function ring(id,color,pct,label,sub,pill){
 }
 // حالة النسبة: أيقونة + كلمة (اللون لوحده مش كفاية)
 const pill=pct=>pct===null?"":pct>=90?`<span class="dz-pill"><i style="background:var(--dz-good)"></i>ممتاز</span>`:pct>=70?`<span class="dz-pill"><i style="background:var(--dz-warn)"></i>كويس</span>`:`<span class="dz-pill"><i style="background:var(--dz-bad)"></i>محتاج متابعة</span>`;
-const kpi=(id,icon,label,val,sub,txt)=>`<div class="dz-card dz-kpi"><small>${icon} ${E(label)}</small><b>${txt!==undefined?E(txt):`<span ${cu(moved(id,val),val)}>${fmt(val)}</span>`}</b><em>${E(sub)}</em></div>`;
+// سطر الملخّص تحت العنوان (أرقام الفترة نفسها، مش حالة الطلبات دلوقتي)
+const sum=(id,icon,val,label)=>`<span>${icon} <b ${cu(moved(id,val),val)}>${fmt(val)}</b> ${E(label)}</span>`;
 
 export function dashView(R){
   if(!X)return "";
@@ -155,17 +154,12 @@ export function dashView(R){
   if(!reduce())requestAnimationFrame(countUp);
   return `<section class="dz" aria-label="لوحة الأداء">
   <div class="dz-hd"><h2>📊 لوحة الأداء <small>${E(lbl)}</small></h2><div class="dz-per" role="group" aria-label="الفترة">${PERS.map(([k,n])=>`<button type="button" data-dp="${k}" class="${PER===k?"on":""}" aria-pressed="${PER===k}">${n}</button>`).join("")}</div></div>
+  <div class="dz-sum">${C.length?`${sum("k1","🧾",C.length,"طلب")}${sum("k2","🏬",brs,"فرع طلبوا")}${sum("k3","📦",pcs,"قطعة")}${avgOut?`<span>⏱ بيخرج من المستودع في <b>${E(dur(avgOut))}</b> في المتوسط</span>`:""}`:`<span>💤 مفيش طلبات اتعملت ${PER==="1"?"النهارده":"في الفترة دي"} لسه</span>`}</div>
   <div class="dz-rings">
    ${ring("r1","var(--dz-r1)",p1,"اتسلّمت",C.length?`${fmt(dl.length)} من ${fmt(C.length)} طلب`:"مفيش طلبات في الفترة دي")}
    ${ring("r2","var(--dz-r2)",p2,"أكّدوا الاستلام",dl.length?`${fmt(rc.length)} من ${fmt(dl.length)} اتسلّم`:"لسه مفيش تسليم",pill(p2))}
    ${ring("r3","var(--dz-r3)",p3,"استلام سليم",rc.length?(rc.length-ok.length?`${fmt(rc.length-ok.length)} بملاحظات نقص/تلف`:"من غير أي ملاحظات"):"لسه مفيش تأكيد",pill(p3))}
    ${ring("r4","var(--dz-r4)",p4,"وصلت خلال 24 ساعة",tt.length?`متوسط التوصيل ${dur(avg)}`:"لسه مفيش تسليم",pill(p4))}
-  </div>
-  <div class="dz-kpis">
-   ${kpi("k1","🧾","طلبات",C.length,`من ${fmt(brs)} فرع`)}
-   ${kpi("k2","📦","قطع مطلوبة",pcs,C.length?`متوسط ${fmt(pcs/C.length)} للطلب`:"—")}
-   ${kpi("k3","🚚","خرجت من المستودع",C.filter(r=>N(r.dep)||r.st==="go"||r.st==="done"||r.st==="recv").length,"في نفس الفترة")}
-   ${kpi("k4","⏱","متوسط لحد ما يخرج",0,"من وقت الطلب لحد الخروج",dur(avgOut))}
   </div>
   <div class="dz-card"><h3>الطلبات دلوقتي <small>دوس على أي مرحلة تشوف طلباتها</small></h3><div class="dz-flow">
    ${stage("new","🆕","جديد","--dz-new")}${stage("prep","⏳","قيد التجهيز","--dz-prep")}${stage("go","🚚","في الطريق","--dz-go")}${stage("done","📦","وصل ومستني تأكيد","--dz-done")}
