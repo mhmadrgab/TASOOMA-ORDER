@@ -29,8 +29,10 @@ export async function pushRegister(app,db,info){
     if(!("Notification" in window)||Notification.permission!=="granted"||!("serviceWorker" in navigator))return false;
     const m=await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js");
     if(!(await m.isSupported()))return false;
-    const reg=await navigator.serviceWorker.ready;
-    const tok=await m.getToken(m.getMessaging(app),{serviceWorkerRegistration:reg});
+    // نسجّل خدمة الإشعارات بنفسنا (لو مسجّلة قبل كده بيرجع نفس التسجيل) ونستنى لحد ما تشتغل
+    await navigator.serviceWorker.register("./sw.js");
+    const reg=await withTimeout(navigator.serviceWorker.ready,20000);
+    const tok=await withTimeout(m.getToken(m.getMessaging(app),{serviceWorkerRegistration:reg}),20000);
     if(!tok)return false;
     await setDoc(doc(db,"push",tok),{role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),ts:Date.now()});
     return true;
