@@ -1,5 +1,5 @@
 // لوحة المستودع: السيارات والسواقين والرحلات والبنزين
-import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,writeBatch,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
+import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep} from "./notify.js";
 import {ledger} from "./ad-extra.js";
@@ -258,13 +258,15 @@ export function initFleet(ctx){
  un.push(onSnapshot(collection(X.db,"cars"),sn=>{CARS=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
  un.push(onSnapshot(collection(X.db,"drivers"),sn=>{DRV=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
  if(X.admin)un.push(onSnapshot(collection(X.db,"secrets"),sn=>{PW={};sn.docs.forEach(d=>{if(/^drv\d+$/.test(d.id))PW[d.id]=d.data().pw});draw()},()=>{}));
- un.push(onSnapshot(collection(X.db,"trips"),sn=>{
+ // توفير القراءات: الرحلات والبنزين بتاعة آخر 13 شهر بس (كفاية للتقارير الشهرية ومتوسطات الوصول)
+ const since=Date.now()-400*864e5;
+ un.push(onSnapshot(query(collection(X.db,"trips"),where("start",">=",since)),sn=>{
   const nx=sn.docs.map(d=>({id:d.id,...d.data()}));
   if(pT)nx.forEach(t=>{const o=pT[t.id];if(!o){if(t.st==="active")note("🚚 بدأت رحلة",`${t.drvn} — ${t.carn}`,"t"+t.id)}else{const n=(Array.isArray(t.stops)?t.stops:[]).filter(s=>s.arr),oo=o.n;if(n.length>oo){const s=n[n.length-1];note("📦 وصلت توصيلة",`${t.drvn} → ${s.brn}`,"s"+t.id+n.length)}if(o.st==="active"&&t.st==="done")note("🏁 انتهت رحلة",`${t.drvn} — ${fmt(N(t.odo1)-N(t.odo0))} كم`,"d"+t.id)}});
   pT={};nx.forEach(t=>pT[t.id]={st:t.st,n:(Array.isArray(t.stops)?t.stops:[]).filter(s=>s.arr).length});TR=nx;draw();syncGeo();
  },()=>X.toast("تعذر قراءة الرحلات. حدّث القواعد (Rules)")));
  un.push(onSnapshot(doc(X.db,"geo","main"),d=>{GEOD=d.exists()?d.data():null;geoReady=true;syncGeo()},()=>{}));
- un.push(onSnapshot(collection(X.db,"fuel"),sn=>{
+ un.push(onSnapshot(query(collection(X.db,"fuel"),where("ts",">=",since)),sn=>{
   FU=sn.docs.map(d=>({id:d.id,...d.data()}));
   if(pF)FU.forEach(f=>{if(!(f.id in pF)&&f.drv!=="admin")X.toast(`⛽ ${f.drvn}: ${fmt(f.liters)} لتر بنزين`)});
   pF={};FU.forEach(f=>pF[f.id]=1);draw();

@@ -129,14 +129,20 @@ function startAll(){
  stopAll();firstReq=true;
  un.push(onSnapshot(collection(db,"cars"),sn=>{CARS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(c=>c.active!==false);draw()},()=>toast("تعذر قراءة السيارات","er")));
  un.push(onSnapshot(doc(db,"geo","main"),d=>{const v=d.exists()?d.data():null;GEO={br:(v&&v.br&&typeof v.br==="object")?v.br:{},wh:v&&v.wh||null};draw()},()=>{}));
- un.push(onSnapshot(query(collection(db,"requests"),where("asg.drv","==",me.id)),sn=>{
+ // توفير القراءات: السائق محتاج بس الطلبات اللي لسه عنده (قيد التجهيز / في الطريق)، مش كل اللي سلّمه من أول يوم
+ un.push(onSnapshot(query(collection(db,"requests"),where("asg.drv","==",me.id),where("st","in",["prep","go"])),sn=>{
   const old=new Set(REQ.map(r=>r.id));
   REQ=sn.docs.map(d=>({id:d.id,...d.data()}));
   if(!firstReq)REQ.forEach(r=>{if(!old.has(r.id)&&r.st==="prep"){toast(`طلب جديد: ${r.brn}`);notify("🚚 توصيلة جديدة",r.brn,"q"+r.id);beep()}});
   firstReq=false;draw();
  },()=>toast("تعذر قراءة الطلبات","er")));
- un.push(onSnapshot(query(collection(db,"trips"),where("drv","==",me.id)),sn=>{TR=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>toast("تعذر قراءة الرحلات","er")));
- un.push(onSnapshot(query(collection(db,"fuel"),where("drv","==",me.id)),sn=>{FU=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
+ // الرحلات: الشغّالة دلوقتي + رحلات النهاردة بس (بدل كل الرحلات من أول يوم)
+ const T={a:new Map(),d:new Map()},setT=(k,sn)=>{T[k]=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));const m=new Map(T.d);T.a.forEach((v,id)=>m.set(id,v));TR=[...m.values()];draw()};
+ const terr=()=>toast("تعذر قراءة الرحلات","er"),day0=new Date().setHours(0,0,0,0);
+ un.push(onSnapshot(query(collection(db,"trips"),where("drv","==",me.id),where("st","==","active")),sn=>setT("a",sn),terr));
+ // محتاج فهرس (drv + start) في Firebase؛ لو لسه ماتعملش بنرجع للطريقة القديمة علشان التطبيق مايقفش
+ un.push(onSnapshot(query(collection(db,"trips"),where("drv","==",me.id),where("start",">=",day0)),sn=>setT("d",sn),e=>{
+  if(e&&e.code==="failed-precondition")un.push(onSnapshot(query(collection(db,"trips"),where("drv","==",me.id)),sn=>setT("d",sn),terr));else terr()}));
 }
 function stopAll(){un.forEach(f=>typeof f==="function"&&f());un=[];CARS=[];REQ=[];TR=[];FU=[];off=new Set();odoV=null;clearInterval(tick)}
 // ---------- الواجهة ----------

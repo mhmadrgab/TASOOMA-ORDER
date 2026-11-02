@@ -482,13 +482,22 @@ const showErr=m=>{g("ge").textContent=m||""};
 const ERR=c=>({"auth/invalid-credential":"الفرع أو كلمة السر غلط (أو الفرع لسه ماتفعّلش)","auth/wrong-password":"كلمة السر غلط","auth/user-not-found":"الفرع ده لسه ماتفعّلش. كلّم المستودع.","auth/user-disabled":"الفرع ده معطّل. كلّم المستودع.","auth/too-many-requests":"محاولات كتير. استنى شوية وجرّب تاني.","auth/network-request-failed":"مفيش اتصال بالإنترنت.","auth/invalid-email":"بيانات الدخول غير صحيحة"}[c]||"تعذر الدخول، جرّب تاني.");
 function listen(){
  if(unsub)unsub();prev=null;
- unsub=onSnapshot(query(collection(db,"requests"),where("br","==",code(B))),sn=>{
-  const rs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.ts-a.ts).slice(0,12);
+ // توفير القراءات: بدل كل طلبات الفرع من أول يوم، بنسمع لـ (o) الطلبات اللي لسه مفتوحة + (r) طلبات آخر 45 يوم
+ const c=code(B),M={o:new Map(),r:new Map()},got={o:false,r:false},uns=[];unsub=()=>uns.forEach(f=>f());
+ const fail=e=>{if(e&&e.code==="permission-denied"){signOut(auth).then(()=>showErr("الحساب ده اتعطّل. كلّم المستودع."))}else toast("تعذر قراءة الطلبات، اتأكد من الإنترنت","er")};
+ const put=(k,sn)=>{M[k]=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));got[k]=true;if(got.o&&got.r)show()};
+ uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c),where("st","in",["new","prep","go","done"])),sn=>put("o",sn),fail));
+ // محتاج فهرس (br + ts) في Firebase؛ لو لسه ماتعملش بنرجع للطريقة القديمة علشان الصفحة ماتقفش
+ uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c),where("ts",">=",Date.now()-45*864e5)),sn=>put("r",sn),e=>{
+  if(e&&e.code==="failed-precondition")uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c)),sn=>put("r",sn),fail));else fail(e)}));
+ function show(){
+  const m=new Map(M.r);M.o.forEach((v,id)=>m.set(id,v));
+  const rs=[...m.values()].sort((a,b)=>b.ts-a.ts).slice(0,12);
   if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${LBL[ST(r.st)]}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
   REQS={};rs.forEach(r=>REQS[r.id]=r);badge(rs.filter(r=>r.st==="done").length);
   prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0});
   g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.edited?`<span class="ed-tag">عدّله المستودع${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span>${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}${+r.eta?" · وصول متوقع حوالي "+new Date(+r.eta).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):""}</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
- },e=>{if(e&&e.code==="permission-denied"){signOut(auth).then(()=>showErr("الحساب ده اتعطّل. كلّم المستودع."))}else toast("تعذر قراءة الطلبات، اتأكد من الإنترنت","er")});
+ }
 }
 function enter(b){
  const pb=localStorage.getItem("tb");
