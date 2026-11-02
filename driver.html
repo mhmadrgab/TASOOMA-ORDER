@@ -147,12 +147,14 @@ function startAll(){
 }
 function stopAll(){un.forEach(f=>typeof f==="function"&&f());un=[];CARS=[];REQ=[];TR=[];FU=[];off=new Set();odoV=null;clearInterval(tick)}
 // ---------- الواجهة ----------
+// كارت الترحيب للسائق باسمه
+const hi=sub=>window.uiHello?uiHello(me?me.name:"",sub):"";
 function draw(){
  if(!me||g("md").className.includes("on"))return;
  const a=active(),mn=g("mn");
  if(a){
   const st=Array.isArray(a.stops)?a.stops:[],done=st.filter(s=>s.arr).length,pend=st.filter(s=>!s.arr),ml=mapLink(pend);
-  mn.innerHTML=`<div class="card"><h3>🚚 رحلة شغّالة <span class="pill">${E(a.carn)}</span></h3><div class="kp"><span>بدأت ${hm(a.start)}</span><span id="el">${dur(Date.now()-N(a.start))}</span><span>سلّمت ${done} من ${st.length}</span></div><div class="mut">📍 بنسجّل موقعك لما تضغط (وصلت / إنهاء) بس — مش محتاج تسيب الشاشة مفتوحة.</div>${ml?`<a class="b g" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="${E(ml)}" target="_blank" rel="noopener noreferrer">🗺 افتح المسار في خرائط جوجل</a>`:""}</div>
+  mn.innerHTML=hi(`رحلة شغّالة، سلامتك 🚚 سلّمت ${done} من ${st.length}`)+`<div class="card"><h3>🚚 رحلة شغّالة <span class="pill">${E(a.carn)}</span></h3><div class="kp"><span>بدأت ${hm(a.start)}</span><span id="el">${dur(Date.now()-N(a.start))}</span><span>سلّمت ${done} من ${st.length}</span></div><div class="mut">📍 بنسجّل موقعك لما تضغط (وصلت / إنهاء) بس — مش محتاج تسيب الشاشة مفتوحة.</div>${ml?`<a class="b g" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="${E(ml)}" target="_blank" rel="noopener noreferrer">🗺 افتح المسار في خرائط جوجل</a>`:""}</div>
   ${st.map(s=>`<div class="stop ${s.arr?"done":""}"><div><b>${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small>${itBtn(s.rid)}</div>${s.arr?"":`<button class="b ok" data-arr="${E(s.rid)}" type="button">وصلت وسلّمت ✅</button>`}</div>`).join("")}
   <div class="row"><button class="b" id="bf" type="button">⛽ بنزين</button><button class="b p" id="be" type="button">🏁 إنهاء الرحلة</button></div>`;
   g("bf").onclick=fuelForm;g("be").onclick=endForm;
@@ -164,7 +166,7 @@ function draw(){
  const rs=REQ.filter(r=>r.st==="prep").sort((a,b)=>N(a.ts)-N(b.ts));
  const lastCar=lsGet("drv_car")||"",cid=CARS.some(c=>c.id===lastCar)?lastCar:(CARS[0]&&CARS[0].id)||"";
  const dayTr=TR.filter(t=>t.st==="done"&&new Date(N(t.start)).toLocaleDateString("en-CA")===today()).sort((a,b)=>N(b.start)-N(a.start));
- mn.innerHTML=`<div class="card"><h3>رحلة جديدة</h3>
+ mn.innerHTML=hi(rs.length?`عندك ${rs.length} توصيلة مستنياك 📦`:"مفيش توصيلات دلوقتي، المستودع هيبعتلك أول ما يجهّز")+`<div class="card"><h3>رحلة جديدة</h3>
  <label>السيارة</label><select id="sc">${CARS.map(c=>`<option value="${E(c.id)}" ${c.id===cid?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")||'<option value="">لا توجد سيارات — كلّم المستودع</option>'}</select>
  <label>قراءة العداد الحالية (كم)</label><input id="so" inputmode="numeric" value="${E(odoV!==null?odoV:lsGet("drv_odo_"+cid)||"")}" placeholder="مثلاً 85230">
  <label>التوصيلات (${rs.length}) — الترتيب بيتظبط تلقائياً على أقرب مسار</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1"><b style="direction:ltr;display:inline-block">${E(r.brn)}</b><small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small></span>${itBtn(r.id)}</label>`).join(""):'<div class="mut">مفيش توصيلات معيّنة ليك دلوقتي. استنى المستودع يعيّن.</div>'}

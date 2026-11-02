@@ -47,6 +47,24 @@ button:not(:disabled):active{transform:scale(.97)}
 #md.on,#em.on,.mdl.on,.wkm.on{animation:ui-fade .22s ease both;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 #md.on .mb,#em.on .eb,.mdl.on .card,.wkm.on .wkk{animation:ui-pop .38s cubic-bezier(.2,.9,.3,1.2) both}
 
+/* كارت الترحيب */
+.hello{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+ background:linear-gradient(135deg,#1b1b1b 0%,#2b2416 100%);color:#fff;border-radius:20px;padding:18px 22px;margin-bottom:16px;
+ border:1px solid rgba(212,174,92,.3);box-shadow:0 14px 34px rgba(0,0,0,.14)}
+.hello::after{content:"";position:absolute;width:220px;height:220px;inset-inline-start:-60px;top:-110px;border-radius:50%;background:radial-gradient(circle,rgba(212,174,92,.28),transparent 70%);pointer-events:none}
+.hello .hl{position:relative;z-index:1;min-width:0}
+.hello b{font-size:21px;line-height:1.4;display:block}
+.hello p{margin:4px 0 0;color:#e2cf9e;font-size:14.5px}
+.hchips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.hchips span{background:rgba(255,255,255,.07);border:1px solid rgba(212,174,92,.28);border-radius:999px;padding:4px 12px;font-size:13px;color:#f1efec}
+.hello .hc{position:relative;z-index:1;text-align:left;display:flex;flex-direction:column;align-items:flex-end}
+.hello .hc b{font-size:30px;line-height:1.1;color:#e8cf8a;font-variant-numeric:tabular-nums;direction:ltr}
+.hello .hc small{color:#b9b4aa;font-size:12.5px}
+#hello{display:none}.lock #hello{display:block}
+@media (max-width:560px){.hello{padding:16px}.hello b{font-size:18px}.hello .hc{flex-direction:row;align-items:baseline;gap:10px;flex-wrap:wrap;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:8px}.hello .hc b{font-size:20px}}
+@media print{.hello,#hello{display:none!important}}
+.shot .hello,.shot #hello{display:none!important}
+
 /* فلتر الطلبات بالتاريخ: من / إلى */
 .drg{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .drg label{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:13px;margin:0}

@@ -132,7 +132,7 @@ const NUM=x=>Number.isFinite(+x)?+x:0;
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const g=id=>document.getElementById(id);
 const code=b=>b.split("-")[0];
-let ROLE={admin:false,p:{},name:""},stW=null,lastErr="";
+let ROLE={admin:false,owner:false,p:{},name:""},stW=null,lastErr="";
 const can=k=>ROLE.admin||ROLE.p[k]===true;
 const TABS=[["req","الطلبات",()=>can("req")],["fl","السيارات",()=>can("fl")],["cus","العهدة",()=>can("cus")],["wk","العمال",()=>ROLE.admin],["br","الفروع",()=>ROLE.admin],["stf","الموظفين",()=>ROLE.admin],["sh","ورقة يدوية",()=>can("req")]];
 const okTab=t=>{const x=TABS.find(a=>a[0]===t);return !!x&&x[2]()};
@@ -211,7 +211,8 @@ function start(){
  const adm=ROLE.admin;
  if(adm||can("cus"))initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm});
  if(adm||can("fl"))initFleet({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm});
- if(adm)initStaff({db,toast,tab:()=>tab,redraw:draw,pw:()=>P});
+ // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام بس (والقواعد بتمنع غير كده)
+ if(adm)initStaff({db,toast,tab:()=>tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase()});
  if(adm||can("req"))initWorkers({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,loadAll:loadAllReqs});
  draw();
 }
@@ -234,7 +235,10 @@ const rcvHtml=r=>{const v=r.rcv;if(r.st!=="recv"||!v||typeof v!=="object")return
 function reqView(){
  const cnt=s=>R.filter(r=>s==="all"||r.st===s).length;
  let L=R.filter(r=>(fs==="all"||r.st===fs)&&(!fb||r.brn===fb)&&(!fdf||dayKey(NUM(r.ts))>=fdf)&&(!fdt||dayKey(NUM(r.ts))<=fdt));
- return stats()+`<div class="fl">${["all","new","prep","go","done","recv"].map(s=>`<button class="chip ${fs===s?"on":""}" data-s="${s}">${s==="all"?"الكل":LBL[s]} (${cnt(s)})</button>`).join("")}<select id="fb"><option value="">كل الفروع</option>${BR.map(b=>`<option ${fb===b?"selected":""}>${b}</option>`).join("")}</select><span class="drg"><label>من <input id="fdf" data-st type="date" value="${fdf}"></label><label>إلى <input id="fdt" data-st type="date" value="${fdt}"></label>${fdf||fdt?`<button class="bt s" id="fdx" type="button" title="مسح التاريخ">✕</button>`:""}</span>${ALLREQ?"":`<button class="bt" id="oldreq" type="button" title="بنعرض المفتوح وآخر ${DAYS} يوم بس، علشان اللوحة تفضل سريعة">📂 الطلبات الأقدم</button>`}</div>`+
+ const nNew=cnt("new"),nPrep=cnt("prep"),nGo=cnt("go");
+ const hello=window.uiHello?uiHello(ROLE.name||"",nNew?`عندك ${nNew} طلب جديد مستنيك 👀`:nPrep?`مفيش جديد، و${nPrep} طلب قيد التجهيز`:"مفيش طلبات جديدة دلوقتي، كله تمام 👌",
+  [["🆕",`${nNew} جديد`],["⏳",`${nPrep} قيد التجهيز`],["🚚",`${nGo} في الطريق`]]):"";
+ return hello+stats()+`<div class="fl">${["all","new","prep","go","done","recv"].map(s=>`<button class="chip ${fs===s?"on":""}" data-s="${s}">${s==="all"?"الكل":LBL[s]} (${cnt(s)})</button>`).join("")}<select id="fb"><option value="">كل الفروع</option>${BR.map(b=>`<option ${fb===b?"selected":""}>${b}</option>`).join("")}</select><span class="drg"><label>من <input id="fdf" data-st type="date" value="${fdf}"></label><label>إلى <input id="fdt" data-st type="date" value="${fdt}"></label>${fdf||fdt?`<button class="bt s" id="fdx" type="button" title="مسح التاريخ">✕</button>`:""}</span>${ALLREQ?"":`<button class="bt" id="oldreq" type="button" title="بنعرض المفتوح وآخر ${DAYS} يوم بس، علشان اللوحة تفضل سريعة">📂 الطلبات الأقدم</button>`}</div>`+
  (L.length?L.map(r=>`<article class="rq ${ST(r.st)}"><div class="rh"><div><b>${E(r.brn)}</b>${r.edited?'<span class="tg">معدّل</span>':""}<small>طلب <bdi dir="ltr">${E(r.no)}</bdi> · ${ago(NUM(r.ts))}</small></div><span class="chp">${LBL[ST(r.st)]}</span></div><div class="kp"><span><b>${NUM(r.codes)}</b> صنف</span><span><b>${NUM(r.pcs)}</b> قطعة</span>${r.dr?`<span>المسؤول: ${E(r.dr)}</span>`:""}${r.asg&&r.asg.drvn?`<span>🚚 ${E(r.asg.drvn)} · ${E(r.asg.carn||"")}</span>`:""}${r.prep&&Array.isArray(r.prep.names)&&r.prep.names.length?`<span>👷 ${E(r.prep.names.join("، "))} <button class="bt s" data-a="wk" data-id="${r.id}" type="button" style="padding:1px 8px;font-size:12px">تعديل</button></span>`:(r.st!=="new"&&hasWorkers()?`<span><button class="bt s" data-a="wk" data-id="${r.id}" type="button" style="padding:1px 8px;font-size:12px">👷 مين جهّز؟</button></span>`:"")}${NUM(r.dlv)?`<span>وصل ${new Date(NUM(r.dlv)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</span>`:""}</div>${rcvHtml(r)}${podHtml(r)}<details data-id="${r.id}" ${openSet.has(r.id)||(r.st==="new"&&!openSet.has("-"+r.id))?"open":""}><summary>تفاصيل الطلب</summary>${r.gn?`<div class="gn">ملاحظات: ${E(r.gn)}</div>`:""}<div class="grp">${gHtml(r.rows)}</div></details><div class="rf">${r.st==="new"?`<button class="bt g" data-a="prep" data-id="${r.id}">بدء التجهيز</button>`:""}${!isDn(r)?`<button class="bt p" data-a="done" data-id="${r.id}">تم التسليم</button>`:`<button class="bt" data-a="new" data-id="${r.id}">إعادة فتح</button>`}<button class="bt" data-a="edit" data-id="${r.id}">✏️ تعديل</button><button class="bt" data-a="print" data-id="${r.id}">🖨 طباعة</button>${ROLE.admin?`<button class="bt r" data-a="del" data-id="${r.id}">حذف</button>`:""}</div></article>`).join(""):'<div class="em">لا توجد طلبات مطابقة</div>');
 }
 function brView(){
@@ -362,19 +366,20 @@ async function enterStaff(u){
  try{
   const s=await getDoc(doc(db,"staff",em));
   if(!s.exists()||s.data().enabled!==true){deny("الحساب ده غير مفعّل للدخول على لوحة المستودع");return}
-  ROLE={admin:false,p:s.data().p||{},name:s.data().name||""};start();
+  ROLE={admin:s.data().admin===true,owner:false,p:s.data().p||{},name:s.data().name||""};start();// admin=true: مدير كامل زي صاحب الحساب
   let first2=true;
   stW=onSnapshot(doc(db,"staff",em),d=>{
    if(!d.exists()||d.data().enabled!==true){if(stW){stW();stW=null}deny("تم إيقاف حسابك");return}
    if(first2){first2=false;return}
    const np=d.data().p||{};
-   if(JSON.stringify(np)!==JSON.stringify(ROLE.p)||(d.data().name||"")!==ROLE.name){ROLE={admin:false,p:np,name:d.data().name||""};stop();start()}
+   const na=d.data().admin===true;
+   if(JSON.stringify(np)!==JSON.stringify(ROLE.p)||(d.data().name||"")!==ROLE.name||na!==ROLE.admin){ROLE={admin:na,owner:false,p:np,name:d.data().name||""};stop();start()}
   },()=>{});
  }catch(e){deny("تعذر التحقق من الصلاحيات. تأكد من تحديث القواعد (Rules)")}
 }
 onAuthStateChanged(auth,async u=>{
  if(stW){stW();stW=null}
- if(u&&u.email===ADMIN_EMAIL){ROLE={admin:true,p:{},name:"المدير"};start()}
+ if(u&&u.email===ADMIN_EMAIL){ROLE={admin:true,owner:true,p:{},name:"محمد"};start()}
  else if(u&&u.email){stop();await enterStaff(u)}
  else{stop();const m=lastErr;lastErr="";login(m)}
  window.uiReady&&uiReady();// دلوقتي بس نعرض الصفحة (دخول أو لوحة)

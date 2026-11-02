@@ -42,7 +42,7 @@
 - `ledger`, `settlements`: العهدة وإقفال الفترات
 - `drivers/{code}`, `cars/{id}`, `trips/{id}`, `fuel/{id}`: السواقين والسيارات
 - `geo/main`: مواقع الفروع
-- `staff/{email}` = `{name, enabled, p:{req, cus, fl}}`: صلاحيات المحاسبين
+- `staff/{email}` = `{name, enabled, admin?, p:{req, cus, fl}}`: صلاحيات المحاسبين. `admin:true` = "مدير كامل" (زي محمد في كل حاجة ما عدا تبويب الموظفين، اللي لصاحب الحساب بس `isOwner()`)
 - `workers/{id}` = `{name, active}`: عمال المستودع (من غير حسابات)
 - `wrate/{YYYY-MM}` = `{stars:{workerId:1..5}}`: تقييم المدير الشهري
 - على الطلب: `prep = {by:[workerIds], names, at}` مين جهّز، و `qa = {fault, at}` مراجعة المدير لملاحظات الاستلام
