@@ -24,7 +24,7 @@ html.app #boot,html.aw #boot{position:fixed;inset:0;z-index:9999;display:flex;fl
 @media print{#boot{display:none!important}}
 </style>
 <link rel="apple-touch-startup-image" href="./splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.workers.dev https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://*.firebaseapp.com https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://*.workers.dev https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://*.firebaseapp.com https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
 <link rel="manifest" href="./manifest.json"><meta name="theme-color" content="#1b1b1b"><link rel="apple-touch-icon" href="./icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="referrer" content="strict-origin"><meta name="robots" content="noindex,nofollow">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -468,6 +468,7 @@ import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collect
 import {initBranch,stopBranch} from "./br-extra.js";
 import {notify,beep,badge,autoPush} from "./notify.js";
 import {initChat,chatBtn,chatSync,stopChat,unreadAll} from "./chat.js";
+import {initBChat,stopBChat,openBr,unreadTotal as bcUnread} from "./bchat.js";
 const {app,db,auth}=makeFb("branch");
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام",go:"في الطريق إليك 🚚"};
 const ST=x=>LBL[x]?x:"new";
@@ -507,7 +508,7 @@ function listen(){
   if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${LBL[ST(r.st)]}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
   REQS={};rs.forEach(r=>REQS[r.id]=r);
   chatSync(rs);// رسالة جديدة من المستودع؟
-  badge(rs.filter(r=>r.st==="done").length+unreadAll(rs));
+  setBadge();
   prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0});
   paint();
  }
@@ -523,9 +524,15 @@ function enter(b){
  st.br=b;st.ty="load";save();loadUI();g("mb").innerHTML=`<bdi dir="ltr">${E(b)}</bdi>`;hello(null);listen();
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
  // المحادثة مع المستودع على كل طلب
- initChat({db,by:"br",me:"br"+code(b),name:()=>String(st&&st.dr||"").trim(),label:r=>"فرع "+String(r.brn||""),get:id=>REQS[id],toast,beep,notify,ping:ids=>ping(auth,ids),onChange:()=>{paint();badge(Object.values(REQS).filter(r=>r.st==="done").length+unreadAll(Object.values(REQS)))}});
+ initChat({db,by:"br",me:"br"+code(b),name:()=>String(st&&st.dr||"").trim(),label:r=>"فرع "+String(r.brn||""),get:id=>REQS[id],toast,beep,notify,ping:ids=>ping(auth,ids),onChange:()=>{paint();setBadge()}});
+ // شات الفرع مع المستودع (زرار عائم 💬 + زرار "كلّم المستودع" فوق). الفرع بيشوف محادثته هو بس
+ initBChat({db,by:"br",code:code(b),name:()=>String(st&&st.dr||"").trim(),brn:()=>b,toast,beep,notify,ping:c=>ping(auth,[],[c]),
+  visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))},onBadge:setBadge});
+ if(new URLSearchParams(location.search).has("chat")){setTimeout(openBr,300);try{history.replaceState(null,"",location.pathname)}catch(e){}}// فتح من الإشعار
 }
-function gateOn(){B=null;stopBranch();stopChat();REQS={};if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+// الرقم على أيقونة التطبيق: طلبات مستنية تأكيد + رسايل جديدة
+function setBadge(){const all=Object.values(REQS);badge(all.filter(r=>r.st==="done").length+unreadAll(all)+bcUnread())}
+function gateOn(){B=null;stopBranch();stopChat();stopBChat();REQS={};if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");

@@ -219,6 +219,70 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // شات الفروع مع المستودع: chats/{code}. كل فرع يقرا ويكتب في محادثته هو بس (الكود من إيميل الفرع نفسه)،
+    // والمستودع = المدير أو موظف الطلبات (perm req). مفيش فرع يقدر يشوف أو يكتب في محادثة فرع تاني.
+    match /chats/{code} {
+      function chatWh() { return isAdmin() || perm('req'); }
+      function chatBr() { return branchOn() && myCode() == code; }
+      function lastOk(by) {
+        let l = request.resource.data.last;
+        return l is map && l.keys().hasOnly(['by','n','t','ts','v']) && l.keys().hasAll(['by','n','t','ts','v'])
+          && l.by == by && l.n is string && l.n.size() <= 60
+          && l.t is string && l.t.size() <= 200 && l.ts is number && l.v is bool;
+      }
+      function brnOk(d) { return !('brn' in d) || (d.brn is string && d.brn.size() <= 40); }
+      // أول رسالة في المحادثة
+      function newBy(by) {
+        let d = request.resource.data;
+        return d.br == code && brnOk(d) && lastOk(by)
+          && ((by == 'br' && d.keys().hasOnly(['br','brn','last','lb','rb','nw']) && d.nw == 1 && d.lb is number && d.rb is number)
+           || (by == 'wh' && d.keys().hasOnly(['br','brn','last','lw','rw','nb']) && d.nb == 1 && d.lw is number && d.rw is number));
+      }
+      // رسالة جديدة (العدّاد بيزيد واحد بالظبط) أو "قريت" (العدّاد بيرجع صفر)
+      function updBy(by) {
+        let d = request.resource.data;
+        let o = resource.data;
+        let ch = d.diff(o).affectedKeys();
+        return d.br == code && brnOk(d)
+          && (!('last' in ch) || lastOk(by))
+          && ((by == 'br' && ch.hasOnly(['brn','last','lb','rb','nw','nb'])
+               && (!('nw' in ch) || d.nw == o.get('nw', 0) + 1)
+               && (!('nb' in ch) || d.nb == 0)
+               && (!('lb' in ch) || d.lb is number) && (!('rb' in ch) || d.rb is number))
+           || (by == 'wh' && ch.hasOnly(['brn','last','lw','rw','nb','nw'])
+               && (!('nb' in ch) || d.nb == o.get('nb', 0) + 1)
+               && (!('nw' in ch) || d.nw == 0)
+               && (!('lw' in ch) || d.lw is number) && (!('rw' in ch) || d.rw is number)));
+      }
+      allow read:   if chatWh() || chatBr();
+      allow create: if (chatBr() && newBy('br')) || (chatWh() && newBy('wh'));
+      allow update: if (chatBr() && updBy('br')) || (chatWh() && updBy('wh'));
+      allow delete: if isAdmin();
+
+      // الرسايل: نص (t) أو صوت (v + d = المدة بالثواني). محدش يعدّل رسالة بعد ما تتبعت
+      match /msgs/{mid} {
+        function msgOk(by) {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['by','n','t','v','d','ts']) && d.keys().hasAll(['by','n','ts'])
+            && d.by == by && d.n is string && d.n.size() <= 60 && d.ts is number
+            && ((d.keys().hasAll(['t']) && !('v' in d) && d.t is string && d.t.size() > 0 && d.t.size() <= 1000)
+             || (d.keys().hasAll(['v','d']) && !('t' in d) && d.v == true && d.d is number && d.d > 0 && d.d <= 120));
+        }
+        allow read:   if chatWh() || chatBr();
+        allow create: if (chatBr() && msgOk('br')) || (chatWh() && msgOk('wh'));
+        allow delete: if isAdmin();
+      }
+      // الصوت نفسه (data URL صوت بس، أقصى حوالي 500 كيلو)
+      match /aud/{mid} {
+        allow read:   if chatWh() || chatBr();
+        allow create: if (chatWh() || chatBr())
+          && request.resource.data.keys().hasOnly(['a'])
+          && request.resource.data.a is string && request.resource.data.a.size() <= 700000
+          && request.resource.data.a.matches('data:audio/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+');
+        allow delete: if isAdmin();
+      }
+    }
+
     // أجهزة إشعارات الموبايل: كل جهاز بيسجّل نفسه باسم صاحبه بس (السيرفر بيقرا بصلاحياته الخاصة)
     // push/{role__token}: نفس الموبايل ممكن يتسجّل بأكتر من دور (مستودع + فرع على نفس الجهاز)
     match /push/{pid} {
