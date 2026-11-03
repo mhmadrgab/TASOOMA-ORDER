@@ -5,7 +5,16 @@ const g=id=>document.getElementById(id);
 const PERMS=[["req","الطلبات"],["cus","العهدة"],["fl","السيارات والسواقين"]];
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
 const EMAIL=/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/;
-let X=null,S=[],PW=()=>({}),un=[],f={e:"",n:"",p:"",r:"acc"},busy=false;
+let X=null,S=[],SL=false,WD=null,PW=()=>({}),un=[],f={e:"",n:"",p:"",r:"acc"},busy=false;
+// قايمة الأسماء اللي الفروع بتختار تكلّم مين (whdir): المالك + كل حد مفعّل وعنده صلاحية "الطلبات" أو مدير.
+// المالك بس بيكتبها، وبتتظبط لوحدها كل ما الموظفين يتغيّروا (تفعيل/تعطيل/صلاحية/حذف/اسم)
+function syncDir(){
+ if(!X||!X.owner||!SL||!WD||!X.me)return;
+ const want={[X.me]:{n:String(X.name||"مالك النظام").slice(0,60),r:"owner"}};
+ S.forEach(s=>{const id=String(s.id).toLowerCase();if(id!==X.me&&s.enabled&&(s.admin===true||(s.p&&s.p.req)))want[id]={n:String(s.name||id.split("@")[0]).slice(0,60),r:s.admin===true?"admin":"req"}});
+ Object.entries(want).forEach(([id,v])=>{const o=WD[id];if(!o||o.n!==v.n||o.r!==v.r)setDoc(doc(X.db,"whdir",id),v).catch(()=>{})});
+ Object.keys(WD).forEach(id=>{if(!want[id])deleteDoc(doc(X.db,"whdir",id)).catch(()=>{})});
+}
 const AERR=e=>({"auth/email-already-in-use":"الإيميل ده عنده حساب في Firebase بالفعل. اكتب كلمة سره الحالية علشان نربطه.","auth/operation-not-allowed":"فعّل Email/Password من Authentication في Firebase","auth/weak-password":"كلمة السر ضعيفة (6 حروف على الأقل)","auth/network-request-failed":"مفيش اتصال بالإنترنت","auth/invalid-credential":"كلمة السر غلط","auth/invalid-email":"الإيميل غير صحيح","auth/too-many-requests":"محاولات كتير، استنى شوية","auth/admin-restricted-operation":"التسجيل متوقف في Firebase. فعّله مؤقتاً من Authentication ← Settings ← User actions"}[e&&e.code]||("خطأ: "+(e&&e.code||e&&e.message)));
 const msg=s=>`أهلاً ${s.name||""}\nلوحة المستودع:\n${new URL("./admin.html",location.href).href}\nالإيميل: ${s.id}\nكلمة السر: ${PW()[s.id]||""}`;
 const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم النسخ")}catch(e){prompt("انسخ الرسالة:",t)}};
@@ -73,6 +82,7 @@ export function initStaff(ctx){
    if(!t.dataset.sp2||!X.owner)return;
    try{await updateDoc(doc(X.db,"staff",t.dataset.id),{["p."+t.dataset.sp2]:t.checked});X.toast("تم حفظ الصلاحية")}catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message));X.redraw()}});
  }
- un.push(onSnapshot(collection(X.db,"staff"),sn=>{S=sn.docs.map(d=>({id:d.id,...d.data()}));if(X.tab()==="stf"&&!busy)X.redraw()},()=>X.toast("تعذر قراءة الموظفين. حدّث القواعد (Rules)")));
+ un.push(onSnapshot(collection(X.db,"staff"),sn=>{S=sn.docs.map(d=>({id:d.id,...d.data()}));SL=true;syncDir();if(X.tab()==="stf"&&!busy)X.redraw()},()=>X.toast("تعذر قراءة الموظفين. حدّث القواعد (Rules)")));
+ if(X.owner)un.push(onSnapshot(collection(X.db,"whdir"),sn=>{WD={};sn.docs.forEach(d=>{WD[d.id]=d.data()});syncDir()},()=>{}));
 }
-export function stop(){un.forEach(x=>x());un=[];S=[];busy=false}
+export function stop(){un.forEach(x=>x());un=[];S=[];SL=false;WD=null;busy=false}

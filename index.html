@@ -467,8 +467,7 @@ loadUI();
 import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,setDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {initBranch,stopBranch} from "./br-extra.js";
 import {notify,beep,badge,autoPush} from "./notify.js";
-import {initChat,chatBtn,chatSync,stopChat,unreadAll} from "./chat.js";
-import {initBChat,stopBChat,openBr,unreadTotal as bcUnread} from "./bchat.js";
+import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.js";
 const {app,db,auth}=makeFb("branch");
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام",go:"في الطريق إليك 🚚"};
 const ST=x=>LBL[x]?x:"new";
@@ -509,14 +508,13 @@ function listen(){
   if(prev)rs.forEach(r=>{if(prev[r.id]||r.by!=="wh"||r.st!=="new"||Date.now()-(+r.ts||0)>36e5)return;const m=`المستودع عملك طلب ${r.no}: ${+r.codes||0} صنف · ${+r.pcs||0} قطعة`;toast("📋 "+m);notify("📋 طلب من المستودع",m,"w"+r.id);beep()});
   if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${LBL[ST(r.st)]}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
   REQS={};rs.forEach(r=>REQS[r.id]=r);
-  chatSync(rs);// رسالة جديدة من المستودع؟
   setBadge();
   prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0});
   paint();
  }
  // بنرسم القائمة لوحدها كمان لما المحادثة تتقفل (علشان رقم الرسايل الجديدة يتحدّث)
  paint=()=>{const rs=Object.values(REQS).sort((a,b)=>b.ts-a.ts);
-  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.by==="wh"?`<span class="ed-tag wh-tag">📋 المستودع عمل الطلب ده</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span>${chatBtn(r)}${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}${+r.eta?" · وصول متوقع حوالي "+new Date(+r.eta).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):""}</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
+  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.by==="wh"?`<span class="ed-tag wh-tag">📋 المستودع عمل الطلب ده</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span>${rqBtn(r)}${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}${+r.eta?" · وصول متوقع حوالي "+new Date(+r.eta).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):""}</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
  }
 }
 function enter(b){
@@ -525,16 +523,16 @@ function enter(b){
  B=b;localStorage.setItem("tb",b);document.body.classList.add("lock");g("gate").className="";
  st.br=b;st.ty="load";save();loadUI();g("mb").innerHTML=`<bdi dir="ltr">${E(b)}</bdi>`;hello(null);listen();
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
- // المحادثة مع المستودع على كل طلب
- initChat({db,by:"br",me:"br"+code(b),name:()=>String(st&&st.dr||"").trim(),label:r=>"فرع "+String(r.brn||""),get:id=>REQS[id],toast,beep,notify,ping:ids=>ping(auth,ids),onChange:()=>{paint();setBadge()}});
- // شات الفرع مع المستودع (زرار عائم 💬 + زرار "كلّم المستودع" فوق). الفرع بيشوف محادثته هو بس
+ // الشات الخاص مع المستودع (زرار عائم 💬 + زرار "كلّم المستودع" فوق + زرار على كل طلب): الفرع بيختار يكلّم مين،
+ // وكل محادثة خاصة بين الفرع والشخص ده بس
  initBChat({db,by:"br",code:code(b),name:()=>String(st&&st.dr||"").trim(),brn:()=>b,toast,beep,notify,ping:c=>ping(auth,[],[c]),
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))},onBadge:setBadge});
- if(new URLSearchParams(location.search).has("chat")){setTimeout(openBr,300);try{history.replaceState(null,"",location.pathname)}catch(e){}}// فتح من الإشعار
+ // فتح من الإشعار: index.html?chat=إيميل الشخص (بيفتح محادثته على طول بعد ما الأسماء تتحمّل)
+ const qc=new URLSearchParams(location.search).get("chat");if(qc!==null){setTimeout(()=>openBr(qc.toLowerCase()),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}
 }
 // الرقم على أيقونة التطبيق: طلبات مستنية تأكيد + رسايل جديدة
-function setBadge(){const all=Object.values(REQS);badge(all.filter(r=>r.st==="done").length+unreadAll(all)+bcUnread())}
-function gateOn(){B=null;stopBranch();stopChat();stopBChat();REQS={};if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function setBadge(){const all=Object.values(REQS);badge(all.filter(r=>r.st==="done").length+bcUnread())}
+function gateOn(){B=null;stopBranch();stopBChat();REQS={};if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");

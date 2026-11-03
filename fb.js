@@ -1,6 +1,6 @@
 // إعدادات Firebase لمشروع TASOOMA (مشتركة بين صفحة الفرع وصفحة المستودع)
 import {initializeApp,getApps} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getFirestore,collection,doc,addDoc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,arrayUnion,orderBy,limit,increment} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getFirestore,collection,doc,addDoc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,arrayUnion,orderBy,limit,increment,deleteField} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {getAuth,initializeAuth,browserSessionPersistence,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDSMJmTT9Ed3hQYIe2zGhEUKKt0qTL3ZwM",
@@ -42,7 +42,7 @@ export async function pushRegister(app,db,info){
 // ---------- تنبيه سيرفر الإشعارات (Cloudflare) إن طلب اتغيّر، علشان يبعت للموبايلات في نفس الثانية ----------
 // السيرفر بيقرا الطلب بنفسه ويقرر يبعت لمين؛ هنا بس بنقوله "بص على الطلبات دي" ومعانا توكن الدخول
 export const PUSH_URL="https://tasooma-push.tasooma.workers.dev";// سيرفر الإشعارات على Cloudflare (مجلد push-server)
-// ids = طلبات اتغيّرت، chats = أكواد فروع اتبعت في شاتها رسالة جديدة
+// ids = طلبات اتغيّرت، chats = محادثات خاصة (dm: كود الفرع__إيميل الشخص) اتبعت فيها رسالة جديدة
 export async function ping(auth,ids,chats){
   try{
     ids=[...new Set((ids||[]).filter(Boolean))];chats=[...new Set((chats||[]).filter(Boolean))];if(!PUSH_URL||!(ids.length||chats.length))return;
@@ -83,4 +83,4 @@ if(typeof document!=="undefined"){
   addEventListener("online",chk);
   if(/admin/.test(location.pathname))setInterval(chk,20*6e4);// لوحة المستودع بتفضل مفتوحة طول اليوم
 }
-export {collection,doc,addDoc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,arrayUnion,orderBy,limit,increment,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword};
+export {collection,doc,addDoc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,arrayUnion,orderBy,limit,increment,deleteField,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword};

@@ -104,29 +104,12 @@ service cloud.firestore {
           && r.lines is list && r.lines.size() <= 400
           && (!('note' in r) || (r.note is string && r.note.size() <= 500));
       }
-      // المحادثة جوه الطلب: msgs = [{id, by, n, t, ts}]. مسموح بس "إضافة رسالة واحدة في الآخر":
-      // الرسايل القديمة ماتتغيّرش ولا تتمسح، والرسالة الجديدة باسم الطرف اللي بيكتب (br = الفرع، wh = المستودع)
-      function chatAdd(by) {
-        let o = resource.data.get('msgs', []);
-        let n = request.resource.data.get('msgs', []);
-        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['msgs'])
-          && n is list && n.size() == o.size() + 1 && n.size() <= 200
-          && n[o.size()] is map
-          && n.removeAll([n[o.size()]]) == o
-          && n[o.size()].keys().hasOnly(['id','by','n','t','ts'])
-          && n[o.size()].keys().hasAll(['id','by','n','t','ts'])
-          && n[o.size()].by == by
-          && n[o.size()].id is string && n[o.size()].id.size() <= 30
-          && n[o.size()].n is string && n[o.size()].n.size() <= 60
-          && n[o.size()].t is string && n[o.size()].t.size() > 0 && n[o.size()].t.size() <= 500
-          && n[o.size()].ts is number;
-      }
+      // (المحادثة اللي كانت جوه الطلب نفسه اتشالت: كل الشات بقى خاص في dm تحت)
       // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)، أو يأكد الاستلام
       // السائق: يغيّر حالة الطلب المعيّن له بس (في الطريق / تم التسليم / رجوع للتجهيز)
       allow update: if isAdmin()
         || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat','prep'])
             && (!('prep' in request.resource.data) || validPrep()))
-        || (perm('req') && chatAdd('wh'))
         || (perm('fl') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asg','st','upd']))
         || (drvOn() && resource.data.asg.drv == myDrv()
             && resource.data.st in ['prep','go']
@@ -135,8 +118,7 @@ service cloud.firestore {
             && (!('pod' in request.resource.data) || validPod())
             && (!('eta' in request.resource.data) || request.resource.data.eta is number))
         || (branchOn() && resource.data.br == myCode() && (
-          chatAdd('br')
-          || (resource.data.st == 'new' && validNew())
+          (resource.data.st == 'new' && validNew())
           || (resource.data.st == 'done' && request.resource.data.st == 'recv'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','rcv'])
               && validRcv())
@@ -230,11 +212,33 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // شات الفروع مع المستودع: chats/{code}. كل فرع يقرا ويكتب في محادثته هو بس (الكود من إيميل الفرع نفسه)،
-    // والمستودع = المدير أو موظف الطلبات (perm req). مفيش فرع يقدر يشوف أو يكتب في محادثة فرع تاني.
+    // الشات القديم المشترك (chats/{code}): اتقفل. المالك بس يقدر يقرا ويمسح (علشان المسح مرة واحدة من اللوحة)
     match /chats/{code} {
+      allow read, delete: if isOwner();
+      match /{sub}/{mid} {
+        allow read, delete: if isOwner();
+      }
+    }
+
+    // أسماء اللي في المستودع (الفرع بيختار يكلّم مين): whdir/{email} = {n: الاسم, r: owner|admin|req}
+    // المالك بس بيكتبها (staff.js بيظبطها لوحده من تبويب الموظفين)
+    match /whdir/{em} {
+      allow read:  if isAdmin() || perm('req') || branchOn();
+      allow write: if isOwner()
+        && request.resource.data.keys().hasOnly(['n','r'])
+        && request.resource.data.n is string && request.resource.data.n.size() <= 60
+        && request.resource.data.r in ['owner','admin','req'];
+      allow delete: if isOwner();
+    }
+
+    // الشات الخاص: dm/{code}__{email} = محادثة بين فرع واحد وشخص واحد من المستودع.
+    // محدش غيرهم يقدر يقرا أو يكتب فيها، حتى المالك والمديرين (كل واحد ليه محادثاته هو بس).
+    match /dm/{cid} {
+      function me() { return request.auth.token.email.lower(); }
       function chatWh() { return isAdmin() || perm('req'); }
-      function chatBr() { return branchOn() && myCode() == code; }
+      // الطرفين من اسم المحادثة نفسه
+      function whIn() { return chatWh() && cid.matches('^[0-9]{3}__.+$') && cid.split('__')[1] == me(); }
+      function brIn() { return branchOn() && cid.matches('^[0-9]{3}__.+$') && cid.split('__')[0] == myCode(); }
       function lastOk(by) {
         let l = request.resource.data.last;
         return l is map && l.keys().hasOnly(['by','n','t','ts','v']) && l.keys().hasAll(['by','n','t','ts','v'])
@@ -242,55 +246,66 @@ service cloud.firestore {
           && l.t is string && l.t.size() <= 200 && l.ts is number && l.v is bool;
       }
       function brnOk(d) { return !('brn' in d) || (d.brn is string && d.brn.size() <= 40); }
-      // أول رسالة في المحادثة
+      function whnOk(d) { return d.whn is string && d.whn.size() <= 60; }
+      // أول رسالة في المحادثة (لو الفرع اللي بدأ: لازم الشخص يكون في قايمة المستودع)
       function newBy(by) {
         let d = request.resource.data;
-        return d.br == code && brnOk(d) && lastOk(by)
-          && ((by == 'br' && d.keys().hasOnly(['br','brn','last','lb','rb','nw']) && d.nw == 1 && d.lb is number && d.rb is number)
-           || (by == 'wh' && d.keys().hasOnly(['br','brn','last','lw','rw','nb']) && d.nb == 1 && d.lw is number && d.rw is number));
+        return d.br + '__' + d.wh == cid && brnOk(d) && whnOk(d) && lastOk(by)
+          && ((by == 'br' && d.keys().hasOnly(['br','brn','wh','whn','last','lb','rb','nw']) && d.nw == 1 && d.lb is number && d.rb is number
+               && exists(/databases/$(database)/documents/whdir/$(d.wh)))
+           || (by == 'wh' && d.keys().hasOnly(['br','brn','wh','whn','last','lw','rw','nb']) && d.nb == 1 && d.lw is number && d.rw is number));
       }
-      // رسالة جديدة (العدّاد بيزيد واحد بالظبط) أو "قريت" (العدّاد بيرجع صفر)
+      // رسالة جديدة (العدّاد بيزيد واحد بالظبط) أو "قريت" (العدّاد بيرجع صفر). الطرفين (br, wh) مايتغيّروش
       function updBy(by) {
         let d = request.resource.data;
         let o = resource.data;
         let ch = d.diff(o).affectedKeys();
-        return d.br == code && brnOk(d)
+        return brnOk(d)
           && (!('last' in ch) || lastOk(by))
           && ((by == 'br' && ch.hasOnly(['brn','last','lb','rb','nw','nb'])
                && (!('nw' in ch) || d.nw == o.get('nw', 0) + 1)
                && (!('nb' in ch) || d.nb == 0)
                && (!('lb' in ch) || d.lb is number) && (!('rb' in ch) || d.rb is number))
-           || (by == 'wh' && ch.hasOnly(['brn','last','lw','rw','nb','nw'])
+           || (by == 'wh' && ch.hasOnly(['brn','whn','last','lw','rw','nb','nw']) && whnOk(d)
                && (!('nb' in ch) || d.nb == o.get('nb', 0) + 1)
                && (!('nw' in ch) || d.nw == 0)
                && (!('lw' in ch) || d.lw is number) && (!('rw' in ch) || d.rw is number)));
       }
-      allow read:   if chatWh() || chatBr();
-      allow create: if (chatBr() && newBy('br')) || (chatWh() && newBy('wh'));
-      allow update: if (chatBr() && updBy('br')) || (chatWh() && updBy('wh'));
-      allow delete: if isAdmin();
+      // القراءة بالحقول (علشان الصفحات بتسأل "محادثاتي": wh == إيميلي، أو br == كود الفرع)
+      allow read:   if (chatWh() && resource.data.wh == me()) || (branchOn() && resource.data.br == myCode());
+      allow create: if (brIn() && newBy('br')) || (whIn() && newBy('wh'));
+      allow update: if (brIn() && updBy('br')) || (whIn() && updBy('wh'));
+      allow delete: if isOwner();
 
-      // الرسايل: نص (t) أو صوت (v + d = المدة بالثواني). محدش يعدّل رسالة بعد ما تتبعت
+      // الرسايل: نص (t) أو صوت (v + d = المدة بالثواني)، و rq = بخصوص أنهي طلب (اختياري).
+      // محدش يعدّل رسالة بعد ما تتبعت، غير الطرف التاني يسجّل "اتقرت إمتى" (rd) مرة واحدة
       match /msgs/{mid} {
         function msgOk(by) {
           let d = request.resource.data;
-          return d.keys().hasOnly(['by','n','t','v','d','ts']) && d.keys().hasAll(['by','n','ts'])
+          return d.keys().hasOnly(['by','n','t','v','d','ts','rq']) && d.keys().hasAll(['by','n','ts'])
             && d.by == by && d.n is string && d.n.size() <= 60 && d.ts is number
+            && (!('rq' in d) || (d.rq is map && d.rq.keys().hasOnly(['id','no']) && d.rq.id is string && d.rq.id.size() <= 40 && d.rq.no is string && d.rq.no.size() <= 40))
             && ((d.keys().hasAll(['t']) && !('v' in d) && d.t is string && d.t.size() > 0 && d.t.size() <= 1000)
              || (d.keys().hasAll(['v','d']) && !('t' in d) && d.v == true && d.d is number && d.d > 0 && d.d <= 120));
         }
-        allow read:   if chatWh() || chatBr();
-        allow create: if (chatBr() && msgOk('br')) || (chatWh() && msgOk('wh'));
-        allow delete: if isAdmin();
+        function readBy(by) {
+          return resource.data.by != by && !('rd' in resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rd'])
+            && request.resource.data.rd is number;
+        }
+        allow read:   if whIn() || brIn();
+        allow create: if (brIn() && msgOk('br')) || (whIn() && msgOk('wh'));
+        allow update: if (brIn() && readBy('br')) || (whIn() && readBy('wh'));
+        allow delete: if isOwner();
       }
       // الصوت نفسه (data URL صوت بس، أقصى حوالي 500 كيلو)
       match /aud/{mid} {
-        allow read:   if chatWh() || chatBr();
-        allow create: if (chatWh() || chatBr())
+        allow read:   if whIn() || brIn();
+        allow create: if (whIn() || brIn())
           && request.resource.data.keys().hasOnly(['a'])
           && request.resource.data.a is string && request.resource.data.a.size() <= 700000
           && request.resource.data.a.matches('data:audio/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+');
-        allow delete: if isAdmin();
+        allow delete: if isOwner();
       }
     }
 
@@ -310,10 +325,10 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.email == request.auth.token.email;
     }
 
-    // آخر نسخة احتياطية إمتى (meta/backup = {at, n}): لمالك النظام بس
+    // آخر نسخة احتياطية إمتى (meta/backup = {at, n})، ومسح الشات القديم اتعمل إمتى (meta/chatv2): لمالك النظام بس
     match /meta/{id} {
       allow read:  if isOwner();
-      allow write: if isOwner() && id == 'backup'
+      allow write: if isOwner() && id in ['backup','chatv2']
         && request.resource.data.keys().hasOnly(['at','n'])
         && request.resource.data.at is number && request.resource.data.n is number;
     }
