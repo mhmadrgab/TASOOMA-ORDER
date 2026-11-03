@@ -1,7 +1,9 @@
 // تنبيهات + تثبيت التطبيق (مشترك)
 export const canNotify=()=>"Notification" in window;
 export async function askNotify(){if(!canNotify())return "unsupported";try{return await Notification.requestPermission()}catch(e){return "denied"}}
-export function notify(title,body,tag){try{if(canNotify()&&Notification.permission==="granted"&&document.hidden){new Notification(title,{body,tag,icon:"./icon-192.png",dir:"rtl",lang:"ar"})}}catch(e){}}
+// إشعار الجهاز: لما الصفحة مش قدامه (تبويب تاني، أو الصفحة مفتوحة بس هو شغّال في برنامج تاني على الكمبيوتر)
+export const away=()=>document.hidden||!document.hasFocus();
+export function notify(title,body,tag){try{if(canNotify()&&Notification.permission==="granted"&&away()){new Notification(title,{body,tag,icon:"./icon-192.png",dir:"rtl",lang:"ar"})}}catch(e){}}
 export function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),v=c.createGain();o.connect(v);v.connect(c.destination);o.frequency.value=880;v.gain.setValueAtTime(.2,c.currentTime);v.gain.exponentialRampToValueAtTime(.001,c.currentTime+.6);o.start();o.stop(c.currentTime+.6)}catch(e){}}
 export function badge(n){try{if(navigator.setAppBadge){n>0?navigator.setAppBadge(n):navigator.clearAppBadge()}}catch(e){}}
 let dip=null;
@@ -77,7 +79,9 @@ export function wireButtons(){
     if(Notification.permission==="denied")return void showDlg("denied");
     if(Notification.permission==="default")return void showDlg("ask");
     const ok=await register();// مسموحة: نعيد التسجيل ونقول النتيجة
-    dlg(ok?`<div class="uii">✅</div><h3>الإشعارات شغّالة على ${dev()}</h3><p>${okText()}</p><div class="uib"><button class="bt p" data-npx type="button">تمام</button></div>`
+    // لوحة المستودع: بنبعت إشعار تجربة حقيقي من السيرفر علشان يتأكد بعينه
+    if(ok&&window.__pushTest)window.__pushTest().catch(()=>{});
+    dlg(ok?`<div class="uii">✅</div><h3>الإشعارات شغّالة على ${dev()}</h3><p>${okText()}${window.__pushTest?"<br><br>🔔 بعتنالك دلوقتي إشعار تجربة، المفروض يظهر خلال ثواني.":""}</p><div class="uib"><button class="bt p" data-npx type="button">تمام</button></div>`
       :`<div class="uii">⚠️</div><h3>ماقدرناش نفعّلها دلوقتي</h3><p>اتأكد إن النت شغّال وجرّب تاني.</p><div class="uib"><button class="bt p" data-npx type="button">تمام</button></div>`);
   };
   ins.forEach(b=>b.onclick=async()=>{if(!(await install())&&isIOS())showDlg("ios")});

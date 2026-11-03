@@ -1,5 +1,5 @@
 // لوحة المستودع (للمدير فقط): إدارة المحاسبين وصلاحياتهم
-import {makeFb,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
+import {makeFb,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
 import {E} from "./cust.js";
 import {avatar,ownerMe,meReady} from "./prof.js";
 // اسم المالك اللي بيظهر لو لسه ماكتبش اسمه في "ملفي الشخصي"
@@ -8,6 +8,8 @@ const g=id=>document.getElementById(id);
 const PERMS=[["req","الطلبات"],["cus","العهدة"],["fl","السيارات والسواقين"]];
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
 const EMAIL=/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/;
+// DV = أجهزة الإشعارات لكل إيميل [{dv:"m"|"pc"|"", ts}] (المالك بس)
+let DV={},testing="";
 let X=null,S=[],SL=false,WD=null,PW=()=>({}),un=[],f={e:"",n:"",p:"",r:"acc"},busy=false;
 // قايمة الأسماء اللي الفروع بتختار تكلّم مين (whdir): المالك + كل حد مفعّل وعنده صلاحية "الطلبات" أو مدير، باسمه وكنيته.
 // المالك بس بيكتبها، وبتتظبط لوحدها كل ما الموظفين يتغيّروا (تفعيل/تعطيل/صلاحية/حذف/اسم/كنية)
@@ -35,13 +37,17 @@ export function view(){
  const who=s=>`<td><span style="display:inline-flex;align-items:center;gap:8px">${avatar(s.id,s.name,30)}<b>${E(s.name||"")}</b></span>${you(s.id)}</td>`;
  const kc=s=>`<td>${own?`<input data-sk="${E(s.id)}" value="${E(s.k||"")}" maxlength="40" placeholder="مثلاً: مسؤول الطلبات" style="min-width:150px">`:E(s.k||"—")}</td>`;
  const mo=ownerMe(),on=mo.n||OWNER_NAME;
- return `${own?`<div class="pan"><h3 style="margin:0 0 10px">👑 مالك النظام</h3><div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px">${avatar(me,on,44)}<div><b>${E(on)}</b>${mo.k?` <span class="pill">${E(mo.k)}</span>`:""}<div class="off" dir="ltr" style="font-size:13px">${E(me)}</div></div><span class="pill go">أنت</span><button class="bt s" data-pfopen type="button" style="margin-inline-start:auto">✏️ اسمي وكنيتي وصورتي</button></div></div>
+ // الإشعارات: الأجهزة المتسجّلة للشخص ده + زرار تجربة (المالك بس)
+ const dvs=id=>{const L=DV[String(id).toLowerCase()]||[],m=L.filter(x=>x.dv==="m").length,pc=L.filter(x=>x.dv==="pc").length,o=L.length-m-pc;
+  return L.length?[m?`📱 موبايل${m>1?" ×"+m:""}`:"",pc?`💻 كمبيوتر${pc>1?" ×"+pc:""}`:"",o?`❔ جهاز${o>1?" ×"+o:""}`:""].filter(Boolean).join(" · "):`<span style="color:#c0392b">⚠️ مفيش جهاز</span>`};
+ const nc=s=>own?`<td style="white-space:nowrap">${dvs(s.id)} <button class="bt s" data-sf="ntest" data-id="${E(s.id)}" type="button" ${testing?"disabled":""}>${testing===s.id?"⏳":"🔔 جرّب"}</button></td>`:"";
+ return `${own?`<div class="pan"><h3 style="margin:0 0 10px">👑 مالك النظام</h3><div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px">${avatar(me,on,44)}<div><b>${E(on)}</b>${mo.k?` <span class="pill">${E(mo.k)}</span>`:""}<div class="off" dir="ltr" style="font-size:13px">${E(me)}</div></div><span class="pill go">أنت</span><span class="off" style="font-size:13.5px">🔔 ${dvs(me)}</span> <button class="bt s" data-sf="ntest" data-id="${E(me)}" type="button" ${testing?"disabled":""}>${testing===me?"⏳":"🔔 جرّب"}</button><button class="bt s" data-pfopen type="button" style="margin-inline-start:auto">✏️ اسمي وكنيتي وصورتي</button></div></div>
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 10px">➕ إضافة موظف</h3>
  <div class="fl" style="margin:0"><input id="sfe" type="email" dir="ltr" placeholder="الإيميل" value="${E(f.e)}" autocomplete="off" style="flex:1;min-width:190px"><input id="sfn" placeholder="الاسم" value="${E(f.n)}" maxlength="40" style="flex:1;min-width:140px"><input id="sfp" dir="ltr" placeholder="كلمة السر (اختياري)" value="${E(f.p)}" autocomplete="off" style="flex:1;min-width:150px"><select id="sfr"><option value="acc" ${f.r!=="adm"?"selected":""}>محاسب</option><option value="adm" ${f.r==="adm"?"selected":""}>مدير</option></select><button class="bt p" data-sf="add" type="button" ${busy?"disabled":""}>إضافة</button></div></div>`:""}
- <div class="pan" ${own?'style="margin-top:12px"':""}><h3 style="margin:0 0 8px">🛡 المديرين (${M.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>الإيميل</th><th>الحالة</th>${own?"<th>كلمة السر</th><th></th>":""}</tr></thead><tbody>
- ${M.length?M.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?pwc(s)+acts(s,`<button class="bt s" data-sf="toacc" data-id="${E(s.id)}" type="button">تحويل لمحاسب</button> `):""}</tr>`).join(""):empty(own?6:4,"لسه مفيش مديرين")}</tbody></table></div></div>
- <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🧾 المحاسبين (${A.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>الإيميل</th><th>الحالة</th>${PERMS.map(p=>`<th>${p[1]}</th>`).join("")}${own?"<th>كلمة السر</th><th></th>":""}</tr></thead><tbody>
- ${A.length?A.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${PERMS.map(p=>`<td><input type="checkbox" data-sp2="${p[0]}" data-id="${E(s.id)}" ${s.p&&s.p[p[0]]===true?"checked":""} ${own?"":"disabled"}></td>`).join("")}${own?pwc(s)+acts(s,`<button class="bt s g" data-sf="toadm" data-id="${E(s.id)}" type="button">ترقية لمدير</button> `):""}</tr>`).join(""):empty(own?9:7,"لسه مفيش محاسبين")}</tbody></table></div></div>`;
+ <div class="pan" ${own?'style="margin-top:12px"':""}><h3 style="margin:0 0 8px">🛡 المديرين (${M.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>الإيميل</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة السر</th><th></th>":""}</tr></thead><tbody>
+ ${M.length?M.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,`<button class="bt s" data-sf="toacc" data-id="${E(s.id)}" type="button">تحويل لمحاسب</button> `):""}</tr>`).join(""):empty(own?7:4,"لسه مفيش مديرين")}</tbody></table></div></div>
+ <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🧾 المحاسبين (${A.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>الإيميل</th><th>الحالة</th>${PERMS.map(p=>`<th>${p[1]}</th>`).join("")}${own?"<th>الإشعارات</th><th>كلمة السر</th><th></th>":""}</tr></thead><tbody>
+ ${A.length?A.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${PERMS.map(p=>`<td><input type="checkbox" data-sp2="${p[0]}" data-id="${E(s.id)}" ${s.p&&s.p[p[0]]===true?"checked":""} ${own?"":"disabled"}></td>`).join("")}${own?nc(s)+pwc(s)+acts(s,`<button class="bt s g" data-sf="toadm" data-id="${E(s.id)}" type="button">ترقية لمدير</button> `):""}</tr>`).join(""):empty(own?10:7,"لسه مفيش محاسبين")}</tbody></table></div></div>`;
 }
 async function add(){
  const e=f.e.trim().toLowerCase(),n=f.n.trim().slice(0,40);
@@ -76,6 +82,15 @@ async function click(e){
    const au=makeFb("sec").auth;try{const cr=await signInWithEmailAndPassword(au,id,old);await updatePassword(cr.user,nw)}finally{try{await signOut(au)}catch(x){}}
    await setDoc(doc(X.db,"secrets",id),{pw:nw});X.toast("تم تغيير كلمة السر");
   }
+  // إشعار تجربة لأجهزة الشخص ده، ونقول وصل لأنهي جهاز
+  else if(a==="ntest"&&X.test){
+   testing=id;X.redraw();
+   try{const r=await X.test(id),nm=id===X.me?"ليك":"لـ "+(s&&s.name||id);
+    if(!r.n)X.toast(`⚠️ مفيش ولا جهاز متسجّل ${nm}. لازم يفتح المنصة من الموبايل أو الكمبيوتر ويدوس "🔔 فعّل الإشعارات"`);
+    else X.toast(`اتبعت ${nm}: `+r.dev.map(d=>`${d.dv==="m"?"📱":d.dv==="pc"?"💻":"❔"} ${d.ok?"✅ وصل":d.gone?"❌ الجهاز ده مابقاش بيستقبل (اتشال)":"❌ مارضيش"}`).join(" · "))}
+   catch(x){X.toast("تعذر الإرسال. اتأكد إن السيرفر اتحدّث (wrangler deploy) وإن النت شغّال")}
+   testing="";X.redraw();return;
+  }
   else if(a==="cp"&&s){if(!PW()[id]){X.toast("كلمة السر مش متسجلة");return}cpy(msg(s))}
   else if(a==="del"&&s){if(confirm(`حذف المحاسب ${s.name}؟ هيفقد كل الصلاحيات.`)){await deleteDoc(doc(X.db,"staff",id));await deleteDoc(doc(X.db,"secrets",id));X.toast("تم الحذف")}}
  }catch(x){X.toast(AERR(x))}
@@ -94,5 +109,7 @@ export function initStaff(ctx){
  }
  un.push(onSnapshot(collection(X.db,"staff"),sn=>{S=sn.docs.map(d=>({id:d.id,...d.data()}));SL=true;syncDir();if(X.tab()==="stf"&&!busy)X.redraw()},()=>X.toast("تعذر قراءة الموظفين. حدّث القواعد (Rules)")));
  if(X.owner)un.push(onSnapshot(collection(X.db,"whdir"),sn=>{WD={};sn.docs.forEach(d=>{WD[d.id]=d.data()});syncDir()},()=>{}));
+ // أجهزة الإشعارات (موبايل/كمبيوتر) لكل واحد في المستودع
+ if(X.owner)un.push(onSnapshot(query(collection(X.db,"push"),where("role","==","staff")),sn=>{DV={};sn.docs.forEach(d=>{const x=d.data(),k=String(x.email||"").toLowerCase();(DV[k]=DV[k]||[]).push({dv:x.dv||"",ts:x.ts||0})});if(X.tab()==="stf"&&!busy)X.redraw()},()=>{}));
 }
-export function stop(){un.forEach(x=>x());un=[];S=[];SL=false;WD=null;busy=false}
+export function stop(){un.forEach(x=>x());un=[];S=[];SL=false;WD=null;DV={};testing="";busy=false}

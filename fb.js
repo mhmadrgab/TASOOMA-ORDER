@@ -32,10 +32,19 @@ export async function pushRegister(app,db,info){
     // نسجّل خدمة الإشعارات بنفسنا (لو مسجّلة قبل كده بيرجع نفس التسجيل) ونستنى لحد ما تشتغل
     await navigator.serviceWorker.register("./sw.js");
     const reg=await withTimeout(navigator.serviceWorker.ready,20000);
-    const tok=await withTimeout(m.getToken(m.getMessaging(app),{serviceWorkerRegistration:reg}),20000);
+    const msg=m.getMessaging(app),tok=await withTimeout(m.getToken(msg,{serviceWorkerRegistration:reg}),20000);
     if(!tok)return false;
-    // نفس الموبايل ممكن يبقى مستودع وفرع وسائق مع بعض (نفس الموقع = نفس رقم الجهاز)، فكل دور ليه تسجيل لوحده
-    await setDoc(doc(db,"push",info.role+"__"+tok),{role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),tok,ts:Date.now()});
+    // الصفحة مفتوحة: Firebase بيدّي الإشعار للصفحة بدل ما يظهر على الجهاز. لو الصفحة مش قدامه (مثلاً شغّال في برنامج تاني
+    // على الكمبيوتر) بنعرضه احنا. (إشعار التجربة بيظهر دايماً)
+    if(!window.__fgm){window.__fgm=1;m.onMessage(msg,p=>{
+      const n=(p&&p.notification)||{},d=(p&&p.data)||{};
+      if(!(document.hidden||!document.hasFocus())&&d.tag!=="test")return;
+      reg.showNotification(n.title||d.t||"تاسومة",{body:n.body||d.b||"",tag:d.tag||undefined,icon:"./icon-192.png",dir:"rtl",lang:"ar",data:{link:(p.fcmOptions&&p.fcmOptions.link)||d.link||""}}).catch(()=>{});
+    })}
+    // نفس الموبايل ممكن يبقى مستودع وفرع وسائق مع بعض (نفس الموقع = نفس رقم الجهاز)، فكل دور ليه تسجيل لوحده.
+    // dv = موبايل ولا كمبيوتر (المالك بيشوف أجهزة كل واحد في تبويب الموظفين)
+    const mob=/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent)||(/macintosh/i.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+    await setDoc(doc(db,"push",info.role+"__"+tok),{role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),tok,dv:mob?"m":"pc",ts:Date.now()});
     return true;
   }catch(e){console.warn("push",e);return false}
 }
@@ -50,6 +59,12 @@ export async function ping(auth,ids,chats){
     const t=await u.getIdToken();
     fetch(PUSH_URL+"/notify",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({ids,chats}),keepalive:true}).catch(()=>{});
   }catch(e){}
+}
+// إشعار تجربة: لأجهزتي أنا، أو (للمالك) لأجهزة شخص تاني. بيرجّع {n: عدد الأجهزة, dev:[{dv, ok, gone}]}
+export async function pushTest(auth,to){
+  const u=auth&&auth.currentUser;if(!u)throw new Error("login");
+  const r=await withTimeout(fetch(PUSH_URL+"/test",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+await u.getIdToken()},body:JSON.stringify(to?{to}:{})}),20000);
+  if(!r.ok)throw new Error("http "+r.status);return r.json();
 }
 // ---------- الحد اليومي المجاني لـ Firebase ----------
 // لما الحد يخلص، Firebase بيفضل يعيد المحاولة في صمت، فكانت الصفحة بتقول "النت ضعيف" وهو مش ضعيف.

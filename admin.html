@@ -116,7 +116,7 @@ a.bt{text-decoration:none;display:inline-block;color:inherit}.tg{background:#f6e
 <div id="em"></div>
 <div id="pa"></div>
 <script type="module">
-import {makeFb,pushRegister,ping,emailOf,ADMIN_EMAIL,setAudit,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
+import {makeFb,pushRegister,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
 const {app,db,auth}=makeFb("admin");
 import {initExtra,view as cusView,stop as stopExtra,adminHdr,ledger} from "./ad-extra.js";
 import {initFleet,view as fleetView,stop as stopFleet,cars as fleetCars} from "./fleet.js";
@@ -239,7 +239,7 @@ function start(){
  if(adm||can("cus"))initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm});
  if(adm||can("fl"))initFleet({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,ping:ids=>ping(auth,ids)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام بس (والقواعد بتمنع غير كده)
- if(adm)initStaff({db,toast,tab:()=>tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name});
+ if(adm)initStaff({db,toast,tab:()=>tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
  // النسخة الاحتياطية: لمالك النظام بس
  initBackup({db,toast,owner:ROLE.owner===true,redraw:draw});
@@ -437,7 +437,7 @@ onAuthStateChanged(auth,async u=>{
  else{stop();const m=lastErr;lastErr="";login(m)}
  window.uiReady&&uiReady();// دلوقتي بس نعرض الصفحة (دخول أو لوحة)
  // إشعارات الموبايل: الجهاز بيسجّل نفسه (السيرفر بيتأكد من الصلاحية الحقيقية قبل ما يبعت)
- if(u&&u.email){const em=u.email.toLowerCase();window.__push=()=>pushRegister(app,db,{role:"staff",key:em,email:em});autoPush()}else window.__push=null;
+ if(u&&u.email){const em=u.email.toLowerCase();window.__push=()=>pushRegister(app,db,{role:"staff",key:em,email:em});window.__pushTest=()=>pushTest(auth);autoPush()}else{window.__push=null;window.__pushTest=null}
 });
 </script>
 </body>

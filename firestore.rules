@@ -343,7 +343,8 @@ service cloud.firestore {
     match /push/{pid} {
       function okPush() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['role','key','email','ts','tok'])
+        return d.keys().hasOnly(['role','key','email','ts','tok','dv'])
+          && (!('dv' in d) || d.dv in ['m','pc'])
           && d.email == request.auth.token.email && d.ts is number && d.key is string && d.key.size() <= 120
           && d.tok is string && d.tok.size() <= 400 && pid == d.role + '__' + d.tok
           && ((d.role == 'branch' && isBranch() && d.key == myCode())
@@ -352,6 +353,8 @@ service cloud.firestore {
       }
       allow create, update: if signedIn() && okPush();
       allow delete: if signedIn() && resource.data.email == request.auth.token.email;
+      // المالك بيشوف أجهزة الإشعارات بتاعة المستودع (موبايل/كمبيوتر) في تبويب الموظفين
+      allow read: if isOwner() && resource.data.role == 'staff';
     }
 
     // آخر نسخة احتياطية إمتى (meta/backup = {at, n})، ومسح الشات القديم اتعمل إمتى (meta/chatv2)،
