@@ -108,7 +108,7 @@ service cloud.firestore {
       // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)، أو يأكد الاستلام
       // السائق: يغيّر حالة الطلب المعيّن له بس (في الطريق / تم التسليم / رجوع للتجهيز)
       allow update: if isAdmin()
-        || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat','prep'])
+        || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat','edn','prep'])
             && (!('prep' in request.resource.data) || validPrep()))
         || (perm('fl') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asg','st','upd']))
         || (drvOn() && resource.data.asg.drv == myDrv()
@@ -220,15 +220,44 @@ service cloud.firestore {
       }
     }
 
-    // أسماء اللي في المستودع (الفرع بيختار يكلّم مين): whdir/{email} = {n: الاسم, r: owner|admin|req}
+    // أسماء اللي في المستودع (الفرع بيختار يكلّم مين): whdir/{email} = {n: الاسم, k: الكنية, r: owner|admin|req}
     // المالك بس بيكتبها (staff.js بيظبطها لوحده من تبويب الموظفين)
     match /whdir/{em} {
       allow read:  if isAdmin() || perm('req') || branchOn();
       allow write: if isOwner()
-        && request.resource.data.keys().hasOnly(['n','r'])
+        && request.resource.data.keys().hasOnly(['n','k','r'])
         && request.resource.data.n is string && request.resource.data.n.size() <= 60
+        && (!('k' in request.resource.data) || (request.resource.data.k is string && request.resource.data.k.size() <= 40))
         && request.resource.data.r in ['owner','admin','req'];
       allow delete: if isOwner();
+    }
+
+    // صور حسابات المستودع: ava/{email} = {ph: صورة jpeg صغيرة, ts}. كل واحد يرفع أو يشيل صورته هو بس
+    match /ava/{em} {
+      allow read:  if isOwner() || isStaff() || branchOn();
+      allow create, update: if (isOwner() || isStaff()) && em == request.auth.token.email.lower()
+        && request.resource.data.keys().hasOnly(['ph','ts'])
+        && request.resource.data.ph is string && request.resource.data.ph.size() <= 80000
+        && request.resource.data.ph.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+')
+        && request.resource.data.ts is number;
+      allow delete: if isOwner() || (isStaff() && em == request.auth.token.email.lower());
+    }
+
+    // سجل "مين عمل إيه": كل حساب في المستودع بيكتب سطوره باسمه هو بس، ومحدش يعدّل أو يمسح. المالك بس اللي بيقرا
+    match /log/{lid} {
+      allow read: if isOwner();
+      allow create: if (isOwner() || isStaff())
+        && request.resource.data.keys().hasOnly(['e','n','op','c','id','t','k','s','x','ts'])
+        && request.resource.data.e == request.auth.token.email.lower()
+        && request.resource.data.n is string && request.resource.data.n.size() <= 60
+        && request.resource.data.op in ['set','upd','del']
+        && request.resource.data.c is string && request.resource.data.c.size() <= 30
+        && request.resource.data.id is string && request.resource.data.id.size() <= 60
+        && request.resource.data.t is string && request.resource.data.t.size() <= 100
+        && request.resource.data.k is list && request.resource.data.k.size() <= 12
+        && request.resource.data.s is string && request.resource.data.s.size() <= 20
+        && (!('x' in request.resource.data) || request.resource.data.x is number)
+        && request.resource.data.ts is number;
     }
 
     // الشات الخاص: dm/{code}__{email} = محادثة بين فرع واحد وشخص واحد من المستودع.
@@ -325,12 +354,18 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.email == request.auth.token.email;
     }
 
-    // آخر نسخة احتياطية إمتى (meta/backup = {at, n})، ومسح الشات القديم اتعمل إمتى (meta/chatv2): لمالك النظام بس
+    // آخر نسخة احتياطية إمتى (meta/backup = {at, n})، ومسح الشات القديم اتعمل إمتى (meta/chatv2)،
+    // واسم المالك وكنيته (meta/me = {n, k}): لمالك النظام بس
     match /meta/{id} {
       allow read:  if isOwner();
-      allow write: if isOwner() && id in ['backup','chatv2']
-        && request.resource.data.keys().hasOnly(['at','n'])
-        && request.resource.data.at is number && request.resource.data.n is number;
+      allow write: if isOwner() && (
+        (id in ['backup','chatv2']
+          && request.resource.data.keys().hasOnly(['at','n'])
+          && request.resource.data.at is number && request.resource.data.n is number)
+        || (id == 'me'
+          && request.resource.data.keys().hasOnly(['n','k'])
+          && request.resource.data.n is string && request.resource.data.n.size() > 0 && request.resource.data.n.size() <= 60
+          && request.resource.data.k is string && request.resource.data.k.size() <= 40));
     }
 
     // أي حاجة تانية ممنوعة

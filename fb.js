@@ -1,6 +1,6 @@
 // إعدادات Firebase لمشروع TASOOMA (مشتركة بين صفحة الفرع وصفحة المستودع)
 import {initializeApp,getApps} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getFirestore,collection,doc,addDoc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,arrayUnion,orderBy,limit,increment,deleteField} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getFirestore,collection,doc,addDoc as _addDoc,setDoc as _setDoc,getDoc,getDocs,updateDoc as _updateDoc,deleteDoc as _deleteDoc,onSnapshot,query,where,writeBatch as _writeBatch,arrayUnion,orderBy,limit,increment,deleteField} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {getAuth,initializeAuth,browserSessionPersistence,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDSMJmTT9Ed3hQYIe2zGhEUKKt0qTL3ZwM",
@@ -82,5 +82,36 @@ if(typeof document!=="undefined"){
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)chk()});// لما ترجع للصفحة
   addEventListener("online",chk);
   if(/admin/.test(location.pathname))setInterval(chk,20*6e4);// لوحة المستودع بتفضل مفتوحة طول اليوم
+}
+// ---------- سجل "مين عمل إيه" (لوحة المستودع بس) ----------
+// كل حفظ/تعديل/حذف بيعمله حساب في المستودع بيتسجّل لوحده في log/{id} = {e:إيميله, n:اسمه, op, c:المجموعة, id, t:وصف, k:الحقول, s:الحالة, x?:عدد, ts}
+// (بعد ما الحفظ ينجح بس). المالك بس اللي بيشوف السجل (audit.js). صفحات الفرع والسائق مش بتسجّل (setAudit مش متنادية فيها).
+// الشات والإشعارات والصور ومواقع الفروع مش بتتسجّل (كتير ومالهاش لازمة).
+let AUD=null;
+export function setAudit(a){AUD=a&&a.db&&a.e?a:null}
+const NOLOG=new Set(["dm","whdir","push","geo","meta","log","ava","pushlog","chats"]);
+function note(op,r,d){
+  if(!AUD||!r||!r.path)return null;const p=String(r.path).split("/");if(p.length!==2||NOLOG.has(p[0]))return null;
+  if(d&&typeof d==="object"&&Object.keys(d).join()==="msgs")return null;// مسح الشات القديم (مرة واحدة)
+  // الوصف بيتحسب قبل الحفظ (بعد الحذف الحاجة بتختفي من الصفحة)
+  let t="";try{t=String(AUD.label&&AUD.label(p[0],p[1],d)||"")}catch(e){}
+  const o=d&&typeof d==="object"?d:{};
+  const s=typeof o.st==="string"?o.st:typeof o.enabled==="boolean"?(o.enabled?"on":"off"):typeof o.admin==="boolean"?(o.admin?"adm":"acc"):"";
+  return {e:AUD.e,n:String(AUD.n&&AUD.n()||"").slice(0,60),op,c:p[0].slice(0,30),id:p[1].slice(0,60),t:t.slice(0,100),k:Object.keys(o).slice(0,12).map(x=>x.slice(0,30)),s:s.slice(0,20)};
+}
+const put=L=>{if(AUD)L.filter(Boolean).forEach(o=>_addDoc(collection(AUD.db,"log"),{...o,ts:Date.now()}).catch(()=>{}))};
+// دفعة فيها كذا حاجة من نفس النوع (زي إقفال العهدة): سطر واحد في السجل بالعدد
+const group=L=>{const g={};L.filter(Boolean).forEach(o=>{const k=o.c+"|"+o.op;(g[k]=g[k]||[]).push(o)});return Object.values(g).map(a=>a.length===1?a[0]:{...a[0],id:"",t:"",x:a.length})};
+const setDoc=(r,d,o)=>{const L=[note("set",r,d)];return _setDoc(r,d,o).then(x=>{put(L);return x})};
+const updateDoc=(r,d,...a)=>{const L=[note("upd",r,d)];return _updateDoc(r,d,...a).then(x=>{put(L);return x})};
+const deleteDoc=r=>{const L=[note("del",r,null)];return _deleteDoc(r).then(x=>{put(L);return x})};
+const addDoc=(c,d)=>_addDoc(c,d).then(ref=>{put([note("set",ref,d)]);return ref});
+function writeBatch(db){
+  const b=_writeBatch(db),L=[],w={
+    set(r,d,o){L.push(note("set",r,d));b.set(r,d,o);return w},
+    update(r,d,...a){L.push(note("upd",r,d));b.update(r,d,...a);return w},
+    delete(r){L.push(note("del",r,null));b.delete(r);return w},
+    commit(){return b.commit().then(x=>{put(group(L));return x})}};
+  return w;
 }
 export {collection,doc,addDoc,setDoc,getDoc,getDocs,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,arrayUnion,orderBy,limit,increment,deleteField,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword};
