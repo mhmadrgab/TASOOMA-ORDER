@@ -156,6 +156,7 @@ export function initWorkers(ctx){
    if(t.dataset&&t.dataset.wst&&X.admin){try{await setDoc(doc(X.db,"wrate",mon),{stars:{[t.dataset.wst]:N(t.value)}},{merge:true})}catch(x){X.toast("تعذر حفظ التقييم: "+(x&&x.code||x&&x.message))}}})}
  const draw=()=>{const tb=X.tab();if(tb==="wk"||tb==="req")X.redraw()};
  un.push(onSnapshot(collection(X.db,"workers"),sn=>{W=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
- if(X.admin)un.push(onSnapshot(collection(X.db,"wrate"),sn=>{RT={};sn.docs.forEach(d=>RT[d.id]=d.data());if(X.tab()==="wk")X.redraw()},()=>{}));
+ // view = المتابع (صاحب الشركة) بيشوف التقييم
+ if(X.admin||X.view)un.push(onSnapshot(collection(X.db,"wrate"),sn=>{RT={};sn.docs.forEach(d=>RT[d.id]=d.data());if(X.tab()==="wk")X.redraw()},()=>{}));
 }
 export function stop(){un.forEach(f=>f());un=[];W=[];RT={};const m=g("wkm");if(m){m.className="wkm";m.innerHTML=""}}

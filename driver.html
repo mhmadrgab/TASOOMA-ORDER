@@ -109,7 +109,8 @@ function legMin(prev,code){
  return b&&b.avg?b.avg:null;
 }
 function etas(list,from,prev="WH"){let t=from;const o={};for(const x of list){const c=codeOf(x.brn),m=legMin(prev,c);if(!m)break;t+=m*60000;o[x.rid||x.id]=t;prev=c}return o}
-const mapLink=list=>{const pts=list.map(x=>GEO.br[codeOf(x.brn)]).filter(Boolean);if(!pts.length)return "";const d=pts[pts.length-1],w=pts.slice(0,-1).map(p=>p.lat+","+p.lng).join("|");return `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}${w?"&waypoints="+encodeURIComponent(w):""}&travelmode=driving`};
+// التحويل اللي لسه ما استلمهوش: الفرع اللي هيستلم منه بيدخل في المسار قبل الفرع اللي هيسلّمله
+const mapLink=list=>{const pts=list.flatMap(x=>[x.fr&&!x.pk?GEO.br[x.fr]:null,GEO.br[codeOf(x.brn)]]).filter(Boolean);if(!pts.length)return "";const d=pts[pts.length-1],w=pts.slice(0,-1).map(p=>p.lat+","+p.lng).join("|");return `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}${w?"&waypoints="+encodeURIComponent(w):""}&travelmode=driving`};
 // ---------- دخول ----------
 g("gg").onclick=async()=>{
  const u=g("gu").value.trim().toLowerCase(),p=g("gp").value;g("ge").textContent="";
@@ -162,10 +163,13 @@ function draw(){
  if(a){
   const st=Array.isArray(a.stops)?a.stops:[],done=st.filter(s=>s.arr).length,pend=st.filter(s=>!s.arr),ml=mapLink(pend);
   mn.innerHTML=hi(`رحلة شغّالة، سلامتك 🚚 سلّمت ${done} من ${st.length}`)+`<div class="card"><h3>🚚 رحلة شغّالة <span class="pill">${E(a.carn)}</span></h3><div class="kp"><span>بدأت ${hm(a.start)}</span><span id="el">${dur(Date.now()-N(a.start))}</span><span>سلّمت ${done} من ${st.length}</span></div><div class="mut">📍 بنسجّل موقعك لما تضغط (وصلت / إنهاء) بس — مش محتاج تسيب الشاشة مفتوحة.</div>${ml?`<a class="b g" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="${E(ml)}" target="_blank" rel="noopener noreferrer">🗺 افتح المسار في خرائط جوجل</a>`:""}</div>
-  ${st.map(s=>`<div class="stop ${s.arr?"done":""}"><div><b>${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small>${itBtn(s.rid)}</div>${s.arr?"":`<button class="b ok" data-arr="${E(s.rid)}" type="button">وصلت وسلّمت ✅</button>`}</div>`).join("")}
+  ${st.map(s=>{
+    // تحويل بين فرعين: لازم يستلم من الفرع الأول (fr) قبل ما يسلّم للتاني
+    const pick=s.fr&&!s.pk&&!s.arr;
+    return `<div class="stop ${s.arr?"done":""}"><div>${s.fr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" ✔ "+hm(s.pk):""}</small>`:""}<b>${s.fr?"← سلّم لـ ":""}${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small>${itBtn(s.rid)}</div>${s.arr?"":pick?`<button class="b" data-pk="${E(s.rid)}" type="button">📦 استلمت من ${E(s.frn||s.fr)}</button>`:`<button class="b ok" data-arr="${E(s.rid)}" type="button">وصلت وسلّمت ✅</button>`}</div>`}).join("")}
   <div class="row"><button class="b" id="bf" type="button">⛽ بنزين</button><button class="b p" id="be" type="button">🏁 إنهاء الرحلة</button></div>`;
   g("bf").onclick=fuelForm;g("be").onclick=endForm;
-  mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));wireIt(mn);
+  mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));mn.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>pickUp(b.dataset.pk,b));wireIt(mn);
   clearInterval(tick);tick=setInterval(()=>{const e=g("el"),t=active();if(e&&t)e.textContent=dur(Date.now()-N(t.start))},30000);
   return;
  }
@@ -176,7 +180,7 @@ function draw(){
  mn.innerHTML=hi(rs.length?`عندك ${rs.length} توصيلة مستنياك 📦`:"مفيش توصيلات دلوقتي، المستودع هيبعتلك أول ما يجهّز")+`<div class="card"><h3>رحلة جديدة</h3>
  <label>السيارة</label><select id="sc">${CARS.map(c=>`<option value="${E(c.id)}" ${c.id===cid?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")||'<option value="">لا توجد سيارات — كلّم المستودع</option>'}</select>
  <label>قراءة العداد الحالية (كم)</label><input id="so" inputmode="numeric" value="${E(odoV!==null?odoV:lsGet("drv_odo_"+cid)||"")}" placeholder="مثلاً 85230">
- <label>التوصيلات (${rs.length}) — الترتيب بيتظبط تلقائياً على أقرب مسار</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1"><b style="direction:ltr;display:inline-block">${E(r.brn)}</b><small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small></span>${itBtn(r.id)}</label>`).join(""):'<div class="mut">مفيش توصيلات معيّنة ليك دلوقتي. استنى المستودع يعيّن.</div>'}
+ <label>التوصيلات (${rs.length}) — الترتيب بيتظبط تلقائياً على أقرب مسار</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1">${r.tr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ${N(r.rdy)?"✅ جاهز":"⏳ لسه بيتجهّز"}</small>`:""}<b style="direction:ltr;display:inline-block">${E(r.brn)}</b><small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small></span>${itBtn(r.id)}</label>`).join(""):'<div class="mut">مفيش توصيلات معيّنة ليك دلوقتي. استنى المستودع يعيّن.</div>'}
  <button class="b g" id="bs" type="button" style="margin-top:10px" ${rs.length?"":"disabled"}>🚚 ابدأ الرحلة</button></div>
  <div class="row" style="margin:0 0 14px"><button class="b" id="bf" type="button">⛽ تسجيل بنزين</button></div>
  ${dayTr.length?`<div class="card"><h3>رحلات النهاردة</h3>${dayTr.map(t=>`<div class="mut" style="padding:6px 0;border-bottom:1px solid var(--line)">${hm(t.start)} ← ${hm(t.end)} · ${dur(N(t.end)-N(t.start))} · ${Math.max(0,N(t.odo1)-N(t.odo0))} كم · ${(t.stops||[]).filter(s=>s.arr).length} توصيلة</div>`).join("")}</div>`:""}`;
@@ -203,11 +207,23 @@ async function startTrip(){
  g("bs").disabled=true;g("bs").textContent="جاري تحديد الموقع...";
  const loc=await here(),ts=Date.now(),rs=order(sel,loc),et=etas(rs,ts);
  try{
-  const b=writeBatch(db),tr=doc(collection(db,"trips")),t={drv:me.id,drvn:me.name,car:c.id,carn:c.name+(c.plate?" "+c.plate:""),st:"active",start:ts,odo0:odo,stops:rs.map(r=>{const s={rid:r.id,no:String(r.no||"").slice(0,40),brn:String(r.brn||"").slice(0,40),pcs:N(r.pcs)};if(et[r.id])s.eta=et[r.id];return s})};
+  const b=writeBatch(db),tr=doc(collection(db,"trips")),t={drv:me.id,drvn:me.name,car:c.id,carn:c.name+(c.plate?" "+c.plate:""),st:"active",start:ts,odo0:odo,stops:rs.map(r=>{const s={rid:r.id,no:String(r.no||"").slice(0,40),brn:String(r.brn||"").slice(0,40),pcs:N(r.pcs)};if(et[r.id])s.eta=et[r.id];
+    if(r.tr&&r.tr.fr){s.fr=String(r.tr.fr).slice(0,3);s.frn=String(r.tr.frn||"").slice(0,40);if(N(r.pk))s.pk=N(r.pk)}// تحويل: يستلم من الفرع ده الأول
+    return s})};
   if(loc){t.loc0=loc;t.loc={...loc,ts}}
   b.set(tr,t);rs.forEach(r=>{const u={st:"go",dep:ts,upd:ts};if(et[r.id])u.eta=et[r.id];b.update(doc(db,"requests",r.id),u)});
   await withTimeout(b.commit(),15000);ping(auth,rs.map(r=>r.id));lsSet("drv_car",c.id);lsSet("drv_odo_"+c.id,String(odo));odoV=null;toast("بدأت الرحلة. سلامتك 🚚");
  }catch(e){const x=g("bs");if(x){x.disabled=false;x.textContent="🚚 ابدأ الرحلة"}fail(e,"مش مسموح. ممكن المستودع غيّر الطلب.")}
+}
+// تحويل: السواق استلم البضاعة من الفرع اللي بيبعت (pk على الطلب وعلى محطة الرحلة)
+async function pickUp(rid,btn){
+ const a=active();if(!a)return;const s=(a.stops||[]).find(x=>x.rid===rid);if(!s)return;
+ if(!confirm(`استلمت التحويل من ${s.frn||s.fr}؟`))return;
+ btn.disabled=true;const ts=Date.now();
+ try{
+  const b=writeBatch(db);b.update(doc(db,"trips",a.id),{stops:(a.stops||[]).map(x=>x.rid===rid?{...x,pk:ts}:x)});b.update(doc(db,"requests",rid),{pk:ts,upd:ts});
+  await withTimeout(b.commit(),15000);ping(auth,[rid]);toast("تمام 📦 دلوقتي وصّله لـ "+s.brn);
+ }catch(e){btn.disabled=false;fail(e,"مش مسموح. ممكن المستودع غيّر التحويل.")}
 }
 // ---------- نوافذ ----------
 const openM=h=>{g("md").innerHTML=`<div class="card">${h}</div>`;g("md").className="mdl on"};

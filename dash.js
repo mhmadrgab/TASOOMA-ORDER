@@ -84,6 +84,8 @@ const STYLE=`
 .dz-grow2 .t i{animation:dzBar .9s cubic-bezier(.22,.9,.24,1) both}
 @keyframes dzBar{from{transform:scaleX(0)}}
 .dz-none{color:var(--dz-mut);font-size:13.5px;padding:8px 0}
+.dz-trl{margin-top:12px;display:flex;flex-direction:column}.dz-trl>div{padding:8px 2px;border-top:1px solid var(--dz-grid);font-size:14px}
+.dz-trl small{display:block;color:var(--dz-mut);font-size:12.5px}
 @media (max-width:900px){.dz-rings{grid-template-columns:1fr 1fr}.dz-row{grid-template-columns:1fr}}
 @media (max-width:560px){.dz-flow{grid-template-columns:1fr 1fr}.dz-st:nth-child(2):after{display:none}.dz-ring .w{width:108px;height:108px}.dz-ring .ct b{font-size:25px}.dz-card{padding:14px}}
 @media (prefers-reduced-motion:reduce){.dz *{animation:none!important;transition:none!important}}`;
@@ -123,7 +125,7 @@ const sum=(id,icon,val,label)=>`<span>${icon} <b ${cu(moved(id,val),val)}>${fmt(
 
 export function dashView(R){
   if(!X)return "";
-  const t0=from(PER),now=Date.now(),C=R.filter(r=>N(r.ts)>=t0);
+  const t0=from(PER),now=Date.now(),RQ=R.filter(r=>!r.tr),C=RQ.filter(r=>N(r.ts)>=t0);// التحويلات ليها كارت لوحدها
   const dl=C.filter(r=>r.st==="done"||r.st==="recv"),rc=C.filter(r=>r.st==="recv"),ok=rc.filter(r=>!r.rcv||r.rcv.ok!==false);
   const tt=dl.map(r=>dlvAt(r)-N(r.ts)).filter(x=>x>0),fast=tt.filter(x=>x<=24*H).length,avg=tt.length?tt.reduce((a,b)=>a+b,0)/tt.length:0;
   const out=C.map(r=>N(r.dep)-N(r.ts)).filter(x=>x>0),avgOut=out.length?out.reduce((a,b)=>a+b,0)/out.length:0;
@@ -131,11 +133,11 @@ export function dashView(R){
   const pcs=C.reduce((a,r)=>a+N(r.pcs),0),brs=new Set(C.map(r=>String(r.br||String(r.brn||"").split("-")[0]))).size;
   const lbl=(PERS.find(p=>p[0]===PER)||PERS[1])[1];
   // المراحل دلوقتي (مهما كان تاريخ الطلب)
-  const stage=(st,icon,name,k)=>{const L=R.filter(r=>r.st===st),old=L.length?Math.min(...L.map(r=>st==="new"?N(r.ts):st==="prep"?(N(r.prep&&r.prep.at)||N(r.ts)):st==="go"?(N(r.dep)||N(r.ts)):(dlvAt(r)||N(r.ts)))):0;
+  const stage=(st,icon,name,k)=>{const L=RQ.filter(r=>r.st===st),old=L.length?Math.min(...L.map(r=>st==="new"?N(r.ts):st==="prep"?(N(r.prep&&r.prep.at)||N(r.ts)):st==="go"?(N(r.dep)||N(r.ts)):(dlvAt(r)||N(r.ts)))):0;
     return `<button class="dz-st" data-s="${st}" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${L.length}"><span class="ic">${icon}</span><b><span ${cu(moved("st"+st,L.length),L.length)}>${fmt(L.length)}</span></b><span class="nm">${E(name)}</span><small>${L.length?"أقدم واحد من "+dur(now-old):"مفيش"}</small></button>`};
   // يوم بيوم: طلبات اتعملت (ذهبي) مقابل اتسلّمت (تركواز)
   const days=Math.max(7,+PER),d0=midnight(now)-(days-1)*D,rows=[];
-  for(let i=0;i<days;i++){const a=d0+i*D,b=a+D;rows.push({a,n:R.filter(r=>N(r.ts)>=a&&N(r.ts)<b).length,d:R.filter(r=>{const t=dlvAt(r);return t>=a&&t<b}).length})}
+  for(let i=0;i<days;i++){const a=d0+i*D,b=a+D;rows.push({a,n:RQ.filter(r=>N(r.ts)>=a&&N(r.ts)<b).length,d:RQ.filter(r=>{const t=dlvAt(r);return t>=a&&t<b}).length})}
   const mx0=Math.max(1,...rows.map(x=>Math.max(x.n,x.d))),step=mx0<=4?1:mx0<=10?2:mx0<=20?5:mx0<=50?10:Math.ceil(mx0/50)*10,mx=Math.ceil(mx0/step)*step;
   const gEl=moved("trend",JSON.stringify(rows.map(x=>[x.n,x.d])));
   const dn=t=>new Date(t).toLocaleDateString("en-GB",{day:"numeric",month:"numeric"}),wd=t=>new Date(t).toLocaleDateString("ar-EG",{weekday:"long"});
@@ -147,7 +149,7 @@ export function dashView(R){
   // أكتر الفروع (بالقطع في الفترة) وأكتر الأكواد (الطلبات المفتوحة)
   const per={};C.forEach(r=>{const k=String(r.brn||"");per[k]=(per[k]||0)+N(r.pcs)});
   const topB=Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const opn={};R.filter(r=>r.st==="new"||r.st==="prep").forEach(r=>(Array.isArray(r.rows)?r.rows:[]).forEach(x=>{const k=String(x&&x.k||"");if(k)opn[k]=(opn[k]||0)+N(x&&x.q)}));
+  const opn={};RQ.filter(r=>r.st==="new"||r.st==="prep").forEach(r=>(Array.isArray(r.rows)?r.rows:[]).forEach(x=>{const k=String(x&&x.k||"");if(k)opn[k]=(opn[k]||0)+N(x&&x.q)}));
   const topC=Object.entries(opn).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const tops=(L,id)=>{if(!L.length)return `<div class="dz-none">مفيش بيانات في الفترة دي</div>`;const m=L[0][1]||1,el=moved(id,JSON.stringify(L));
     return `<div class="dz-top${el>=0?" dz-grow2":""}">${L.map(([n,v])=>`<div class="dz-tr"><span title="${E(n)}">${E(n)}</span><div class="t"><i style="width:${Math.max(3,v/m*100)}%;${delay(el)}"></i></div><em>${fmt(v)}</em></div>`).join("")}</div>`};
@@ -164,6 +166,7 @@ export function dashView(R){
   <div class="dz-card"><h3>الطلبات دلوقتي <small>دوس على أي مرحلة تشوف طلباتها</small></h3><div class="dz-flow">
    ${stage("new","🆕","جديد","--dz-new")}${stage("prep","⏳","قيد التجهيز","--dz-prep")}${stage("go","🚚","في الطريق","--dz-go")}${stage("done","📦","وصل ومستني تأكيد","--dz-done")}
   </div></div>
+  ${trCard(R,now)}
   <div class="dz-row">
    <div class="dz-card"><h3>يوم بيوم <span class="dz-lg"><span><i style="background:var(--dz-s1)"></i>طلبات جديدة</span><span><i style="background:var(--dz-s2)"></i>اتسلّمت</span></span></h3>
     <div class="dz-ch"><div class="dz-ax" aria-hidden="true"><span>${mx}</span><span>${mx/2%1?"":mx/2}</span><span>0</span></div><div class="dz-pl${gEl>=0?" dz-grow":""}">${grid}${bars}</div></div>
@@ -173,6 +176,17 @@ export function dashView(R){
     <h3 style="margin-top:18px">أكتر الأكواد المطلوبة <small>الطلبات المفتوحة</small></h3>${tops(topC,"tc")}</div>
   </div>
  </section>`;
+}
+// التحويلات بين الفروع (بتظهر بس لو فيه تحويلات): مين مستني إيه دلوقتي + آخر التحويلات المفتوحة. الضغط = فلتر "🔄 تحويلات"
+const trWhere=r=>r.st==="new"||r.st==="prep"?(N(r.rdy)?"✅ جاهز للسواق":r.st==="prep"?"⏳ الفرع بيجهّز":"📭 الفرع لسه مابدأش"):r.st==="go"?(N(r.pk)?"🚚 السواق استلم ورايح":"🚚 في الطريق"):"";
+function trCard(R,now){
+  if(!R.some(r=>r.tr))return "";
+  const TA=R.filter(r=>r.tr&&r.st!=="done"&&r.st!=="recv").sort((a,b)=>N(a.ts)-N(b.ts)),nd=R.filter(r=>r.tr&&r.st==="done").length;
+  const wait=TA.filter(r=>r.st!=="go"&&!N(r.rdy)).length,rdy=TA.filter(r=>r.st!=="go"&&N(r.rdy)).length,go=TA.filter(r=>r.st==="go").length;
+  const cell=(id,n,icon,name,k,sub)=>`<button class="dz-st" data-s="tr" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${n}"><span class="ic">${icon}</span><b><span ${cu(moved(id,n),n)}>${fmt(n)}</span></b><span class="nm">${E(name)}</span><small>${E(sub)}</small></button>`;
+  return `<div class="dz-card" style="margin-top:12px"><h3>🔄 التحويلات بين الفروع <small>دوس على أي خانة تشوف التحويلات</small></h3><div class="dz-flow">
+   ${cell("t1",wait,"📭","الفرع بيجهّز","--dz-new","مستنيين الفرع اللي هيبعت")}${cell("t2",rdy,"✅","جاهز للسواق","--dz-prep","عيّن سواق من السيارات")}${cell("t3",go,"🚚","في الطريق","--dz-go","مع السواق")}${cell("t4",nd,"📦","وصل ومستني تأكيد","--dz-done","الفرع اللي استلم يأكّد")}</div>
+   ${TA.length?`<div class="dz-trl">${TA.slice(0,8).map(r=>`<div><b><bdi dir="ltr">${E(r.tr.frn)}</bdi> ← <bdi dir="ltr">${E(r.brn)}</bdi></b> · ${fmt(N(r.pcs))} قطعة<small>${E(trWhere(r))}${r.asg&&r.asg.drvn?" · 🚚 "+E(r.asg.drvn):""} · من ${dur(now-N(r.ts))} · <bdi dir="ltr">${E(r.no)}</bdi></small></div>`).join("")}${TA.length>8?`<small>و${TA.length-8} كمان…</small>`:""}</div>`:""}</div>`;
 }
 // الأرقام بتعدّ من صفر لحد قيمتها
 function countUp(){

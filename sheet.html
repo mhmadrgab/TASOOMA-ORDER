@@ -423,9 +423,10 @@ $("#cm").addEventListener("change",pv);
 var INADM=(()=>{try{return !!window.frameElement&&window.frameElement.id==="sf"}catch(e){return false}})(),toqBusy=false,toqT=0;
 function toqUI(){
  const b=$("#tr2"),q=$("#toq");if(!INADM||!b||!q)return;
- b.hidden=st.ty==="tr"||!!st.sent;q.hidden=!st.sent;
- if(st.sent)q.innerHTML=`✅ الورقة دي اتبعتت لفرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> كطلب رقم <bdi dir="ltr">${E(st.sent)}</bdi><small>تابعه من تبويب "الطلبات" زي أي طلب. أي تعديل بعد كده من زرار ✏️ تعديل على الطلب. لطلب تاني دوس "+ ورقة جديدة".</small>`;
- b.disabled=toqBusy;b.textContent=toqBusy?"⏳ جاري الإرسال...":"📤 ابعتها طلب للفرع";
+ const tr=st.ty==="tr";b.hidden=!!st.sent;q.hidden=!st.sent;
+ if(st.sent)q.innerHTML=st.sentFr?`✅ التحويل اتبعت: من فرع <bdi dir="ltr">${E(st.sentFr)}</bdi> ← فرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> (رقم <bdi dir="ltr">${E(st.sent)}</bdi>)<small>الفرعين وصلهم إشعار. تابعه من تبويب "الطلبات" (فلتر 🔄 تحويلات)، وعيّن السواق من "السيارات". لتحويل تاني دوس "+ ورقة جديدة".</small>`
+  :`✅ الورقة دي اتبعتت لفرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> كطلب رقم <bdi dir="ltr">${E(st.sent)}</bdi><small>تابعه من تبويب "الطلبات" زي أي طلب. أي تعديل بعد كده من زرار ✏️ تعديل على الطلب. لطلب تاني دوس "+ ورقة جديدة".</small>`;
+ b.disabled=toqBusy;b.textContent=toqBusy?"⏳ جاري الإرسال...":tr?"🔄 ابعت التحويل للفرعين":"📤 ابعتها طلب للفرع";
 }
 const rid20=()=>{const a="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";return [...crypto.getRandomValues(new Uint32Array(20))].map(x=>a[x%a.length]).join("")};
 $("#tr2").addEventListener("click",()=>{
@@ -433,18 +434,23 @@ $("#tr2").addEventListener("click",()=>{
  const f=st.rows.filter(r=>(r.k||"").trim()&&+r.q>0);
  if(!f.length)return void alert("الورقة فاضية. اكتب كود وكمية على الأقل.");
  const half=st.rows.filter(r=>(r.k||"").trim()&&!(+r.q>0)).length,codes=new Set(f.map(r=>r.k.trim())).size,pcs=f.reduce((a,r)=>a+(+r.q),0);
- if(!confirm(`هيتعمل طلب باسم فرع ${st.br}\n${codes} صنف · ${pcs} قطعة${half?`\nتنبيه: ${half} سطر فيه كود من غير كمية ومش هيتبعت`:""}\n\nالفرع هيوصله إشعار إن المستودع عمله طلب، والطلب هيظهر في "الطلبات" وتجهّزه وتبعته مع سواق عادي.\n\nكمّل؟`))return;
- // فرع مختلف = طلب مختلف
- if(!st.rid||st.ridBr!==st.br){st.rid=rid20();st.ridBr=st.br}
+ const tr=st.ty==="tr",fr=tr?(st.fr||BR[0]):"";
+ if(tr&&fr===st.br)return void alert("الفرع اللي هيبعت هو نفس الفرع اللي هيستلم! اختار فرعين مختلفين.");
+ const tail=`${codes} صنف · ${pcs} قطعة${half?`\nتنبيه: ${half} سطر فيه كود من غير كمية ومش هيتبعت`:""}`;
+ if(!confirm(tr?`تحويل من فرع ${fr} ← لفرع ${st.br}\n${tail}\n\n• فرع ${fr} هيوصله إشعار إن المستودع عايز منه الأصناف دي ويبدأ يجهّزها\n• فرع ${st.br} هيوصله إشعار إن فيه تحويل رايحله\n• بعد كده تعيّن سواق من "السيارات" يستلم من ${fr} ويسلّم لـ ${st.br}\n\nكمّل؟`
+   :`هيتعمل طلب باسم فرع ${st.br}\n${tail}\n\nالفرع هيوصله إشعار إن المستودع عمله طلب، والطلب هيظهر في "الطلبات" وتجهّزه وتبعته مع سواق عادي.\n\nكمّل؟`))return;
+ // فرع مختلف (أو نوع مختلف) = طلب مختلف
+ const key=st.br+"|"+fr;
+ if(!st.rid||st.ridBr!==key){st.rid=rid20();st.ridBr=key}
  save();toqBusy=true;toqUI();
- parent.postMessage({t:"sheet2req",rid:st.rid,br:st.br,dt:st.dt,dr:st.dr||"",gn:st.gn||"",rows:st.rows},location.origin);
+ parent.postMessage({t:"sheet2req",rid:st.rid,br:st.br,fr,dt:st.dt,dr:st.dr||"",gn:st.gn||"",rows:st.rows},location.origin);
  clearTimeout(toqT);toqT=setTimeout(()=>{if(!toqBusy)return;toqBusy=false;toqUI();alert("الإرسال اتأخر. اتأكد من النت ودوس تاني (مش هيتعمل طلبين).")},30000);
 });
 addEventListener("message",e=>{
  const d=e.data;if(e.origin!==location.origin||e.source!==parent||!d||d.t!=="sheet2req-r")return;
  const s=lib.sheets.find(x=>x.rid===d.rid);if(!s)return;
  if(s===st){clearTimeout(toqT);toqBusy=false}
- if(d.ok){s.sent=d.no;s.sentBr=s.br;if(s===st)save();else try{localStorage.setItem(LK,JSON.stringify(lib))}catch(x){}}
+ if(d.ok){s.sent=d.no;s.sentBr=s.br;s.sentFr=d.fr||"";if(s===st)save();else try{localStorage.setItem(LK,JSON.stringify(lib))}catch(x){}}
  else if(s===st)alert(d.err||"تعذر الإرسال");
  toqUI();
 });

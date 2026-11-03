@@ -241,6 +241,9 @@ body[data-ty="tr"] .rc:not(.to) small{color:#7fd0dc}
 .gc .go:disabled{opacity:.5}.gc .er{color:#ff8a7a;min-height:22px;font-size:14px;margin-top:10px}
 #my{display:none;background:var(--card);border-radius:16px;padding:16px 20px;margin-top:20px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .lock #my{display:block}#my h3{margin:0 0 10px;font-size:18px}
+#xf{background:var(--card);border-radius:16px;padding:16px 20px;margin-top:20px;box-shadow:0 1px 2px rgba(0,0,0,.05);border-top:4px solid #2a78d6}#xf h3{margin:0 0 4px;font-size:18px}
+#xf .xfh{margin:0 0 8px;color:var(--mut);font-size:13.5px}.xfb{background:var(--field);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer}
+#xf button:disabled{opacity:.5}.shot #xf{display:none!important}
 .mr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}.mr:last-child{border:0}
 .mr small{display:block;color:var(--mut);font-size:13px}
 .chp{border-radius:999px;padding:4px 14px;font-size:13.5px;font-weight:700;white-space:nowrap}
@@ -464,7 +467,7 @@ loadUI();
 </script>
 
 <script type="module">
-import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,setDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
+import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,setDoc,updateDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {initBranch,stopBranch} from "./br-extra.js";
 import {notify,beep,badge,autoPush} from "./notify.js";
 import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.js";
@@ -473,6 +476,29 @@ const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم
 const ST=x=>LBL[x]?x:"new";
 const g=id=>document.getElementById(id);
 let B=null,unsub=null,prev=null,tt,REQS={},paint=()=>{};const opn=new Set();
+// XF = التحويلات المطلوبة من الفرع ده (null = لسه ماتحمّلتش)
+let XF=null;const seenXf=new Set();
+// حالة الطلب للفرع: التحويل اللي جايله بيتجهّز في الفرع التاني مش في المستودع
+const lbl=r=>r.tr&&(r.st==="new"||r.st==="prep")?(+r.rdy?`جاهز في ${r.tr.frn}، مستني السواق`:`بيتجهّز في ${r.tr.frn}`):LBL[ST(r.st)];
+// التحويلات المطلوبة من الفرع ده: بيجهّزها ويقول "جاهزة"، والمستودع بيبعت سواق ياخدها ويوديها للفرع التاني
+function paintXf(){
+ let box=g("xf");
+ const L=(XF||[]).filter(r=>r.st==="new"||r.st==="prep"||r.st==="go"||Date.now()-(+r.upd||+r.ts||0)<3*864e5).sort((a,b)=>(+b.ts||0)-(+a.ts||0)).slice(0,12);
+ if(!L.length){if(box)box.remove();return}
+ if(!box){const my=g("my");if(!my)return;box=document.createElement("div");box.id="xf";my.parentNode.insertBefore(box,my)}
+ box.innerHTML=`<h3>🔄 تحويلات مطلوبة منك</h3><p class="xfh">المستودع عايز منك تجهّز الأصناف دي وتبعتها لفرع تاني. جهّزها ودوس "جاهزة للسواق"، والمستودع هيبعت سواق ياخدها.</p>`+L.map(r=>{
+  const dn=r.asg&&r.asg.drvn?E(r.asg.drvn):"",open=r.st==="new"||r.st==="prep";
+  const where=r.st==="new"&&!+r.rdy?"📭 لسه مابدأتش":open?(+r.rdy?`✅ جاهزة · ${dn?"السواق "+dn+" جاي ياخدها":"مستنيين المستودع يبعت سواق"}`:"⏳ بتجهّزها"):r.st==="go"?`🚚 ${+r.pk?"السواق استلمها":"مع السواق"}${dn?" ("+dn+")":""}`:`📦 وصلت لـ <bdi dir="ltr">${E(r.brn)}</bdi>`;
+  return `<div class="mr"><div><b>← لـ <bdi dir="ltr">${E(r.brn)}</bdi></b><small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)} · <bdi dir="ltr">${E(r.no)}</bdi></small></div><span class="chp ${ST(r.st)}">${where}</span>${r.st==="new"&&!+r.rdy?`<button class="xfb" data-xf="go" data-id="${E(r.id)}" type="button">⏳ بدأت أجهّز</button>`:""}${open&&!+r.rdy?`<button class="rcvb" data-xf="rdy" data-id="${E(r.id)}" type="button">✅ جاهزة للسواق</button>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>الأصناف المطلوبة</summary><div class="ln">${lines(r.rows)}</div>${r.gn?`<div class="ln">ملاحظات: ${E(r.gn)}</div>`:""}</details></div>`}).join("");
+}
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("[data-xf]");if(!b||!B)return;const r=(XF||[]).find(x=>x.id===b.dataset.id);if(!r)return;
+ const rdy=b.dataset.xf==="rdy";
+ if(rdy&&!(await ask({i:"✅",t:"التحويل جاهز؟",p:`${+r.codes||0} صنف · ${+r.pcs||0} قطعة لـ ${r.brn}. المستودع هيبعت سواق ياخدها منك.`,ok:"أيوه جاهزة"})))return;
+ b.disabled=true;const now=Date.now();
+ try{await withTimeout(updateDoc(doc(db,"requests",r.id),rdy?{rdy:now,upd:now,...(r.st==="new"?{st:"prep"}:{})}:{st:"prep",upd:now}),15000);ping(auth,[r.id]);toast(rdy?"✅ تمام، المستودع عرف إنها جاهزة":"⏳ تمام، المستودع عرف إنك بدأت تجهّز")}
+ catch(x){b.disabled=false;toast(x&&x.code==="permission-denied"?"مش مسموح. ممكن المستودع غيّر التحويل.":"تعذر الحفظ، اتأكد من النت وجرّب تاني","er")}
+});
 const lines=rows=>{const m=new Map();(Array.isArray(rows)?rows:[]).forEach(r=>{const k=String(r&&r.k||"");if(!m.has(k))m.set(k,[]);m.get(k).push(r)});return [...m].map(([k,rs])=>`<div><b><bdi dir="ltr">${E(k)}</bdi></b> — ${rs.map(r=>`<bdi dir="ltr">${E(String(r.c||"-"))} ${E(String(r.z||""))} × ${+r.q||0}</bdi>`).join(" · ")}</div>`).join("")};
 document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"&&d.dataset.id){d.open?opn.add(d.dataset.id):opn.delete(d.dataset.id)}},true);
 const code=b=>b.split("-")[0];
@@ -491,7 +517,7 @@ function hello(all){
   all?[["⏳",`${wh} عند المستودع`],["🚚",`${go} في الطريق`],["📦",`${dn} مستني تأكيدك`]]:[]);
 }
 function listen(){
- if(unsub)unsub();prev=null;
+ if(unsub)unsub();prev=null;XF=null;
  // توفير القراءات: بدل كل طلبات الفرع من أول يوم، بنسمع لـ (o) الطلبات اللي لسه مفتوحة + (r) طلبات آخر 45 يوم
  const c=code(B),M={o:new Map(),r:new Map()},got={o:false,r:false},uns=[];unsub=()=>uns.forEach(f=>f());
  const fail=e=>{if(e&&e.code==="permission-denied"){signOut(auth).then(()=>showErr("الحساب ده اتعطّل. كلّم المستودع."))}else toast("تعذر قراءة الطلبات، اتأكد من الإنترنت","er")};
@@ -500,13 +526,23 @@ function listen(){
  // محتاج فهرس (br + ts) في Firebase؛ لو لسه ماتعملش بنرجع للطريقة القديمة علشان الصفحة ماتقفش
  uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c),where("ts",">=",Date.now()-45*864e5)),sn=>put("r",sn),e=>{
   if(e&&e.code==="failed-precondition")uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c)),sn=>put("r",sn),fail));else fail(e)}));
+ // التحويلات المطلوبة من الفرع ده (هو اللي هيجهّز ويبعت لفرع تاني)
+ uns.push(onSnapshot(query(collection(db,"requests"),where("tr.fr","==",c)),sn=>{
+  const old=XF;XF=sn.docs.map(d=>({id:d.id,...d.data()}));
+  XF.forEach(r=>{if(r.st==="new"&&!seenXf.has(r.id)){seenXf.add(r.id);opn.add(r.id)}});// التحويل الجديد بيظهر بأصنافه مفتوحة
+  if(old)XF.forEach(r=>{if(old.some(o=>o.id===r.id)||r.st!=="new"||Date.now()-(+r.ts||0)>36e5)return;
+   const m=`المستودع عايز منك تحويل لـ ${r.brn}: ${+r.codes||0} صنف · ${+r.pcs||0} قطعة. ابدأ جهّزه`;toast("🔄 "+m);notify("🔄 تحويل مطلوب منك",m,"x"+r.id);beep()});
+  paintXf();setBadge();
+ },()=>{}));
  function show(){
   const m=new Map(M.r);M.o.forEach((v,id)=>m.set(id,v));
   const all=[...m.values()],rs=all.slice().sort((a,b)=>b.ts-a.ts).slice(0,12);
   hello(all);
-  // المستودع عمل للفرع طلب من عنده (الورقة اليدوية)
-  if(prev)rs.forEach(r=>{if(prev[r.id]||r.by!=="wh"||r.st!=="new"||Date.now()-(+r.ts||0)>36e5)return;const m=`المستودع عملك طلب ${r.no}: ${+r.codes||0} صنف · ${+r.pcs||0} قطعة`;toast("📋 "+m);notify("📋 طلب من المستودع",m,"w"+r.id);beep()});
-  if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${LBL[ST(r.st)]}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
+  // المستودع عمل للفرع طلب من عنده (الورقة اليدوية)، أو تحويل رايحله من فرع تاني
+  if(prev)rs.forEach(r=>{if(prev[r.id]||r.by!=="wh"||r.st!=="new"||Date.now()-(+r.ts||0)>36e5)return;
+   const m=r.tr?`في تحويل رايحلك من ${r.tr.frn}: ${+r.codes||0} صنف · ${+r.pcs||0} قطعة`:`المستودع عملك طلب ${r.no}: ${+r.codes||0} صنف · ${+r.pcs||0} قطعة`;
+   toast((r.tr?"🔄 ":"📋 ")+m);notify(r.tr?"🔄 تحويل رايحلك":"📋 طلب من المستودع",m,"w"+r.id);beep()});
+  if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${lbl(r)}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
   REQS={};rs.forEach(r=>REQS[r.id]=r);
   setBadge();
   prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0});
@@ -514,7 +550,7 @@ function listen(){
  }
  // بنرسم القائمة لوحدها كمان لما المحادثة تتقفل (علشان رقم الرسايل الجديدة يتحدّث)
  paint=()=>{const rs=Object.values(REQS).sort((a,b)=>b.ts-a.ts);
-  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.by==="wh"?`<span class="ed-tag wh-tag">📋 المستودع عمل الطلب ده</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${r.edn?" ("+E(r.edn)+")":""}${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${LBL[ST(r.st)]}</span>${rqBtn(r)}${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}${+r.eta?" · وصول متوقع حوالي "+new Date(+r.eta).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):""}</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
+  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.tr?`<span class="ed-tag wh-tag">🔄 تحويل من <bdi dir="ltr">${E(r.tr.frn)}</bdi></span>`:r.by==="wh"?`<span class="ed-tag wh-tag">📋 المستودع عمل الطلب ده</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${r.edn?" ("+E(r.edn)+")":""}${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${lbl(r)}</span>${rqBtn(r)}${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}${+r.eta?" · وصول متوقع حوالي "+new Date(+r.eta).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):""}</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
  }
 }
 function enter(b){
@@ -531,8 +567,8 @@ function enter(b){
  const qc=new URLSearchParams(location.search).get("chat");if(qc!==null){setTimeout(()=>openBr(qc.toLowerCase()),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}
 }
 // الرقم على أيقونة التطبيق: طلبات مستنية تأكيد + رسايل جديدة
-function setBadge(){const all=Object.values(REQS);badge(all.filter(r=>r.st==="done").length+bcUnread())}
-function gateOn(){B=null;stopBranch();stopBChat();REQS={};if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function setBadge(){const all=Object.values(REQS);badge(all.filter(r=>r.st==="done").length+(XF||[]).filter(r=>(r.st==="new"||r.st==="prep")&&!+r.rdy).length+bcUnread())}
+function gateOn(){B=null;stopBranch();stopBChat();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");

@@ -31,6 +31,8 @@ service cloud.firestore {
         && staffDoc().enabled == true;
     }
     function perm(k)      { return isStaff() && staffDoc().p.get(k, false) == true; }
+    // "متابع" (صاحب الشركة): staff/{email}.v = true. بيقرا كل حاجة (من غير كلمات السر والشات الخاص) ومايقدرش يكتب أي حاجة
+    function isViewer()   { return isStaff() && staffDoc().get('v', false) == true; }
 
     match /staff/{email} {
       allow read:  if isAdmin() || (signedIn() && request.auth.token.email == email);
@@ -39,7 +41,7 @@ service cloud.firestore {
 
     // حالة الفرع (مفعّل/معطّل): الفرع يقرأ حالته بس، والمستودع يتحكم
     match /branches/{code} {
-      allow read:  if isAdmin() || (isBranch() && myCode() == code);
+      allow read:  if isAdmin() || isViewer() || (isBranch() && myCode() == code);
       allow write: if isAdmin();
     }
 
@@ -56,12 +58,15 @@ service cloud.firestore {
           && d.br == myCode() && bodyOk(d);
       }
       // طلب عمله المستودع للفرع (من الورقة اليدوية): نفس شكل طلب الفرع + by='wh' واسم اللي عمله (byn)
+      // تحويل بين فرعين: نفس الطلب باسم الفرع اللي هيستلم (br) + tr = {fr: الفرع اللي هيجهّز ويبعت, frn}
       function validWh() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['br','brn','no','dt','dr','gn','rows','codes','pcs','st','ts','by','byn'])
+        return d.keys().hasOnly(['br','brn','no','dt','dr','gn','rows','codes','pcs','st','ts','by','byn','tr'])
           && d.keys().hasAll(['by'])
           && d.by == 'wh' && d.br is string && d.br.matches('^[0-9]{3}$') && d.brn.matches(d.br + '-.*')
           && (!('byn' in d) || (d.byn is string && d.byn.size() <= 60))
+          && (!('tr' in d) || (d.tr is map && d.tr.keys().hasOnly(['fr','frn']) && d.tr.fr is string && d.tr.fr.matches('^[0-9]{3}$')
+               && d.tr.fr != d.br && d.tr.frn is string && d.tr.frn.size() <= 40))
           && bodyOk(d);
       }
       function bodyOk(d) {
@@ -75,8 +80,10 @@ service cloud.firestore {
           && (!('gn' in d) || (d.gn is string && d.gn.size() <= 1000))
           && (!('dr' in d) || (d.dr is string && d.dr.size() <= 100));
       }
+      // الفرع اللي هيبعت تحويل (tr.fr) بيشوفه كمان علشان يجهّزه
       allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode())
-                    || perm('req') || perm('fl')
+                    || perm('req') || perm('fl') || isViewer()
+                    || (branchOn() && resource.data.tr.fr == myCode())
                     || (drvOn() && resource.data.asg.drv == myDrv());
       allow create: if isAdmin() || (branchOn() && validNew()) || (perm('req') && validWh());
       // إثبات التسليم من السائق: اسم المستلم + توقيع + صورة (اختياري)
@@ -114,9 +121,15 @@ service cloud.firestore {
         || (drvOn() && resource.data.asg.drv == myDrv()
             && resource.data.st in ['prep','go']
             && request.resource.data.st in ['prep','go','done']
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','dep','dlv','pod','eta'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','dep','dlv','pod','eta','pk'])
             && (!('pod' in request.resource.data) || validPod())
+            && (!('pk' in request.resource.data) || request.resource.data.pk is number)
             && (!('eta' in request.resource.data) || request.resource.data.eta is number))
+        // التحويل: الفرع اللي هيبعت يقول "بدأت أجهّز" (new ← prep) و"جاهزة للسواق" (rdy) بس
+        || (branchOn() && resource.data.get('tr', {}).get('fr', '') == myCode()
+            && resource.data.st in ['new','prep'] && request.resource.data.st in ['new','prep']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rdy'])
+            && (!('rdy' in request.resource.data) || request.resource.data.rdy is number))
         || (branchOn() && resource.data.br == myCode() && (
           (resource.data.st == 'new' && validNew())
           || (resource.data.st == 'done' && request.resource.data.st == 'recv'
@@ -129,33 +142,34 @@ service cloud.firestore {
     // عهدة المستودع وفواتيرها وإقفالاتها: للمستودع (الأدمن) فقط
     // المحاسب (perm cus): يقرأ ويسجّل ويعدّل حركات الفترة المفتوحة بس. الحذف والإقفال للمدير فقط.
     match /ledger/{id} {
-      allow read:   if isAdmin() || perm('cus');
+      allow read:   if isAdmin() || perm('cus') || isViewer();
       allow create: if isAdmin() || (perm('cus') && !('sid' in request.resource.data));
       allow update: if isAdmin() || (perm('cus') && !('sid' in resource.data) && !('sid' in request.resource.data));
       allow delete: if isAdmin();
     }
     match /settlements/{id} {
-      allow read:  if isAdmin() || perm('cus');
+      allow read:  if isAdmin() || perm('cus') || isViewer();
       allow write: if isAdmin();
     }
 
     // السواقين والسيارات والرحلات والبنزين
     match /drivers/{code} {
-      allow read:  if isAdmin() || perm('fl') || (isDriver() && myDrv() == code);
+      allow read:  if isAdmin() || perm('fl') || isViewer() || (isDriver() && myDrv() == code);
       allow write: if isAdmin();
     }
     // عمال المستودع (أسماء بس، من غير حسابات): المدير يضيف ويعدّل، والمحاسب يقرأ علشان يختار مين جهّز
     match /workers/{id} {
-      allow read:  if isAdmin() || perm('req') || perm('fl');
+      allow read:  if isAdmin() || perm('req') || perm('fl') || isViewer();
       allow write: if isAdmin();
     }
     // تقييم المدير الشهري للعمال (نجوم): wrate/{YYYY-MM} = {stars:{workerId: 1..5}}
     match /wrate/{mo} {
-      allow read, write: if isAdmin();
+      allow read:  if isAdmin() || isViewer();
+      allow write: if isAdmin();
     }
     // مواقع الفروع ومتوسط زمن الوصول (المستودع يحسبها، والسائق يقرأها)
     match /geo/{id} {
-      allow read:  if isAdmin() || perm('fl') || drvOn();
+      allow read:  if isAdmin() || perm('fl') || isViewer() || drvOn();
       // كتابة واحدة بالكتير كل 10 دقايق، حتى لو صفحة قديمة فاتحة فيها خطأ بيكرر الكتابة (ده اللي خلّص الحصة اليومية)
       // (شرط الوقت الأول، علشان الطلب المرفوض مايعملش قراءة لصلاحيات المحاسب ويستهلك من الحصة)
       allow write: if request.resource.data.upd is number
@@ -165,7 +179,7 @@ service cloud.firestore {
         && (isAdmin() || perm('fl'));
     }
     match /cars/{id} {
-      allow read:  if isAdmin() || perm('fl') || drvOn();
+      allow read:  if isAdmin() || perm('fl') || isViewer() || drvOn();
       allow write: if isAdmin();
     }
     match /trips/{id} {
@@ -179,7 +193,7 @@ service cloud.firestore {
           && d.drvn is string && d.drvn.size() <= 60 && d.carn is string && d.carn.size() <= 60
           && d.car is string && d.car.size() <= 40;
       }
-      allow read:   if isAdmin() || perm('fl') || (drvOn() && resource.data.drv == myDrv());
+      allow read:   if isAdmin() || perm('fl') || isViewer() || (drvOn() && resource.data.drv == myDrv());
       allow create: if isAdmin() || (drvOn() && validTrip());
       allow update: if isAdmin()
         // المحاسب (perm fl) يقدر يقفل رحلة السائق نسي يقفلها
@@ -207,7 +221,7 @@ service cloud.firestore {
           && d.odo is number && d.odo >= 0 && d.odo <= 9999999
           && d.dt is string && d.dt.size() <= 12 && d.car is string && d.car.size() <= 40;
       }
-      allow read:   if isAdmin() || perm('fl') || (drvOn() && resource.data.drv == myDrv());
+      allow read:   if isAdmin() || perm('fl') || isViewer() || (drvOn() && resource.data.drv == myDrv());
       allow create: if isAdmin() || perm('fl') || (drvOn() && validFuel());
       allow update, delete: if isAdmin();
     }
@@ -245,7 +259,7 @@ service cloud.firestore {
 
     // سجل "مين عمل إيه": كل حساب في المستودع بيكتب سطوره باسمه هو بس، ومحدش يعدّل أو يمسح. المالك بس اللي بيقرا
     match /log/{lid} {
-      allow read: if isOwner();
+      allow read: if isOwner() || isViewer();
       allow create: if (isOwner() || isStaff())
         && request.resource.data.keys().hasOnly(['e','n','op','c','id','t','k','s','x','ts'])
         && request.resource.data.e == request.auth.token.email.lower()
