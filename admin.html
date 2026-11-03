@@ -116,7 +116,7 @@ a.bt{text-decoration:none;display:inline-block;color:inherit}.tg{background:#f6e
 <div id="em"></div>
 <div id="pa"></div>
 <script type="module">
-import {makeFb,pushRegister,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
+import {makeFb,pushRegister,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,withTimeout,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
 const {app,db,auth}=makeFb("admin");
 import {initExtra,view as cusView,stop as stopExtra,adminHdr,ledger} from "./ad-extra.js";
 import {initFleet,view as fleetView,stop as stopFleet,cars as fleetCars} from "./fleet.js";
@@ -435,7 +435,8 @@ const roleOf=s=>{const v=s.v===true;return {admin:!v&&s.admin===true,owner:false
 async function enterStaff(u){
  const em=String(u.email||"").toLowerCase();
  try{
-  const s=await getDoc(doc(db,"staff",em));
+  const s=await withTimeout(getDoc(doc(db,"staff",em)),12000);
+  if(auth.currentUser!==u)return;// اتغيّر الحساب وإحنا مستنيين
   if(!s.exists()||s.data().enabled!==true){deny("الحساب ده غير مفعّل للدخول على لوحة المستودع");return}
   ROLE=roleOf(s.data());start();// admin=true: مدير كامل زي صاحب الحساب، v=true: متابع بس (صاحب الشركة)
   let first2=true;
@@ -446,7 +447,18 @@ async function enterStaff(u){
    if(JSON.stringify(nr.p)!==JSON.stringify(ROLE.p)||nr.name!==ROLE.name||nr.admin!==ROLE.admin||nr.v!==ROLE.v){ROLE=nr;stop();start()}
    else if((d.data().k||"")!==ROLE.k){ROLE.k=d.data().k||"";draw()}// الكنية اتغيّرت بس
   },()=>{});
- }catch(e){deny("تعذر التحقق من الصلاحيات. تأكد من تحديث القواعد (Rules)")}
+ }catch(e){
+  if(e&&e.code==="permission-denied")return void deny("تعذر التحقق من الصلاحيات. تأكد من تحديث القواعد (Rules)");
+  // مفيش نت: الدخول محفوظ، فمش بنخرّجه. بنستنى النت ونحاول تاني (ومفيش أي بيانات بتظهر لحد ما نتأكد)
+  waitNet(u,()=>enterStaff(u));
+ }
+}
+let netT=null;
+function waitNet(u,fn){
+ clearTimeout(netT);
+ g("app").innerHTML=`<div class="lg"><img src="${LOGO1}" alt=""><h2>لوحة المستودع</h2><p>📡 مفيش اتصال بالإنترنت دلوقتي</p><p class="off" style="font-size:14px">دخولك محفوظ. أول ما النت يرجع اللوحة هتفتح لوحدها.</p><button class="bt p" id="nr" type="button">حاول تاني</button> <button class="bt" id="nx" type="button">خروج</button></div>`;
+ const go=()=>{clearTimeout(netT);removeEventListener("online",go);if(auth.currentUser===u)fn()};
+ g("nr").onclick=go;g("nx").onclick=()=>signOut(auth);addEventListener("online",go);netT=setTimeout(go,8000);
 }
 onAuthStateChanged(auth,async u=>{
  if(stW){stW();stW=null}

@@ -588,7 +588,13 @@ onAuthStateChanged(auth,async u=>{
   if(!d.exists()||d.data().enabled!==true){await signOut(auth);showErr("الفرع ده معطّل. كلّم المستودع.");return}
   enter(b);window.uiReady&&uiReady();
   window.__push=()=>pushRegister(app,db,{role:"branch",key:c,email:u.email});autoPush();// إشعارات الموبايل للفرع
- }catch(e){await signOut(auth);showErr("تعذر التحقق من الفرع. اتأكد من الإنترنت وجرّب تاني.")}
+ }catch(e){
+  if(e&&e.code==="permission-denied"){await signOut(auth);showErr("الفرع ده معطّل. كلّم المستودع.");return}
+  // مفيش نت: الدخول محفوظ، فبندخل عادي ومش بنخرّجه (لو الفرع اتعطّل، Firebase هيرفض القراءة والصفحة بتخرّجه لوحدها)
+  if(auth.currentUser!==u)return;
+  enter(b);window.uiReady&&uiReady();toast("📡 النت ضعيف دلوقتي. الطلبات هتظهر أول ما الاتصال يرجع","er");
+  window.__push=()=>pushRegister(app,db,{role:"branch",key:c,email:u.email});autoPush();
+ }
 });
 const mkNo=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");return `${code(B)}-${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`};
 g("sd").onclick=async()=>{

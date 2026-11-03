@@ -121,18 +121,27 @@ g("gg").onclick=async()=>{
 };
 g("gp").addEventListener("keydown",e=>{if(e.key==="Enter")g("gg").click()});
 g("out").onclick=()=>{const a=active();if(a&&!confirm("عندك رحلة شغّالة. تخرج برضو؟ (الرحلة هتفضل مفتوحة)"))return;signOut(auth)};
-onAuthStateChanged(auth,async u=>{
+onAuthStateChanged(auth,u=>check(u));
+async function check(u){
  if(!u){stopAll();g("app").hidden=true;g("gate").hidden=false;window.uiReady&&uiReady();return}
  const id=(u.email||"").split("@")[0];
  if(!/^drv\d{1,2}$/.test(id)){await signOut(auth);g("ge").textContent="حساب غير صالح لهذه الصفحة";return}
  try{
   const d=await withTimeout(getDoc(doc(db,"drivers",id)),12000);
   if(!d.exists()||d.data().enabled!==true){await signOut(auth);g("ge").textContent="الحساب معطّل. كلّم المستودع.";return}
-  me={id,name:String(d.data().name||id)};
- }catch(e){await signOut(auth);g("ge").textContent="تعذر التحقق. اتأكد من الإنترنت وجرّب تاني.";return}
+  me={id,name:String(d.data().name||id)};lsSet("drv_me",JSON.stringify(me));
+ }catch(e){
+  if(e&&e.code==="permission-denied"){await signOut(auth);g("ge").textContent="الحساب معطّل. كلّم المستودع.";return}
+  if(auth.currentUser!==u)return;
+  // مفيش نت: الدخول محفوظ، فمش بنخرّجه. لو دخل من الجهاز ده قبل كده بنكمّل باسمه، وإلا بنستنى النت
+  let c=null;try{c=JSON.parse(lsGet("drv_me")||"null")}catch(x){}
+  if(c&&c.id===id)me=c;
+  else{g("app").hidden=true;g("gate").hidden=false;g("ge").textContent="📡 مفيش اتصال بالإنترنت. دخولك محفوظ، وهنحاول تاني لوحدنا...";window.uiReady&&uiReady();
+   setTimeout(()=>{if(auth.currentUser===u)check(u)},8000);return}
+ }
  g("gate").hidden=true;g("app").hidden=false;g("nm").textContent=me.name;wireButtons();startAll();window.uiReady&&uiReady();
  window.__push=()=>pushRegister(app,db,{role:"driver",key:me.id,email:u.email});autoPush();// إشعارات الموبايل للسائق
-});
+}
 let firstReq=true;
 function startAll(){
  stopAll();firstReq=true;
