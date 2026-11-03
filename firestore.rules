@@ -53,8 +53,19 @@ service cloud.firestore {
       function validNew() {
         let d = request.resource.data;
         return d.keys().hasOnly(['br','brn','no','dt','dr','gn','rows','codes','pcs','st','ts'])
-          && d.keys().hasAll(['br','brn','no','dt','rows','codes','pcs','st','ts'])
-          && d.br == myCode()
+          && d.br == myCode() && bodyOk(d);
+      }
+      // طلب عمله المستودع للفرع (من الورقة اليدوية): نفس شكل طلب الفرع + by='wh' واسم اللي عمله (byn)
+      function validWh() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['br','brn','no','dt','dr','gn','rows','codes','pcs','st','ts','by','byn'])
+          && d.keys().hasAll(['by'])
+          && d.by == 'wh' && d.br is string && d.br.matches('^[0-9]{3}$') && d.brn.matches(d.br + '-.*')
+          && (!('byn' in d) || (d.byn is string && d.byn.size() <= 60))
+          && bodyOk(d);
+      }
+      function bodyOk(d) {
+        return d.keys().hasAll(['br','brn','no','dt','rows','codes','pcs','st','ts'])
           && d.st == 'new'
           && d.rows is list && d.rows.size() > 0 && d.rows.size() <= 400
           && d.codes is number && d.pcs is number && d.pcs > 0 && d.pcs <= 100000
@@ -67,7 +78,7 @@ service cloud.firestore {
       allow read:   if isAdmin() || (branchOn() && resource.data.br == myCode())
                     || perm('req') || perm('fl')
                     || (drvOn() && resource.data.asg.drv == myDrv());
-      allow create: if isAdmin() || (branchOn() && validNew());
+      allow create: if isAdmin() || (branchOn() && validNew()) || (perm('req') && validWh());
       // إثبات التسليم من السائق: اسم المستلم + توقيع + صورة (اختياري)
       function validPod() {
         let p = request.resource.data.pod;
