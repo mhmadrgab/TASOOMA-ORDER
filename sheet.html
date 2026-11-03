@@ -45,6 +45,7 @@ button.b{font:inherit;font-weight:700;border-radius:12px;padding:13px 22px;borde
 button.b:hover{border-color:var(--acc)}
 button.b.p{background:var(--btn);border-color:var(--btn);color:var(--btnink);flex:1}
 #tr2{background:var(--acc);border-color:var(--acc);color:#fff;flex-basis:100%}#tr2:disabled{opacity:.6;cursor:default}
+#tr2.sent{background:#1e6b2e;border-color:#1e6b2e}
 .toq{margin-top:14px;padding:11px 14px;border-radius:14px;font-size:14.5px;font-weight:700;background:#e9f6ec;border:1px solid #b9e0c2;color:#1e6b2e}
 .toq small{display:block;font-weight:500;font-size:12.5px;opacity:.85}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .toq{background:#16301c;border-color:#24502e;color:#9fdcae}}
@@ -423,14 +424,17 @@ $("#cm").addEventListener("change",pv);
 var INADM=(()=>{try{return !!window.frameElement&&window.frameElement.id==="sf"}catch(e){return false}})(),toqBusy=false,toqT=0;
 function toqUI(){
  const b=$("#tr2"),q=$("#toq");if(!INADM||!b||!q)return;
- const tr=st.ty==="tr";b.hidden=!!st.sent;q.hidden=!st.sent;
+ // الزرار ظاهر دايماً: لو الورقة المفتوحة اتبعتت قبل كده بيقول كده وبيبقى "ابدأ ورقة جديدة" (علشان ماتتبعتش مرتين)
+ const tr=st.ty==="tr";b.hidden=false;q.hidden=!st.sent;b.classList.toggle("sent",!!st.sent);
  if(st.sent)q.innerHTML=st.sentFr?`✅ التحويل اتبعت: من فرع <bdi dir="ltr">${E(st.sentFr)}</bdi> ← فرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> (رقم <bdi dir="ltr">${E(st.sent)}</bdi>)<small>الفرعين وصلهم إشعار. تابعه من تبويب "الطلبات" (فلتر 🔄 تحويلات)، وعيّن السواق من "السيارات". لتحويل تاني دوس "+ ورقة جديدة".</small>`
   :`✅ الورقة دي اتبعتت لفرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> كطلب رقم <bdi dir="ltr">${E(st.sent)}</bdi><small>تابعه من تبويب "الطلبات" زي أي طلب. أي تعديل بعد كده من زرار ✏️ تعديل على الطلب. لطلب تاني دوس "+ ورقة جديدة".</small>`;
- b.disabled=toqBusy;b.textContent=toqBusy?"⏳ جاري الإرسال...":tr?"🔄 ابعت التحويل للفرعين":"📤 ابعتها طلب للفرع";
+ b.disabled=toqBusy;b.textContent=toqBusy?"⏳ جاري الإرسال...":st.sent?`✅ الورقة دي اتبعتت (${st.sent}) · دوس هنا لورقة جديدة`:tr?"🔄 ابعت التحويل للفرعين":"📤 ابعتها طلب للفرع";
 }
 const rid20=()=>{const a="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";return [...crypto.getRandomValues(new Uint32Array(20))].map(x=>a[x%a.length]).join("")};
 $("#tr2").addEventListener("click",()=>{
- if(toqBusy||st.sent||!INADM)return;
+ // اتبعتت قبل كده: ورقة جديدة فاضية بنفس الفرع والنوع
+ if(st.sent&&!toqBusy){st=mk({br:st.br,dr:st.dr,ty:st.ty,fr:st.fr});lib.cur=st.id;save();loadUI();window.scrollTo(0,0);return}
+ if(toqBusy||!INADM)return;
  const f=st.rows.filter(r=>(r.k||"").trim()&&+r.q>0);
  if(!f.length)return void alert("الورقة فاضية. اكتب كود وكمية على الأقل.");
  const half=st.rows.filter(r=>(r.k||"").trim()&&!(+r.q>0)).length,codes=new Set(f.map(r=>r.k.trim())).size,pcs=f.reduce((a,r)=>a+(+r.q),0);
