@@ -177,10 +177,11 @@ export function dashView(R){
   </div>
  </section>`;
 }
-// التحويلات بين الفروع (بتظهر بس لو فيه تحويلات): مين مستني إيه دلوقتي + آخر التحويلات المفتوحة. الضغط = فلتر "🔄 تحويلات"
+// التحويلات بين الفروع: مين مستني إيه دلوقتي + آخر التحويلات المفتوحة. الضغط = فلتر "🔄 تحويلات"
+// (لو لسه مفيش ولا تحويل: سطر بيقول إزاي تعمل واحد، بدل خانات كلها أصفار)
 const trWhere=r=>r.st==="new"||r.st==="prep"?(N(r.rdy)?"✅ جاهز للسواق":r.st==="prep"?"⏳ الفرع بيجهّز":"📭 الفرع لسه مابدأش"):r.st==="go"?(N(r.pk)?"🚚 السواق استلم ورايح":"🚚 في الطريق"):"";
 function trCard(R,now){
-  if(!R.some(r=>r.tr))return "";
+  if(!R.some(r=>r.tr))return `<div class="dz-card" style="margin-top:12px"><h3>🔄 التحويلات بين الفروع</h3><div class="dz-none">لسه مفيش تحويلات. تعمل تحويل من تبويب <b>"ورقة يدوية"</b> ← نوع الورقة: <b>تحويل بين الفروع</b> ← اختار من فرع وإلى فرع ← <b>"🔄 ابعت التحويل للفرعين"</b>. أول ما تبعته هيظهر هنا وتتابعه خطوة بخطوة.</div></div>`;
   const TA=R.filter(r=>r.tr&&r.st!=="done"&&r.st!=="recv").sort((a,b)=>N(a.ts)-N(b.ts)),nd=R.filter(r=>r.tr&&r.st==="done").length;
   const wait=TA.filter(r=>r.st!=="go"&&!N(r.rdy)).length,rdy=TA.filter(r=>r.st!=="go"&&N(r.rdy)).length,go=TA.filter(r=>r.st==="go").length;
   const cell=(id,n,icon,name,k,sub)=>`<button class="dz-st" data-s="tr" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${n}"><span class="ic">${icon}</span><b><span ${cu(moved(id,n),n)}>${fmt(n)}</span></b><span class="nm">${E(name)}</span><small>${E(sub)}</small></button>`;
