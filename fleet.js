@@ -53,9 +53,14 @@ const kmBetween=(a,b)=>{if(!a||!b||!Number.isFinite(+a.lat)||!Number.isFinite(+b
 const geoPt=c=>c==="WH"?(GEOD&&GEOD.wh)||null:(GEOD&&GEOD.br&&GEOD.br[c])||null;
 // الوقت المتوقع لمشوار: من رحلات قبل كده لنفس المشوار، ولو أول مرة نقدّره من المسافة (35 كم/س + 5 دقايق تسليم)
 function legMs(prev,code,pp){if(pp[prev+">"+code])return pp[prev+">"+code]*6e4;const k=kmBetween(geoPt(prev),geoPt(code));if(k!==null)return (k/35*60+5)*6e4;const a=geoPt(code);return a&&a.avg?a.avg*6e4:null}
-// خريطة الرحلة على جوجل: من نقطة البداية مروراً بكل فرع بالترتيب
+// المكان اللي السائق أنهى فيه الرحلة: تطبيق السائق بيسجّل loc بنفس وقت الإنهاء (end) بالظبط.
+// (لو المستودع اللي قفلها، أو الموبايل مارضيش يدّي الموقع، يبقى مفيش نقطة نهاية ونقف عند آخر فرع)
+const endPt=t=>t.st==="done"&&t.loc&&Number.isFinite(+t.loc.lat)&&N(t.loc.ts)===N(t.end)?{lat:+t.loc.lat,lng:+t.loc.lng}:null;
+// مكان كل توصيلة: مكان التسليم الفعلي، وإلا موقع الفرع. التحويل: الفرع اللي استلم منه الأول
+const stopPts=s=>[s.fr?(Number.isFinite(+s.plat)?{lat:+s.plat,lng:+s.plng}:geoPt(s.fr)):null,Number.isFinite(+s.lat)?{lat:+s.lat,lng:+s.lng}:geoPt(bc(s.brn))];
+// خريطة الرحلة على جوجل: من نقطة البداية مروراً بكل فرع بالترتيب، لحد المكان اللي السائق أنهى فيه الرحلة
 function tripMap(t){
- const st=(Array.isArray(t.stops)?t.stops:[]),pts=st.map(s=>Number.isFinite(+s.lat)?{lat:s.lat,lng:s.lng}:geoPt(bc(s.brn))).filter(Boolean);
+ const st=(Array.isArray(t.stops)?t.stops:[]),e=endPt(t),pts=[...st.flatMap(stopPts),e].filter(Boolean);
  if(!pts.length)return "";const o=t.loc0||geoPt("WH"),d=pts[pts.length-1],w=pts.slice(0,-1).map(p=>p.lat+","+p.lng).join("|");
  return `https://www.google.com/maps/dir/?api=1${o?`&origin=${o.lat},${o.lng}`:""}&destination=${d.lat},${d.lng}${w?"&waypoints="+encodeURIComponent(w):""}&travelmode=driving`;
 }
@@ -171,10 +176,15 @@ function podHtml(rid){
 function tripDetail(id){
  const t=TR.find(x=>x.id===id);if(!t)return;const st=Array.isArray(t.stops)?t.stops:[];let p=N(t.start);
  // كيلومترات تقريبية لكل مشوار: من المكان اللي قبله (أول مشوار من مكان بداية الرحلة) للفرع ده
- let pt=t.loc0||geoPt("WH");const kmLeg=s=>{const here=Number.isFinite(+s.lat)?{lat:s.lat,lng:s.lng}:geoPt(bc(s.brn)),k=kmBetween(pt,here);if(here)pt=here;return k},map=tripMap(t);
+ // (التحويل: المشوار بيعدّي على الفرع اللي استلم منه الأول)
+ let pt=t.loc0||geoPt("WH");const kmTo=here=>{const k=kmBetween(pt,here);if(here)pt=here;return k};
+ const kmLeg=s=>{let sum=null;stopPts(s).forEach(h=>{if(!h)return;const k=kmTo(h);if(k!==null)sum=(sum||0)+k});return sum},map=tripMap(t);
+ // آخر مشوار: من آخر تسليم للمكان اللي أنهى فيه الرحلة (غالباً الرجوع للمستودع)
+ const e=endPt(t),lastArr=st.reduce((m,s)=>Math.max(m,N(s.arr)),N(t.start));
  const fu=FU.filter(f=>f.drv===t.drv&&f.car===t.car&&N(f.ts)>=N(t.start)&&(!t.end||N(f.ts)<=N(t.end)+36e5));
  openM(`<h3>${E(t.drvn)} — ${E(t.carn)}</h3><div class="off">${dk(t.start)} · ${hm(t.start)} ← ${t.end?hm(t.end):"شغّال"} · عداد ${fmt(t.odo0)}${t.st==="done"?` ← ${fmt(t.odo1)} (${fmt(N(t.odo1)-N(t.odo0))} كم)`:""}</div>
- <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);const k=kmLeg(s);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.rcvr?" · استلم: "+E(s.rcvr):""}</small>${podHtml(s.rid)}</div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}${k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${s.lat?`<a href="${mapUrl(s.lat,s.lng)}" target="_blank" rel="noopener noreferrer">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}</div>
+ <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);const k=kmLeg(s);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.rcvr?" · استلم: "+E(s.rcvr):""}${s.fr?` · 🔄 اتاخد من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" "+hm(s.pk):""}`:""}</small>${podHtml(s.rid)}</div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}${k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${s.lat?`<a href="${mapUrl(s.lat,s.lng)}" target="_blank" rel="noopener noreferrer">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}
+ ${t.st==="done"?(()=>{const k=e?kmTo(e):null,l=N(t.end)-lastArr;return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0"><div><b>🏁 إنهاء الرحلة</b><small class="off" style="display:block">${e?"المكان اللي السائق قفل فيه الرحلة":t.forced?"اتقفلت من المستودع (مفيش موقع)":"الموبايل ماسجّلش موقع الإنهاء"}</small></div><div style="text-align:left">${hm(t.end)}<small class="off" style="display:block">${l>0?dur(l):""}${k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${e?`<a href="${mapUrl(e.lat,e.lng)}" target="_blank" rel="noopener noreferrer">📍</a>`:""}</div></div>`})():""}</div>
  ${t.note?`<div class="gn">${t.forced?"⏹ ":"ملاحظة السائق: "}${E(t.note)}</div>`:""}${fu.length?`<div class="off">⛽ بنزين في الرحلة: ${fu.map(f=>fmt(f.liters)+" لتر / "+fmt(f.cost)).join(" · ")}</div>`:""}
  <div class="off" style="font-size:12.5px">الكيلومترات اللي جنب كل فرع تقريبية (من أماكن التسليم)، والإجمالي الدقيق من العداد فوق.</div>
  <div class="fl2" style="margin-top:14px">${map?`<a class="bt p" href="${E(map)}" target="_blank" rel="noopener noreferrer">🗺 الرحلة على الخريطة</a>`:""}<button class="bt" data-fl="cancel" type="button">إغلاق</button></div>`);

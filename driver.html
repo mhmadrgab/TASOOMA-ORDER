@@ -219,9 +219,9 @@ async function startTrip(){
 async function pickUp(rid,btn){
  const a=active();if(!a)return;const s=(a.stops||[]).find(x=>x.rid===rid);if(!s)return;
  if(!confirm(`استلمت التحويل من ${s.frn||s.fr}؟`))return;
- btn.disabled=true;const ts=Date.now();
+ btn.disabled=true;const ts=Date.now(),loc=await here();// مكان الاستلام (بيظهر على خريطة الرحلة في المستودع)
  try{
-  const b=writeBatch(db);b.update(doc(db,"trips",a.id),{stops:(a.stops||[]).map(x=>x.rid===rid?{...x,pk:ts}:x)});b.update(doc(db,"requests",rid),{pk:ts,upd:ts});
+  const b=writeBatch(db);b.update(doc(db,"trips",a.id),{stops:(a.stops||[]).map(x=>x.rid===rid?{...x,pk:ts,...(loc?{plat:loc.lat,plng:loc.lng}:{})}:x)});b.update(doc(db,"requests",rid),{pk:ts,upd:ts});
   await withTimeout(b.commit(),15000);ping(auth,[rid]);toast("تمام 📦 دلوقتي وصّله لـ "+s.brn);
  }catch(e){btn.disabled=false;fail(e,"مش مسموح. ممكن المستودع غيّر التحويل.")}
 }
