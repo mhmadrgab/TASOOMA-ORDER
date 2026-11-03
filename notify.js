@@ -24,6 +24,8 @@ export function regSW(){if(!("serviceWorker" in navigator))return;const go=()=>n
 // بعد الدخول بتتنادي autoPush(): لو الإشعارات مسموحة بيتسجّل الجهاز في صمت، ولو لأ بتظهر رسالة فيها زرار واحد.
 // (المتصفحات مش بتسمح بتفعيل الإشعارات من غير ضغطة من الشخص نفسه، فدي أقل حاجة ممكنة: ضغطة واحدة مرة واحدة)
 let pushOk=null;// null = لسه، true = الجهاز متسجّل فعلاً، false = حصلت مشكلة
+// الجهاز متسجّل في إشعارات السيرفر؟ (ساعتها الصفحة مش محتاجة تعرض نسخة تانية من نفس الإشعار)
+export const pushOn=()=>pushOk===true;
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:k=>{try{localStorage.setItem(k,String(Date.now()))}catch(e){}}};
 const recently=(k,days)=>Date.now()-(+ls.get(k)||0)<days*864e5;
 const pcHelp=`<li>في الكمبيوتر: اضغط على علامة <b>القفل 🔒</b> اللي جنب رابط الموقع فوق</li><li>اختار <b>الإشعارات / Notifications</b> وخليها <b>سماح / Allow</b></li><li>اعمل <b>تحديث للصفحة</b> (F5)</li>`;

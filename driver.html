@@ -212,7 +212,7 @@ async function startTrip(){
     return s})};
   if(loc){t.loc0=loc;t.loc={...loc,ts}}
   b.set(tr,t);rs.forEach(r=>{const u={st:"go",dep:ts,upd:ts};if(et[r.id])u.eta=et[r.id];b.update(doc(db,"requests",r.id),u)});
-  await withTimeout(b.commit(),15000);ping(auth,rs.map(r=>r.id));lsSet("drv_car",c.id);lsSet("drv_odo_"+c.id,String(odo));odoV=null;toast("بدأت الرحلة. سلامتك 🚚");
+  await withTimeout(b.commit(),15000);ping(auth,rs.map(r=>r.id),[],[tr.id]);lsSet("drv_car",c.id);lsSet("drv_odo_"+c.id,String(odo));odoV=null;toast("بدأت الرحلة. سلامتك 🚚");
  }catch(e){const x=g("bs");if(x){x.disabled=false;x.textContent="🚚 ابدأ الرحلة"}fail(e,"مش مسموح. ممكن المستودع غيّر الطلب.")}
 }
 // تحويل: السواق استلم البضاعة من الفرع اللي بيبعت (pk على الطلب وعلى محطة الرحلة)
@@ -289,7 +289,7 @@ function endForm(){
   try{
    const b=writeBatch(db),u={st:"done",end:ts,odo1:o},n=g("en").value.trim().slice(0,300);if(n)u.note=n;if(loc)u.loc={...loc,ts};
    b.update(doc(db,"trips",a.id),u);un2.forEach(s=>b.update(doc(db,"requests",s.rid),{st:"prep",upd:ts}));
-   await withTimeout(b.commit(),15000);lsSet("drv_odo_"+a.car,String(o));closeM();toast("تم إنهاء الرحلة. الله يعطيك العافية 👏");
+   await withTimeout(b.commit(),15000);ping(auth,un2.map(s=>s.rid),[],[a.id]);lsSet("drv_odo_"+a.car,String(o));closeM();toast("تم إنهاء الرحلة. الله يعطيك العافية 👏");
   }catch(e){g("e1").disabled=false;fail(e,"مش مسموح بإنهاء الرحلة.")}
  };
 }

@@ -1,7 +1,7 @@
 // لوحة المستودع: السيارات والسواقين والرحلات والبنزين
 import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
-import {notify,beep} from "./notify.js";
+import {notify,beep,pushOn} from "./notify.js";
 import {ledger} from "./ad-extra.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
@@ -252,7 +252,7 @@ async function click(e){
    const b=writeBatch(X.db),ts=Date.now();
    b.update(doc(X.db,"trips",id),{st:"done",end:ts,odo1:odo,forced:true,note:"أنهاها المستودع"+(N(toEn(o))?"":" (العداد غير معروف)")});
    left.forEach(s=>b.update(doc(X.db,"requests",s.rid),{st:"prep",upd:ts}));
-   await b.commit();X.toast("تم إنهاء الرحلة");
+   await b.commit();if(X.ping)X.ping(left.map(s=>s.rid),[id]);X.toast("تم إنهاء الرحلة");
   }
   else if(a==="drv"){const nm=(prompt("اسم السائق:","")||"").trim();if(!nm)return;const ph=(prompt("رقم موبايل السائق (اختياري، مثلاً 0551234567):","")||"").trim();const c=await mkDriver(nm.slice(0,60),toEn(ph).slice(0,20));X.toast("تم إنشاء حساب "+c)}
   else if(a==="dedit"){const d=DRV.find(x=>x.id===id);if(!d)return;ctxEd=id;
@@ -272,7 +272,8 @@ async function click(e){
   else if(a==="dcp"){const d=DRV.find(x=>x.id===id);if(d&&PW[id])cpy(dmsg(d))}
  }catch(x){if(!(window.uiAuthErr&&uiAuthErr(x,"السائق")))X.toast("تعذر التنفيذ: "+(x&&x.code||x&&x.message))}
 }
-function note(t,b,tag){X.toast(b?t+" — "+b:t);notify(t,b,tag);beep()}
+// بداية/نهاية الرحلة والتسليم: السيرفر بيبعتهم كإشعار للجهاز، فالصفحة بتعرض إشعار بس لو الجهاز ده مش متسجّل
+function note(t,b,tag){X.toast(b?t+" — "+b:t);if(!pushOn())notify(t,b,tag);beep()}
 export function alertsCount(){return X?alerts().length:0}
 export function initFleet(ctx){
  X=ctx;stop();

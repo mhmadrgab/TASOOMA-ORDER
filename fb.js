@@ -44,20 +44,22 @@ export async function pushRegister(app,db,info){
     // نفس الموبايل ممكن يبقى مستودع وفرع وسائق مع بعض (نفس الموقع = نفس رقم الجهاز)، فكل دور ليه تسجيل لوحده.
     // dv = موبايل ولا كمبيوتر (المالك بيشوف أجهزة كل واحد في تبويب الموظفين)
     const mob=/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent)||(/macintosh/i.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
-    await setDoc(doc(db,"push",info.role+"__"+tok),{role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),tok,dv:mob?"m":"pc",ts:Date.now()});
+    const rec={role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),tok,ts:Date.now()},ref=doc(db,"push",info.role+"__"+tok);
+    // لو القواعد اللي في Firebase لسه قديمة (مابتعرفش dv)، بنسجّل من غيره بدل ما الجهاز يفضل من غير إشعارات
+    try{await setDoc(ref,{...rec,dv:mob?"m":"pc"})}catch(e){if(e&&e.code==="permission-denied")await setDoc(ref,rec);else throw e}
     return true;
   }catch(e){console.warn("push",e);return false}
 }
 // ---------- تنبيه سيرفر الإشعارات (Cloudflare) إن طلب اتغيّر، علشان يبعت للموبايلات في نفس الثانية ----------
 // السيرفر بيقرا الطلب بنفسه ويقرر يبعت لمين؛ هنا بس بنقوله "بص على الطلبات دي" ومعانا توكن الدخول
 export const PUSH_URL="https://tasooma-push.tasooma.workers.dev";// سيرفر الإشعارات على Cloudflare (مجلد push-server)
-// ids = طلبات اتغيّرت، chats = محادثات خاصة (dm: كود الفرع__إيميل الشخص) اتبعت فيها رسالة جديدة
-export async function ping(auth,ids,chats){
+// ids = طلبات اتغيّرت، chats = محادثات خاصة (dm: كود الفرع__إيميل الشخص) اتبعت فيها رسالة جديدة، trips = رحلات بدأت أو خلصت
+export async function ping(auth,ids,chats,trips){
   try{
-    ids=[...new Set((ids||[]).filter(Boolean))];chats=[...new Set((chats||[]).filter(Boolean))];if(!PUSH_URL||!(ids.length||chats.length))return;
+    const u0=a=>[...new Set((a||[]).filter(Boolean))];ids=u0(ids);chats=u0(chats);trips=u0(trips);if(!PUSH_URL||!(ids.length||chats.length||trips.length))return;
     const u=auth&&auth.currentUser;if(!u)return;
     const t=await u.getIdToken();
-    fetch(PUSH_URL+"/notify",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({ids,chats}),keepalive:true}).catch(()=>{});
+    fetch(PUSH_URL+"/notify",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({ids,chats,trips}),keepalive:true}).catch(()=>{});
   }catch(e){}
 }
 // إشعار تجربة: لأجهزتي أنا، أو (للمالك) لأجهزة شخص تاني. بيرجّع {n: عدد الأجهزة, dev:[{dv, ok, gone}]}
