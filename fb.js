@@ -44,12 +44,16 @@ export async function pushRegister(app,db,info){
     })}
     // نفس الموبايل ممكن يبقى مستودع وفرع وسائق مع بعض (نفس الموقع = نفس رقم الجهاز)، فكل دور ليه تسجيل لوحده.
     // dv = موبايل ولا كمبيوتر (المالك بيشوف أجهزة كل واحد في تبويب الموظفين)
-    const mob=/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent)||(/macintosh/i.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
-    const rec={role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),tok,ts:Date.now()},ref=doc(db,"push",info.role+"__"+tok);
-    // لو القواعد اللي في Firebase لسه قديمة (مابتعرفش dv)، بنسجّل من غيره بدل ما الجهاز يفضل من غير إشعارات
-    try{await setDoc(ref,{...rec,dv:mob?"m":"pc"})}catch(e){if(e&&e.code==="permission-denied")await setDoc(ref,rec);else throw e}
+    await pushSave(db,info,tok);
     return true;
   }catch(e){console.warn("push",e);return false}
+}
+// تسجيل رقم الجهاز في push (من المتصفح، أو من تطبيق TASOOMA للسواقين اللي بيدّي رقمه بنفسه)
+export async function pushSave(db,info,tok){
+  const mob=/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent)||(/macintosh/i.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+  const rec={role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),tok,ts:Date.now()},ref=doc(db,"push",info.role+"__"+tok);
+  // لو القواعد اللي في Firebase لسه قديمة (مابتعرفش dv)، بنسجّل من غيره بدل ما الجهاز يفضل من غير إشعارات
+  try{await setDoc(ref,{...rec,dv:mob?"m":"pc"})}catch(e){if(e&&e.code==="permission-denied")await setDoc(ref,rec);else throw e}
 }
 // ---------- تنبيه سيرفر الإشعارات (Cloudflare) إن طلب اتغيّر، علشان يبعت للموبايلات في نفس الثانية ----------
 // السيرفر بيقرا الطلب بنفسه ويقرر يبعت لمين؛ هنا بس بنقوله "بص على الطلبات دي" ومعانا توكن الدخول

@@ -71,7 +71,7 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
 <div id="app" hidden><div class="hd"><img src="./icon-192.png" alt=""><div><b id="nm"></b><small>سائق التوصيل</small></div><div class="sp"></div><button id="bell" type="button"></button><button data-install type="button" hidden>📲</button><button id="out" type="button">خروج</button></div><main id="mn"></main></div>
 <div class="mdl" id="md"></div>
 <script type="module">
-import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,addDoc,updateDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
+import {makeFb,pushRegister,pushSave,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,addDoc,updateDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {wireButtons,regSW,notify,beep,autoPush} from "./notify.js";
 import {shrink} from "./cust.js";
 const {app,db,auth}=makeFb("drv");
@@ -101,14 +101,109 @@ function order(rs,from){
  while(left.length){let bi=0,bd=1e9;left.forEach((r,i)=>{const d=km2(cur,GEO.br[codeOf(r.brn)]);if(d<bd){bd=d;bi=i}});const r=left.splice(bi,1)[0];out.push(r);cur=GEO.br[codeOf(r.brn)]}
  return out.concat(no);
 }
-// وقت الوصول المتوقع لكل فرع (من متوسط الرحلات السابقة)
-// الوقت المتوقع: حسب "من فين لفين" (المستودع←الملقا غير غرناطة←الملقا)، ولو المشوار أول مرة نقدّره من المسافة
-function legMin(prev,code){
- const pr=GEO.pairs&&GEO.pairs[prev+">"+code];if(pr)return pr;
- const a=prev==="WH"?GEO.wh:GEO.br[prev],b=GEO.br[code];if(a&&b)return km2(a,b)*1.3/35*60+5;
+// ---------- وقت الوصول المتوقع لكل فرع ----------
+// كل مشوار: الوقت الفعلي من رحلات قبل كده لنفس "من فين لفين" (المستودع←الملقا غير غرناطة←الملقا)،
+// ولو أول مرة: من المسافة (خط مستقيم × 1.3 بسرعة 35 كم/س) + 5 دقايق تسليم.
+// أول مشوار بيتحسب من مكان السائق الحقيقي (GPS)، إلا لو هو لسه في المستودع (أقل من كيلو) فبنستخدم وقت المستودع.
+// التحويل اللي لسه ما استلمهوش: بيعدّي على الفرع اللي هيستلم منه الأول (+10 دقايق تحميل بدل 5 تسليم).
+const SPD=35,STOP=5,PICK=10;
+function legMin(prev,code,from){
+ if(prev){const pr=GEO.pairs&&GEO.pairs[prev+">"+code];if(pr)return pr}
+ const a=from||(prev==="WH"?GEO.wh:prev?GEO.br[prev]:null),b=GEO.br[code];if(a&&b)return km2(a,b)*1.3/SPD*60+STOP;
  return b&&b.avg?b.avg:null;
 }
-function etas(list,from,prev="WH"){let t=from;const o={};for(const x of list){const c=codeOf(x.brn),m=legMin(prev,c);if(!m)break;t+=m*60000;o[x.rid||x.id]=t;prev=c}return o}
+// list = التوصيلات بالترتيب، t0 = بداية الحساب، prev = كود المكان اللي هو فيه (WH أو فرع)، pt = مكانه بالـ GPS لو معروف
+function etas(list,t0,prev="WH",pt=null){
+ if(pt&&GEO.wh&&km2(pt,GEO.wh)<1){prev="WH";pt=null}
+ let t=t0,cur=pt;const o={};
+ for(const x of list){
+  if(x.fr&&!x.pk){const m=legMin(cur?null:prev,x.fr,cur);if(!m)break;t+=(m-STOP+PICK)*6e4;prev=x.fr;cur=null}
+  const c=codeOf(x.brn),m=legMin(cur?null:prev,c,cur);if(!m)break;t+=m*6e4;o[x.rid||x.id]=Math.round(t);prev=c;cur=null;
+ }
+ return o;
+}
+// ---------- تحديث الوقت المتوقع أثناء الرحلة (طول ما التطبيق مفتوح قدامه) ----------
+// كل 3 دقايق أو كل ما يتحرك كيلو: بنحدّث مكانه على الرحلة والوقت المتوقع لكل فرع لسه ماوصلهوش.
+// لما يبقى قرب فرع (10 دقايق أو أقل، أو أقل من كيلو ونص): near على الطلب ← السيرفر يبعت للفرع "السواق قرب يوصلك" مرة واحدة.
+// المتصفح مش بيدّي الموقع والتطبيق في الخلفية، فبنخلّي الشاشة منورة أثناء الرحلة (لو السائق سايبها مفعّلة).
+const LIVE={w:null,last:0,lastPt:null,busy:false,lock:null};
+const wakeOn=()=>lsGet("drv_wake")!=="0";
+async function wake(){try{if(wakeOn()&&!LIVE.lock&&"wakeLock" in navigator&&document.visibilityState==="visible"){LIVE.lock=await navigator.wakeLock.request("screen");LIVE.lock.addEventListener("release",()=>{LIVE.lock=null})}}catch(e){}}
+function liveOn(){
+ const a=active();if(bgOn(a)||NAT){if(LIVE.lock){LIVE.lock.release().catch(()=>{});LIVE.lock=null}}else wake();// التتبع في الخلفية شغّال: مش محتاجين الشاشة منورة
+ if(LIVE.w!==null||!("geolocation" in navigator))return;
+ LIVE.w=navigator.geolocation.watchPosition(p=>onPos({lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5)}),()=>{},{enableHighAccuracy:true,maximumAge:30000,timeout:30000});
+}
+function liveOff(){if(LIVE.w!==null){navigator.geolocation.clearWatch(LIVE.w);LIVE.w=null}if(LIVE.lock){LIVE.lock.release().catch(()=>{});LIVE.lock=null}LIVE.last=0;LIVE.lastPt=null}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&active()&&!bgOn(active())&&!NAT)wake()});
+// ---------- تتبع السائق في الخلفية ----------
+// أندرويد: تطبيق TASOOMA للسواقين (driver-app، الملف tasooma-driver.apk) بيفتح الصفحة دي جوّاه، وبيدّيها window.TasoomaApp:
+//   state() = on/off/noperm/nogps · start(رمز) = يبدأ يبعت المكان والموبايل مقفول · stop() · fix() = إذن الموقع / تشغيل الـ GPS · pushToken() = رقم الجهاز للإشعارات
+//   والتطبيق بينادي window.__natState() لما الحالة تتغيّر، و window.__natTok(رقم) لما رقم الإشعارات يجهز.
+// آيفون: تطبيق Traccar Client بنفس الرمز السري (drivers/{id}.gps).
+const GPS_URL="https://tasooma-push.tasooma.workers.dev/gps";
+const NAT=window.TasoomaApp||null,IOS=/iphone|ipad|ipod/i.test(navigator.userAgent),DROID=/android/i.test(navigator.userAgent);
+const APK_URL=new URL("./tasooma-driver.apk",location.href).href;
+const natSt=()=>{try{return NAT?String(NAT.state()||""):""}catch(e){return ""}};
+// رمز التتبع: لو السائق مالوش رمز بيعمله لنفسه مرة واحدة (القواعد بتسمحله بده بس)
+const GA="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+let gpsTried=false,trLoaded=false,natBusy=false,natAt=0;
+async function ensureGps(){
+ if(!me)return "";if(me.gps)return me.gps;if(gpsTried)return "";gpsTried=true;
+ try{
+  const d=await withTimeout(getDoc(doc(db,"drivers",me.id)),12000),cur=d.exists()?String(d.data().gps||""):"";
+  const tok=cur||[...crypto.getRandomValues(new Uint32Array(32))].map(x=>GA[x%GA.length]).join("");
+  if(!cur)await withTimeout(updateDoc(doc(db,"drivers",me.id),{gps:tok}),15000);
+  me.gps=tok;lsSet("drv_me",JSON.stringify(me));return tok;
+ }catch(e){return ""}
+}
+// التطبيق: فيه رحلة شغّالة ← يشغّل التتبع، مفيش ← يوقفه (بعد ما الرحلات تتقري من Firebase بس)
+async function natSync(){
+ if(!NAT||!me||!trLoaded||natBusy)return;
+ const a=active(),s=natSt();
+ try{
+  if(!a){if(s==="on")NAT.stop();natAt=0;return}
+  if(s!=="off"||Date.now()-natAt<30000)return;// شغّال خلاص، أو محتاج إذن/GPS (الزرار في الكارت)، أو لسه طالبينه من شوية
+  natBusy=true;const tok=await ensureGps();natBusy=false;
+  // لو ماشتغلش (نادراً)، نحاول تاني بعد 30 ثانية
+  if(tok&&active()){natAt=Date.now();NAT.start(tok);setTimeout(()=>{if(active()&&natSt()==="off")draw()},31000)}
+ }catch(e){natBusy=false}
+}
+window.__natState=()=>{natSync();draw()};
+const natFix=s=>s==="noperm"||s==="nogps"?`<div class="mut" style="color:#c4362b;font-weight:700;margin-top:6px">⚠️ ${s==="noperm"?"التطبيق محتاج إذن الموقع":"الموقع (GPS) مقفول في الموبايل"} علشان الفروع تعرف إمتى هتوصل</div><button class="b g" data-nfix type="button" style="margin-top:8px">📍 ${s==="noperm"?"اسمح بالموقع":"شغّل الموقع"}</button>`:"";
+const natLine=()=>{const s=natSt();return s==="on"?`<div class="mut" style="color:#1f8a3c;font-weight:700">📡 التتبع شغّال ✅ مكانك بيوصل لوحده حتى والموبايل مقفول، والفروع بتعرف إمتى هتوصل.</div>`
+ :natFix(s)||`<div class="mut">⏳ بنشغّل التتبع...</div>`};
+const wireNat=el=>el.querySelectorAll("[data-nfix]").forEach(b=>b.onclick=()=>{try{NAT.fix()}catch(e){}});
+const gpsCard=()=>{
+ if(NAT){const f=natFix(natSt());return f?`<div class="card">${f}</div>`:""}
+ if(DROID)return `<details class="card"><summary style="cursor:pointer;font-weight:800">📲 نزّل تطبيق TASOOMA للسواقين (مهم)</summary>
+ <div class="mut" style="margin:8px 0">نزّله مرة واحدة وادخل بنفس اسم المستخدم وكلمة السر: مكانك بيوصل للفروع لوحده وانت في رحلة <b>حتى والموبايل في جيبك</b>، والإشعارات بتوصلك والتطبيق مقفول. ومن غير أي إعدادات.</div>
+ <a class="b g" style="display:block;text-align:center;text-decoration:none" href="${E(APK_URL)}">⬇️ نزّل التطبيق</a><div class="mut" style="margin-top:6px">لو الموبايل سألك، اسمح بالتثبيت من المصدر ده.</div></details>`;
+ return me&&me.gps?`<details class="card"><summary style="cursor:pointer;font-weight:800">📡 تطبيق التتبع (علشان الفروع تعرف إمتى هتوصل)</summary>
+ <div class="mut" style="margin:8px 0">ركّبه مرة واحدة بس، وهو بيبعت مكانك للمنصة وانت في رحلة حتى والموبايل مقفول، فمش لازم تسيب التطبيق ده مفتوح.</div>
+ <ol class="mut" style="padding-inline-start:18px;line-height:1.9;margin:0"><li>نزّل <b>Traccar Client</b> من App Store (ببلاش)</li><li>افتحه واكتب:<br>Device identifier: <b dir="ltr">${E(me.gps)}</b> <button class="b it" data-cpy="${E(me.gps)}" type="button">نسخ</button><br>Server URL: <b dir="ltr" style="word-break:break-all">${GPS_URL}</b> <button class="b it" data-cpy="${GPS_URL}" type="button">نسخ</button><br>Frequency: <b>60</b></li><li>شغّل <b>Service status</b></li><li>اسمح بالموقع <b>طول الوقت (Always)</b></li></ol></details>`:"";
+};
+const wireCpy=el=>el.querySelectorAll("[data-cpy]").forEach(b=>b.onclick=async e=>{e.preventDefault();try{await navigator.clipboard.writeText(b.dataset.cpy);toast("اتنسخ ✅")}catch(x){prompt("انسخ:",b.dataset.cpy)}});
+// تطبيق التتبع في الخلفية (Traccar Client) بيبعت مكانه للسيرفر؟ (آخر مكان من "bg" من أقل من 5 دقايق)
+const bgOn=a=>!!(a&&a.loc&&a.loc.src==="bg"&&Date.now()-N(a.loc.ts)<5*6e4);
+async function onPos(pt){
+ const a=active();if(!a||LIVE.busy||bgOn(a))return;const now=Date.now();// التتبع في الخلفية شغّال: السيرفر بيحسب لوحده
+ if(now-LIVE.last<3*6e4&&(LIVE.lastPt?km2(LIVE.lastPt,pt):99)<1)return;
+ LIVE.busy=true;LIVE.last=now;LIVE.lastPt=pt;
+ try{
+  const pend=(a.stops||[]).filter(s=>!s.arr),et=etas(pend,now,null,pt),near=[];
+  const b=writeBatch(db);
+  // (مابنلمسش stops هنا علشان مانتخانقش مع "وصلت وسلّمت" لو حصلوا في نفس اللحظة: الوقت بيتكتب على الطلب نفسه)
+  b.update(doc(db,"trips",a.id),{loc:{...pt,ts:now}});
+  pend.forEach(s=>{const r=REQ.find(x=>x.id===s.rid);if(!r||r.st!=="go")return;const e=et[s.rid];
+   if(e&&Math.abs(e-N(r.eta))>=2*6e4)b.update(doc(db,"requests",s.rid),{eta:e,upd:now});
+   const bp=GEO.br[codeOf(s.brn)],close=(e&&e-now<=10*6e4)||(bp&&km2(pt,bp)<1.5);
+   if(close&&!(s.fr&&!s.pk)&&!(N(r.near)>N(r.dep)))near.push(s.rid)});
+  await withTimeout(b.commit(),15000);
+  // "قرب يوصل" لوحده (لو القواعد لسه قديمة، الوقت المتوقع يفضل يتحدّث عادي)
+  for(const rid of near){try{await withTimeout(updateDoc(doc(db,"requests",rid),{near:now}),15000);ping(auth,[rid])}catch(e){}}
+ }catch(e){}finally{LIVE.busy=false}
+}
 // التحويل اللي لسه ما استلمهوش: الفرع اللي هيستلم منه بيدخل في المسار قبل الفرع اللي هيسلّمله
 const mapLink=list=>{const pts=list.flatMap(x=>[x.fr&&!x.pk?GEO.br[x.fr]:null,GEO.br[codeOf(x.brn)]]).filter(Boolean);if(!pts.length)return "";const d=pts[pts.length-1],w=pts.slice(0,-1).map(p=>p.lat+","+p.lng).join("|");return `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}${w?"&waypoints="+encodeURIComponent(w):""}&travelmode=driving`};
 // ---------- دخول ----------
@@ -129,7 +224,7 @@ async function check(u){
  try{
   const d=await withTimeout(getDoc(doc(db,"drivers",id)),12000);
   if(!d.exists()||d.data().enabled!==true){await signOut(auth);g("ge").textContent="الحساب معطّل. كلّم المستودع.";return}
-  me={id,name:String(d.data().name||id)};lsSet("drv_me",JSON.stringify(me));
+  me={id,name:String(d.data().name||id),gps:String(d.data().gps||"")};lsSet("drv_me",JSON.stringify(me));gpsTried=false;
  }catch(e){
   if(e&&e.code==="permission-denied"){await signOut(auth);g("ge").textContent="الحساب معطّل. كلّم المستودع.";return}
   if(auth.currentUser!==u)return;
@@ -140,7 +235,10 @@ async function check(u){
    setTimeout(()=>{if(auth.currentUser===u)check(u)},8000);return}
  }
  g("gate").hidden=true;g("app").hidden=false;g("nm").textContent=me.name;wireButtons();startAll();window.uiReady&&uiReady();
- window.__push=()=>pushRegister(app,db,{role:"driver",key:me.id,email:u.email});autoPush();// إشعارات الموبايل للسائق
+ if(NAT){// جوه تطبيق TASOOMA: الإشعارات من التطبيق نفسه (رقمه بيتسجّل باسم السائق)
+  const save=t=>{if(t&&me&&auth.currentUser)pushSave(db,{role:"driver",key:me.id,email:auth.currentUser.email},String(t)).catch(()=>{})};
+  window.__natTok=save;try{save(NAT.pushToken())}catch(e){}
+ }else{window.__push=()=>pushRegister(app,db,{role:"driver",key:me.id,email:u.email});autoPush()}// إشعارات الموبايل للسائق
 }
 let firstReq=true;
 function startAll(){
@@ -157,32 +255,35 @@ function startAll(){
  // الرحلات: الشغّالة دلوقتي + رحلات النهاردة بس (بدل كل الرحلات من أول يوم)
  const T={a:new Map(),d:new Map()},setT=(k,sn)=>{T[k]=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));const m=new Map(T.d);T.a.forEach((v,id)=>m.set(id,v));TR=[...m.values()];draw()};
  const terr=()=>toast("تعذر قراءة الرحلات","er"),day0=new Date().setHours(0,0,0,0);
- un.push(onSnapshot(query(collection(db,"trips"),where("drv","==",me.id),where("st","==","active")),sn=>setT("a",sn),terr));
+ un.push(onSnapshot(query(collection(db,"trips"),where("drv","==",me.id),where("st","==","active")),sn=>{if(!sn.metadata.fromCache)trLoaded=true;setT("a",sn)},terr));
  // محتاج فهرس (drv + start) في Firebase؛ لو لسه ماتعملش بنرجع للطريقة القديمة علشان التطبيق مايقفش
  un.push(onSnapshot(query(collection(db,"trips"),where("drv","==",me.id),where("start",">=",day0)),sn=>setT("d",sn),e=>{
   if(e&&e.code==="failed-precondition")un.push(onSnapshot(query(collection(db,"trips"),where("drv","==",me.id)),sn=>setT("d",sn),terr));else terr()}));
 }
-function stopAll(){un.forEach(f=>typeof f==="function"&&f());un=[];CARS=[];REQ=[];TR=[];FU=[];off=new Set();odoV=null;clearInterval(tick)}
+function stopAll(){un.forEach(f=>typeof f==="function"&&f());un=[];CARS=[];REQ=[];TR=[];FU=[];off=new Set();odoV=null;clearInterval(tick);liveOff();trLoaded=false}
 // ---------- الواجهة ----------
 // كارت الترحيب للسائق باسمه
 const hi=sub=>window.uiHello?uiHello(me?me.name:"",sub):"";
 function draw(){
+ natSync();if(IOS&&me&&!me.gps&&!gpsTried)ensureGps().then(t=>{if(t)draw()});// آيفون: الرمز بتاع Traccar
  if(!me||g("md").className.includes("on"))return;
  const a=active(),mn=g("mn");
  if(a){
   const st=Array.isArray(a.stops)?a.stops:[],done=st.filter(s=>s.arr).length,pend=st.filter(s=>!s.arr),ml=mapLink(pend);
-  mn.innerHTML=hi(`رحلة شغّالة، سلامتك 🚚 سلّمت ${done} من ${st.length}`)+`<div class="card"><h3>🚚 رحلة شغّالة <span class="pill">${E(a.carn)}</span></h3><div class="kp"><span>بدأت ${hm(a.start)}</span><span id="el">${dur(Date.now()-N(a.start))}</span><span>سلّمت ${done} من ${st.length}</span></div><div class="mut">📍 بنسجّل موقعك لما تضغط (وصلت / إنهاء) بس — مش محتاج تسيب الشاشة مفتوحة.</div>${ml?`<a class="b g" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="${E(ml)}" target="_blank" rel="noopener noreferrer">🗺 افتح المسار في خرائط جوجل</a>`:""}</div>
+  mn.innerHTML=hi(`رحلة شغّالة، سلامتك 🚚 سلّمت ${done} من ${st.length}`)+`<div class="card"><h3>🚚 رحلة شغّالة <span class="pill">${E(a.carn)}</span></h3><div class="kp"><span>بدأت ${hm(a.start)}</span><span id="el">${dur(Date.now()-N(a.start))}</span><span>سلّمت ${done} من ${st.length}</span></div>${NAT?natLine():bgOn(a)?`<div class="mut" style="color:#1f8a3c;font-weight:700">📡 تطبيق التتبع شغّال ✅ مكانك بيوصل لوحده حتى والموبايل مقفول، والفروع بتعرف إمتى هتوصل.</div>`
+   :`<div class="mut">📍 ${me.gps&&!DROID?"تطبيق التتبع (Traccar Client) لسه مابعتش مكانك. اتأكد إنه شغّال (Service status). لحد ما يشتغل: ":""}طول ما التطبيق ده مفتوح قدامك بنحدّث مكانك والوقت المتوقع للفروع.</div><label class="mut" style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="wk" type="checkbox" style="width:22px;height:22px" ${wakeOn()?"checked":""}> 🔆 خلّي الشاشة منورة أثناء الرحلة</label>`}${ml?`<a class="b g" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="${E(ml)}" target="_blank" rel="noopener noreferrer">🗺 افتح المسار في خرائط جوجل</a>`:""}</div>
   ${st.map(s=>{
     // تحويل بين فرعين: لازم يستلم من الفرع الأول (fr) قبل ما يسلّم للتاني
     const pick=s.fr&&!s.pk&&!s.arr;
     return `<div class="stop ${s.arr?"done":""}"><div>${s.fr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" ✔ "+hm(s.pk):""}</small>`:""}<b>${s.fr?"← سلّم لـ ":""}${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small>${itBtn(s.rid)}</div>${s.arr?"":pick?`<button class="b" data-pk="${E(s.rid)}" type="button">📦 استلمت من ${E(s.frn||s.fr)}</button>`:`<button class="b ok" data-arr="${E(s.rid)}" type="button">وصلت وسلّمت ✅</button>`}</div>`}).join("")}
   <div class="row"><button class="b" id="bf" type="button">⛽ بنزين</button><button class="b p" id="be" type="button">🏁 إنهاء الرحلة</button></div>`;
   g("bf").onclick=fuelForm;g("be").onclick=endForm;
-  mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));mn.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>pickUp(b.dataset.pk,b));wireIt(mn);
+  mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));mn.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>pickUp(b.dataset.pk,b));wireIt(mn);wireNat(mn);
   clearInterval(tick);tick=setInterval(()=>{const e=g("el"),t=active();if(e&&t)e.textContent=dur(Date.now()-N(t.start))},30000);
+  liveOn();if(g("wk"))g("wk").onchange=()=>{lsSet("drv_wake",g("wk").checked?"1":"0");if(g("wk").checked)wake();else if(LIVE.lock){LIVE.lock.release().catch(()=>{});LIVE.lock=null}};
   return;
  }
- clearInterval(tick);
+ clearInterval(tick);liveOff();
  const rs=REQ.filter(r=>r.st==="prep").sort((a,b)=>N(a.ts)-N(b.ts));
  const lastCar=lsGet("drv_car")||"",cid=CARS.some(c=>c.id===lastCar)?lastCar:(CARS[0]&&CARS[0].id)||"";
  const dayTr=TR.filter(t=>t.st==="done"&&new Date(N(t.start)).toLocaleDateString("en-CA")===today()).sort((a,b)=>N(b.start)-N(a.start));
@@ -195,6 +296,7 @@ function draw(){
  ${dayTr.length?`<div class="card"><h3>رحلات النهاردة</h3>${dayTr.map(t=>`<div class="mut" style="padding:6px 0;border-bottom:1px solid var(--line)">${hm(t.start)} ← ${hm(t.end)} · ${dur(N(t.end)-N(t.start))} · ${Math.max(0,N(t.odo1)-N(t.odo0))} كم · ${(t.stops||[]).filter(s=>s.arr).length} توصيلة</div>`).join("")}</div>`:""}`;
  g("sc").onchange=()=>{lsSet("drv_car",g("sc").value);odoV=null;draw()};g("so").oninput=()=>{odoV=g("so").value};
  mn.querySelectorAll("[data-r]").forEach(c=>c.onchange=()=>{c.checked?off.delete(c.dataset.r):off.add(c.dataset.r)});
+ mn.insertAdjacentHTML("beforeend",gpsCard());wireCpy(mn);wireNat(mn);
  g("bf").onclick=fuelForm;g("bs").onclick=startTrip;wireIt(mn);
 }
 // محتوى الطلب (الأصناف والكميات) علشان السائق يراجع وهو بيحمّل
@@ -214,14 +316,15 @@ async function startTrip(){
  if(!(odo>0)){toast("اكتب قراءة العداد","er");return}
  if(!sel.length){toast("اختر توصيلة واحدة على الأقل","er");return}
  g("bs").disabled=true;g("bs").textContent="جاري تحديد الموقع...";
- const loc=await here(),ts=Date.now(),rs=order(sel,loc),et=etas(rs,ts);
+ // الوقت المتوقع من مكانه الحقيقي دلوقتي (والتحويل بيعدّي على الفرع اللي هيستلم منه)
+ const loc=await here(),ts=Date.now(),rs=order(sel,loc),et=etas(rs.map(r=>({rid:r.id,brn:r.brn,fr:r.tr&&r.tr.fr,pk:N(r.pk)})),ts,"WH",loc);
  try{
   const b=writeBatch(db),tr=doc(collection(db,"trips")),t={drv:me.id,drvn:me.name,car:c.id,carn:c.name+(c.plate?" "+c.plate:""),st:"active",start:ts,odo0:odo,stops:rs.map(r=>{const s={rid:r.id,no:String(r.no||"").slice(0,40),brn:String(r.brn||"").slice(0,40),pcs:N(r.pcs)};if(et[r.id])s.eta=et[r.id];
     if(r.tr&&r.tr.fr){s.fr=String(r.tr.fr).slice(0,3);s.frn=String(r.tr.frn||"").slice(0,40);if(N(r.pk))s.pk=N(r.pk)}// تحويل: يستلم من الفرع ده الأول
     return s})};
   if(loc){t.loc0=loc;t.loc={...loc,ts}}
   b.set(tr,t);rs.forEach(r=>{const u={st:"go",dep:ts,upd:ts};if(et[r.id])u.eta=et[r.id];b.update(doc(db,"requests",r.id),u)});
-  await withTimeout(b.commit(),15000);ping(auth,rs.map(r=>r.id),[],[tr.id]);lsSet("drv_car",c.id);lsSet("drv_odo_"+c.id,String(odo));odoV=null;toast("بدأت الرحلة. سلامتك 🚚");
+  await withTimeout(b.commit(),15000);ping(auth,rs.map(r=>r.id),[],[tr.id]);LIVE.last=ts;LIVE.lastPt=loc;lsSet("drv_car",c.id);lsSet("drv_odo_"+c.id,String(odo));odoV=null;toast("بدأت الرحلة. سلامتك 🚚");
  }catch(e){const x=g("bs");if(x){x.disabled=false;x.textContent="🚚 ابدأ الرحلة"}fail(e,"مش مسموح. ممكن المستودع غيّر الطلب.")}
 }
 // تحويل: السواق استلم البضاعة من الفرع اللي بيبعت (pk على الطلب وعلى محطة الرحلة)
