@@ -89,7 +89,9 @@ service cloud.firestore {
       // إثبات التسليم من السائق: اسم المستلم + توقيع + صورة (اختياري)
       function validPod() {
         let p = request.resource.data.pod;
-        return p is map && p.keys().hasOnly(['name','sig','img','at'])
+        // (ph/sg = فيه صورة/توقيع في pods/{id}. الصور الجديدة مابقتش جوه الطلب، والقديمة لسه مسموحة)
+        return p is map && p.keys().hasOnly(['name','sig','img','at','ph','sg'])
+          && (!('ph' in p) || p.ph == 1) && (!('sg' in p) || p.sg == 1)
           && p.name is string && p.name.size() <= 60
           && (!('sig' in p) || (p.sig is string && p.sig.size() <= 40000))
           && (!('img' in p) || (p.img is string && p.img.size() <= 160000))
@@ -142,6 +144,22 @@ service cloud.firestore {
         )));
       // الطلب اللي الفرع أكّد استلامه (recv) مايتمسحش خالص، ولا حتى من المالك (سجل نهائي)
       allow delete: if isAdmin() && resource.data.st != 'recv';
+    }
+
+    // صورة التسليم وتوقيع المستلم: pods/{رقم الطلب} = {img?, sig?, at, drv}. لوحدها علشان الطلبات تفضل خفيفة
+    // (بتتقري بس لما حد يدوس "صورة التسليم"). السائق المعيّن يكتبها وهو بيسلّم، والمسح/التعديل للمالك بس.
+    match /pods/{rid} {
+      function podReq() { return get(/databases/$(database)/documents/requests/$(rid)).data; }
+      function validPics() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['img','sig','at','drv']) && d.at is number && d.drv == myDrv()
+          && (!('img' in d) || (d.img is string && d.img.size() <= 160000))
+          && (!('sig' in d) || (d.sig is string && d.sig.size() <= 40000));
+      }
+      allow read: if isAdmin() || perm('req') || perm('fl') || isViewer();
+      allow create, update: if isOwner()
+        || (drvOn() && podReq().asg.drv == myDrv() && podReq().st in ['prep','go'] && validPics());
+      allow delete: if isOwner();
     }
 
     // عهدة المستودع وفواتيرها وإقفالاتها: للمستودع (الأدمن) فقط

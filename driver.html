@@ -71,7 +71,7 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
 <div id="app" hidden><div class="hd"><img src="./icon-192.png" alt=""><div><b id="nm"></b><small>سائق التوصيل</small></div><div class="sp"></div><button id="bell" type="button"></button><button data-install type="button" hidden>📲</button><button id="out" type="button">خروج</button></div><main id="mn"></main></div>
 <div class="mdl" id="md"></div>
 <script type="module">
-import {makeFb,pushRegister,pushSave,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,addDoc,updateDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
+import {makeFb,pushRegister,pushSave,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,addDoc,updateDoc,setDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {wireButtons,regSW,notify,beep,autoPush} from "./notify.js";
 import {shrink} from "./cust.js";
 const {app,db,auth}=makeFb("drv");
@@ -370,10 +370,17 @@ function podForm(rid){
   const nm=g("pn").value.trim();if(!nm){toast("اكتب اسم المستلم","er");return}
   if(busy){toast("استنى الصورة تخلص","er");return}
   g("p1").disabled=true;g("p1").textContent="جاري الحفظ...";
-  const ts=Date.now(),loc=await here(),pod={name:nm.slice(0,60),at:ts};
-  if(drawn){const sg=cv.toDataURL("image/png");if(sg.length<=40000)pod.sig=sg}
-  if(img)pod.img=img;
+  const ts=Date.now(),loc=await here();let pod={name:nm.slice(0,60),at:ts},pics=null;
+  if(drawn){const sg=cv.toDataURL("image/png");if(sg.length<=40000)(pics=pics||{}).sig=sg}
+  if(img)(pics=pics||{}).img=img;
   try{
+   // الصورة والتوقيع في مستند لوحده (pods/{رقم الطلب})، مش جوه الطلب: الطلب بيتقري مع كل فتحة للوحة،
+   // ولو الصور جوّاه كانت حصة النقل المجانية في Firebase هتخلص والمنصة تقف. على الطلب علامة بس (ph/sg).
+   // لو القواعد اللي في Firebase لسه قديمة (مابتعرفش pods) بنرجع للطريقة القديمة علشان التسليم مايقفش.
+   if(pics){
+    try{await withTimeout(setDoc(doc(db,"pods",rid),{...pics,at:ts,drv:me.id}),15000);if(pics.img)pod.ph=1;if(pics.sig)pod.sg=1}
+    catch(e){if(e&&e.code==="permission-denied")pod={...pod,...pics};else throw e}
+   }
    const st=(a.stops||[]).map(x=>{if(x.rid!==rid)return x;const o={...x,arr:ts,rcvr:nm.slice(0,60),odo:od};if(loc){o.lat=loc.lat;o.lng=loc.lng}return o});
    const rem=st.filter(x=>!x.arr),et=etas(rem,ts,codeOf(s.brn));// الباقي محسوب من الفرع اللي اتسلّم دلوقتي
    const stt=st.map(x=>et[x.rid]?{...x,eta:et[x.rid]}:x);

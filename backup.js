@@ -4,8 +4,9 @@
 // علشان كده لازم كل الملفات تتحفظ مع بعض. مش بتشمل: كلمات السر، وتسجيلات الإشعارات، والصوت نفسه.
 // meta/backup = {at, n}: آخر نسخة إمتى وكام سجل (للتنبيه لو عدّى أسبوع).
 import {collection,doc,getDoc,getDocs,setDoc,query,where,withTimeout} from "./fb.js";
-const ALL=["branches","staff","ledger","settlements","drivers","workers","wrate","geo","cars","chats"];
-const BYTIME=[["requests","ts"],["trips","start"],["fuel","ts"]];
+// (الشات القديم "chats" اتمسح. الشات الخاص dm مش في النسخة: القواعد مش بتسمح لحد يقرا محادثات غيره، ولا حتى المالك)
+const ALL=["branches","staff","ledger","settlements","drivers","workers","wrate","geo","cars","whdir"];
+const BYTIME=[["requests","ts"],["trips","start"],["fuel","ts"],["pods","at"],["log","ts"]];
 const OVERLAP=60*864e5,NAG=7*864e5;
 const STYLE=`#bkp{position:relative;white-space:nowrap}#bkp .bkd{position:absolute;top:1px;inset-inline-end:1px;width:10px;height:10px;border-radius:50%;background:#e5484d;border:2px solid #1b1b1b}
 .bkn{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:11px 14px;border-radius:14px;background:#fff4e2;border:1px solid #efc47c;color:#6b4300;font-weight:700;font-size:14px}
@@ -44,7 +45,6 @@ async function run(){
     for(const [c,f] of BYTIME)out.data[c]=take(await get(full?collection(ctx.db,c):query(collection(ctx.db,c),where(f,">=",from)),120000));
     // الطلبات اللي لسه مفتوحة حتى لو قديمة
     if(!full)take(await get(query(collection(ctx.db,"requests"),where("st","in",["new","prep","go","done"]))),out.data.requests);
-    for(const code of Object.keys(out.data.chats)){const m=collection(ctx.db,"chats",code,"msgs");out.chat[code]=take(await get(full?m:query(m,where("ts",">=",from))))}
     const blob=new Blob([JSON.stringify(out)],{type:"application/json"});
     save(blob,`tasooma-backup-${new Date(at).toLocaleDateString("en-CA")}${full?"-full":""}.json`);
     await withTimeout(setDoc(doc(ctx.db,"meta","backup"),{at,n}),15000).catch(()=>{});

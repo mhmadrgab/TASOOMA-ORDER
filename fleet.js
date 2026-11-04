@@ -1,5 +1,5 @@
 // لوحة المستودع: السيارات والسواقين والرحلات والبنزين
-import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
+import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,getDocs,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep,pushOn} from "./notify.js";
 import {ledger} from "./ad-extra.js";
@@ -12,6 +12,23 @@ const ago=t=>{const m=Math.round((Date.now()-N(t))/60000);return m<1?"الآن":
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
 let X=null,CARS=[],DRV=[],TR=[],FU=[],PW={},GEOD=null,geoReady=false,un=[],pT=null,pF=null,mode="",fday="",fmon="",ctxEd=null;
+// الرحلات والبنزين: TRL/FUL = اللي بيتسمع لايف (الشهر ده واللي قبله)، OLDT/OLDF = شهور أقدم اتحمّلت لما حد طلبها،
+// TR/FU = الاتنين مع بعض (اللي كل الشاشات بتستخدمه)
+let TRL=[],FUL=[],OLDT=new Map(),OLDF=new Map(),LOADED=new Set();
+const liveSince=()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth()-1,1).getTime()};
+const monthStart=m=>{const [y,mo]=String(m).split("-").map(Number);return new Date(y,mo-1,1).getTime()};
+function mergeOld(){const ids=new Set(TRL.map(t=>t.id)),fid=new Set(FUL.map(f=>f.id));TR=[...[...OLDT.values()].filter(t=>!ids.has(t.id)),...TRL];FU=[...[...OLDF.values()].filter(f=>!fid.has(f.id)),...FUL]}
+// أقدم شهر لسه ماتحمّلش (للاختيار "أيام أقدم")، لحد سنتين ورا
+function oldMonth(){let s=liveSince();LOADED.forEach(m=>{s=Math.min(s,monthStart(m))});const d=new Date(s),p=new Date(d.getFullYear(),d.getMonth()-1,1);return Date.now()-p.getTime()<730*864e5?p.toLocaleDateString("en-CA").slice(0,7):""}
+async function loadMonth(m){
+ if(!m||!/^\d{4}-\d{2}$/.test(m)||LOADED.has(m)||monthStart(m)>=liveSince())return;
+ const a=monthStart(m),[y,mo]=m.split("-").map(Number),b=new Date(y,mo,1).getTime();
+ X.toast("⏳ جاري تحميل "+m+"...");
+ try{
+  const [ts,fs]=await Promise.all([getDocs(query(collection(X.db,"trips"),where("start",">=",a),where("start","<",b))),getDocs(query(collection(X.db,"fuel"),where("ts",">=",a),where("ts","<",b)))]);
+  ts.docs.forEach(d=>OLDT.set(d.id,{id:d.id,...d.data()}));fs.docs.forEach(d=>OLDF.set(d.id,{id:d.id,...d.data()}));LOADED.add(m);mergeOld();
+ }catch(e){X.toast("تعذر تحميل "+m+". اتأكد من النت وجرّب تاني")}
+}
 let BK=new Set(),bkD="",bkC="";// الطلبات المتعلّم عليها للتعيين الجماعي، والسائق والسيارة المختارين
 // رقم الموبايل: 05xxxxxxxx أو 5xxxxxxxx ← 9665xxxxxxxx (لواتساب)
 const waNum=p=>{let d=toEn(p).replace(/\D/g,"");if(d.startsWith("00"))d=d.slice(2);if(/^05\d{8}$/.test(d))d="966"+d.slice(1);else if(/^5\d{8}$/.test(d))d="966"+d;return d};
@@ -46,7 +63,7 @@ function carStat(c){
 }
 // الوقت بين كل مكانين حسب "من فين لفين" (WH = المستودع): المستودع←الملقا غير غرناطة←الملقا
 const bc=b=>String(b||"").split("-")[0];
-function pairs(){const m={};TR.filter(t=>t.st==="done").forEach(t=>{let p=N(t.start),prev="WH";(Array.isArray(t.stops)?t.stops:[]).filter(s=>s&&s.arr).sort((a,b)=>N(a.arr)-N(b.arr)).forEach(s=>{const l=N(s.arr)-p,c=bc(s.brn);if(l>0&&l<12*36e5)(m[prev+">"+c]=m[prev+">"+c]||[]).push(l);p=N(s.arr);prev=c})});
+function pairs(list=TR){const m={};list.filter(t=>t.st==="done").forEach(t=>{let p=N(t.start),prev="WH";(Array.isArray(t.stops)?t.stops:[]).filter(s=>s&&s.arr).sort((a,b)=>N(a.arr)-N(b.arr)).forEach(s=>{const l=N(s.arr)-p,c=bc(s.brn);if(l>0&&l<12*36e5)(m[prev+">"+c]=m[prev+">"+c]||[]).push(l);p=N(s.arr);prev=c})});
  const o={};Object.entries(m).forEach(([k,v])=>o[k]=Math.max(1,Math.round(v.reduce((a,b)=>a+b,0)/v.length/6e4)));return o}
 // المسافة بخط مستقيم × 1.3 (تقريب للطريق الفعلي)
 const kmBetween=(a,b)=>{if(!a||!b||!Number.isFinite(+a.lat)||!Number.isFinite(+b.lat))return null;const R=6371,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lng-a.lng),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))*1.3};
@@ -172,7 +189,7 @@ function pointM(lat,lng,title,sub,back){
  const p={lat:+lat,lng:+lng};if(!okPt(p))return;
  mapModal(`📍 ${E(title)}`,sub?E(sub):"",back,(L,M)=>{L.marker([p.lat,p.lng],{icon:pin(L,`<div class="tz-s"><b>📍</b></div>`)}).bindPopup(`<b>${E(title)}</b>${sub?"<br>"+E(sub):""}`).addTo(M);return [p]});
 }
-function legs(){const m={};TR.filter(t=>t.st==="done").forEach(t=>{let p=N(t.start);(Array.isArray(t.stops)?t.stops:[]).filter(s=>s&&s.arr).sort((a,b)=>N(a.arr)-N(b.arr)).forEach(s=>{const l=N(s.arr)-p;p=N(s.arr);if(l>0&&l<864e5)(m[s.brn]=m[s.brn]||[]).push(l)})});const o={};Object.entries(m).forEach(([k,v])=>o[k]=v.reduce((a,b)=>a+b,0)/v.length);return o}
+function legs(list=TR){const m={};list.filter(t=>t.st==="done").forEach(t=>{let p=N(t.start);(Array.isArray(t.stops)?t.stops:[]).filter(s=>s&&s.arr).sort((a,b)=>N(a.arr)-N(b.arr)).forEach(s=>{const l=N(s.arr)-p;p=N(s.arr);if(l>0&&l<864e5)(m[s.brn]=m[s.brn]||[]).push(l)})});const o={};Object.entries(m).forEach(([k,v])=>o[k]=v.reduce((a,b)=>a+b,0)/v.length);return o}
 function alerts(){
  const A=[],now=Date.now();
  CARS.forEach(c=>{
@@ -194,7 +211,7 @@ function alerts(){
 export function view(){
  const R=X.R(),A=alerts(),act=TR.filter(t=>t.st==="active"),lg=legs(),pp=pairs();
  const openR=R.filter(r=>(r.st==="new"||r.st==="prep")).sort((a,b)=>N(a.ts)-N(b.ts));
- const days=[...new Set(TR.map(t=>dk(t.start)))].sort().reverse();if(!fday||!days.includes(fday))fday=days[0]||today();
+ const days=[...new Set(TR.map(t=>dk(t.start)))].sort().reverse();if(fday==="__older"||!fday||!days.includes(fday))fday=days[0]||today();
  const dTr=TR.filter(t=>dk(t.start)===fday).sort((a,b)=>N(a.start)-N(b.start));
  const dOpt=(a,sel)=>a.map(([v,l])=>`<option value="${E(v)}" ${v===sel?"selected":""}>${E(l)}</option>`).join("");
  const dr=DRV.filter(d=>d.enabled);
@@ -215,7 +232,7 @@ export function view(){
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">👷 السواقين</h3>${X.admin?'<button class="bt s g" data-fl="drv" type="button" style="margin-inline-start:auto">➕ إضافة سائق</button>':""}</div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السائق</th><th>اسم الدخول</th><th>الحالة</th><th>رحلات الشهر</th><th>كم الشهر</th><th>كلمة السر</th><th></th></tr></thead><tbody>${DRV.length?DRV.map(d=>{const m=dk(Date.now()).slice(0,7),t=TR.filter(x=>x.drv===d.id&&x.st==="done"&&monthOf(x.start)===m);return `<tr><td><b>${E(d.name)}</b>${d.phone?`<small class="off" style="display:block;direction:ltr;text-align:right">${E(d.phone)}</small>`:""}</td><td class="l">${E(d.id)}</td><td><span class="pill ${d.enabled?"":"off2"}">${d.enabled?"مفعّل":"معطّل"}</span></td><td>${t.length}</td><td>${fmt(t.reduce((a,x)=>a+Math.max(0,N(x.odo1)-N(x.odo0)),0))}</td><td>${PW[d.id]?`<span class="pin" data-fpw="${E(d.id)}">••••••••</span> <button class="bt s" data-fl="spw" data-id="${E(d.id)}" type="button">إظهار</button>`:'<span class="off">—</span>'}</td><td style="white-space:nowrap">${telBtn(d)} ${X.admin?`<button class="bt s ${d.gps?"g":""}" data-fl="gps" data-id="${E(d.id)}" type="button" title="تتبع السائق في الخلفية">📡 التتبع${d.gps?" ✓":""}</button> <button class="bt s" data-fl="dwa" data-id="${E(d.id)}" type="button">📲 واتساب</button> <button class="bt s" data-fl="dedit" data-id="${E(d.id)}" type="button">تعديل</button> <button class="bt s" data-fl="dtg" data-id="${E(d.id)}" type="button">${d.enabled?"تعطيل":"تفعيل"}</button> <button class="bt s" data-fl="dpw" data-id="${E(d.id)}" type="button">كلمة سر جديدة</button> <button class="bt s" data-fl="dcp" data-id="${E(d.id)}" type="button">نسخ رسالة</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">لسه مفيش سواقين</td></tr>'}</tbody></table></div></div>
 ${evalView()}
- <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🗓 سجل الرحلات</h3><select id="fday" style="margin-inline-start:auto">${days.length?days.map(d=>`<option ${d===fday?"selected":""}>${d}</option>`).join(""):`<option>${today()}</option>`}</select><button class="bt s" data-fl="rep" type="button">🖨 تقرير اليوم</button></div>
+ <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🗓 سجل الرحلات</h3><select id="fday" style="margin-inline-start:auto">${days.length?days.map(d=>`<option ${d===fday?"selected":""}>${d}</option>`).join(""):`<option>${today()}</option>`}${oldMonth()?`<option value="__older">⬅ أيام أقدم (${oldMonth()})</option>`:""}</select><button class="bt s" data-fl="rep" type="button">🖨 تقرير اليوم</button></div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السائق / السيارة</th><th>من ← إلى</th><th>المدة</th><th>كم</th><th>التسليمات</th><th></th></tr></thead><tbody>${dTr.length?dTr.map(t=>{const st=Array.isArray(t.stops)?t.stops:[];return `<tr><td><b>${E(t.drvn)}</b><small class="off" style="display:block">${E(t.carn)}</small></td><td>${hm(t.start)} ← ${t.end?hm(t.end):'<span class="pill go">شغّال</span>'}</td><td>${t.end?dur(N(t.end)-N(t.start)):dur(Date.now()-N(t.start))}</td><td>${t.st==="done"?fmt(Math.max(0,N(t.odo1)-N(t.odo0))):"—"}</td><td>${st.filter(s=>s.arr).length}/${st.length} · ${st.reduce((a,s)=>a+N(s.pcs),0)} قطعة</td><td style="white-space:nowrap"><button class="bt s" data-fl="trd" data-id="${E(t.id)}" type="button">تفاصيل</button> ${X.admin?`<button class="bt s" data-fl="trx" data-id="${E(t.id)}" type="button">حذف</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="6" class="off" style="text-align:center;padding:20px">مفيش رحلات في اليوم ده</td></tr>'}</tbody></table></div></div>
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">⏱ متوسط زمن الوصول لكل فرع</h3>${Object.keys(lg).length?Object.entries(lg).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="bar"><span>${E(k)}</span><i style="width:${Math.max(4,v/Math.max(...Object.values(lg))*50)}%"></i><em>${dur(v)}</em></div>`).join(""):'<div class="off">بيتحسب من الرحلات اللي بتخلص</div>'}</div>
  ${(()=>{const op=odoPairs(),nm=brNames(),lb=c=>c==="WH"?"🏭 المستودع":(nm[c]||c),ks=Object.entries(op).sort((a,b)=>b[1].n-a[1].n).slice(0,30);
@@ -223,7 +240,8 @@ ${evalView()}
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">⛽ آخر تعبئات البنزين</h3><div class="tw"><table><thead><tr><th>التاريخ</th><th>السيارة</th><th>السائق</th><th>لترات</th><th>المبلغ</th><th>العداد</th><th>فُل؟</th><th></th></tr></thead><tbody>${FU.slice().sort((a,b)=>N(b.ts)-N(a.ts)).slice(0,15).map(f=>`<tr><td>${E(f.dt)}</td><td>${E(f.carn||"")}</td><td>${E(f.drvn||"")}</td><td>${fmt(f.liters)}</td><td>${fmt(f.cost)}</td><td>${fmt(f.odo)}</td><td>${f.full?"✔":""}</td><td>${X.admin?`<button class="bt s" data-fl="fx" data-id="${E(f.id)}" type="button">حذف</button>`:""}</td></tr>`).join("")||'<tr><td colspan="8" class="off" style="text-align:center;padding:20px">لا يوجد</td></tr>'}</tbody></table></div></div>`;
 }
 // ---------- تقييم السواقين الشهري ----------
-const months=()=>{const m=new Set([dk(Date.now()).slice(0,7)]);TR.forEach(t=>m.add(monthOf(t.start)));return [...m].sort().reverse()};
+// آخر 13 شهر دايماً (الشهور الأقدم من الشهرين اللي بيتسمعوا لايف بتتحمّل لما تختارها)
+const months=()=>{const m=new Set(),d=new Date();for(let i=0;i<13;i++)m.add(new Date(d.getFullYear(),d.getMonth()-i,1).toLocaleDateString("en-CA").slice(0,7));TR.forEach(t=>m.add(monthOf(t.start)));return [...m].sort().reverse()};
 function drvStats(mo){
  return DRV.map(d=>{
   const tr=TR.filter(t=>t.drv===d.id&&t.st==="done"&&monthOf(t.start)===mo),st=tr.flatMap(t=>Array.isArray(t.stops)?t.stops:[]);
@@ -253,15 +271,17 @@ let geoAt=0,geoBusy=false;
 function syncGeo(){
  // حماية إضافية: كتابة واحدة بالكتير كل 10 دقايق من الجهاز ده (والقواعد بتمنع أكتر من كده من أي جهاز)
  if(X.view||!geoReady||!TR.length||geoBusy||Date.now()-geoAt<10*6e4)return;// المتابع مابيكتبش
- const acc={},lg=legs(),lgc={},wh={la:0,ln:0,n:0};
- TR.filter(t=>t.st==="done").forEach(t=>{
+ // من الرحلات اللي بتتسمع لايف بس (آخر شهرين)، مش الشهور القديمة اللي حد حمّلها: علشان كل الأجهزة تحسب نفس الأرقام
+ const acc={},lg=legs(TRL),lgc={},wh={la:0,ln:0,n:0};
+ TRL.filter(t=>t.st==="done").forEach(t=>{
   (Array.isArray(t.stops)?t.stops:[]).forEach(x=>{if(x&&x.arr&&Number.isFinite(+x.lat)&&Number.isFinite(+x.lng)){const c=String(x.brn||"").split("-")[0],a=acc[c]||(acc[c]={la:0,ln:0,n:0});a.la+=+x.lat;a.ln+=+x.lng;a.n++}});
   if(t.loc0&&Number.isFinite(+t.loc0.lat)){wh.la+=+t.loc0.lat;wh.ln+=+t.loc0.lng;wh.n++}
  });
  Object.entries(lg).forEach(([b,v])=>{const c=b.split("-")[0];(lgc[c]=lgc[c]||[]).push(v)});
  const br={};Object.entries(acc).forEach(([c,a])=>{const o={lat:+(a.la/a.n).toFixed(5),lng:+(a.ln/a.n).toFixed(5),n:a.n};if(lgc[c])o.avg=Math.max(1,Math.round(lgc[c].reduce((x,y)=>x+y,0)/lgc[c].length/6e4));br[c]=o});
- const nw={br};if(wh.n)nw.wh={lat:+(wh.la/wh.n).toFixed(5),lng:+(wh.ln/wh.n).toFixed(5)};
- const pp=pairs();if(Object.keys(pp).length)nw.pairs=pp;// أوقات "من فين لفين" علشان تطبيق السائق يحسب الوقت المتوقع صح
+ // الفروع والمشاوير اللي مافيش رحلات ليها في آخر شهرين بتفضل زي ما هي (مانمسحش مكان فرع لمجرد إنه ماطلبش من فترة)
+ const nw={br:{...((GEOD&&GEOD.br)||{}),...br}};if(wh.n)nw.wh={lat:+(wh.la/wh.n).toFixed(5),lng:+(wh.ln/wh.n).toFixed(5)};else if(GEOD&&GEOD.wh)nw.wh=GEOD.wh;
+ const pp={...((GEOD&&GEOD.pairs)||{}),...pairs(TRL)};if(Object.keys(pp).length)nw.pairs=pp;// أوقات "من فين لفين" علشان تطبيق السائق يحسب الوقت المتوقع صح
  const cur=GEOD?{br:GEOD.br||{},...(GEOD.wh?{wh:GEOD.wh}:{}),...(GEOD.pairs?{pairs:GEOD.pairs}:{})}:null;
  if(canon(cur)===canon(nw))return;
  geoBusy=true;geoAt=Date.now();
@@ -290,7 +310,9 @@ function podHtml(rid){
  const r=X.R().find(x=>x.id===rid),p=r&&r.pod;if(!p||typeof p!=="object")return "";
  const sg=isImg(p.sig)?`<img src="${E(p.sig)}" alt="توقيع" data-zoom data-zt="توقيع المستلم: ${E(p.name||"")}" data-zdel="requests/${E(rid)}/pod.sig" style="height:56px;background:#fff;border:1px solid var(--line);border-radius:8px">`:"";
  const im=isImg(p.img)?`<img src="${E(p.img)}" alt="صورة التسليم" data-zoom data-zt="صورة التسليم · ${E(r.brn||"")}" data-zdel="requests/${E(rid)}/pod.img" style="max-width:100%;max-height:220px;border-radius:10px">`:"";
- return sg||im?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:6px">${sg}${im}</div>`:"";
+ // الصور الجديدة في pods/{رقم الطلب}: زرار بيجيبها وقت الضغط بس (zoom.js)
+ const bs=(p.sg&&!sg?`<button class="bt s" type="button" data-podv="${E(rid)}|sig" data-zt="توقيع المستلم: ${E(p.name||"")}">✍ التوقيع</button>`:"")+(p.ph&&!im?`<button class="bt s" type="button" data-podv="${E(rid)}|img" data-zt="صورة التسليم · ${E(r.brn||"")}">📷 صورة التسليم</button>`:"");
+ return sg||im||bs?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:6px">${sg}${im}${bs}</div>`:"";
 }
 function tripDetail(id){
  const t=TR.find(x=>x.id===id);if(!t)return;const st=Array.isArray(t.stops)?t.stops:[];let p=N(t.start);
@@ -431,7 +453,8 @@ export function alertsCount(){return X?alerts().length:0}
 export function initFleet(ctx){
  X=ctx;stop();
  if(!g("fl-css")){const s=document.createElement("style");s.id="fl-css";s.textContent=CSS+MAP_CSS;document.head.appendChild(s);ensurePrintCss()}
- if(!window.__flc){window.__flc=1;document.addEventListener("click",click);document.addEventListener("change",e=>{const t=e.target;if(t.id==="fday"){fday=t.value;X.redraw()}if(t.id==="fmon"){fmon=t.value;X.redraw()}
+ if(!window.__flc){window.__flc=1;document.addEventListener("click",click);document.addEventListener("change",e=>{const t=e.target;if(t.id==="fday"){if(t.value==="__older"){const m=oldMonth(),fix=()=>{X.redraw();const s=g("fday");if(s&&fday)s.value=fday};// (اللوحة بتحافظ على اختيار القوائم بعد الرسم، فبنظبطه بإيدنا)
+   if(m)loadMonth(m).then(()=>{const ds=[...new Set(TR.filter(x=>monthOf(x.start)===m).map(x=>dk(x.start)))].sort().reverse();if(ds.length)fday=ds[0];else X.toast("مفيش رحلات في "+m);fix()});else fix();return}fday=t.value;X.redraw()}if(t.id==="fmon"){fmon=t.value;loadMonth(fmon).then(()=>X.redraw())}
   // التعيين الجماعي: بنحفظ الاختيار في الذاكرة علشان التحديث اللحظي مايمسحوش
   if(t.id==="bkd")bkD=t.value;if(t.id==="bkc")bkC=t.value;
   if(t.dataset&&t.dataset.bk){t.checked?BK.add(t.dataset.bk):BK.delete(t.dataset.bk)}
@@ -442,18 +465,19 @@ export function initFleet(ctx){
  un.push(onSnapshot(collection(X.db,"cars"),sn=>{CARS=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
  un.push(onSnapshot(collection(X.db,"drivers"),sn=>{DRV=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
  if(X.admin)un.push(onSnapshot(collection(X.db,"secrets"),sn=>{PW={};sn.docs.forEach(d=>{if(/^drv\d+$/.test(d.id))PW[d.id]=d.data().pw});draw()},()=>{}));
- // توفير القراءات: الرحلات والبنزين بتاعة آخر 13 شهر بس (كفاية للتقارير الشهرية ومتوسطات الوصول)
- const since=Date.now()-400*864e5;
+ // توفير القراءات: بنسمع لايف الشهر ده واللي قبله بس (كانت سنة كاملة، وده كان هيخلّص حصة القراءة اليومية مع الوقت:
+ // كل فتحة للوحة = كل رحلات السنة). الشهور الأقدم بتتحمّل مرة واحدة لما حد يختارها (loadMonth).
+ const since=liveSince();
  un.push(onSnapshot(query(collection(X.db,"trips"),where("start",">=",since)),sn=>{
   const nx=sn.docs.map(d=>({id:d.id,...d.data()}));
   if(pT)nx.forEach(t=>{const o=pT[t.id];if(!o){if(t.st==="active")note("🚚 بدأت رحلة",`${t.drvn} — ${t.carn}`,"t"+t.id)}else{const n=(Array.isArray(t.stops)?t.stops:[]).filter(s=>s.arr),oo=o.n;if(n.length>oo){const s=n[n.length-1];note("📦 وصلت توصيلة",`${t.drvn} → ${s.brn}`,"s"+t.id+n.length)}if(o.st==="active"&&t.st==="done")note("🏁 انتهت رحلة",`${t.drvn} — ${fmt(N(t.odo1)-N(t.odo0))} كم`,"d"+t.id)}});
-  pT={};nx.forEach(t=>pT[t.id]={st:t.st,n:(Array.isArray(t.stops)?t.stops:[]).filter(s=>s.arr).length});TR=nx;draw();syncGeo();
+  pT={};nx.forEach(t=>pT[t.id]={st:t.st,n:(Array.isArray(t.stops)?t.stops:[]).filter(s=>s.arr).length});TRL=nx;mergeOld();draw();syncGeo();
  },()=>X.toast("تعذر قراءة الرحلات. حدّث القواعد (Rules)")));
  un.push(onSnapshot(doc(X.db,"geo","main"),d=>{GEOD=d.exists()?d.data():null;geoReady=true;syncGeo()},()=>{}));
  un.push(onSnapshot(query(collection(X.db,"fuel"),where("ts",">=",since)),sn=>{
-  FU=sn.docs.map(d=>({id:d.id,...d.data()}));
-  if(pF)FU.forEach(f=>{if(!(f.id in pF)&&f.drv!=="admin")X.toast(`⛽ ${f.drvn}: ${fmt(f.liters)} لتر بنزين`)});
-  pF={};FU.forEach(f=>pF[f.id]=1);draw();
+  FUL=sn.docs.map(d=>({id:d.id,...d.data()}));mergeOld();
+  if(pF)FUL.forEach(f=>{if(!(f.id in pF)&&f.drv!=="admin")X.toast(`⛽ ${f.drvn}: ${fmt(f.liters)} لتر بنزين`)});
+  pF={};FUL.forEach(f=>pF[f.id]=1);draw();
  },()=>{}));
 }
-export function stop(){un.forEach(f=>f());un=[];dropLive();dropM();CARS=[];DRV=[];TR=[];FU=[];PW={};GEOD=null;geoReady=false;mode="";const m=g("flm");if(m){m.className="fm";m.innerHTML=""}}
+export function stop(){un.forEach(f=>f());un=[];dropLive();dropM();CARS=[];DRV=[];TR=[];FU=[];TRL=[];FUL=[];OLDT=new Map();OLDF=new Map();LOADED=new Set();PW={};GEOD=null;geoReady=false;mode="";const m=g("flm");if(m){m.className="fm";m.innerHTML=""}}
