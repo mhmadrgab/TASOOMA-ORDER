@@ -128,7 +128,12 @@ export function dashView(R){
   const t0=from(PER),now=Date.now(),RQ=R.filter(r=>!r.tr),C=RQ.filter(r=>N(r.ts)>=t0);// التحويلات ليها كارت لوحدها
   const dl=C.filter(r=>r.st==="done"||r.st==="recv"),rc=C.filter(r=>r.st==="recv"),ok=rc.filter(r=>!r.rcv||r.rcv.ok!==false);
   const tt=dl.map(r=>dlvAt(r)-N(r.ts)).filter(x=>x>0),fast=tt.filter(x=>x<=24*H).length,avg=tt.length?tt.reduce((a,b)=>a+b,0)/tt.length:0;
-  const out=C.map(r=>N(r.dep)-N(r.ts)).filter(x=>x>0),avgOut=out.length?out.reduce((a,b)=>a+b,0)/out.length:0;
+  // الوقت في كل مرحلة لوحدها (بدل رقم واحد "بيخرج من المستودع" كان بيجمع الانتظار والتجهيز وانتظار السواق مع بعض ومش مفهوم).
+  // الوسيط (النص الطلبات أسرع والنص أبطأ) بدل المتوسط: طلب واحد اتعمل بالليل واتجهّز الصبح مايبوّظش الرقم.
+  const med=a=>{a=a.filter(x=>x>0&&x<14*D).sort((x,y)=>x-y);return a.length?(a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2):0};
+  const hm2=ms=>{const m=Math.max(1,Math.round(ms/6e4)),h=Math.floor(m/60);return h>=48?`${(ms/D).toFixed(1)} يوم`:h?`${h} س${m%60?` و${m%60} د`:""}`:`${m} دقيقة`};
+  const pa=r=>N(r.prep&&r.prep.at),tPrep=med(C.map(r=>pa(r)-N(r.ts))),tWait=med(C.map(r=>pa(r)&&N(r.dep)?N(r.dep)-pa(r):0)),tRoad=med(C.map(r=>N(r.dep)&&dlvAt(r)?dlvAt(r)-N(r.dep):0));
+  const stg=(icon,label,v,tip)=>v?`<span title="${E(tip)}">${icon} ${E(label)} <b>${E(hm2(v))}</b></span>`:"";
   const pc=(a,b)=>b?a/b*100:null,p1=pc(dl.length,C.length),p2=pc(rc.length,dl.length),p3=pc(ok.length,rc.length),p4=pc(fast,tt.length);
   const pcs=C.reduce((a,r)=>a+N(r.pcs),0),brs=new Set(C.map(r=>String(r.br||String(r.brn||"").split("-")[0]))).size;
   const lbl=(PERS.find(p=>p[0]===PER)||PERS[1])[1];
@@ -156,7 +161,7 @@ export function dashView(R){
   if(!reduce())requestAnimationFrame(countUp);
   return `<section class="dz" aria-label="لوحة الأداء">
   <div class="dz-hd"><h2>📊 لوحة الأداء <small>${E(lbl)}</small></h2><div class="dz-per" role="group" aria-label="الفترة">${PERS.map(([k,n])=>`<button type="button" data-dp="${k}" class="${PER===k?"on":""}" aria-pressed="${PER===k}">${n}</button>`).join("")}</div></div>
-  <div class="dz-sum">${C.length?`${sum("k1","🧾",C.length,"طلب")}${sum("k2","🏬",brs,"فرع طلبوا")}${sum("k3","📦",pcs,"قطعة")}${avgOut?`<span>⏱ بيخرج من المستودع في <b>${E(dur(avgOut))}</b> في المتوسط</span>`:""}`:`<span>💤 مفيش طلبات اتعملت ${PER==="1"?"النهارده":"في الفترة دي"} لسه</span>`}</div>
+  <div class="dz-sum">${C.length?`${sum("k1","🧾",C.length,"طلب")}${sum("k2","🏬",brs,"فرع طلبوا")}${sum("k3","📦",pcs,"قطعة")}${stg("🧰","التجهيز عادةً",tPrep,"من وصول الطلب للمستودع لحد ما العمال يخلّصوا تجهيزه")}${stg("⏳","مستني السواق",tWait,"من بعد ما الطلب يتجهّز لحد ما السواق يطلع بيه")}${stg("🚚","الطريق",tRoad,"من خروج السواق لحد ما يسلّم للفرع")}`:`<span>💤 مفيش طلبات اتعملت ${PER==="1"?"النهارده":"في الفترة دي"} لسه</span>`}</div>
   <div class="dz-rings">
    ${ring("r1","var(--dz-r1)",p1,"اتسلّمت",C.length?`${fmt(dl.length)} من ${fmt(C.length)} طلب`:"مفيش طلبات في الفترة دي")}
    ${ring("r2","var(--dz-r2)",p2,"أكّدوا الاستلام",dl.length?`${fmt(rc.length)} من ${fmt(dl.length)} اتسلّم`:"لسه مفيش تسليم",pill(p2))}
