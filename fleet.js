@@ -58,6 +58,19 @@ function legMs(prev,code,pp){if(pp[prev+">"+code])return pp[prev+">"+code]*6e4;c
 const endPt=t=>t.st==="done"&&t.loc&&Number.isFinite(+t.loc.lat)&&N(t.loc.ts)===N(t.end)?{lat:+t.loc.lat,lng:+t.loc.lng}:null;
 // مكان كل توصيلة: مكان التسليم الفعلي، وإلا موقع الفرع. التحويل: الفرع اللي استلم منه الأول
 const stopPts=s=>[s.fr?(Number.isFinite(+s.plat)?{lat:+s.plat,lng:+s.plng}:geoPt(s.fr)):null,Number.isFinite(+s.lat)?{lat:+s.lat,lng:+s.lng}:geoPt(bc(s.brn))];
+// ---------- كيلومترات كل مشوار من العداد ----------
+// السائق بيكتب العداد عند كل تسليم (stops[].odo). leg[rid] = من القراءة اللي قبلها (البداية أو التسليم اللي قبله بالترتيب) لحد التسليم ده،
+// back = من آخر تسليم لحد الإنهاء (الرجوع). لو تسليم مافيهوش عداد (رحلات قديمة) السلسلة بتقف عنده، علشان مانحسبش مشوارين كأنهم واحد.
+function odoLegs(t){
+ const leg={},from={};let po=N(t.odo0)>0?N(t.odo0):null,pc="WH";
+ (Array.isArray(t.stops)?t.stops:[]).filter(s=>s&&s.arr).sort((a,b)=>N(a.arr)-N(b.arr)).forEach(s=>{const o=N(s.odo);if(o>0&&po!==null&&o>=po){leg[s.rid]=o-po;from[s.rid]=pc}po=o>0?o:null;pc=bc(s.brn)});
+ // (المستودع قفلها من غير عداد = نفس آخر قراءة، فالرجوع مش معروف)
+ const back=t.st==="done"&&po!==null&&N(t.odo1)>=po&&Object.keys(leg).length&&!(t.forced&&N(t.odo1)===po)?N(t.odo1)-po:null;
+ return {leg,from,back};
+}
+// متوسط كيلومترات كل مشوار "من فين لفين" (بالعداد بس) من الرحلات اللي خلصت: {"WH>003":{km,n}}
+function odoPairs(){const m={};TR.filter(t=>t.st==="done").forEach(t=>{const {leg,from}=odoLegs(t);(t.stops||[]).forEach(s=>{if(leg[s.rid]!==undefined){const k=from[s.rid]+">"+bc(s.brn);(m[k]=m[k]||[]).push(leg[s.rid])}})});
+ const o={};Object.entries(m).forEach(([k,v])=>o[k]={km:v.reduce((a,b)=>a+b,0)/v.length,n:v.length});return o}
 // الرحلة ليها خريطة؟ (فيه نقطة واحدة على الأقل: بداية / تسليم / مكانه دلوقتي / نهاية)
 const hasMap=t=>[t.loc0,t.loc,endPt(t),...(Array.isArray(t.stops)?t.stops:[]).flatMap(stopPts)].some(okPt);
 // اسم الفرع من الكود (من الطلبات والرحلات اللي عندنا)
@@ -169,6 +182,12 @@ function alerts(){
  });
  TR.filter(t=>t.st==="active").forEach(t=>{if(now-N(t.start)>10*36e5)A.push({l:"al",t:`⏱ رحلة ${E(t.drvn)} مفتوحة من ${dur(now-N(t.start))}`})});
  const byC={};TR.filter(t=>t.st==="done").sort((a,b)=>N(a.start)-N(b.start)).forEach(t=>{const p=byC[t.car];if(p!==undefined&&N(t.odo0)<p-1)A.push({l:"al w",t:`🔢 ${E(t.drvn)}: عداد بداية رحلة (${fmt(t.odo0)}) أقل من آخر قراءة (${fmt(p)}) — راجع`});byC[t.car]=Math.max(byC[t.car]||0,N(t.odo1))});
+ // مشوار بالعداد أطول بكتير من العادي لنفس "من فين لفين" (آخر يومين): ممكن لفّة زيادة أو غلطة في العداد
+ const op=odoPairs(),nm=brNames(),lb=c=>c==="WH"?"المستودع":(nm[c]||c);
+ TR.filter(t=>now-N(t.start)<2*864e5).forEach(t=>{const {leg,from}=odoLegs(t);(t.stops||[]).forEach(s=>{const k=leg[s.rid];if(k===undefined)return;const av=op[from[s.rid]+">"+bc(s.brn)];
+  // نقارن بباقي المرات (من غير المشوار ده نفسه)، ومحتاجين 3 مرات على الأقل علشان المتوسط يبقى له معنى
+  const on=av?av.n-(t.st==="done"?1:0):0,oa=on>0?(av.km*av.n-(t.st==="done"?k:0))/on:0;
+  if(on>=3&&k>Math.max(oa*2,oa+10))A.push({l:"al w",t:`🛣 ${E(t.drvn)}: مشوار ${E(lb(from[s.rid]))} ← ${E(lb(bc(s.brn)))} طلع ${fmt(k)} كم بالعداد، والعادي ~${fmt(Math.round(oa))} كم — راجع`})})});
  return A.slice(-12);
 }
 // ---------- الواجهة ----------
@@ -183,9 +202,9 @@ export function view(){
  return `${A.length?A.map(a=>`<div class="${a.l}">${a.t}</div>`).join(""):""}
  <h3 class="sub" style="margin-top:4px">🚚 على الطريق دلوقتي</h3>
  ${act.length||okPt(geoPt("WH"))||Object.keys((GEOD&&GEOD.br)||{}).length?(setTimeout(attachLive,0),'<div id="flmap-slot"></div>'):""}
- ${act.length?act.map(t=>{const st=Array.isArray(t.stops)?t.stops:[];let p=N(t.start);const done=st.filter(s=>s.arr).length;
+ ${act.length?act.map(t=>{const st=Array.isArray(t.stops)?t.stops:[],ol=odoLegs(t).leg;let p=N(t.start);const done=st.filter(s=>s.arr).length;
   return `<div class="tr"><h4>${E(t.drvn)} — ${E(t.carn)} <span class="pill go">في رحلة</span></h4><div class="off" style="font-size:14px">بدأ ${hm(t.start)} · بقاله ${dur(Date.now()-N(t.start))} · سلّم ${done} من ${st.length}${okPt(t.loc)?` · <a href="#" data-fl="tmap" data-id="${E(t.id)}">📍 مكانه (${ago(t.loc.ts)})</a>`:" · <span>لسه مفيش موقع مسجّل</span>"}</div>
-  <div class="st1">${(()=>{let prev="WH";return st.map(s=>{const c=bc(s.brn);if(s.arr){const l=N(s.arr)-p;p=N(s.arr);prev=c;return `<span class="ok">✔ ${E(s.brn)} ${hm(s.arr)} (${dur(l)})</span>`}
+  <div class="st1">${(()=>{let prev="WH";return st.map(s=>{const c=bc(s.brn);if(s.arr){const l=N(s.arr)-p;p=N(s.arr);prev=c;return `<span class="ok">✔ ${E(s.brn)} ${hm(s.arr)} (${dur(l)}${ol[s.rid]!==undefined?" · "+fmt(ol[s.rid])+" كم":""})</span>`}
    // الوقت المتوقع الأحدث: اللي على الطلب (تطبيق السائق بيحدّثه وهو ماشي)، وإلا اللي على الرحلة
    const rq=X.R().find(r=>r.id===s.rid),eta=N(rq&&rq.eta)||N(s.eta);
    const a=legMs(prev,c,pp);if(a&&!eta)p+=a;prev=c;return `<span>⏳ ${E(s.brn)}${eta?` · متوقع ~${hm(eta)}`:a?` · متوقع ~${hm(p)}`:""}${rq&&N(rq.near)>N(rq.dep)?" · 🔔 قرب":""}</span>`}).join("")})()}</div>
@@ -199,6 +218,8 @@ ${evalView()}
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🗓 سجل الرحلات</h3><select id="fday" style="margin-inline-start:auto">${days.length?days.map(d=>`<option ${d===fday?"selected":""}>${d}</option>`).join(""):`<option>${today()}</option>`}</select><button class="bt s" data-fl="rep" type="button">🖨 تقرير اليوم</button></div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السائق / السيارة</th><th>من ← إلى</th><th>المدة</th><th>كم</th><th>التسليمات</th><th></th></tr></thead><tbody>${dTr.length?dTr.map(t=>{const st=Array.isArray(t.stops)?t.stops:[];return `<tr><td><b>${E(t.drvn)}</b><small class="off" style="display:block">${E(t.carn)}</small></td><td>${hm(t.start)} ← ${t.end?hm(t.end):'<span class="pill go">شغّال</span>'}</td><td>${t.end?dur(N(t.end)-N(t.start)):dur(Date.now()-N(t.start))}</td><td>${t.st==="done"?fmt(Math.max(0,N(t.odo1)-N(t.odo0))):"—"}</td><td>${st.filter(s=>s.arr).length}/${st.length} · ${st.reduce((a,s)=>a+N(s.pcs),0)} قطعة</td><td style="white-space:nowrap"><button class="bt s" data-fl="trd" data-id="${E(t.id)}" type="button">تفاصيل</button> ${X.admin?`<button class="bt s" data-fl="trx" data-id="${E(t.id)}" type="button">حذف</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="6" class="off" style="text-align:center;padding:20px">مفيش رحلات في اليوم ده</td></tr>'}</tbody></table></div></div>
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">⏱ متوسط زمن الوصول لكل فرع</h3>${Object.keys(lg).length?Object.entries(lg).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="bar"><span>${E(k)}</span><i style="width:${Math.max(4,v/Math.max(...Object.values(lg))*50)}%"></i><em>${dur(v)}</em></div>`).join(""):'<div class="off">بيتحسب من الرحلات اللي بتخلص</div>'}</div>
+ ${(()=>{const op=odoPairs(),nm=brNames(),lb=c=>c==="WH"?"🏭 المستودع":(nm[c]||c),ks=Object.entries(op).sort((a,b)=>b[1].n-a[1].n).slice(0,30);
+  return `<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🛣 كيلومترات كل مشوار (من العداد)</h3>${ks.length?`<div class="tw"><table><thead><tr><th>من</th><th>إلى</th><th>متوسط كم</th><th>مرات</th></tr></thead><tbody>${ks.map(([k,v])=>{const [a,b]=k.split(">");return `<tr><td class="l"><bdi dir="ltr">${E(lb(a))}</bdi></td><td class="l"><bdi dir="ltr">${E(lb(b))}</bdi></td><td><b>${fmt(Math.round(v.km*10)/10)}</b></td><td>${v.n}</td></tr>`}).join("")}</tbody></table></div>`:`<div class="off">بيتحسب من قراءات العداد اللي السواقين بيكتبوها عند كل تسليم.</div>`}</div>`})()}
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">⛽ آخر تعبئات البنزين</h3><div class="tw"><table><thead><tr><th>التاريخ</th><th>السيارة</th><th>السائق</th><th>لترات</th><th>المبلغ</th><th>العداد</th><th>فُل؟</th><th></th></tr></thead><tbody>${FU.slice().sort((a,b)=>N(b.ts)-N(a.ts)).slice(0,15).map(f=>`<tr><td>${E(f.dt)}</td><td>${E(f.carn||"")}</td><td>${E(f.drvn||"")}</td><td>${fmt(f.liters)}</td><td>${fmt(f.cost)}</td><td>${fmt(f.odo)}</td><td>${f.full?"✔":""}</td><td>${X.admin?`<button class="bt s" data-fl="fx" data-id="${E(f.id)}" type="button">حذف</button>`:""}</td></tr>`).join("")||'<tr><td colspan="8" class="off" style="text-align:center;padding:20px">لا يوجد</td></tr>'}</tbody></table></div></div>`;
 }
 // ---------- تقييم السواقين الشهري ----------
@@ -279,12 +300,13 @@ function tripDetail(id){
  const kmLeg=s=>{let sum=null;stopPts(s).forEach(h=>{if(!h)return;const k=kmTo(h);if(k!==null)sum=(sum||0)+k});return sum},map=hasMap(t);
  // آخر مشوار: من آخر تسليم للمكان اللي أنهى فيه الرحلة (غالباً الرجوع للمستودع)
  const e=endPt(t),lastArr=st.reduce((m,s)=>Math.max(m,N(s.arr)),N(t.start));
+ const {leg:okm,back:obk}=odoLegs(t);// كيلومترات بالعداد (لو السائق كتبه عند كل تسليم)
  const fu=FU.filter(f=>f.drv===t.drv&&f.car===t.car&&N(f.ts)>=N(t.start)&&(!t.end||N(f.ts)<=N(t.end)+36e5));
  openM(`<h3>${E(t.drvn)} — ${E(t.carn)}</h3><div class="off">${dk(t.start)} · ${hm(t.start)} ← ${t.end?hm(t.end):"شغّال"} · عداد ${fmt(t.odo0)}${t.st==="done"?` ← ${fmt(t.odo1)} (${fmt(N(t.odo1)-N(t.odo0))} كم)`:""}</div>
- <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);const k=kmLeg(s);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.rcvr?" · استلم: "+E(s.rcvr):""}${s.fr?` · 🔄 اتاخد من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" "+hm(s.pk):""}`:""}</small>${podHtml(s.rid)}</div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}${k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${s.lat?`<a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(s.lat)}" data-lng="${N(s.lng)}" data-t="${E(s.brn)}" data-s="${E("اتسلّم "+hm(s.arr))}">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}
- ${t.st==="done"?(()=>{const k=e?kmTo(e):null,l=N(t.end)-lastArr;return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0"><div><b>🏁 إنهاء الرحلة</b><small class="off" style="display:block">${e?"المكان اللي السائق قفل فيه الرحلة":t.forced?"اتقفلت من المستودع (مفيش موقع)":"الموبايل ماسجّلش موقع الإنهاء"}</small></div><div style="text-align:left">${hm(t.end)}<small class="off" style="display:block">${l>0?dur(l):""}${k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${e?`<a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(e.lat)}" data-lng="${N(e.lng)}" data-t="إنهاء الرحلة" data-s="${E(hm(t.end))}">📍</a>`:""}</div></div>`})():""}</div>
+ <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);const k=kmLeg(s);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.rcvr?" · استلم: "+E(s.rcvr):""}${s.fr?` · 🔄 اتاخد من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" "+hm(s.pk):""}`:""}</small>${podHtml(s.rid)}</div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}${okm[s.rid]!==undefined?` · <b>${fmt(okm[s.rid])} كم</b> 🔢`:k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${s.lat?`<a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(s.lat)}" data-lng="${N(s.lng)}" data-t="${E(s.brn)}" data-s="${E("اتسلّم "+hm(s.arr))}">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}
+ ${t.st==="done"?(()=>{const k=e?kmTo(e):null,l=N(t.end)-lastArr;return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0"><div><b>🏁 إنهاء الرحلة</b><small class="off" style="display:block">${e?"المكان اللي السائق قفل فيه الرحلة":t.forced?"اتقفلت من المستودع (مفيش موقع)":"الموبايل ماسجّلش موقع الإنهاء"}</small></div><div style="text-align:left">${hm(t.end)}<small class="off" style="display:block">${l>0?dur(l):""}${obk!==null?` · <b>${fmt(obk)} كم</b> 🔢`:k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${e?`<a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(e.lat)}" data-lng="${N(e.lng)}" data-t="إنهاء الرحلة" data-s="${E(hm(t.end))}">📍</a>`:""}</div></div>`})():""}</div>
  ${t.note?`<div class="gn">${t.forced?"⏹ ":"ملاحظة السائق: "}${E(t.note)}</div>`:""}${fu.length?`<div class="off">⛽ بنزين في الرحلة: ${fu.map(f=>fmt(f.liters)+" لتر / "+fmt(f.cost)).join(" · ")}</div>`:""}
- <div class="off" style="font-size:12.5px">الكيلومترات اللي جنب كل فرع تقريبية (من أماكن التسليم)، والإجمالي الدقيق من العداد فوق.</div>
+ <div class="off" style="font-size:12.5px">🔢 = كيلومترات بالظبط من العداد اللي السائق كتبه عند التسليم. ~ = تقريبي من أماكن التسليم (رحلات قبل ما العداد يتطلب عند كل فرع). الإجمالي من العداد فوق.</div>
  <div class="fl2" style="margin-top:14px">${map?`<button class="bt p" data-fl="tmap" data-id="${E(t.id)}" type="button">🗺 الرحلة على الخريطة</button>`:""}<button class="bt" data-fl="cancel" type="button">إغلاق</button></div>`);
 }
 function report(){
@@ -370,7 +392,8 @@ async function click(e){
    // رحلة السائق نسي يقفلها: المستودع يقفلها، والفروع اللي ماوصلهاش ترجع "قيد التجهيز"
    const t0=TR.find(x=>x.id===id);if(!t0||t0.st!=="active")return;const left=(t0.stops||[]).filter(s=>!s.arr);
    const o=prompt(`إنهاء رحلة ${t0.drvn}.\n${left.length?`فيه ${left.length} توصيلة ما اتسلمتش وهترجع "قيد التجهيز".\n`:""}اكتب قراءة العداد في آخر الرحلة (سيبها فاضية لو مش معروفة):`,"");if(o===null)return;
-   const odo=N(toEn(o))||N(t0.odo0);if(odo<N(t0.odo0)){X.toast("العداد لازم يكون أكبر من البداية ("+fmt(t0.odo0)+")");return}
+   // مش معروف: آخر قراءة في الرحلة (آخر تسليم أو البداية)
+   const lo=Math.max(N(t0.odo0),...(t0.stops||[]).map(s=>N(s.odo))),odo=N(toEn(o))||lo;if(odo<lo){X.toast("العداد لازم يكون "+fmt(lo)+" أو أكتر (آخر قراءة في الرحلة)");return}
    const b=writeBatch(X.db),ts=Date.now();
    b.update(doc(X.db,"trips",id),{st:"done",end:ts,odo1:odo,forced:true,note:"أنهاها المستودع"+(N(toEn(o))?"":" (العداد غير معروف)")});
    left.forEach(s=>b.update(doc(X.db,"requests",s.rid),{st:"prep",upd:ts}));

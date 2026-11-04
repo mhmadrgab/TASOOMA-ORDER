@@ -342,9 +342,14 @@ async function pickUp(rid,btn){
 const openM=h=>{g("md").innerHTML=`<div class="card">${h}</div>`;g("md").className="mdl on"};
 const closeM=()=>{g("md").className="mdl";g("md").innerHTML="";draw()};
 // تسليم: اسم المستلم + توقيع + صورة
+// آخر قراءة عداد في الرحلة (البداية أو آخر تسليم): كل قراءة لازم تكون أكبر منها أو زيها
+const lastOdo=a=>Math.max(N(a.odo0),...(a.stops||[]).map(s=>N(s.odo)));
+const MAXLEG=1500;// أكبر مشوار معقول بين قراءتين (كم) علشان غلطة كتابة (رقم زيادة) ماتبوّظش الحساب
 function podForm(rid){
- const a=active();if(!a)return;const s=(a.stops||[]).find(x=>x.rid===rid);if(!s)return;let img="",busy=false,drawn=false;
+ const a=active();if(!a)return;const s=(a.stops||[]).find(x=>x.rid===rid);if(!s)return;let img="",busy=false,drawn=false;const lo=lastOdo(a);
  openM(`<h3>تسليم — <span style="direction:ltr;display:inline-block">${E(s.brn)}</span></h3>
+ <label>قراءة العداد دلوقتي (كم) — آخر قراءة ${lo}</label><input id="po" inputmode="numeric" autocomplete="off" placeholder="مثلاً ${lo+8}">
+ <small class="mut">علشان نحسب كيلومترات كل فرع بالظبط</small>
  <label>اسم المستلم في الفرع</label><input id="pn" maxlength="60" autocomplete="off" placeholder="مثلاً: أحمد محمد">
  <label>توقيع المستلم (بصباعك)</label><canvas id="pc" width="320" height="130" style="width:100%;height:130px;background:#fff;border:1.5px dashed var(--line);border-radius:12px;touch-action:none"></canvas><button class="b" id="pcl" type="button" style="margin-top:6px;padding:8px">مسح التوقيع</button>
  <label>صورة البضاعة / التسليم (اختياري)</label><input id="pf" type="file" accept="image/*"><small class="mut" id="ph"></small>
@@ -358,6 +363,10 @@ function podForm(rid){
  g("pf").onchange=async()=>{const f=g("pf").files[0];img="";if(!f)return;busy=true;g("ph").textContent="جاري ضغط الصورة...";try{img=await shrink(f,800,120000);g("ph").textContent="تم تجهيز الصورة ✅"}catch(e){g("pf").value="";g("ph").textContent="الصورة مش صالحة"}busy=false};
  g("p0").onclick=closeM;
  g("p1").onclick=async()=>{
+  const od=N(toEn(g("po").value));
+  if(!(od>0)){toast("اكتب قراءة العداد","er");return}
+  if(od<lo){toast(`قراءة العداد لازم تكون ${lo} أو أكتر (آخر قراءة)`,"er");return}
+  if(od-lo>MAXLEG){toast(`الرقم كبير أوي (${od-lo} كم من آخر قراءة). راجع العداد`,"er");return}
   const nm=g("pn").value.trim();if(!nm){toast("اكتب اسم المستلم","er");return}
   if(busy){toast("استنى الصورة تخلص","er");return}
   g("p1").disabled=true;g("p1").textContent="جاري الحفظ...";
@@ -365,13 +374,15 @@ function podForm(rid){
   if(drawn){const sg=cv.toDataURL("image/png");if(sg.length<=40000)pod.sig=sg}
   if(img)pod.img=img;
   try{
-   const st=(a.stops||[]).map(x=>{if(x.rid!==rid)return x;const o={...x,arr:ts,rcvr:nm.slice(0,60)};if(loc){o.lat=loc.lat;o.lng=loc.lng}return o});
+   const st=(a.stops||[]).map(x=>{if(x.rid!==rid)return x;const o={...x,arr:ts,rcvr:nm.slice(0,60),odo:od};if(loc){o.lat=loc.lat;o.lng=loc.lng}return o});
    const rem=st.filter(x=>!x.arr),et=etas(rem,ts,codeOf(s.brn));// الباقي محسوب من الفرع اللي اتسلّم دلوقتي
    const stt=st.map(x=>et[x.rid]?{...x,eta:et[x.rid]}:x);
    const b=writeBatch(db),tu={stops:stt};if(loc)tu.loc={...loc,ts};
    b.update(doc(db,"trips",a.id),tu);b.update(doc(db,"requests",rid),{st:"done",dlv:ts,upd:ts,pod});
    rem.forEach(x=>{if(et[x.rid])b.update(doc(db,"requests",x.rid),{eta:et[x.rid]})});
-   await withTimeout(b.commit(),15000);ping(auth,[rid]);closeM();toast("تم تسجيل التسليم ✅");
+   await withTimeout(b.commit(),15000);ping(auth,[rid]);closeM();lsSet("drv_odo_"+a.car,String(od));
+   // آخر فرع: نفكّره ينهي الرحلة لما يرجع (علشان مشوار الرجوع يتحسب)
+   toast(rem.length?"تم تسجيل التسليم ✅":"تم التسليم ✅ خلّصت كل التوصيلات. لما ترجع المستودع دوس 🏁 إنهاء الرحلة واكتب العداد");
   }catch(e){const x=g("p1");if(x){x.disabled=false;x.textContent="تأكيد التسليم ✅"}fail(e,"مش مسموح. ممكن المستودع غيّر حالة الطلب.")}
  };
 }
@@ -391,13 +402,14 @@ function fuelForm(){
  };
 }
 function endForm(){
- const a=active();if(!a)return;const un2=(a.stops||[]).filter(s=>!s.arr);
+ const a=active();if(!a)return;const un2=(a.stops||[]).filter(s=>!s.arr),lo=lastOdo(a);
  openM(`<h3>🏁 إنهاء الرحلة</h3>${un2.length?`<div class="mut" style="color:#c4362b;font-weight:700">فيه ${un2.length} توصيلة لسه ما اتسلمتش (${un2.map(s=>E(s.brn)).join("، ")}) — هترجع للمستودع.</div>`:""}
- <label>قراءة العداد دلوقتي (كم) — كانت ${N(a.odo0)} في البداية</label><input id="eo" inputmode="numeric"><label>ملاحظة (اختياري)</label><input id="en" maxlength="300">
+ <label>قراءة العداد دلوقتي (كم) — ${lo>N(a.odo0)?`آخر قراءة ${lo} (كانت ${N(a.odo0)} في البداية)`:`كانت ${N(a.odo0)} في البداية`}</label><input id="eo" inputmode="numeric"><label>ملاحظة (اختياري)</label><input id="en" maxlength="300">
  <div class="row"><button class="b" id="e0" type="button">رجوع</button><button class="b p" id="e1" type="button">إنهاء</button></div>`);
  g("e0").onclick=closeM;
  g("e1").onclick=async()=>{
-  const o=N(toEn(g("eo").value));if(!(o>=N(a.odo0))||o>9999999){toast("قراءة العداد لازم تكون أكبر من البداية ("+N(a.odo0)+")","er");return}
+  const o=N(toEn(g("eo").value));if(!(o>=lo)||o>9999999){toast("قراءة العداد لازم تكون "+lo+" أو أكتر (آخر قراءة)","er");return}
+  if(o-lo>MAXLEG){toast(`الرقم كبير أوي (${o-lo} كم من آخر قراءة). راجع العداد`,"er");return}
   g("e1").disabled=true;const ts=Date.now(),loc=await here();
   try{
    const b=writeBatch(db),u={st:"done",end:ts,odo1:o},n=g("en").value.trim().slice(0,300);if(n)u.note=n;if(loc)u.loc={...loc,ts};
