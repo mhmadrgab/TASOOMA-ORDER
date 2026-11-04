@@ -114,7 +114,8 @@ service cloud.firestore {
       // (المحادثة اللي كانت جوه الطلب نفسه اتشالت: كل الشات بقى خاص في dm تحت)
       // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)، أو يأكد الاستلام
       // السائق: يغيّر حالة الطلب المعيّن له بس (في الطريق / تم التسليم / رجوع للتجهيز)
-      allow update: if isAdmin()
+      // إثبات التسليم (الصورة والتوقيع): المالك بس يقدر يمسحه أو يغيّره (المديرين يعدّلوا أي حاجة تانية في الطلب عادي)
+      allow update: if (isAdmin() && (isOwner() || request.resource.data.get('pod', null) == resource.data.get('pod', null)))
         || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat','edn','prep'])
             && (!('prep' in request.resource.data) || validPrep()))
         || (perm('fl') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asg','st','upd']))
@@ -145,7 +146,9 @@ service cloud.firestore {
     match /ledger/{id} {
       allow read:   if isAdmin() || perm('cus') || isViewer();
       allow create: if isAdmin() || (perm('cus') && !('sid' in request.resource.data));
-      allow update: if isAdmin() || (perm('cus') && !('sid' in resource.data) && !('sid' in request.resource.data));
+      // صورة الفاتورة: لو موجودة، المالك بس يقدر يمسحها أو يبدّلها
+      allow update: if (isAdmin() || (perm('cus') && !('sid' in resource.data) && !('sid' in request.resource.data)))
+        && (isOwner() || resource.data.get('img', '') == '' || request.resource.data.get('img', '') == resource.data.get('img', ''));
       allow delete: if isAdmin();
     }
     match /settlements/{id} {

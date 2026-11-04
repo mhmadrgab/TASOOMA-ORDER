@@ -288,8 +288,8 @@ function fuelForm(){
 // إثبات التسليم (التوقيع والصورة) محفوظ في الطلب نفسه
 function podHtml(rid){
  const r=X.R().find(x=>x.id===rid),p=r&&r.pod;if(!p||typeof p!=="object")return "";
- const sg=isImg(p.sig)?`<img src="${E(p.sig)}" alt="توقيع" style="height:56px;background:#fff;border:1px solid var(--line);border-radius:8px">`:"";
- const im=isImg(p.img)?`<img src="${E(p.img)}" alt="صورة التسليم" style="max-width:100%;max-height:220px;border-radius:10px">`:"";
+ const sg=isImg(p.sig)?`<img src="${E(p.sig)}" alt="توقيع" data-zoom data-zt="توقيع المستلم: ${E(p.name||"")}" data-zdel="requests/${E(rid)}/pod.sig" style="height:56px;background:#fff;border:1px solid var(--line);border-radius:8px">`:"";
+ const im=isImg(p.img)?`<img src="${E(p.img)}" alt="صورة التسليم" data-zoom data-zt="صورة التسليم · ${E(r.brn||"")}" data-zdel="requests/${E(rid)}/pod.img" style="max-width:100%;max-height:220px;border-radius:10px">`:"";
  return sg||im?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:6px">${sg}${im}</div>`:"";
 }
 function tripDetail(id){

@@ -2,6 +2,7 @@
 import {collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,writeBatch} from "./fb.js";
 import {calc,CATS,E,N,fmt,today,shrink,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {regSW,badge} from "./notify.js";
+import {zoomOpen} from "./zoom.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const WH="المستودع الرئيسي";
@@ -51,10 +52,10 @@ function form(type,e){
  ${ex?`<label>رقم الفاتورة / المورّد (اختياري)</label><input id="finv" type="text" maxlength="60" value="${E(e&&e.inv||"")}">
  <label>مرتبط بسيارة (اختياري — بيدخل في تكلفة السيارة)</label><select id="fcar"><option value="">—</option>${cars.map(c=>`<option value="${E(c.id)}" ${e&&e.car===c.id?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")}</select>`:""}
  <label>${ex?"البيان":"استلمتها من / ملاحظة"}</label><input id="fnote" type="text" maxlength="300" value="${E(e&&e.note||"")}">
- ${ex?`<label>صورة الفاتورة (اختياري)</label><input id="ffile" type="file" accept="image/*"><small id="fh" class="off">${img?"فيه صورة محفوظة ✅":""}</small>`:""}
+ ${ex?(img&&!X.owner?`<label>صورة الفاتورة</label><small class="off">فيه صورة محفوظة ✅ (تغييرها أو مسحها للمالك بس)</small>`:`<label>صورة الفاتورة (اختياري)</label><input id="ffile" type="file" accept="image/*"><small id="fh" class="off">${img?"فيه صورة محفوظة ✅ (لو اخترت صورة جديدة هتبدّلها)":""}</small>`):""}
  <div class="fl" style="margin-top:16px"><button class="bt p" data-cx="save" data-type="${type}" type="button">حفظ</button><button class="bt" data-cx="cancel" type="button">رجوع</button></div></div>`;
  g("fa").focus();
- if(ex)g("ffile").onchange=async()=>{const f=g("ffile").files[0];if(!f)return;imgBusy=true;g("fh").textContent="جاري ضغط الصورة...";try{img=await shrink(f);g("fh").textContent="تم تجهيز الصورة ✅"}catch(x){g("ffile").value="";g("fh").textContent="الصورة مش صالحة"}imgBusy=false};
+ if(ex&&g("ffile"))g("ffile").onchange=async()=>{const f=g("ffile").files[0];if(!f)return;imgBusy=true;g("fh").textContent="جاري ضغط الصورة...";try{img=await shrink(f);g("fh").textContent="تم تجهيز الصورة ✅"}catch(x){g("ffile").value="";g("fh").textContent="الصورة مش صالحة"}imgBusy=false};
 }
 async function save(type){
  if(imgBusy){X.toast("استنى الصورة تخلص");return}
@@ -91,7 +92,7 @@ async function click(e){
   else if(a==="cancel")closeM();
   else if(a==="save")await save(t.dataset.type);
   else if(a==="del"){if(confirm("حذف الحركة نهائياً؟"))await deleteDoc(doc(X.db,"ledger",id))}
-  else if(a==="img"){const en=LA.find(x=>x.id===id);if(en&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(en.img||"")){mode="img";const m=box();m.className="cm on";m.innerHTML=`<div class="ck2" style="max-width:680px"><h3>${E(en.cat)} — ${fmt(en.amt)}</h3><img class="rc" alt="" src="${en.img}"><div class="fl" style="margin-top:12px"><button class="bt" data-cx="cancel" type="button">إغلاق</button></div></div>`}}
+  else if(a==="img"){const en=LA.find(x=>x.id===id);if(en&&en.img)zoomOpen(en.img,`${en.cat} — ${fmt(en.amt)}${en.inv?" · فاتورة "+en.inv:""}`,"ledger/"+en.id+"/img")}// كبيرة على الشاشة، والحذف للمالك بس
   else if(a==="stmt"){const k=cur();stmt(k,"كشف حساب العهدة (الفترة الحالية)",k.open[0]?k.open[0].dt:today(),today(),k.open,k.opening)}
   else if(a==="close")await closePeriod();
   else if(a==="ps"){const s=SA.find(x=>x.id===id);if(s)stmt(null,"كشف حساب العهدة — "+s.no,s.from,s.to,LA.filter(e=>e.sid===id),N(s.opening))}
