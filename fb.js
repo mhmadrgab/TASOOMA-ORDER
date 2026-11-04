@@ -66,7 +66,10 @@ export async function ping(auth,ids,chats,trips){
     const u0=a=>[...new Set((a||[]).filter(Boolean))];ids=u0(ids);chats=u0(chats);trips=u0(trips);if(!PUSH_URL||!(ids.length||chats.length||trips.length))return;
     const u=auth&&auth.currentUser;if(!u)return;
     const t=await u.getIdToken();
-    fetch(PUSH_URL+"/notify",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({ids,chats,trips}),keepalive:true}).catch(()=>{});
+    // كل طلب / محادثة / رحلة في نداء لوحده: السيرفر المجاني بيسمح بـ 50 طلب خارجي بس في النداء الواحد،
+    // ورحلة فيها فروع كتير كانت بتتعدّاهم، فآخر الإشعارات (زي "بدأ رحلة") كانت بتضيع
+    const jobs=[...trips.map(x=>({trips:[x]})),...ids.map(x=>({ids:[x]})),...chats.map(x=>({chats:[x]}))].slice(0,40);
+    jobs.forEach(b=>fetch(PUSH_URL+"/notify",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({ids:[],chats:[],trips:[],...b}),keepalive:true}).catch(()=>{}));
   }catch(e){}
 }
 // إشعار تجربة: لأجهزتي أنا، أو (للمالك) لأجهزة شخص تاني. بيرجّع {n: عدد الأجهزة, dev:[{dv, ok, gone}]}
