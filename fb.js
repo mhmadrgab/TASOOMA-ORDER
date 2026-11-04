@@ -1,7 +1,7 @@
 // إعدادات Firebase لمشروع TASOOMA (مشتركة بين صفحة الفرع وصفحة المستودع)
 import {initializeApp,getApps} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getFirestore,collection,doc,addDoc as _addDoc,setDoc as _setDoc,getDoc,getDocs,updateDoc as _updateDoc,deleteDoc as _deleteDoc,onSnapshot,query,where,writeBatch as _writeBatch,arrayUnion,orderBy,limit,increment,deleteField} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {getAuth,initializeAuth,indexedDBLocalPersistence,browserLocalPersistence,inMemoryPersistence,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getAuth,initializeAuth,browserLocalPersistence,inMemoryPersistence,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDSMJmTT9Ed3hQYIe2zGhEUKKt0qTL3ZwM",
   authDomain: "tasooma-ad4fe.firebaseapp.com",
@@ -18,7 +18,9 @@ export function makeFb(name){
   const app=getApps().find(a=>a.name===name)||initializeApp(firebaseConfig,name);
   // الدخول بيتفتكر على الجهاز ده لحد ما يدوس "خروج" (طلب محمد، نوفمبر 2026). كل صفحة ليها دخول لوحدها (فرع / مستودع / سائق).
   // "sec" (إنشاء حسابات الفروع والموظفين) مابيتفتكرش خالص
-  let auth;try{auth=initializeAuth(app,{persistence:name==="sec"?inMemoryPersistence:[indexedDBLocalPersistence,browserLocalPersistence]})}catch(e){auth=getAuth(app)}
+  // localStorage بس، من غير indexedDB: على بعض الموبايلات indexedDB بيعلّق، وFirebase بيستنى كل الأنواع قبل ما يبدأ،
+  // فتسجيل الدخول كان بيقف ويقول "الاتصال بطيء" (نوفمبر 2026). لو localStorage مقفول (تصفح خاص) Firebase بيكمّل في الذاكرة.
+  let auth;try{auth=initializeAuth(app,{persistence:name==="sec"?inMemoryPersistence:browserLocalPersistence})}catch(e){auth=getAuth(app)}
   return {app,db:getFirestore(app),auth};
 }
 export const withTimeout=(p,ms=15000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
