@@ -115,7 +115,9 @@ service cloud.firestore {
       // الفرع يقدر يعيد إرسال نفس الطلب طالما لسه "جديد" (علشان ما يتكررش لو النت قطع)، أو يأكد الاستلام
       // السائق: يغيّر حالة الطلب المعيّن له بس (في الطريق / تم التسليم / رجوع للتجهيز)
       // إثبات التسليم (الصورة والتوقيع): المالك بس يقدر يمسحه أو يغيّره (المديرين يعدّلوا أي حاجة تانية في الطلب عادي)
-      allow update: if (isAdmin() && (isOwner() || request.resource.data.get('pod', null) == resource.data.get('pod', null)))
+      // الطلب اللي الفرع أكّد استلامه (recv) حالته ماتتغيّرش تاني (علشان محدش "يعيد فتحه" وبعدين يمسحه)
+      allow update: if (resource.data.get('st', '') != 'recv' || request.resource.data.get('st', '') == 'recv') && (
+        (isAdmin() && (isOwner() || request.resource.data.get('pod', null) == resource.data.get('pod', null)))
         || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat','edn','prep'])
             && (!('prep' in request.resource.data) || validPrep()))
         || (perm('fl') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asg','st','upd']))
@@ -137,8 +139,9 @@ service cloud.firestore {
           || (resource.data.st == 'done' && request.resource.data.st == 'recv'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','rcv'])
               && validRcv())
-        ));
-      allow delete: if isAdmin();
+        )));
+      // الطلب اللي الفرع أكّد استلامه (recv) مايتمسحش خالص، ولا حتى من المالك (سجل نهائي)
+      allow delete: if isAdmin() && resource.data.st != 'recv';
     }
 
     // عهدة المستودع وفواتيرها وإقفالاتها: للمستودع (الأدمن) فقط
