@@ -5,7 +5,8 @@ import {avatar,ownerMe,meReady} from "./prof.js";
 // اسم المالك اللي بيظهر لو لسه ماكتبش اسمه في "ملفي الشخصي"
 export const OWNER_NAME="محمد رجب";
 const g=id=>document.getElementById(id);
-const PERMS=[["req","الطلبات"],["cus","العهدة"],["fl","السيارات والسواقين"]];
+// gift = محاسب الهدايا: يشوف الهدايا والعينات ويطلّع تقاريرها بس (الاعتماد للي معاه "الطلبات" وللمديرين)
+const PERMS=[["req","الطلبات"],["cus","العهدة"],["fl","السيارات والسواقين"],["gift","🎁 الهدايا (مشاهدة وتقارير)"]];
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
 const EMAIL=/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/;
 // DV = أجهزة الإشعارات لكل إيميل [{dv:"m"|"pc"|"", ts}] (المالك بس)
@@ -50,7 +51,7 @@ export function view(){
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🛡 المديرين (${M.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>الإيميل</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة السر</th><th></th>":""}</tr></thead><tbody>
  ${M.length?M.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,`<button class="bt s" data-sf="toacc" data-id="${E(s.id)}" type="button">تحويل لمحاسب</button> `):""}</tr>`).join(""):empty(own?7:4,"لسه مفيش مديرين")}</tbody></table></div></div>
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🧾 المحاسبين (${A.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>الإيميل</th><th>الحالة</th>${PERMS.map(p=>`<th>${p[1]}</th>`).join("")}${own?"<th>الإشعارات</th><th>كلمة السر</th><th></th>":""}</tr></thead><tbody>
- ${A.length?A.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${PERMS.map(p=>`<td><input type="checkbox" data-sp2="${p[0]}" data-id="${E(s.id)}" ${s.p&&s.p[p[0]]===true?"checked":""} ${own?"":"disabled"}></td>`).join("")}${own?nc(s)+pwc(s)+acts(s,`<button class="bt s g" data-sf="toadm" data-id="${E(s.id)}" type="button">ترقية لمدير</button> `):""}</tr>`).join(""):empty(own?10:7,"لسه مفيش محاسبين")}</tbody></table></div></div>`;
+ ${A.length?A.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${PERMS.map(p=>`<td><input type="checkbox" data-sp2="${p[0]}" data-id="${E(s.id)}" ${s.p&&s.p[p[0]]===true?"checked":""} ${own?"":"disabled"}></td>`).join("")}${own?nc(s)+pwc(s)+acts(s,`<button class="bt s g" data-sf="toadm" data-id="${E(s.id)}" type="button">ترقية لمدير</button> `):""}</tr>`).join(""):empty(own?11:8,"لسه مفيش محاسبين")}</tbody></table></div></div>`;
 }
 async function add(){
  const e=f.e.trim().toLowerCase(),n=f.n.trim().slice(0,40);

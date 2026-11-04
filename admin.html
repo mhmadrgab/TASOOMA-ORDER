@@ -121,6 +121,7 @@ const {app,db,auth}=makeFb("admin");
 import {initExtra,view as cusView,stop as stopExtra,adminHdr,ledger} from "./ad-extra.js";
 import {initFleet,view as fleetView,stop as stopFleet,cars as fleetCars} from "./fleet.js";
 import {initZoom} from "./zoom.js";
+import {initGifts,stopGifts,giftsView,pendingCount as giftPend} from "./gifts.js";
 import {initStaff,view as staffView,stop as stopStaff,syncDir,staffName,OWNER_NAME} from "./staff.js";
 import {initProf,stopProf,chip as meChip} from "./prof.js";
 import {initAudit,view as logView,stopAudit} from "./audit.js";
@@ -144,9 +145,10 @@ const can=k=>ROLE.admin||ROLE.p[k]===true;
 const see=k=>can(k)||ROLE.v===true;
 // شات الفروع: الرقم الأحمر = عدد الفروع اللي باعتة رسايل لسه ماتقرتش
 const chatLbl=()=>{const n=bcUnread();return `💬 الشات${n?` <b class="tbn">${n}</b>`:""}`};
-const TABS=[["req","الطلبات",()=>see("req")],["chat",chatLbl,()=>can("req")],["fl","السيارات",()=>see("fl")],["cus","العهدة",()=>see("cus")],["wk","العمال",()=>ROLE.admin||ROLE.v===true],["br","الفروع",()=>ROLE.admin],["stf","الموظفين",()=>ROLE.admin],["log","📜 السجل",()=>ROLE.owner===true||ROLE.v===true],["sh","ورقة يدوية",()=>can("req")]];
+const giftLbl=()=>{const n=giftPend();return `🎁 الهدايا${n?` <b class="tbn">${n}</b>`:""}`};
+const TABS=[["req","الطلبات",()=>see("req")],["chat",chatLbl,()=>can("req")],["fl","السيارات",()=>see("fl")],["cus","العهدة",()=>see("cus")],["wk","العمال",()=>ROLE.admin||ROLE.v===true],["br","الفروع",()=>ROLE.admin],["stf","الموظفين",()=>ROLE.admin],["gift",giftLbl,()=>see("req")||see("gift")],["log","📜 السجل",()=>ROLE.owner===true||ROLE.v===true],["sh","ورقة يدوية",()=>can("req")]];
 // حساب المتابع: أزرار الحفظ والتعديل والحذف بتستخبى وبتتقفل (والقواعد في Firebase بتمنع أي كتابة أصلاً). العرض والطباعة والتقارير شغّالة
-const RO_SEL='[data-a]:not([data-a="print"]),[data-fl]:not([data-fl="trd"]):not([data-fl="tmap"]):not([data-fl="pmap"]):not([data-fl="mfit"]):not([data-fl="rep"]):not([data-fl="mrep"]):not([data-fl="cancel"]),[data-cx]:not([data-cx="img"]):not([data-cx="ps"]):not([data-cx="stmt"]):not([data-cx="cancel"]),[data-wk]:not([data-wk="rep"]):not([data-wk="slip"]),[data-wst],[data-asd],[data-asc],[data-bk],#bkall,[data-bkd],#bkd,#bkc';
+const RO_SEL='[data-a]:not([data-a="print"]),[data-fl]:not([data-fl="trd"]):not([data-fl="tmap"]):not([data-fl="pmap"]):not([data-fl="mfit"]):not([data-fl="rep"]):not([data-fl="mrep"]):not([data-fl="cancel"]),[data-cx]:not([data-cx="img"]):not([data-cx="ps"]):not([data-cx="stmt"]):not([data-cx="cancel"]),[data-wk]:not([data-wk="rep"]):not([data-wk="slip"]),[data-gf="ok"],[data-gf="no"],[data-gf="new"],[data-gf="edit"],[data-gf="del"],[data-wst],[data-asd],[data-asc],[data-bk],#bkall,[data-bkd],#bkd,#bkc';
 document.addEventListener("click",e=>{if(ROLE.v===true&&e.target.closest(RO_SEL)){e.preventDefault();e.stopImmediatePropagation();toast("👁 حسابك للمتابعة بس، مش للتعديل")}},true);
 {const s=document.createElement("style");s.textContent=RO_SEL.split(",").map(x=>".ro "+x).join(",")+"{display:none!important}";document.head.appendChild(s)}
 const okTab=t=>{const x=TABS.find(a=>a[0]===t);return !!x&&x[2]()};
@@ -181,7 +183,7 @@ function login(msg){
   if(g("lg"))g("lg").disabled=false};
  g("lg").onclick=go;[g("la"),g("lm")].forEach(i=>i.addEventListener("keydown",e=>{if(e.key==="Enter")go()}));g((g("lm").value?"la":"lm")).focus();
 }
-function stop(){stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){stopGifts();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 60 يوم. وزرار "الأقدم" بيحمّل الباقي عند الحاجة.
 const DAYS=60;let RQ={o:new Map(),r:new Map()},RQ1={o:true,r:true},seenReq=new Set(),ALLREQ=false,unOld=null;
@@ -248,6 +250,9 @@ function start(){
  const adm=ROLE.admin;
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك بس
+ // 🎁 الهدايا والعينات: المستودع والمديرين بيعتمدوا (approver)، والمحاسب (gift) والمتابع بيشوفوا ويطلّعوا تقارير
+ if(adm||can("req")||can("gift")||vw)initGifts({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},approver:adm||can("req"),view:vw,owner:()=>ROLE.owner===true,branches:BR,redraw:draw,tab:()=>tab,
+  ping:ids=>ping(auth,[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="gift"]');if(b)b.innerHTML=giftLbl()}});
  if(adm||can("fl")||vw)initFleet({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام بس (والقواعد بتمنع غير كده)
  if(adm)initStaff({db,toast,tab:()=>tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
@@ -294,7 +299,7 @@ function draw(){
  if(!authed)return;
  document.body.classList.toggle("ro",ROLE.v===true);
  const keep=window.scrollY,ui=snapUi();
- g("app").innerHTML=`<div class="hd"><div class="hi"><div class="br"><img class="lg1" src="${LOGO1}" alt=""><img class="lg2" src="${LOGO2}" alt=""><div><h1>لوحة المستودع</h1><small>${ROLE.v?"👁 متابعة بس":ROLE.admin?"طلبات الفروع":E(ROLE.name||"محاسب")}</small></div></div><div class="tabs">${TABS.filter(a=>a[2]()).map(a=>`<button class="${tab===a[0]?"on":""}" data-t="${a[0]}">${typeof a[1]==="function"?a[1]():a[1]}</button>`).join("")}</div><div style="display:flex;gap:12px;align-items:center"><div class="live"><i></i>مباشر</div><div class="tools">${meChip()}${backupBtn()}<button id="bell" type="button" hidden>🔔</button><button data-install type="button" hidden>📲 تثبيت</button></div><button class="tabs-out" id="logout" type="button">خروج</button></div></div></div><main>${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="stf"?staffView():tab==="log"?logView():tab==="wk"?wkView():brView()}</main>`;
+ g("app").innerHTML=`<div class="hd"><div class="hi"><div class="br"><img class="lg1" src="${LOGO1}" alt=""><img class="lg2" src="${LOGO2}" alt=""><div><h1>لوحة المستودع</h1><small>${ROLE.v?"👁 متابعة بس":ROLE.admin?"طلبات الفروع":E(ROLE.name||"محاسب")}</small></div></div><div class="tabs">${TABS.filter(a=>a[2]()).map(a=>`<button class="${tab===a[0]?"on":""}" data-t="${a[0]}">${typeof a[1]==="function"?a[1]():a[1]}</button>`).join("")}</div><div style="display:flex;gap:12px;align-items:center"><div class="live"><i></i>مباشر</div><div class="tools">${meChip()}${backupBtn()}<button id="bell" type="button" hidden>🔔</button><button data-install type="button" hidden>📲 تثبيت</button></div><button class="tabs-out" id="logout" type="button">خروج</button></div></div></div><main>${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="stf"?staffView():tab==="log"?logView():tab==="gift"?giftsView():tab==="wk"?wkView():brView()}</main>`;
  showSheet();
  if(tab==="chat")mountWh(g("bchost"));else hideWh();// الشات عنصر ثابت بيتحط في مكانه (الكتابة والتسجيل مايضيعوش)
  wireButtons();document.getElementById("bell").hidden=!("Notification" in window);adminHdr();

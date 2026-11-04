@@ -3,7 +3,7 @@
 import {doc,getDoc,updateDoc,deleteField} from "./fb.js";
 let C=null,cur=null;
 // الحاجات اللي ينفع تتمسح من هنا بس (مايتمسحش أي حقل تاني بالغلط)
-const OK={"requests":["pod.img","pod.sig"],"ledger":["img"],"pods":["img","sig"]};
+const OK={"requests":["pod.img","pod.sig"],"ledger":["img"],"pods":["img","sig"],"giftimg":["img"]};
 // صور التسليم الجديدة في pods/{رقم الطلب}: لما تتمسح بنشيل العلامة اللي على الطلب كمان (ph/sg)
 const FLAG={img:"pod.ph",sig:"pod.sg"};
 const isData=s=>typeof s==="string"&&/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(s);
@@ -35,6 +35,7 @@ export function zoomOpen(src,title,del){
   d.disabled=true;d.textContent="جاري الحذف...";
   try{await updateDoc(doc(C.db,cur.col,cur.id),{[cur.field]:deleteField()});
    if(cur.col==="pods")PC.delete(cur.id);
+   if(cur.col==="giftimg")await updateDoc(doc(C.db,"gifts",cur.id),{img:deleteField()}).catch(()=>{});// علامة "فيه سند" على الهدية
    if(cur.col==="pods")await updateDoc(doc(C.db,"requests",cur.id),{[FLAG[cur.field]]:deleteField()}).catch(()=>{});
    C.toast("اتمسحت ✅");zoomClose()}
   catch(e){d.disabled=false;d.textContent="🗑 حذف";C.toast(e&&e.code==="permission-denied"?"الحذف للمالك بس":"تعذر الحذف، جرّب تاني")}

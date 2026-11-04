@@ -162,6 +162,52 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
+    // 🎁 الهدايا والعينات (gifts.js): الفرع بيسجّل (مستنية اعتماد)، والمستودع/المديرين بيعتمدوا أو يرفضوا،
+    // والمحاسب (perm gift) والمتابع بيشوفوا بس. هدايا المستودع نفسه بتتسجّل معتمدة. التعديل والحذف لمالك النظام بس.
+    match /gifts/{id} {
+      function giftOk(d) {
+        return d.keys().hasOnly(['br','brn','no','ts','dt','rows','pcs','to','why','note','img','by','st','ap'])
+          && d.keys().hasAll(['br','brn','no','ts','dt','rows','pcs','to','why','img','by','st'])
+          && d.rows is list && d.rows.size() > 0 && d.rows.size() <= 100
+          && d.pcs is number && d.pcs > 0 && d.pcs <= 100000
+          && d.to is map && d.to.keys().hasOnly(['n','ph']) && d.to.n is string && d.to.n.size() > 0 && d.to.n.size() <= 60
+          && (!('ph' in d.to) || (d.to.ph is string && d.to.ph.size() <= 20))
+          && d.why is string && d.why.size() <= 40
+          && (!('note' in d) || (d.note is string && d.note.size() <= 300))
+          && d.img == 1 && d.ts is number && d.dt is string && d.dt.size() <= 12
+          && d.no is string && d.no.size() <= 40 && d.brn is string && d.brn.size() <= 40
+          && d.by is map && d.by.keys().hasOnly(['e','n']) && d.by.e == request.auth.token.email.lower()
+          && d.by.n is string && d.by.n.size() > 0 && d.by.n.size() <= 60;
+      }
+      function apOk(a) {
+        return a is map && a.keys().hasOnly(['e','n','at','note']) && a.e == request.auth.token.email.lower()
+          && a.at is number && a.n is string && a.n.size() <= 60
+          && (!('note' in a) || (a.note is string && a.note.size() <= 300));
+      }
+      function approver() { return isAdmin() || perm('req'); }
+      allow read: if approver() || perm('gift') || isViewer() || (branchOn() && resource.data.br == myCode());
+      allow create: if (branchOn() && giftOk(request.resource.data) && request.resource.data.br == myCode()
+                        && request.resource.data.st == 'pend' && !('ap' in request.resource.data))
+                    || (approver() && giftOk(request.resource.data) && request.resource.data.br == 'WH'
+                        && request.resource.data.st == 'ok' && apOk(request.resource.data.ap));
+      allow update: if isOwner()
+        || (approver() && resource.data.st == 'pend' && request.resource.data.st in ['ok','no']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','ap'])
+            && apOk(request.resource.data.ap));
+      allow delete: if isOwner();
+    }
+    // صورة سند الهدية لوحدها (giftimg/{نفس رقم الهدية}) بتتكتب مع الهدية في نفس المرة
+    match /giftimg/{id} {
+      allow read: if isAdmin() || perm('req') || perm('gift') || isViewer()
+        || (branchOn() && get(/databases/$(database)/documents/gifts/$(id)).data.br == myCode());
+      allow create: if request.resource.data.keys().hasOnly(['img']) && request.resource.data.img is string
+        && request.resource.data.img.size() <= 300000
+        && ((branchOn() && getAfter(/databases/$(database)/documents/gifts/$(id)).data.br == myCode())
+            || ((isAdmin() || perm('req')) && getAfter(/databases/$(database)/documents/gifts/$(id)).data.br == 'WH')
+            || isOwner());
+      allow update, delete: if isOwner();
+    }
+
     // عهدة المستودع وفواتيرها وإقفالاتها: للمستودع (الأدمن) فقط
     // المحاسب (perm cus): يقرأ ويسجّل ويعدّل حركات الفترة المفتوحة بس. الحذف والإقفال للمدير فقط.
     match /ledger/{id} {

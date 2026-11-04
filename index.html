@@ -472,6 +472,7 @@ loadUI();
 <script type="module">
 import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,setDoc,updateDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {initBranch,stopBranch} from "./br-extra.js";
+import {initGifts,stopGifts} from "./gifts.js";
 import {notify,beep,badge,autoPush} from "./notify.js";
 import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.js";
 const {app,db,auth}=makeFb("branch");
@@ -577,6 +578,8 @@ function enter(b){
  B=b;localStorage.setItem("tb",b);document.body.classList.add("lock");g("gate").className="";
  st.br=b;st.ty="load";save();loadUI();g("mb").innerHTML=`<bdi dir="ltr">${E(b)}</bdi>`;hello(null);listen();
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
+ // 🎁 الهدايا والعينات: زرار فوق جنب "تغيير الفرع"، والفرع بيسجّل الهدية بالسند والمستودع بيعتمدها
+ initGifts({db,toast,mode:"branch",code:code(b),brn:b,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:""},owner:()=>false,ping:ids=>ping(auth,[],[],[],ids)});
  // الشات الخاص مع المستودع (زرار عائم 💬 + زرار "كلّم المستودع" فوق + زرار على كل طلب): الفرع بيختار يكلّم مين،
  // وكل محادثة خاصة بين الفرع والشخص ده بس
  initBChat({db,by:"br",code:code(b),name:()=>String(st&&st.dr||"").trim(),brn:()=>b,toast,beep,notify,ping:c=>ping(auth,[],[c]),
@@ -586,7 +589,7 @@ function enter(b){
 }
 // الرقم على أيقونة التطبيق: طلبات مستنية تأكيد + رسايل جديدة
 function setBadge(){const all=Object.values(REQS);badge(all.filter(r=>r.st==="done").length+(XF||[]).filter(r=>(r.st==="new"||r.st==="prep")&&!+r.rdy).length+bcUnread())}
-function gateOn(){B=null;stopBranch();stopBChat();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBranch();stopGifts();stopBChat();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");

@@ -129,6 +129,7 @@ export function dashView(R){
   const dl=C.filter(r=>r.st==="done"||r.st==="recv"),rc=C.filter(r=>r.st==="recv"),ok=rc.filter(r=>!r.rcv||r.rcv.ok!==false);
   const tt=dl.map(r=>dlvAt(r)-N(r.ts)).filter(x=>x>0),fast=tt.filter(x=>x<=24*H).length,avg=tt.length?tt.reduce((a,b)=>a+b,0)/tt.length:0;
   // الوقت في كل مرحلة لوحدها (بدل رقم واحد "بيخرج من المستودع" كان بيجمع الانتظار والتجهيز وانتظار السواق مع بعض ومش مفهوم).
+  // ⚠️ prep.at = وقت "بدء التجهيز" (مش خلصه): مفيش وقت مسجّل لـ "خلص التجهيز" في الطلبات العادية، فالمرحلة التانية = التجهيز + انتظار السواق.
   // الوسيط (النص الطلبات أسرع والنص أبطأ) بدل المتوسط: طلب واحد اتعمل بالليل واتجهّز الصبح مايبوّظش الرقم.
   const med=a=>{a=a.filter(x=>x>0&&x<14*D).sort((x,y)=>x-y);return a.length?(a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2):0};
   const hm2=ms=>{const m=Math.max(1,Math.round(ms/6e4)),h=Math.floor(m/60);return h>=48?`${(ms/D).toFixed(1)} يوم`:h?`${h} س${m%60?` و${m%60} د`:""}`:`${m} دقيقة`};
@@ -161,7 +162,7 @@ export function dashView(R){
   if(!reduce())requestAnimationFrame(countUp);
   return `<section class="dz" aria-label="لوحة الأداء">
   <div class="dz-hd"><h2>📊 لوحة الأداء <small>${E(lbl)}</small></h2><div class="dz-per" role="group" aria-label="الفترة">${PERS.map(([k,n])=>`<button type="button" data-dp="${k}" class="${PER===k?"on":""}" aria-pressed="${PER===k}">${n}</button>`).join("")}</div></div>
-  <div class="dz-sum">${C.length?`${sum("k1","🧾",C.length,"طلب")}${sum("k2","🏬",brs,"فرع طلبوا")}${sum("k3","📦",pcs,"قطعة")}${stg("🧰","التجهيز عادةً",tPrep,"من وصول الطلب للمستودع لحد ما العمال يخلّصوا تجهيزه")}${stg("⏳","مستني السواق",tWait,"من بعد ما الطلب يتجهّز لحد ما السواق يطلع بيه")}${stg("🚚","الطريق",tRoad,"من خروج السواق لحد ما يسلّم للفرع")}`:`<span>💤 مفيش طلبات اتعملت ${PER==="1"?"النهارده":"في الفترة دي"} لسه</span>`}</div>
+  <div class="dz-sum">${C.length?`${sum("k1","🧾",C.length,"طلب")}${sum("k2","🏬",brs,"فرع طلبوا")}${sum("k3","📦",pcs,"قطعة")}${stg("⏰","لحد ما يبدأ التجهيز",tPrep,"من وصول الطلب للمستودع لحد ما حد يدوس \"بدء التجهيز\"")}${stg("🧰","التجهيز لحد خروج السواق",tWait,"من \"بدء التجهيز\" لحد ما السواق يبدأ الرحلة بالطلب (التجهيز نفسه + انتظار السواق)")}${stg("🚚","الطريق",tRoad,"من خروج السواق لحد ما يسلّم للفرع")}`:`<span>💤 مفيش طلبات اتعملت ${PER==="1"?"النهارده":"في الفترة دي"} لسه</span>`}</div>
   <div class="dz-rings">
    ${ring("r1","var(--dz-r1)",p1,"اتسلّمت",C.length?`${fmt(dl.length)} من ${fmt(C.length)} طلب`:"مفيش طلبات في الفترة دي")}
    ${ring("r2","var(--dz-r2)",p2,"أكّدوا الاستلام",dl.length?`${fmt(rc.length)} من ${fmt(dl.length)} اتسلّم`:"لسه مفيش تسليم",pill(p2))}
