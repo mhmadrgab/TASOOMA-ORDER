@@ -3,6 +3,7 @@ import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,quer
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep,pushOn} from "./notify.js";
 import {ledger} from "./ad-extra.js";
+import {leaflet,baseMap,pin,okPt,MAP_CSS} from "./map.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const dk=t=>new Date(N(t)).toLocaleDateString("en-CA"),hm=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
@@ -10,7 +11,6 @@ const dur=ms=>{const m=Math.max(0,Math.round(N(ms)/60000)),h=Math.floor(m/60);re
 const ago=t=>{const m=Math.round((Date.now()-N(t))/60000);return m<1?"الآن":m<60?`منذ ${m} د`:`منذ ${Math.round(m/60)} س`};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
-const mapUrl=(la,ln)=>`https://www.google.com/maps?q=${N(la)},${N(ln)}`;
 let X=null,CARS=[],DRV=[],TR=[],FU=[],PW={},GEOD=null,geoReady=false,un=[],pT=null,pF=null,mode="",fday="",fmon="",ctxEd=null;
 let BK=new Set(),bkD="",bkC="";// الطلبات المتعلّم عليها للتعيين الجماعي، والسائق والسيارة المختارين
 // رقم الموبايل: 05xxxxxxxx أو 5xxxxxxxx ← 9665xxxxxxxx (لواتساب)
@@ -58,11 +58,106 @@ function legMs(prev,code,pp){if(pp[prev+">"+code])return pp[prev+">"+code]*6e4;c
 const endPt=t=>t.st==="done"&&t.loc&&Number.isFinite(+t.loc.lat)&&N(t.loc.ts)===N(t.end)?{lat:+t.loc.lat,lng:+t.loc.lng}:null;
 // مكان كل توصيلة: مكان التسليم الفعلي، وإلا موقع الفرع. التحويل: الفرع اللي استلم منه الأول
 const stopPts=s=>[s.fr?(Number.isFinite(+s.plat)?{lat:+s.plat,lng:+s.plng}:geoPt(s.fr)):null,Number.isFinite(+s.lat)?{lat:+s.lat,lng:+s.lng}:geoPt(bc(s.brn))];
-// خريطة الرحلة على جوجل: من نقطة البداية مروراً بكل فرع بالترتيب، لحد المكان اللي السائق أنهى فيه الرحلة
-function tripMap(t){
- const st=(Array.isArray(t.stops)?t.stops:[]),e=endPt(t),pts=[...st.flatMap(stopPts),e].filter(Boolean);
- if(!pts.length)return "";const o=t.loc0||geoPt("WH"),d=pts[pts.length-1],w=pts.slice(0,-1).map(p=>p.lat+","+p.lng).join("|");
- return `https://www.google.com/maps/dir/?api=1${o?`&origin=${o.lat},${o.lng}`:""}&destination=${d.lat},${d.lng}${w?"&waypoints="+encodeURIComponent(w):""}&travelmode=driving`;
+// الرحلة ليها خريطة؟ (فيه نقطة واحدة على الأقل: بداية / تسليم / مكانه دلوقتي / نهاية)
+const hasMap=t=>[t.loc0,t.loc,endPt(t),...(Array.isArray(t.stops)?t.stops:[]).flatMap(stopPts)].some(okPt);
+// اسم الفرع من الكود (من الطلبات والرحلات اللي عندنا)
+function brNames(){const m={};const add=b=>{const c=bc(b);if(c&&!m[c])m[c]=String(b)};X.R().forEach(r=>add(r.brn));TR.forEach(t=>(Array.isArray(t.stops)?t.stops:[]).forEach(s=>{add(s.brn);if(s.fr&&s.frn)add(s.frn)}));return m}
+// ---------- الخريطة اللايف: كل السواقين اللي في رحلة + الفروع + المستودع ----------
+// اللوحة كلها بتترسم من الأول مع كل تحديث، فالخريطة عنصر ثابت بننقله في مكانه (flmap-slot) بعد كل رسم،
+// والعلامات بتتحدّث في مكانها (من غير ما تتمسح) علشان لو فيه نافذة مفتوحة على سواق ماتتقفلش.
+const LM={host:null,map:null,L:null,mk:new Map(),fitKey:"",loading:false};
+function attachLive(){
+ const slot=g("flmap-slot");if(!slot)return;
+ if(!LM.host){LM.host=document.createElement("div");LM.host.className="tz-map";LM.host.innerHTML=`<div class="tz-mapc"></div><div class="tz-bar"><button class="bt s" data-fl="mfit" type="button">⤢ وريني الكل</button><span>🚚 سواق في رحلة</span><span>🏭 المستودع</span><span><b style="background:#d4ae5c;border-radius:8px;padding:0 6px;color:#1b1b1b">كود</b> الفرع اللي رايحله</span><span>المكان بيتحدّث لوحده</span></div>`}
+ if(LM.host.parentNode!==slot)slot.appendChild(LM.host);
+ if(LM.map){LM.map.invalidateSize();paintLive();return}
+ if(LM.loading)return;LM.loading=true;
+ leaflet().then(L=>{LM.loading=false;if(LM.map||!X)return;LM.L=L;LM.map=baseMap(L,LM.host.querySelector(".tz-mapc"));paintLive()})
+  .catch(()=>{LM.loading=false;const c=LM.host&&LM.host.querySelector(".tz-mapc");if(c)c.innerHTML='<div class="off" style="padding:30px;text-align:center">تعذر تحميل الخريطة. اتأكد من النت وحدّث الصفحة.</div>'});
+}
+// علامة واحدة: لو موجودة نحرّكها ونحدّث شكلها، ولو جديدة نعملها
+function mark(key,pt,html,pop,tip,z){
+ const L=LM.L;let m=LM.mk.get(key);
+ if(!m){m=L.marker([+pt.lat,+pt.lng],{icon:pin(L,html),zIndexOffset:z||0,keyboard:false});m._h=html;if(pop)m.bindPopup(pop);if(tip)m.bindTooltip(tip,{direction:"top"});m.addTo(LM.map);LM.mk.set(key,m)}
+ else{m.setLatLng([+pt.lat,+pt.lng]);if(m._h!==html){m.setIcon(pin(L,html));m._h=html}if(pop){if(m.getPopup())m.setPopupContent(pop);else m.bindPopup(pop)}}
+ m._seen=1;return m;
+}
+function line(key,pts,opt){
+ const L=LM.L;let l=LM.mk.get(key);const ll=pts.map(p=>[+p.lat,+p.lng]);
+ if(!l){l=L.polyline(ll,opt).addTo(LM.map);LM.mk.set(key,l)}else l.setLatLngs(ll);
+ l._seen=1;return l;
+}
+function paintLive(){
+ if(!LM.map||!X)return;
+ LM.mk.forEach(m=>{m._seen=0});
+ const nm=brNames(),wh=geoPt("WH"),act=TR.filter(t=>t.st==="active"),br=(GEOD&&GEOD.br)||{},nxt=new Set(),fit=[];
+ if(okPt(wh)){mark("wh",wh,`<div class="tz-w">🏭</div>`,"<b>🏭 المستودع</b>",null,500);fit.push(wh)}
+ const cols=["#6a56c9","#c4362b","#1c4f86","#2f8f3e","#a8832f","#b0478f"];
+ act.forEach((t,i)=>{
+  const st=Array.isArray(t.stops)?t.stops:[],done=st.filter(s=>s.arr).length,rem=st.filter(s=>!s.arr);
+  const rq=s=>X.R().find(r=>r.id===s.rid),eta=s=>{const r=rq(s);return N(r&&r.eta)||N(s.eta)};
+  rem.forEach(s=>{nxt.add(bc(s.brn));if(s.fr&&!s.pk)nxt.add(String(s.fr))});
+  if(!okPt(t.loc))return;
+  const old=Date.now()-N(t.loc.ts)>10*6e4,nx=rem[0];
+  const pop=`<b>🚚 ${E(t.drvn)}</b><br>${E(t.carn)}<br>سلّم ${done} من ${st.length}${nx?`<br>رايح لـ <b><bdi dir="ltr">${E(nx.fr&&!nx.pk?(nx.frn||nx.fr)+" (استلام)":nx.brn)}</bdi></b>${eta(nx)?` · متوقع ~${hm(eta(nx))}`:""}`:"<br>خلّص التوصيلات"}<br><span style="color:#6f6b64">آخر مكان: ${ago(t.loc.ts)} (${hm(t.loc.ts)})${t.loc.src==="bg"?" · من التطبيق":""}</span>`;
+  mark("d_"+t.id,t.loc,`<div class="tz-d${old?" old":""}"><b>🚚</b><span>${E(t.drvn)}</span></div>`,pop,null,1000);fit.push(t.loc);
+  // الطريق اللي فاضل: من مكانه دلوقتي على الفروع اللي لسه ماسلّمهاش بالترتيب (خطوط مستقيمة)
+  const path=[t.loc,...rem.flatMap(s=>[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))])].filter(okPt);
+  if(path.length>1){line("p_"+t.id,path,{color:cols[i%cols.length],weight:4,opacity:.75,dashArray:"8 8"});path.slice(1,2).forEach(p=>fit.push(p))}
+ });
+ Object.entries(br).forEach(([c,p])=>{if(!okPt(p))return;const n=nm[c]||c,on=nxt.has(c);mark("b_"+c,p,`<div class="tz-b${on?" nx":""}">${E(c)}</div>`,`<b><bdi dir="ltr">${E(n)}</bdi></b>${on?"<br>🚚 سواق رايحله دلوقتي":""}`,null,on?800:0);if(!act.length)fit.push(p)});
+ // نشيل اللي مابقاش موجود (رحلة خلصت مثلاً)
+ [...LM.mk.entries()].forEach(([k,m])=>{if(!m._seen){LM.map.removeLayer(m);LM.mk.delete(k)}});
+ // نظبط الزوم: أول مرة، ولما رحلة تبدأ أو تخلص (مش مع كل تحديث، علشان مانبوّظش الزوم اللي انت عامله)
+ const key=act.map(t=>t.id).sort().join(",")+"|"+(fit.length?1:0);
+ if(key!==LM.fitKey){LM.fitKey=key;fitLive(fit)}
+}
+function fitLive(pts){
+ if(!LM.map)return;pts=pts||[...LM.mk.values()].filter(m=>m.getLatLng).map(m=>m.getLatLng());
+ const ll=pts.map(p=>[+(p.lat),+(p.lng)]);if(!ll.length)return;
+ if(ll.length===1)LM.map.setView(ll[0],14);else LM.map.fitBounds(ll,{padding:[40,40],maxZoom:15});
+}
+function dropLive(){try{if(LM.map)LM.map.remove()}catch(e){}LM.host=null;LM.map=null;LM.mk=new Map();LM.fitKey="";LM.loading=false}
+// ---------- خريطة في نافذة: مسار رحلة، أو نقطة واحدة ----------
+let MM=null;
+const dropM=()=>{try{if(MM)MM.remove()}catch(e){}MM=null};
+function mapModal(title,sub,back,build){
+ openM(`<h3>${title}</h3>${sub?`<div class="off" style="margin-bottom:8px">${sub}</div>`:""}<div class="tz-mapc" id="tzm" style="height:min(62vh,520px)"></div>
+ <div class="off" style="font-size:12.5px;margin-top:6px">الخطوط بتوصل الأماكن بالترتيب (مستقيمة، مش الطريق بالظبط).</div>
+ <div class="fl2" style="margin-top:12px">${back?`<button class="bt" data-fl="trd" data-id="${E(back)}" type="button">↩ التفاصيل</button>`:""}<button class="bt" data-fl="cancel" type="button">إغلاق</button></div>`);
+ const el=g("tzm");
+ leaflet().then(L=>{if(!el.isConnected)return;MM=baseMap(L,el);const pts=build(L,MM)||[];
+  const ll=pts.filter(okPt).map(p=>[+p.lat,+p.lng]);if(ll.length===1)MM.setView(ll[0],15);else if(ll.length)MM.fitBounds(ll,{padding:[36,36],maxZoom:16});
+  setTimeout(()=>{if(MM)MM.invalidateSize()},60)})
+  .catch(()=>{el.innerHTML='<div class="off" style="padding:30px;text-align:center">تعذر تحميل الخريطة. اتأكد من النت.</div>'});
+}
+function tripMapM(id){
+ const t=TR.find(x=>x.id===id);if(!t)return;
+ mapModal(`🗺 رحلة ${E(t.drvn)} — ${E(t.carn)}`,`${dk(t.start)} · ${hm(t.start)} ← ${t.end?hm(t.end):"شغّالة"}`,t.id,(L,M)=>{
+  const st=(Array.isArray(t.stops)?t.stops:[]),pts=[],route=[],add=(p,html,pop,z)=>{if(!okPt(p))return;L.marker([+p.lat,+p.lng],{icon:pin(L,html),zIndexOffset:z||0}).bindPopup(pop).addTo(M);pts.push(p)};
+  const s0=okPt(t.loc0)?t.loc0:geoPt("WH");
+  add(s0,`<div class="tz-s st"><b>🚩</b><span>البداية ${hm(t.start)}</span></div>`,`<b>🚩 بداية الرحلة</b><br>${hm(t.start)}${okPt(t.loc0)?"":"<br>(مكان المستودع)"}`,600);if(okPt(s0))route.push(s0);
+  // التوصيلات اللي اتسلّمت بترتيب التسليم، وبعدين اللي لسه
+  const dn=st.filter(s=>s.arr).sort((a,b)=>N(a.arr)-N(b.arr)),wt=st.filter(s=>!s.arr);let n=0;
+  dn.forEach(s=>{const [pk,dl]=stopPts(s);
+   if(s.fr&&okPt(pk)){add(pk,`<div class="tz-s pk"><b>📦</b></div>`,`<b>📦 استلام التحويل</b><br><bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?"<br>"+hm(s.pk):""}`,300);route.push(pk)}
+   n++;add(dl,`<div class="tz-s"><b>${n}</b><span>${hm(s.arr)}</span></div>`,`<b>✔ ${n}. <bdi dir="ltr">${E(s.brn)}</bdi></b><br>اتسلّم ${hm(s.arr)}${s.rcvr?"<br>استلم: "+E(s.rcvr):""}${Number.isFinite(+s.lat)?"":"<br>(مكان الفرع، الموبايل ماسجّلش مكان التسليم)"}`,400);if(okPt(dl))route.push(dl)});
+  const e=endPt(t);
+  if(t.st==="active"&&okPt(t.loc)){add(t.loc,`<div class="tz-d"><b>🚚</b><span>دلوقتي</span></div>`,`<b>🚚 ${E(t.drvn)} دلوقتي</b><br>آخر مكان: ${ago(t.loc.ts)} (${hm(t.loc.ts)})`,1000);route.push(t.loc)}
+  if(route.length>1)L.polyline(route.map(p=>[+p.lat,+p.lng]),{color:"#6a56c9",weight:4,opacity:.8}).addTo(M);
+  // اللي لسه ما اتسلّمش: خط متقطّع من آخر نقطة
+  const rest=[];wt.forEach(s=>{const [pk,dl]=[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))];
+   if(okPt(pk)){add(pk,`<div class="tz-s wait"><b>📦</b></div>`,`<b>📦 لسه هيستلم من</b> <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>`,200);rest.push(pk)}
+   add(dl,`<div class="tz-s wait"><b>⏳</b><span><bdi dir="ltr">${E(bc(s.brn))}</bdi></span></div>`,`<b>⏳ <bdi dir="ltr">${E(s.brn)}</bdi></b><br>${t.st==="active"?"لسه ما وصلش":"ما اتسلّمش في الرحلة دي"}`,200);if(okPt(dl))rest.push(dl)});
+  if(rest.length&&route.length&&t.st==="active")L.polyline([route[route.length-1],...rest].map(p=>[+p.lat,+p.lng]),{color:"#6a56c9",weight:3,opacity:.6,dashArray:"8 8"}).addTo(M);
+  if(t.st==="done"&&okPt(e)){add(e,`<div class="tz-s end"><b>🏁</b><span>${hm(t.end)}</span></div>`,`<b>🏁 إنهاء الرحلة</b><br>${hm(t.end)}`,700);if(route.length)L.polyline([route[route.length-1],e].map(p=>[+p.lat,+p.lng]),{color:"#c4362b",weight:3,opacity:.7,dashArray:"4 6"}).addTo(M)}
+  if(!pts.length){const el=g("tzm");if(el)el.insertAdjacentHTML("beforeend",'<div class="off" style="position:absolute;inset:auto 0 10px;text-align:center;z-index:999">مفيش أماكن مسجّلة للرحلة دي</div>')}
+  return pts;
+ });
+}
+function pointM(lat,lng,title,sub,back){
+ const p={lat:+lat,lng:+lng};if(!okPt(p))return;
+ mapModal(`📍 ${E(title)}`,sub?E(sub):"",back,(L,M)=>{L.marker([p.lat,p.lng],{icon:pin(L,`<div class="tz-s"><b>📍</b></div>`)}).bindPopup(`<b>${E(title)}</b>${sub?"<br>"+E(sub):""}`).addTo(M);return [p]});
 }
 function legs(){const m={};TR.filter(t=>t.st==="done").forEach(t=>{let p=N(t.start);(Array.isArray(t.stops)?t.stops:[]).filter(s=>s&&s.arr).sort((a,b)=>N(a.arr)-N(b.arr)).forEach(s=>{const l=N(s.arr)-p;p=N(s.arr);if(l>0&&l<864e5)(m[s.brn]=m[s.brn]||[]).push(l)})});const o={};Object.entries(m).forEach(([k,v])=>o[k]=v.reduce((a,b)=>a+b,0)/v.length);return o}
 function alerts(){
@@ -87,13 +182,14 @@ export function view(){
  BK=new Set([...BK].filter(id=>openR.some(r=>r.id===id)));
  return `${A.length?A.map(a=>`<div class="${a.l}">${a.t}</div>`).join(""):""}
  <h3 class="sub" style="margin-top:4px">🚚 على الطريق دلوقتي</h3>
+ ${act.length||okPt(geoPt("WH"))||Object.keys((GEOD&&GEOD.br)||{}).length?(setTimeout(attachLive,0),'<div id="flmap-slot"></div>'):""}
  ${act.length?act.map(t=>{const st=Array.isArray(t.stops)?t.stops:[];let p=N(t.start);const done=st.filter(s=>s.arr).length;
-  return `<div class="tr"><h4>${E(t.drvn)} — ${E(t.carn)} <span class="pill go">في رحلة</span></h4><div class="off" style="font-size:14px">بدأ ${hm(t.start)} · بقاله ${dur(Date.now()-N(t.start))} · سلّم ${done} من ${st.length}${t.loc?` · <a href="${mapUrl(t.loc.lat,t.loc.lng)}" target="_blank" rel="noopener noreferrer">📍 مكانه (${ago(t.loc.ts)})</a>`:" · <span>لسه مفيش موقع مسجّل</span>"}</div>
+  return `<div class="tr"><h4>${E(t.drvn)} — ${E(t.carn)} <span class="pill go">في رحلة</span></h4><div class="off" style="font-size:14px">بدأ ${hm(t.start)} · بقاله ${dur(Date.now()-N(t.start))} · سلّم ${done} من ${st.length}${okPt(t.loc)?` · <a href="#" data-fl="tmap" data-id="${E(t.id)}">📍 مكانه (${ago(t.loc.ts)})</a>`:" · <span>لسه مفيش موقع مسجّل</span>"}</div>
   <div class="st1">${(()=>{let prev="WH";return st.map(s=>{const c=bc(s.brn);if(s.arr){const l=N(s.arr)-p;p=N(s.arr);prev=c;return `<span class="ok">✔ ${E(s.brn)} ${hm(s.arr)} (${dur(l)})</span>`}
    // الوقت المتوقع الأحدث: اللي على الطلب (تطبيق السائق بيحدّثه وهو ماشي)، وإلا اللي على الرحلة
    const rq=X.R().find(r=>r.id===s.rid),eta=N(rq&&rq.eta)||N(s.eta);
    const a=legMs(prev,c,pp);if(a&&!eta)p+=a;prev=c;return `<span>⏳ ${E(s.brn)}${eta?` · متوقع ~${hm(eta)}`:a?` · متوقع ~${hm(p)}`:""}${rq&&N(rq.near)>N(rq.dep)?" · 🔔 قرب":""}</span>`}).join("")})()}</div>
-  <div class="fl2" style="margin:0">${telBtn(DRV.find(d=>d.id===t.drv))}<button class="bt s" data-fl="trd" data-id="${E(t.id)}" type="button">تفاصيل</button>${tripMap(t)?`<a class="bt s" href="${E(tripMap(t))}" target="_blank" rel="noopener noreferrer">🗺 خريطة</a>`:""}<button class="bt s r" data-fl="tend" data-id="${E(t.id)}" type="button">⏹ إنهاء الرحلة من المستودع</button></div></div>`}).join(""):'<div class="pan off">مفيش سيارة على الطريق دلوقتي.</div>'}
+  <div class="fl2" style="margin:0">${telBtn(DRV.find(d=>d.id===t.drv))}<button class="bt s" data-fl="trd" data-id="${E(t.id)}" type="button">تفاصيل</button>${hasMap(t)?`<button class="bt s" data-fl="tmap" data-id="${E(t.id)}" type="button">🗺 خريطة</button>`:""}<button class="bt s r" data-fl="tend" data-id="${E(t.id)}" type="button">⏹ إنهاء الرحلة من المستودع</button></div></div>`}).join(""):'<div class="pan off">مفيش سيارة على الطريق دلوقتي.</div>'}
  <h3 class="sub">📦 تعيين التوصيلات</h3><div class="pan">${openR.length>1?`<div class="fl2 bk"><label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="bkall" style="width:auto" ${openR.every(r=>BK.has(r.id))?"checked":""}> الكل</label><span class="off">متعلّم <b id="bkn">${BK.size}</b></span><select id="bkd"><option value="">السائق</option>${dOpt(dr.map(d=>[d.id,d.name]),bkD)}</select><select id="bkc"><option value="">السيارة</option>${dOpt(CARS.filter(c=>c.active!==false).map(c=>[c.id,c.name+(c.plate?" "+c.plate:"")]),bkC)}</select><button class="bt s g" data-fl="bulk" type="button">تعيين المتعلّم عليهم</button></div>`:""}<div class="tw"><table><thead><tr>${openR.length>1?"<th></th>":""}<th>الفرع</th><th>الطلب</th><th>قطع</th><th>المعيّن</th><th>سائق</th><th>سيارة</th><th></th></tr></thead><tbody>${openR.length?openR.map(r=>`<tr>${openR.length>1?`<td><input type="checkbox" data-bk="${E(r.id)}" style="width:20px;height:20px" ${BK.has(r.id)?"checked":""}></td>`:""}<td class="l">${r.tr?`🔄 استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi>${N(r.rdy)?" ✅":" ⏳"}<br>← سلّم لـ `:""}${E(r.brn)}</td><td><bdi dir="ltr">${E(r.no)}</bdi></td><td>${N(r.pcs)}</td><td>${r.asg&&r.asg.drvn?`<span class="pill go">${E(r.asg.drvn)} · ${E(r.asg.carn||"")}</span>`:'<span class="off">—</span>'}</td><td><select data-asd="${E(r.id)}"><option value="">اختر</option>${dOpt(dr.map(d=>[d.id,d.name]),r.asg&&r.asg.drv)}</select></td><td><select data-asc="${E(r.id)}"><option value="">اختر</option>${dOpt(CARS.filter(c=>c.active!==false).map(c=>[c.id,c.name+(c.plate?" "+c.plate:"")]),r.asg&&r.asg.car)}</select></td><td style="white-space:nowrap"><button class="bt s g" data-fl="asg" data-id="${E(r.id)}" type="button">تعيين</button>${r.asg&&r.asg.drv?` <button class="bt s" data-fl="unasg" data-id="${E(r.id)}" type="button">إلغاء</button>`:""}</td></tr>`).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">مفيش طلبات مفتوحة</td></tr>'}</tbody></table></div><p class="off" style="font-size:13px;margin:8px 0 0">بعد التعيين الطلب بيظهر عند السائق في تطبيقه، والفرع بيشوف "في الطريق" لما السائق يبدأ الرحلة.</p></div>
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🚗 السيارات</h3>${X.admin?'<button class="bt s g" data-fl="car" type="button" style="margin-inline-start:auto">➕ إضافة سيارة</button>':""}<button class="bt s" data-fl="fuel" type="button" ${X.admin?"":'style="margin-inline-start:auto"'}>⛽ تسجيل بنزين</button></div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السيارة</th><th>العداد</th><th>كم الشهر</th><th>بنزين الشهر</th><th>كم/لتر</th><th>تكلفة/كم</th><th>الزيت</th><th>التأمين / الرخصة</th><th></th></tr></thead><tbody>${CARS.length?CARS.map(c=>{const s=carStat(c),due=N(c.oilLast)+N(c.oilEvery||5000);return `<tr><td class="l" style="direction:rtl">${E(c.name)}<small class="off" style="display:block;direction:ltr">${E(c.plate||"")}</small></td><td>${s.odo?fmt(s.odo):"—"}</td><td>${fmt(s.km)}</td><td>${fmt(s.fl)} لتر<small class="off" style="display:block">${fmt(s.fc)}</small></td><td>${s.kmpl?s.kmpl.toFixed(1):"—"}</td><td>${s.cpk!==null?s.cpk.toFixed(2):"—"}</td><td>${c.oilEvery&&s.odo?(due-s.odo<=0?`<span style="color:#c4362b;font-weight:700">متأخر</span>`:`باقي ${fmt(due-s.odo)} كم`):"—"}</td><td style="font-size:13px">${E(c.insExp||"—")}<br>${E(c.licExp||"—")}</td><td>${X.admin?`<button class="bt s" data-fl="car" data-id="${E(c.id)}" type="button">تعديل</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="9" class="off" style="text-align:center;padding:20px">أضف السيارتين من زرار "إضافة سيارة"</td></tr>'}</tbody></table></div></div>
@@ -152,8 +248,8 @@ function syncGeo(){
 }
 // ---------- النوافذ ----------
 function box(){let m=g("flm");if(!m){m=document.createElement("div");m.id="flm";m.className="fm";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}
-function closeM(){mode="";ctxEd=null;const m=box();m.className="fm";m.innerHTML=""}
-const openM=h=>{mode="m";const m=box();m.className="fm on";m.innerHTML=`<div class="fk">${h}</div>`};
+function closeM(){dropM();mode="";ctxEd=null;const m=box();m.className="fm";m.innerHTML=""}
+const openM=h=>{dropM();mode="m";const m=box();m.className="fm on";m.innerHTML=`<div class="fk">${h}</div>`};
 const sel=(id,arr,v)=>`<select id="${id}">${arr.map(([a,b])=>`<option value="${E(a)}" ${a===v?"selected":""}>${E(b)}</option>`).join("")}</select>`;
 function carForm(id){
  const c=CARS.find(x=>x.id===id)||{};ctxEd=id||null;
@@ -180,16 +276,16 @@ function tripDetail(id){
  // كيلومترات تقريبية لكل مشوار: من المكان اللي قبله (أول مشوار من مكان بداية الرحلة) للفرع ده
  // (التحويل: المشوار بيعدّي على الفرع اللي استلم منه الأول)
  let pt=t.loc0||geoPt("WH");const kmTo=here=>{const k=kmBetween(pt,here);if(here)pt=here;return k};
- const kmLeg=s=>{let sum=null;stopPts(s).forEach(h=>{if(!h)return;const k=kmTo(h);if(k!==null)sum=(sum||0)+k});return sum},map=tripMap(t);
+ const kmLeg=s=>{let sum=null;stopPts(s).forEach(h=>{if(!h)return;const k=kmTo(h);if(k!==null)sum=(sum||0)+k});return sum},map=hasMap(t);
  // آخر مشوار: من آخر تسليم للمكان اللي أنهى فيه الرحلة (غالباً الرجوع للمستودع)
  const e=endPt(t),lastArr=st.reduce((m,s)=>Math.max(m,N(s.arr)),N(t.start));
  const fu=FU.filter(f=>f.drv===t.drv&&f.car===t.car&&N(f.ts)>=N(t.start)&&(!t.end||N(f.ts)<=N(t.end)+36e5));
  openM(`<h3>${E(t.drvn)} — ${E(t.carn)}</h3><div class="off">${dk(t.start)} · ${hm(t.start)} ← ${t.end?hm(t.end):"شغّال"} · عداد ${fmt(t.odo0)}${t.st==="done"?` ← ${fmt(t.odo1)} (${fmt(N(t.odo1)-N(t.odo0))} كم)`:""}</div>
- <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);const k=kmLeg(s);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.rcvr?" · استلم: "+E(s.rcvr):""}${s.fr?` · 🔄 اتاخد من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" "+hm(s.pk):""}`:""}</small>${podHtml(s.rid)}</div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}${k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${s.lat?`<a href="${mapUrl(s.lat,s.lng)}" target="_blank" rel="noopener noreferrer">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}
- ${t.st==="done"?(()=>{const k=e?kmTo(e):null,l=N(t.end)-lastArr;return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0"><div><b>🏁 إنهاء الرحلة</b><small class="off" style="display:block">${e?"المكان اللي السائق قفل فيه الرحلة":t.forced?"اتقفلت من المستودع (مفيش موقع)":"الموبايل ماسجّلش موقع الإنهاء"}</small></div><div style="text-align:left">${hm(t.end)}<small class="off" style="display:block">${l>0?dur(l):""}${k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${e?`<a href="${mapUrl(e.lat,e.lng)}" target="_blank" rel="noopener noreferrer">📍</a>`:""}</div></div>`})():""}</div>
+ <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);const k=kmLeg(s);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.rcvr?" · استلم: "+E(s.rcvr):""}${s.fr?` · 🔄 اتاخد من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" "+hm(s.pk):""}`:""}</small>${podHtml(s.rid)}</div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}${k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${s.lat?`<a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(s.lat)}" data-lng="${N(s.lng)}" data-t="${E(s.brn)}" data-s="${E("اتسلّم "+hm(s.arr))}">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}
+ ${t.st==="done"?(()=>{const k=e?kmTo(e):null,l=N(t.end)-lastArr;return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0"><div><b>🏁 إنهاء الرحلة</b><small class="off" style="display:block">${e?"المكان اللي السائق قفل فيه الرحلة":t.forced?"اتقفلت من المستودع (مفيش موقع)":"الموبايل ماسجّلش موقع الإنهاء"}</small></div><div style="text-align:left">${hm(t.end)}<small class="off" style="display:block">${l>0?dur(l):""}${k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${e?`<a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(e.lat)}" data-lng="${N(e.lng)}" data-t="إنهاء الرحلة" data-s="${E(hm(t.end))}">📍</a>`:""}</div></div>`})():""}</div>
  ${t.note?`<div class="gn">${t.forced?"⏹ ":"ملاحظة السائق: "}${E(t.note)}</div>`:""}${fu.length?`<div class="off">⛽ بنزين في الرحلة: ${fu.map(f=>fmt(f.liters)+" لتر / "+fmt(f.cost)).join(" · ")}</div>`:""}
  <div class="off" style="font-size:12.5px">الكيلومترات اللي جنب كل فرع تقريبية (من أماكن التسليم)، والإجمالي الدقيق من العداد فوق.</div>
- <div class="fl2" style="margin-top:14px">${map?`<a class="bt p" href="${E(map)}" target="_blank" rel="noopener noreferrer">🗺 الرحلة على الخريطة</a>`:""}<button class="bt" data-fl="cancel" type="button">إغلاق</button></div>`);
+ <div class="fl2" style="margin-top:14px">${map?`<button class="bt p" data-fl="tmap" data-id="${E(t.id)}" type="button">🗺 الرحلة على الخريطة</button>`:""}<button class="bt" data-fl="cancel" type="button">إغلاق</button></div>`);
 }
 function report(){
  const d=fday,tr=TR.filter(t=>dk(t.start)===d).sort((a,b)=>N(a.start)-N(b.start));
@@ -232,7 +328,11 @@ async function click(e){
  const t=e.target.closest("[data-fl]");if(!t)return;const a=t.dataset.fl,id=t.dataset.id;
  try{
   if(!X.admin&&["car","carsave","cardel","fx","trx","drv","dtg","dpw","dcp","spw","dedit","dsave","dwa","gps","gnew","gmsg","gcp"].includes(a)){X.toast("الصلاحية دي للمدير فقط");return}
+  if(a==="tmap"||a==="pmap"||a==="mfit")e.preventDefault();// لينكات الخريطة (#)
   if(a==="cancel")closeM();
+  else if(a==="tmap")tripMapM(id);
+  else if(a==="pmap")pointM(t.dataset.lat,t.dataset.lng,t.dataset.t||"",t.dataset.s||"",id);
+  else if(a==="mfit")fitLive();
   else if(a==="car")carForm(id);
   else if(a==="carsave"){
    const nm=g("cn").value.trim();if(!nm){X.toast("اكتب اسم السيارة");return}
@@ -307,7 +407,7 @@ function note(t,b,tag){X.toast(b?t+" — "+b:t);if(!pushOn())notify(t,b,tag);bee
 export function alertsCount(){return X?alerts().length:0}
 export function initFleet(ctx){
  X=ctx;stop();
- if(!g("fl-css")){const s=document.createElement("style");s.id="fl-css";s.textContent=CSS;document.head.appendChild(s);ensurePrintCss()}
+ if(!g("fl-css")){const s=document.createElement("style");s.id="fl-css";s.textContent=CSS+MAP_CSS;document.head.appendChild(s);ensurePrintCss()}
  if(!window.__flc){window.__flc=1;document.addEventListener("click",click);document.addEventListener("change",e=>{const t=e.target;if(t.id==="fday"){fday=t.value;X.redraw()}if(t.id==="fmon"){fmon=t.value;X.redraw()}
   // التعيين الجماعي: بنحفظ الاختيار في الذاكرة علشان التحديث اللحظي مايمسحوش
   if(t.id==="bkd")bkD=t.value;if(t.id==="bkc")bkC=t.value;
@@ -333,4 +433,4 @@ export function initFleet(ctx){
   pF={};FU.forEach(f=>pF[f.id]=1);draw();
  },()=>{}));
 }
-export function stop(){un.forEach(f=>f());un=[];CARS=[];DRV=[];TR=[];FU=[];PW={};GEOD=null;geoReady=false;mode="";const m=g("flm");if(m){m.className="fm";m.innerHTML=""}}
+export function stop(){un.forEach(f=>f());un=[];dropLive();dropM();CARS=[];DRV=[];TR=[];FU=[];PW={};GEOD=null;geoReady=false;mode="";const m=g("flm");if(m){m.className="fm";m.innerHTML=""}}
