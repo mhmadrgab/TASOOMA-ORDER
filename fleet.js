@@ -14,7 +14,14 @@ const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz234567
 let X=null,CARS=[],DRV=[],TR=[],FU=[],PW={},GEOD=null,geoReady=false,un=[],pT=null,pF=null,mode="",fday="",fmon="",ctxEd=null;
 // الرحلات والبنزين: TRL/FUL = اللي بيتسمع لايف (الشهر ده واللي قبله)، OLDT/OLDF = شهور أقدم اتحمّلت لما حد طلبها،
 // TR/FU = الاتنين مع بعض (اللي كل الشاشات بتستخدمه)
-let TRL=[],FUL=[],OLDT=new Map(),OLDF=new Map(),LOADED=new Set();
+let TRL=[],FUL=[],OLDT=new Map(),OLDF=new Map(),LOADED=new Set(),DDR=null;
+// ddir/{drv1} = {n}: السواقين المفعّلين بس. بنكتب اللي اتغيّر بس (مش مع كل تحديث)
+function syncDdir(){
+ if(!X||!X.admin||!DDR||!DRV.length)return;
+ const want={};DRV.forEach(d=>{if(d.enabled&&/^drv\d{1,2}$/.test(d.id))want[d.id]=String(d.name||d.id).slice(0,60)});
+ Object.entries(want).forEach(([id,n])=>{if(!DDR[id]||DDR[id].n!==n){DDR[id]={n};setDoc(doc(X.db,"ddir",id),{n}).catch(()=>{})}});
+ Object.keys(DDR).forEach(id=>{if(!want[id]){delete DDR[id];deleteDoc(doc(X.db,"ddir",id)).catch(()=>{})}});
+}
 const liveSince=()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth()-1,1).getTime()};
 const monthStart=m=>{const [y,mo]=String(m).split("-").map(Number);return new Date(y,mo-1,1).getTime()};
 function mergeOld(){const ids=new Set(TRL.map(t=>t.id)),fid=new Set(FUL.map(f=>f.id));TR=[...[...OLDT.values()].filter(t=>!ids.has(t.id)),...TRL];FU=[...[...OLDF.values()].filter(f=>!fid.has(f.id)),...FUL]}
@@ -463,7 +470,9 @@ export function initFleet(ctx){
  pT=null;pF=null;
  const draw=()=>{if(X.tab()==="fl"&&mode==="")X.redraw()};
  un.push(onSnapshot(collection(X.db,"cars"),sn=>{CARS=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
- un.push(onSnapshot(collection(X.db,"drivers"),sn=>{DRV=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
+ un.push(onSnapshot(collection(X.db,"drivers"),sn=>{DRV=sn.docs.map(d=>({id:d.id,...d.data()}));draw();syncDdir()},()=>{}));
+ // أسماء السواقين للشات (ddir): الفروع والموظفين بيختاروا منها يكلّموا مين. بتتظبط لوحدها هنا (المدير بس)
+ if(X.admin)un.push(onSnapshot(collection(X.db,"ddir"),sn=>{DDR={};sn.docs.forEach(d=>{DDR[d.id]=d.data()});syncDdir()},()=>{}));
  if(X.admin)un.push(onSnapshot(collection(X.db,"secrets"),sn=>{PW={};sn.docs.forEach(d=>{if(/^drv\d+$/.test(d.id))PW[d.id]=d.data().pw});draw()},()=>{}));
  // توفير القراءات: بنسمع لايف الشهر ده واللي قبله بس (كانت سنة كاملة، وده كان هيخلّص حصة القراءة اليومية مع الوقت:
  // كل فتحة للوحة = كل رحلات السنة). الشهور الأقدم بتتحمّل مرة واحدة لما حد يختارها (loadMonth).
@@ -480,4 +489,4 @@ export function initFleet(ctx){
   pF={};FUL.forEach(f=>pF[f.id]=1);draw();
  },()=>{}));
 }
-export function stop(){un.forEach(f=>f());un=[];dropLive();dropM();CARS=[];DRV=[];TR=[];FU=[];TRL=[];FUL=[];OLDT=new Map();OLDF=new Map();LOADED=new Set();PW={};GEOD=null;geoReady=false;mode="";const m=g("flm");if(m){m.className="fm";m.innerHTML=""}}
+export function stop(){un.forEach(f=>f());un=[];DDR=null;dropLive();dropM();CARS=[];DRV=[];TR=[];FU=[];TRL=[];FUL=[];OLDT=new Map();OLDF=new Map();LOADED=new Set();PW={};GEOD=null;geoReady=false;mode="";const m=g("flm");if(m){m.className="fm";m.innerHTML=""}}

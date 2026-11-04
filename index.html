@@ -582,7 +582,7 @@ function enter(b){
  initGifts({db,toast,mode:"branch",code:code(b),brn:b,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:""},owner:()=>false,ping:ids=>ping(auth,[],[],[],ids)});
  // الشات الخاص مع المستودع (زرار عائم 💬 + زرار "كلّم المستودع" فوق + زرار على كل طلب): الفرع بيختار يكلّم مين،
  // وكل محادثة خاصة بين الفرع والشخص ده بس
- initBChat({db,by:"br",code:code(b),name:()=>String(st&&st.dr||"").trim(),brn:()=>b,toast,beep,notify,ping:c=>ping(auth,[],[c]),
+ initBChat({db,party:"b-"+code(b),codes:BR,name:()=>String(st&&st.dr||"").trim(),myLabel:()=>b,brn:c=>BR.find(x=>code(x)===c)||(c===code(b)?b:c),toast,beep,notify,ping:c=>ping(auth,[],[c]),
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))},onBadge:setBadge});
  // فتح من الإشعار: index.html?chat=إيميل الشخص (بيفتح محادثته على طول بعد ما الأسماء تتحمّل)
  const qc=new URLSearchParams(location.search).get("chat");if(qc!==null){setTimeout(()=>openBr(qc.toLowerCase()),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}

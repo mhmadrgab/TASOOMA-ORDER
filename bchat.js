@@ -1,4 +1,6 @@
-// الشات الخاص بين كل فرع وكل شخص في المستودع: نص + رسايل صوتية.
+// الشات الخاص: نص + رسايل صوتية. كل محادثة بين طرفين بس، ومحدش غيرهم يقدر يشوفها (ولا حتى المالك والمديرين).
+// الأطراف: الفروع (b-كود)، اللي في المستودع (w-إيميل)، السواقين (d-رقم). سواق مع سواق ممنوع (نوفمبر 2026).
+//   فرع مع المستودع (الشكل القديم، زي ما هو):
 // كل محادثة = فرع واحد + شخص واحد من المستودع (المالك أو مدير أو موظف طلبات). محدش غيرهم يقدر يشوفها، حتى المالك والمديرين
 // (firestore.rules هي اللي بتمنع ده، مش الصفحة بس). الفرع بيختار يكلّم مين من قايمة الأسماء (whdir).
 //   dm/{code}__{email}  = ملخّص: {br, brn, wh:إيميل الشخص, whn:اسمه, last:{by,n,t,ts,v}, lb, lw, rb, rw, nb, nw}
@@ -14,10 +16,12 @@ const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
 const isMob=()=>/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
 const SILENT="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
-const QUICK={br:["محتاجين بضاعة ضروري 🙏","فين طلبنا؟","تمام، شكراً 👍"],wh:["تمام 👍","جاري التجهيز ⏳","هيوصلكم النهارده 🚚","الصنف مش موجود حالياً"]};
+const QUICK={b:["محتاجين بضاعة ضروري 🙏","فين طلبنا؟","تمام، شكراً 👍"],w:["تمام 👍","جاري التجهيز ⏳","هيوصلكم النهارده 🚚","الصنف مش موجود حالياً"],d:["في الطريق 🚚","وصلت ✅","هتأخر شوية ⏳","تمام 👍"]};
+// المحادثات الجديدة (سواقين، موظفين مع بعض، فروع مع بعض): dm/{طرف1}__{طرف2} مترتبين = {ps:[الطرفين], nm:{طرف:اسمه}, last:{by:الطرف,...},
+//   l0/l1 آخر رسالة من الطرف 0/1، r0/r1 قرا لحد إمتى، n0/n1 لسه ماقراش كام}، والرسايل by = الطرف. ddir/{drv1} = {n} أسماء السواقين
 const ROLE_O={owner:0,admin:1,req:2};// ترتيب القايمة عند الفرع بس (مش بيظهر)
 // CUR = المحادثة المفتوحة (cid). CTX = "بخصوص طلب" لكل محادثة، PEND = طلب مستني الفرع يختار يكلّم مين عنه. AVA = الصور
-let X=null,SUMS={},DIR={},AVA={},CUR=null,GEN=0,UNM=null,UNS=null,UND=null,UNA=null,MSGS=[],LIM=PAGE,DRAFT={},CTX={},PEND=null,REC=null,PLAY={id:null,au:null},busy=false,marking=false,first=true,keepTop=null,ROOT=null,Q="";
+let X=null,SUMS={},SO={},SN={},DIR={},DDIR={},AVA={},FILT="",CUR=null,GEN=0,UNM=null,UNS=null,UNS2=null,UND=null,UNA=null,UNDD=null,MSGS=[],LIM=PAGE,DRAFT={},CTX={},PEND=null,REC=null,PLAY={id:null,au:null},busy=false,marking=false,first=true,keepTop=null,ROOT=null,Q="";
 const AUD=new Map();let SCR={t:0,end:true,l:0};
 const STYLE=`
 .bcv [hidden]{display:none!important}
@@ -63,7 +67,7 @@ const STYLE=`
 .bcl{border-inline-end:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .bclh{display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(135deg,#1b1b1b,#2b2416);color:#f3e7c8;flex:none}
 .bclh>div{flex:1;min-width:0}.bclh b{display:block;font-size:16.5px}.bclh small{display:block;opacity:.8;font-size:12.5px}
-.bcs{padding:10px;flex:none}.bcs input{width:100%;font:inherit;font-size:15px;border-radius:12px;border:1.5px solid var(--line);background:var(--field,#f3f1ed);color:var(--ink);padding:9px 12px}
+.bcs{padding:10px;flex:none}.bcfl{display:flex;gap:6px;overflow-x:auto;margin-top:8px;scrollbar-width:none}.bcfl::-webkit-scrollbar{display:none}.bcfl button{font:inherit;font-size:13px;white-space:nowrap;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:4px 12px;cursor:pointer}.bcfl button.on{background:#1b1b1b;color:#fff;border-color:#1b1b1b}.bcs input{width:100%;font:inherit;font-size:15px;border-radius:12px;border:1.5px solid var(--line);background:var(--field,#f3f1ed);color:var(--ink);padding:9px 12px}
 .bcli{overflow-y:auto;flex:1}
 .bcr{display:flex;gap:10px;align-items:center;width:100%;padding:10px 12px;border:0;border-bottom:1px solid var(--line);background:none;text-align:start;font:inherit;color:var(--ink);cursor:pointer}
 .bcr:hover{background:var(--soft,#f6f2e9)}.bcr.on{background:var(--soft,#f6f2e9);box-shadow:inset -4px 0 0 var(--acc)}
@@ -109,37 +113,49 @@ const hm=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-
 const dayOf=t=>new Date(N(t)).toLocaleDateString("ar-EG-u-nu-latn",{weekday:"long",day:"numeric",month:"long"});
 const when=t=>{if(!t)return "";const d=new Date(N(t)),n=new Date();return d.toDateString()===n.toDateString()?hm(t):Date.now()-N(t)<6*864e5?d.toLocaleDateString("ar-EG-u-nu-latn",{weekday:"short"}):d.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit"})};
 const mmss=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
-const nameOf=code=>X.brn(code)||code;
-// اسم المحادثة = كود الفرع + "__" + إيميل الشخص اللي في المستودع
-const cidOf=p=>X.by==="wh"?p+SEP+X.me:X.code+SEP+p;
-const codeOf=c=>c.slice(0,c.indexOf(SEP));
-const whOf=c=>c.slice(c.indexOf(SEP)+SEP.length);
-const peerName=c=>{if(X.by==="wh")return nameOf(codeOf(c));const d=DIR[whOf(c)],s=SUMS[c];return (d&&d.n)||(s&&s.whn)||whOf(c).split("@")[0]};
-// الشخص اللي في المستودع (في المحادثة دي): اسمه وكنيته وصورته
-const whName=c=>{const d=DIR[whOf(c)],s=SUMS[c];return (d&&d.n)||(s&&s.whn)||""};
-const whK=c=>{const d=DIR[whOf(c)];return d&&d.k||""};
-const ph=em=>AVA[em]||"";
-// رسايل لسه ماتقرتش عند الطرف ده
-function unreadOf(s){if(!s)return 0;return X.by==="br"?(N(s.nb)||(N(s.lw)>N(s.rb)?1:0)):(N(s.nw)||(N(s.lb)>N(s.rw)?1:0))}
-// المستودع: كام فرع مستني رد. الفرع: كام رسالة جديدة في كل محادثاته
-export function unreadTotal(){if(!X)return 0;return Object.values(SUMS).reduce((a,s)=>a+(X.by==="wh"?(unreadOf(s)?1:0):unreadOf(s)),0)}
+// الأطراف: b-كود الفرع / w-إيميل الشخص اللي في المستودع / d-رقم السواق. X.me = طرفي أنا
+const T=()=>X.me[0];
+const pv=p=>String(p).slice(2);
+const isOld=c=>/^\d{3}__/.test(c);// فرع مع المستودع: الشكل القديم {كود}__{إيميل}
+// اسم المحادثة مع الطرف ده: فرع مع المستودع بالشكل القديم، والباقي {طرف}__{طرف} مترتبين
+function cidFor(peer){const t=[T(),peer[0]].sort().join("");if(t==="bw"){const b=T()==="b"?X.me:peer,w=T()==="w"?X.me:peer;return pv(b)+SEP+pv(w)}return [X.me,peer].sort().join(SEP)}
+function peerOf(c){if(isOld(c)){const i=c.indexOf(SEP);return T()==="b"?"w-"+c.slice(i+SEP.length):"b-"+c.slice(0,i)}const [a,b]=c.split(SEP);return a===X.me?b:a}
+const oldBy=()=>T()==="b"?"br":"wh";// اسمي جوه المحادثات القديمة
+const mine=(c,by)=>isOld(c)?by===oldBy():by===X.me;
+// صاحب الرسالة (كطرف): القديمة br/wh، الجديدة الطرف نفسه
+const byParty=(c,by)=>isOld(c)?(by==="br"?"b-"+c.slice(0,c.indexOf(SEP)):"w-"+c.slice(c.indexOf(SEP)+SEP.length)):String(by||"");
+function pname(p,c){const t=p[0],v=pv(p),s=c&&SUMS[c];
+  if(t==="b")return X.brn(v)||v;
+  if(t==="d"){const d=DDIR[v];return (d&&d.n)||(s&&s.nm&&s.nm[p])||v}
+  const d=DIR[v];return (d&&d.n)||(s&&(s.whn||(s.nm&&s.nm[p])))||v.split("@")[0]}
+const pk=p=>p[0]==="w"?((DIR[pv(p)]||{}).k||""):"";
+const ph=p=>p&&p[0]==="w"?AVA[pv(p)]||"":"";
+// لسه ماقريتش كام في المحادثة دي
+function unreadOf(s){if(!s)return 0;
+  if(s._old)return T()==="b"?(N(s.nb)||(N(s.lw)>N(s.rb)?1:0)):(N(s.nw)||(N(s.lb)>N(s.rw)?1:0));
+  const i=s.ps.indexOf(X.me),o=1-i;return N(s["n"+i])||(N(s["l"+o])>N(s["r"+i])?1:0)}
+// المستودع: كام محادثة مستنية رد. الفرع والسواق: كام رسالة جديدة
+export function unreadTotal(){if(!X)return 0;return Object.values(SUMS).reduce((a,s)=>a+(T()==="w"?(unreadOf(s)?1:0):unreadOf(s)),0)}
 // زرار "كلّم ... عن الطلب ده" على كارت الطلب (cls = شكل الزرار في الصفحة)
-export const rqBtn=(r,cls)=>X?`<button class="${cls||"bcrqb"}" data-bcrq="${E(r.id)}" data-no="${E(r.no||"")}" data-br="${E(r.br||"")}" type="button" title="محادثة خاصة بخصوص الطلب ده">💬 ${X.by==="br"?"كلّم المستودع":"كلّم الفرع"}</button>`:"";
-// ---------- المحادثة نفسها (مشتركة بين اللوحة والفرع) ----------
+export const rqBtn=(r,cls)=>X&&T()!=="d"?`<button class="${cls||"bcrqb"}" data-bcrq="${E(r.id)}" data-no="${E(r.no||"")}" data-br="${E(r.br||"")}" type="button" title="محادثة خاصة بخصوص الطلب ده">💬 ${T()==="b"?"كلّم المستودع":"كلّم الفرع"}</button>`:"";
+const modal=()=>T()!=="w";// الفرع والسواق: نافذة. المستودع: تبويب
+const GRP={w:[["","الكل"],["b","الفروع"],["d","السواقين"],["w","الموظفين"]],b:[["","الكل"],["w","المستودع"],["d","السواقين"],["b","الفروع"]],d:[["","الكل"],["w","المستودع"],["b","الفروع"]]};
+// ---------- المحادثة نفسها (مشتركة بين اللوحة والفرع والسواق) ----------
 function convHtml(){
-  return `<div class="bch"><button class="bcback" data-bcback type="button" aria-label="رجوع">→</button><span id="bcav"></span><div><b id="bct"></b><small id="bcsub"></small></div>${X.by==="br"?`<button data-bcclose type="button" aria-label="قفل">✕</button>`:""}</div>
+  return `<div class="bch"><button class="bcback" data-bcback type="button" aria-label="رجوع">→</button><span id="bcav"></span><div><b id="bct"></b><small id="bcsub"></small></div>${modal()?`<button data-bcclose type="button" aria-label="قفل">✕</button>`:""}</div>
   <div class="bcms" id="bcms"></div>
   <div class="bcrq" id="bcrq" hidden></div>
-  <div class="bcq">${QUICK[X.by].map(q=>`<button data-bcq="${E(q)}" type="button">${E(q)}</button>`).join("")}</div>
+  <div class="bcq">${(QUICK[T()]||[]).map(q=>`<button data-bcq="${E(q)}" type="button">${E(q)}</button>`).join("")}</div>
   <div class="bcf" id="bcfoot"><textarea id="bcin" rows="1" maxlength="${LEN}" placeholder="اكتب رسالة..."></textarea><button class="mic" id="bcmic" type="button" title="رسالة صوتية" aria-label="رسالة صوتية">🎤</button><button id="bcsend" type="button">إرسال</button></div>
   <div class="bcr2" id="bcrec" hidden><span class="dot"></span><span class="tm" id="bcrt">0:00</span><button class="x" data-bccancel type="button">✕ إلغاء</button><button class="ok" data-bcstop type="button">✔ إرسال</button></div>`;
 }
+const emptyTxt=()=>`<div class="bcnone">💬<br>اختار من القائمة علشان تبدأ محادثة<br><small>🔒 محادثاتك خاصة بيك، محدش غيرك بيشوفها</small></div>`;
 function buildRoot(){
-  const r=document.createElement("div");r.className="bcw"+(X.by==="br"?" one":"");
-  r.innerHTML=`<aside class="bcl">${X.by==="br"?`<div class="bclh"><div><b>💬 كلّم المستودع</b><small id="bcpend"></small></div><button data-bcclose type="button" aria-label="قفل">✕</button></div>`:""}<div class="bcs"><input id="bcqs" type="search" placeholder="${X.by==="br"?"🔎 دوّر على اسم":"🔎 دوّر على فرع"}" autocomplete="off"></div><div class="bcli"></div></aside><section class="bcv empty">${convHtml()}</section>`;
+  const r=document.createElement("div");r.className="bcw"+(modal()?" one":"");
+  r.innerHTML=`<aside class="bcl">${modal()?`<div class="bclh"><div><b>💬 المحادثات</b><small id="bcpend"></small></div><button data-bcclose type="button" aria-label="قفل">✕</button></div>`:""}<div class="bcs"><input id="bcqs" type="search" placeholder="🔎 دوّر على اسم أو فرع" autocomplete="off"><div class="bcfl">${(GRP[T()]||[]).filter(([k])=>!(T()==="w"&&k==="b"&&!X.canBr)).map(([k,l])=>`<button type="button" data-bcf="${k}" class="${FILT===k?"on":""}">${E(l)}</button>`).join("")}</div></div><div class="bcli"></div></aside><section class="bcv empty">${convHtml()}</section>`;
   wire(r);
   r.addEventListener("scroll",e=>{const t=e.target;if(t.id==="bcms")SCR={...SCR,t:t.scrollTop,end:t.scrollHeight-t.scrollTop-t.clientHeight<90};else if(t.classList&&t.classList.contains("bcli"))SCR.l=t.scrollTop},true);
-  r.querySelector("#bcms").innerHTML=X.by==="wh"?`<div class="bcnone">💬<br>اختار فرع من القائمة علشان تكلّمه<br><small>🔒 محادثاتك خاصة بيك، محدش غيرك بيشوفها</small></div>`:"";
+  r.querySelector("#bcms").innerHTML=modal()?"":emptyTxt();
   return r;
 }
 function wire(el){
@@ -155,7 +171,8 @@ function wire(el){
     if(t.closest("[data-bcmore]")){keepTop={h:g("bcms").scrollHeight,t:g("bcms").scrollTop};LIM+=PAGE;listen(GEN);return}
     if(t.closest("[data-bcback]")){if(ROOT)ROOT.classList.remove("open");setCode(null);paintList();return}
     if(t.closest("[data-bcclose]"))return void closeBr();
-    const r=t.closest("[data-bcc]");if(r){setCode(cidOf(r.dataset.bcc));if(ROOT)ROOT.classList.add("open");paintList();if(!isMob())setTimeout(()=>{const i=g("bcin");if(i)i.focus()},50)}
+    const f=t.closest("[data-bcf]");if(f){FILT=f.dataset.bcf;el.querySelectorAll("[data-bcf]").forEach(b=>b.classList.toggle("on",b.dataset.bcf===FILT));paintList();return}
+    const r=t.closest("[data-bcc]");if(r){setCode(cidFor(r.dataset.bcc));if(ROOT)ROOT.classList.add("open");paintList();if(!isMob())setTimeout(()=>{const i=g("bcin");if(i)i.focus()},50)}
   });
   el.addEventListener("keydown",e=>{
     // الكمبيوتر: Enter يبعت و Shift+Enter سطر جديد. الموبايل: Enter سطر جديد عادي
@@ -168,11 +185,13 @@ function paintHead(){
   if(!g("bct"))return;
   const av=g("bcav");if(av)av.innerHTML="";
   if(!CUR){g("bct").textContent="";g("bcsub").textContent="";return}
-  if(X.by==="br"){const k=whK(CUR),p=ph(whOf(CUR));g("bct").textContent=peerName(CUR);g("bcsub").textContent=`${k?k+" · ":""}🔒 محادثة خاصة بينكم بس`;if(av&&p)av.innerHTML=`<img class="av" src="${p}" alt="">`}
-  else{g("bct").innerHTML=`<bdi dir="ltr">${E(peerName(CUR))}</bdi>`;g("bcsub").textContent="🔒 محادثة خاصة بينك وبين الفرع بس"}
+  const p=peerOf(CUR),k=pk(p),img=ph(p);
+  g("bct").innerHTML=`${p[0]==="d"?"🚚 ":p[0]==="b"?"🏬 ":""}<bdi${p[0]==="b"?' dir="ltr"':""}>${E(pname(p,CUR))}</bdi>`;
+  g("bcsub").textContent=`${k?k+" · ":""}🔒 محادثة خاصة بينكم بس`;
+  if(av&&img)av.innerHTML=`<img class="av" src="${img}" alt="">`;
 }
 function paintCtx(){const b=g("bcrq");if(!b)return;const c=CUR&&CTX[CUR];b.hidden=!c;if(c)b.innerHTML=`<span>📦 بخصوص طلب <bdi dir="ltr">${E(c.no)}</bdi></span><button data-bcrqx type="button" aria-label="شيل">✕</button>`}
-function paintPend(){const p=g("bcpend");if(p)p.innerHTML=PEND?`📦 بخصوص طلب <bdi dir="ltr">${E(PEND.no)}</bdi> — اختار تكلّم مين`:"اختار الشخص اللي عايز تكلّمه · 🔒 كل محادثة خاصة"}
+function paintPend(){const p=g("bcpend");if(p)p.innerHTML=PEND?`📦 بخصوص طلب <bdi dir="ltr">${E(PEND.no)}</bdi> — اختار تكلّم مين`:"اختار تكلّم مين · 🔒 كل محادثة خاصة"}
 // كل تغيير في المحادثة المفتوحة: نقفل السماع القديم ونبدأ جديد. GEN بيتأكد إن أي رد متأخر من محادثة تانية يتجاهل (مفيش تداخل)
 function setCode(cid){
   if(CUR===cid)return;
@@ -184,7 +203,7 @@ function setCode(cid){
   if(!g("bcms"))return;
   const i=g("bcin");if(i){i.value=cid?DRAFT[cid]||"":"";grow()}
   paintHead();paintCtx();
-  if(!cid){g("bcms").innerHTML=X.by==="wh"?`<div class="bcnone">💬<br>اختار فرع من القائمة علشان تكلّمه<br><small>🔒 محادثاتك خاصة بيك، محدش غيرك بيشوفها</small></div>`:"";return}
+  if(!cid){g("bcms").innerHTML=modal()?"":emptyTxt();return}
   g("bcms").innerHTML=`<div class="bcmt">⏳ لحظة...</div>`;
   listen(GEN);
 }
@@ -193,22 +212,27 @@ function listen(my){
   const cid=CUR;if(!cid)return;
   UNM=onSnapshot(query(collection(X.db,"dm",cid,"msgs"),orderBy("ts","desc"),limit(LIM)),sn=>{
     if(my!==GEN||cid!==CUR)return;
-    MSGS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m&&(m.by==="br"||m.by==="wh")).sort((a,b)=>N(a.ts)-N(b.ts));
+    MSGS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m&&typeof m.by==="string").sort((a,b)=>N(a.ts)-N(b.ts));
     paintMsgs();markRead();
-  },e=>{if(my!==GEN||!g("bcms"))return;g("bcms").innerHTML=`<div class="bcmt">⚠️ تعذر تحميل الرسايل${e&&e.code==="permission-denied"?" (مش مسموح)":"، اتأكد من النت"}</div>`});
+  },e=>{if(my!==GEN||!g("bcms"))return;
+    // محادثة جديدة لسه مااتعملتش (مفيش ولا رسالة): مش غلط
+    if(e&&e.code==="permission-denied"&&!SUMS[cid]){MSGS=[];paintMsgs();return}
+    g("bcms").innerHTML=`<div class="bcmt">⚠️ تعذر تحميل الرسايل${e&&e.code==="permission-denied"?" (مش مسموح)":"، اتأكد من النت"}</div>`});
 }
 // اتقرت إمتى: لو نفس يوم الإرسال الساعة بس، غير كده اليوم كمان
 const rdAt=(rd,ts)=>new Date(N(rd)).toDateString()===new Date(N(ts)).toDateString()?hm(rd):when(rd)+" "+hm(rd);
+function whoHtml(ap,m){
+  if(ap[0]==="w"){const img=ph(ap),k=pk(ap),n=(DIR[pv(ap)]&&DIR[pv(ap)].n)||m.n||"المستودع";return `${img?`<img src="${img}" alt="">`:""}${E(n)}${k?` · ${E(k)}`:""}`}
+  if(ap[0]==="b")return `${m.n?E(m.n)+" · ":""}فرع <bdi dir="ltr">${E(X.brn(pv(ap))||pv(ap))}</bdi>`;
+  return `🚚 ${E(m.n||pname(ap))}`;
+}
 function paintMsgs(){
   const box=g("bcms");if(!box||!CUR)return;
   const atEnd=box.scrollHeight-box.scrollTop-box.clientHeight<90,firstPaint=!box.querySelector(".bcg,.bcmt.ok");
-  const brn=X.by==="br"?X.brn():nameOf(codeOf(CUR));
   let h=MSGS.length>=LIM?`<button class="bcmore" data-bcmore type="button">⬆ رسايل أقدم</button>`:"",d="";
-  if(!MSGS.length)h+=`<div class="bcmt ok">💬 مفيش رسايل لسه.<br>${X.by==="br"?`اكتب لـ ${E(peerName(CUR))} أي حاجة، أو دوس 🎤 وسجّل رسالة صوتية.`:"ابدأ المحادثة مع الفرع."}<br><small>🔒 الرسايل هنا محدش يشوفها غيركم</small></div>`;
+  if(!MSGS.length)h+=`<div class="bcmt ok">💬 مفيش رسايل لسه.<br>اكتب لـ ${E(pname(peerOf(CUR),CUR))} أي حاجة، أو دوس 🎤 وسجّل رسالة صوتية.<br><small>🔒 الرسايل هنا محدش يشوفها غيركم</small></div>`;
   MSGS.forEach(m=>{const dd=dayOf(m.ts);if(dd!==d){d=dd;h+=`<div class="bcday">${E(dd)}</div>`}
-    // اللي كتب: من المستودع = صورته واسمه وكنيته، من الفرع = اسمه (لو كتبه) واسم الفرع
-    const me=m.by===X.by,wn=whName(CUR)||m.n||"المستودع",wk=whK(CUR),wp=ph(whOf(CUR));
-    const who=m.by==="wh"?`${wp?`<img src="${wp}" alt="">`:""}${E(wn)}${wk?` · ${E(wk)}`:""}`:`${m.n?E(m.n)+" · ":""}فرع <bdi dir="ltr">${E(brn)}</bdi>`;
+    const me=mine(CUR,m.by),who=whoHtml(byParty(CUR,m.by),m);
     // gone: السيرفر مسح الصوت بعد 30 يوم (علشان مساحة Firebase المجانية)
     const body=m.v&&m.gone?`<div class="bcgone">🎤 رسالة صوتية (${mmss(m.d)}) · اتمسحت تلقائياً بعد 30 يوم</div>`:m.v?`<div class="bcvo"><button data-play="${E(m.id)}" type="button" aria-label="تشغيل">${PLAY.id===m.id?"⏸":"▶"}</button><span class="bar"><b id="bcpb-${E(m.id)}"></b></span><span class="du">${mmss(m.d)}</span></div>`:E(m.t||"");
     const rq=m.rq&&m.rq.no?`<span class="rqt">📦 بخصوص طلب <bdi dir="ltr">${E(m.rq.no)}</bdi></span>`:"";
@@ -221,26 +245,32 @@ function paintMsgs(){
 // "اتقرت": لما المحادثة مفتوحة قدامه فعلاً. بنسجّل وقت القراية على كل رسالة من الطرف التاني (rd) + نصفّر العدّاد
 function markRead(){
   if(!X||!CUR||document.hidden||marking||!X.visible())return;
-  const s=SUMS[CUR],un=MSGS.filter(m=>m.by!==X.by&&!m.rd).slice(-100);
+  const s=SUMS[CUR],un=MSGS.filter(m=>!mine(CUR,m.by)&&!m.rd).slice(-100);
   if(!(s&&unreadOf(s))&&!un.length)return;
   marking=true;const cid=CUR,now=Date.now(),b=writeBatch(X.db);
-  if(s&&unreadOf(s))b.update(doc(X.db,"dm",cid),X.by==="br"?{rb:now,nb:0}:{rw:now,nw:0});
+  if(s&&unreadOf(s)){if(s._old)b.update(doc(X.db,"dm",cid),T()==="b"?{rb:now,nb:0}:{rw:now,nw:0});else{const i=s.ps.indexOf(X.me);b.update(doc(X.db,"dm",cid),{["r"+i]:now,["n"+i]:0})}}
   un.forEach(m=>b.update(doc(X.db,"dm",cid,"msgs",m.id),{rd:now}));
   b.commit().catch(()=>{}).finally(()=>{marking=false});
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)markRead()});
 // ---------- الإرسال ----------
 function write(cid,m,a){
-  const ts=Date.now(),by=X.by,n=String(X.name()||"").trim().slice(0,60),b=writeBatch(X.db),ref=doc(collection(X.db,"dm",cid,"msgs"));
-  const rq=CTX[cid],msg={by,n,ts,...m,...(rq?{rq:{id:String(rq.id).slice(0,40),no:String(rq.no).slice(0,40)}}:{})};
+  const ts=Date.now(),n=String(X.name()||"").trim().slice(0,60),b=writeBatch(X.db),ref=doc(collection(X.db,"dm",cid,"msgs"));
+  const old=isOld(cid),by=old?oldBy():X.me,rq=CTX[cid],msg={by,n,ts,...m,...(rq?{rq:{id:String(rq.id).slice(0,40),no:String(rq.no).slice(0,40)}}:{})};
   if(a)b.set(doc(X.db,"dm",cid,"aud",ref.id),{a});
   b.set(ref,msg);
-  const code=codeOf(cid),wh=whOf(cid);
-  const sum={brn:String(nameOf(code)).slice(0,40),last:{by,n,t:m.v?"🎤 رسالة صوتية":String(m.t).slice(0,200),ts,v:!!m.v}};
-  // اسم الشخص: المستودع بيحدّثه دايماً، والفرع بيكتبه بس في أول رسالة (القواعد مش بتسمح للفرع يغيّره)
-  if(by==="wh")Object.assign(sum,{br:code,wh,whn:n||"المستودع",lw:ts,rw:ts,nb:increment(1)});
-  else Object.assign(sum,SUMS[cid]?{}:{br:code,wh,whn:String(peerName(cid)).slice(0,60)},{lb:ts,rb:ts,nw:increment(1)});
-  b.set(doc(X.db,"dm",cid),sum,{merge:true});
+  const last={by,n,t:m.v?"🎤 رسالة صوتية":String(m.t).slice(0,200),ts,v:!!m.v};
+  if(old){
+    const code=cid.slice(0,cid.indexOf(SEP)),wh=cid.slice(cid.indexOf(SEP)+SEP.length),sum={brn:String(X.brn(code)||code).slice(0,40),last};
+    // اسم الشخص: المستودع بيحدّثه دايماً، والفرع بيكتبه بس في أول رسالة (القواعد مش بتسمح للفرع يغيّره)
+    if(by==="wh")Object.assign(sum,{br:code,wh,whn:n||"المستودع",lw:ts,rw:ts,nb:increment(1)});
+    else Object.assign(sum,SUMS[cid]?{}:{br:code,wh,whn:String(pname("w-"+wh,cid)).slice(0,60)},{lb:ts,rb:ts,nw:increment(1)});
+    b.set(doc(X.db,"dm",cid),sum,{merge:true});
+  }else{
+    // الجديدة: الطرفين مترتبين، وأنا الطرف رقم i. اسمي في nm (كل واحد بيكتب اسمه هو بس)
+    const peer=peerOf(cid),ps=[X.me,peer].sort(),i=ps.indexOf(X.me),o=1-i;
+    b.set(doc(X.db,"dm",cid),{ps,nm:{[X.me]:String(X.myLabel?X.myLabel():n||pname(X.me)).slice(0,60)},last,["l"+i]:ts,["r"+i]:ts,["n"+o]:increment(1)},{merge:true});
+  }
   return b.commit();
 }
 async function deliver(cid,m,a,onOk){
@@ -250,7 +280,8 @@ async function deliver(cid,m,a,onOk){
     const w=await failReason(x);
     // النت بطيء: الرسالة محفوظة على الجهاز وهتتبعت لوحدها (ما نبعتهاش تاني علشان ما تتكررش)
     if(w==="slow"){onOk&&onOk();X.toast("⏳ النت بطيء: الرسالة هتتبعت لوحدها أول ما الاتصال يتحسّن");X.ping(cid)}
-    else X.toast(w==="denied"?(X.by==="br"&&!DIR[whOf(cid)]?"الشخص ده مابقاش في المستودع. اختار حد تاني":"مش مسموح لك تبعت في المحادثة دي"):FAIL_MSG[w]||"تعذر الإرسال",true);
+    else{const p=peerOf(cid),gone=(p[0]==="w"&&!DIR[pv(p)])||(p[0]==="d"&&!DDIR[pv(p)]);
+      X.toast(w==="denied"?(gone?"الشخص ده مابقاش موجود. اختار حد تاني":"مش مسموح لك تبعت في المحادثة دي (ممكن القواعد لسه ما اتحدّثتش)"):FAIL_MSG[w]||"تعذر الإرسال",true)}
   }
   busy=false;if(g("bcsend"))g("bcsend").disabled=false;
 }
@@ -259,6 +290,7 @@ function sendText(){
   const t=i.value.trim().slice(0,LEN),cid=CUR;if(!t)return;
   deliver(cid,{t},null,()=>{DRAFT[cid]="";if(CUR===cid){i.value="";grow()}});
 }
+
 // ---------- الرسايل الصوتية ----------
 function paintRec(){
   const r=g("bcrec"),f=g("bcfoot"),q=ROOT&&ROOT.querySelector(".bcq");if(!r)return;
@@ -320,27 +352,33 @@ async function play(id){
   au.onerror=()=>{if(PLAY.au===au){stopPlay();X.toast("الجهاز ده مش قادر يشغّل الرسالة الصوتية دي",true)}};
   try{await au.play();const b=btn();if(b&&PLAY.au===au)b.textContent="⏸"}catch(e){if(PLAY.au===au){stopPlay();X.toast("دوس ▶ تاني علشان تسمع الرسالة")}}
 }
-// ---------- القايمة: فروع (للمستودع) أو أسماء المستودع (للفرع) ----------
+// ---------- القايمة: كل اللي أقدر أكلّمهم ----------
+// المستودع: الفروع (لو معاه الطلبات أو مدير) + السواقين + الموظفين. الفرع: المستودع (اللي بيرد على الفروع بس) + السواقين + الفروع.
+// السواق: المستودع + الفروع. (سواق مع سواق ممنوع)
+function people(){
+  const out=[],seen=new Set(),add=p=>{if(p&&p!==X.me&&!seen.has(p)){seen.add(p);out.push(p)}};
+  const brs=()=>(X.codes||[]).forEach(b=>add("b-"+String(b).split("-")[0]));
+  if(T()==="w"){if(X.canBr)brs();Object.keys(DDIR).forEach(d=>add("d-"+d));Object.keys(DIR).forEach(e=>add("w-"+e))}
+  else if(T()==="b"){Object.entries(DIR).forEach(([e,d])=>{if(["owner","admin","req"].includes(d&&d.r))add("w-"+e)});Object.keys(DDIR).forEach(d=>add("d-"+d));brs()}
+  else{Object.keys(DIR).forEach(e=>add("w-"+e));brs()}
+  Object.values(SUMS).forEach(s=>add(s._peer));// محادثات مع ناس مابقوش في القايمة بتفضل ظاهرة
+  return out;
+}
 function paintList(){
   if(!ROOT)return;const box=ROOT.querySelector(".bcli");if(!box)return;
-  let rows;
-  if(X.by==="wh"){
-    const codes=[...new Set([...X.codes.map(b=>String(b).split("-")[0]),...Object.values(SUMS).map(s=>String(s.br))])];
-    rows=codes.map(c=>{const cid=cidOf(c),s=SUMS[cid];return {k:c,cid,s,u:unreadOf(s),n:nameOf(c),av:E(c),o:0}});
-  }else{
-    const ems=[...new Set([...Object.keys(DIR),...Object.values(SUMS).map(s=>String(s.wh))])];
-    rows=ems.map(em=>{const cid=cidOf(em),s=SUMS[cid],d=DIR[em],n=(d&&d.n)||(s&&s.whn)||em.split("@")[0];
-      return {k:em,cid,s,u:unreadOf(s),n,av:E([...n][0]||"؟"),img:ph(em),p:1,role:d?d.k||"":"مابقاش في المستودع",o:d?ROLE_O[d.r]:9}});
-  }
-  rows=rows.filter(x=>!Q||x.n.toLowerCase().includes(Q)||x.k.toLowerCase().includes(Q))
+  const rows=people().filter(p=>!FILT||p[0]===FILT).map(p=>{
+    const cid=cidFor(p),s=SUMS[cid],n=pname(p,cid),t=p[0],d=t==="w"?DIR[pv(p)]:null;
+    const role=t==="w"?(d?d.k||"":"مابقاش في المستودع"):t==="d"?(DDIR[pv(p)]?"سواق":"مابقاش موجود"):"";
+    return {p,cid,s,u:unreadOf(s),n,img:ph(p),av:t==="b"?E(pv(p)):t==="d"?"🚚":E([...n][0]||"؟"),cls:t==="b"?"":" p",role,o:t==="w"?(d?ROLE_O[d.r]??3:9):t==="d"?4:5};
+  }).filter(x=>!Q||x.n.toLowerCase().includes(Q)||x.p.toLowerCase().includes(Q))
     .sort((a,b)=>(b.u>0)-(a.u>0)||N(b.s&&b.s.last&&b.s.last.ts)-N(a.s&&a.s.last&&a.s.last.ts)||a.o-b.o||a.n.localeCompare(b.n));
-  box.innerHTML=rows.map(x=>{const l=x.s&&x.s.last;const pv=l?(l.by===X.by?"أنت: ":"")+l.t:(X.by==="br"?"ابدأ محادثة":"مفيش رسايل لسه");
-    return `<button class="bcr${x.cid===CUR?" on":""}${x.u?" nw":""}" data-bcc="${E(x.k)}" type="button">${x.img?`<img class="av" src="${x.img}" alt="">`:`<span class="av${x.p?" p":""}">${x.av}</span>`}<span class="nm"><b><bdi${X.by==="wh"?' dir="ltr"':""}>${E(x.n)}</bdi>${x.role?`<u>${E(x.role)}</u>`:""}</b><small>${E(pv)}</small></span><span class="mt"><small>${l?when(l.ts):""}</small>${x.u?`<i>${x.u}</i>`:""}</span></button>`}).join("")
-    ||`<div class="bcnone">${X.by==="br"&&!Q?"لسه مفيش أسماء في المستودع":"مفيش نتايج بالاسم ده"}</div>`;
+  box.innerHTML=rows.map(x=>{const l=x.s&&x.s.last;const pvw=l?(mine(x.cid,l.by)?"أنت: ":"")+l.t:"ابدأ محادثة";
+    return `<button class="bcr${x.cid===CUR?" on":""}${x.u?" nw":""}" data-bcc="${E(x.p)}" type="button">${x.img?`<img class="av" src="${x.img}" alt="">`:`<span class="av${x.cls}">${x.av}</span>`}<span class="nm"><b><bdi${x.p[0]==="b"?' dir="ltr"':""}>${E(x.n)}</bdi>${x.role?`<u>${E(x.role)}</u>`:""}</b><small>${E(pvw)}</small></span><span class="mt"><small>${l?when(l.ts):""}</small>${x.u?`<i>${x.u}</i>`:""}</span></button>`}).join("")
+    ||`<div class="bcnone">${Q?"مفيش نتايج بالاسم ده":"لسه مفيش حد هنا"}</div>`;
 }
 // الصفحة بتعيد رسم نفسها كتير، فالشات عنصر ثابت بنحطّه في مكانه كل مرة (الكتابة والتسجيل مايضيعوش)
 export function mountWh(host){
-  if(!X||!host||X.by!=="wh")return;
+  if(!X||!host||modal())return;
   if(!ROOT)ROOT=buildRoot();
   // نقل العنصر بيصفّر مكان السكرول، فبنرجّعه زي ما كان
   host.appendChild(ROOT);paintList();
@@ -348,71 +386,88 @@ export function mountWh(host){
   if(CUR){paintHead();markRead()}
 }
 // خرجنا من تبويب الشات: نقفل المحادثة المفتوحة (توفير قراءات + وقف أي تسجيل)
-export function hideWh(){if(CUR&&X&&X.by==="wh"){setCode(null);if(ROOT)ROOT.classList.remove("open")}}
-// rq = بخصوص طلب (من زرار الطلب)
-export function openWh(code,rq){
-  if(!X||X.by!=="wh"||!/^\d{3}$/.test(String(code||"")))return;
+export function hideWh(){if(CUR&&X&&!modal()){setCode(null);if(ROOT)ROOT.classList.remove("open")}}
+// المستودع: يفتح محادثة مع طرف (rq = بخصوص طلب)
+export function openPeer(p,rq){
+  if(!X||!/^[bdw]-./.test(String(p||""))||p===X.me)return;
+  if(modal())return void openBr(p,rq);
   if(!ROOT)ROOT=buildRoot();
-  const cid=cidOf(code);if(rq)CTX[cid]=rq;setCode(cid);paintCtx();ROOT.classList.add("open");paintList();
+  const cid=cidFor(p);if(rq)CTX[cid]=rq;setCode(cid);paintCtx();ROOT.classList.add("open");paintList();
 }
-// ---------- صفحة الفرع ----------
+export function openWh(code,rq){if(/^\d{3}$/.test(String(code||"")))openPeer("b-"+code,rq)}
+// ---------- الفرع والسواق: زرار عائم + نافذة ----------
 function paintFab(){
-  if(!X||X.by!=="br")return;const n=unreadTotal();
-  const f=g("bcfab");if(f){f.innerHTML=`💬${n?`<i>${n}</i>`:""}`;f.classList.toggle("nw",!!n);f.title=n?`${n} رسالة جديدة من المستودع`:"كلّم المستودع"}
-  const m=g("bcme");if(m)m.innerHTML=`💬 كلّم المستودع${n?` <i>${n}</i>`:""}`;
+  if(!X||!modal())return;const n=unreadTotal();
+  const f=g("bcfab");if(f){f.innerHTML=`💬${n?`<i>${n}</i>`:""}`;f.classList.toggle("nw",!!n);f.title=n?`${n} رسالة جديدة`:"المحادثات"}
+  const m=g("bcme");if(m)m.innerHTML=`💬 ${T()==="b"?"المحادثات":"الرسايل"}${n?` <i>${n}</i>`:""}`;
   if(X.onBadge)X.onBadge(n);
 }
-// peer = إيميل الشخص (من الإشعار)، rq = بخصوص طلب (الفرع يختار يكلّم مين عنه)
+// peer = الطرف (أو إيميل الشخص من إشعارات قديمة)، rq = بخصوص طلب (الفرع يختار يكلّم مين عنه)
 export function openBr(peer,rq){
-  if(!X||X.by!=="br")return;
+  if(!X||!modal())return;
+  if(typeof peer==="string"&&peer.includes("@")&&!/^w-/.test(peer))peer="w-"+peer;
   let m=g("bcm");
   if(!m){m=document.createElement("div");m.id="bcm";m.innerHTML=`<div class="bcp"></div>`;document.body.appendChild(m);ROOT=buildRoot();m.firstChild.appendChild(ROOT);
     m.addEventListener("click",e=>{if(e.target===m)closeBr()});addEventListener("keydown",e=>{if(e.key==="Escape"&&g("bcm")&&g("bcm").classList.contains("on")&&!REC)closeBr()})}
   m.className="on";
-  if(rq){PEND=rq;setCode(null);ROOT.classList.remove("open")}
-  else if(peer&&typeof peer==="string"&&(DIR[peer]||SUMS[cidOf(peer)])){setCode(cidOf(peer));ROOT.classList.add("open")}
+  if(rq){PEND=rq;setCode(null);ROOT.classList.remove("open");if(T()==="b"){FILT="w";ROOT.querySelectorAll("[data-bcf]").forEach(b=>b.classList.toggle("on",b.dataset.bcf===FILT))}}
+  else if(peer&&typeof peer==="string"&&/^[bdw]-./.test(peer)&&peer!==X.me){setCode(cidFor(peer));ROOT.classList.add("open")}
   else if(!CUR)ROOT.classList.remove("open");
   paintPend();paintList();markRead();
   if(CUR&&!isMob())setTimeout(()=>{const i=g("bcin");if(i)i.focus()},60);
 }
 function closeBr(){const m=g("bcm");if(m)m.className="";PEND=null;setCode(null);if(ROOT)ROOT.classList.remove("open");paintFab()}
 // ---------- التشغيل ----------
-// ctx = {db, by:"br"|"wh", name:()=>اسم الكاتب, brn:code=>اسم الفرع, toast, beep, notify, ping:cid=>..., visible:()=>المحادثة قدامه؟, onBadge(n)
-//        الفرع: code | المستودع: me (إيميله)، codes:[قائمة الفروع]، show:()=>يفتح تبويب الشات}
+// ctx = {db, party:"b-003"|"w-email"|"d-drv1", name:()=>اسم الكاتب, myLabel?:()=>اسمي في القايمة عند التاني, brn:code=>اسم الفرع,
+//        codes:[قائمة الفروع], canBr (المستودع: يقدر يكلّم الفروع؟), toast, beep, notify, ping:cid=>..., visible:()=>المحادثة قدامه؟,
+//        onBadge(n), show:()=>يفتح تبويب الشات (المستودع)}
 export function initBChat(ctx){
-  stopBChat();X=ctx;first=true;SUMS={};DIR={};
+  stopBChat();
+  // (توافق: الصفحات القديمة كانت بتبعت by + me/code)
+  const party=ctx.party||(ctx.by==="br"?"b-"+ctx.code:ctx.by==="wh"?"w-"+String(ctx.me||"").toLowerCase():"");
+  if(!/^[bdw]-./.test(party))return;
+  X={...ctx,me:party,by:party[0]==="b"?"br":party[0]==="w"?"wh":"d",canBr:party[0]==="w"?ctx.canBr!==false:false,brn:ctx.brn||(c=>c)};
+  first=true;SUMS={};SO={};SN={};DIR={};DDIR={};FILT="";
   if(!g("bc-css")){const s=document.createElement("style");s.id="bc-css";s.textContent=STYLE;document.head.appendChild(s)}
   if(!window.__bcrq){window.__bcrq=1;document.addEventListener("click",e=>{const b=e.target.closest("[data-bcrq]");if(!b||!X)return;
-    const rq={id:b.dataset.bcrq,no:b.dataset.no};if(X.by==="wh"){if(X.show)X.show();openWh(b.dataset.br,rq)}else openBr(null,rq)})}
-  const onSum=list=>{
-    const old=SUMS;SUMS={};list.forEach(s=>{if(s&&s.br&&s.wh)SUMS[s.cid]=s});
+    const rq={id:b.dataset.bcrq,no:b.dataset.no};if(T()==="w"){if(X.show)X.show();openWh(b.dataset.br,rq)}else openBr(null,rq)})}
+  const onSum=()=>{
+    const old=SUMS;SUMS={};
+    Object.entries(SO).forEach(([cid,s])=>{if(s&&s.br&&s.wh)SUMS[cid]={...s,cid,_old:true,_peer:peerOf(cid)}});
+    Object.entries(SN).forEach(([cid,s])=>{if(s&&Array.isArray(s.ps)&&s.ps.includes(X.me))SUMS[cid]={...s,cid,_peer:peerOf(cid)}});
     if(!first)Object.entries(SUMS).forEach(([cid,s])=>{const l=s.last,o=old[cid]&&old[cid].last;
-      if(l&&l.by!==X.by&&N(l.ts)>N(o&&o.ts)&&!(CUR===cid&&X.visible()&&!document.hidden)){
-        const who=peerName(cid);X.toast(`💬 ${who}: ${String(l.t).slice(0,70)}`);if(X.beep)X.beep();
+      if(l&&!mine(cid,l.by)&&N(l.ts)>N(o&&o.ts)&&!(CUR===cid&&X.visible()&&!document.hidden)){
+        const who=pname(s._peer,cid);X.toast(`💬 ${who}: ${String(l.t).slice(0,70)}`);if(X.beep)X.beep();
         if(X.notify)X.notify("💬 "+who,String(l.t).slice(0,140),"g"+cid);
       }});
     first=false;paintHead();if(CUR)paintMsgs();paintList();paintFab();markRead();
-    if(X.by==="wh"&&X.onBadge)X.onBadge(unreadTotal());
+    if(!modal()&&X.onBadge)X.onBadge(unreadTotal());
   };
-  const sums=sn=>onSum(sn.docs.map(d=>({...d.data(),cid:d.id})));
-  // أسماء وكنيات وصور اللي في المستودع (للطرفين: الفرع في القايمة، والمستودع على رسايله)
+  let gotO=T()==="d"||(T()==="w"&&!X.canBr),gotN=false;
+  const fire=()=>{if(gotO&&gotN)onSum()};
+  // أسماء وكنيات وصور اللي في المستودع، وأسماء السواقين
   const again=()=>{paintList();paintHead();if(CUR)paintMsgs()};
   UND=onSnapshot(collection(X.db,"whdir"),sn=>{DIR={};sn.docs.forEach(d=>{DIR[d.id]=d.data()});again()},()=>{});
   UNA=onSnapshot(collection(X.db,"ava"),sn=>{AVA={};sn.docs.forEach(d=>{const p=d.data().ph;if(typeof p==="string"&&/^data:image\/jpeg;base64,/.test(p))AVA[d.id]=p});again()},()=>{});
-  if(X.by==="br"){
-    UNS=onSnapshot(query(collection(X.db,"dm"),where("br","==",X.code)),sums,()=>{});
-    if(!g("bcfab")){const f=document.createElement("button");f.id="bcfab";f.type="button";f.setAttribute("aria-label","كلّم المستودع");f.onclick=()=>openBr();document.body.appendChild(f)}
-    const mx=g("mx");if(mx&&!g("bcme")){const b=document.createElement("button");b.id="bcme";b.type="button";b.onclick=()=>openBr();mx.parentNode.insertBefore(b,mx)}
+  UNDD=onSnapshot(collection(X.db,"ddir"),sn=>{DDIR={};sn.docs.forEach(d=>{DDIR[d.id]=d.data()});again()},()=>{});
+  // محادثاتي: القديمة (فرع مع المستودع) + الجديدة (ps فيها أنا)
+  if(T()==="b")UNS=onSnapshot(query(collection(X.db,"dm"),where("br","==",pv(X.me))),sn=>{SO={};sn.docs.forEach(d=>SO[d.id]=d.data());gotO=true;fire()},()=>{gotO=true;fire()});
+  else if(T()==="w"&&X.canBr)UNS=onSnapshot(query(collection(X.db,"dm"),where("wh","==",pv(X.me))),sn=>{SO={};sn.docs.forEach(d=>SO[d.id]=d.data());gotO=true;fire()},()=>{gotO=true;fire()});
+  UNS2=onSnapshot(query(collection(X.db,"dm"),where("ps","array-contains",X.me)),sn=>{SN={};sn.docs.forEach(d=>SN[d.id]=d.data());gotN=true;fire()},()=>{gotN=true;fire()});
+  if(modal()){
+    if(!g("bcfab")){const f=document.createElement("button");f.id="bcfab";f.type="button";f.setAttribute("aria-label","المحادثات");f.onclick=()=>openBr();document.body.appendChild(f)}
+    const at=g("mx")||g("out");if(at&&!g("bcme")){const b=document.createElement("button");b.id="bcme";b.type="button";b.onclick=()=>openBr();at.parentNode.insertBefore(b,at)}
     paintFab();
-  }else UNS=onSnapshot(query(collection(X.db,"dm"),where("wh","==",X.me)),sums,()=>{});
+  }
 }
 export function stopBChat(){
-  if(!X)return;stopRec(true);stopPlay();[UNM,UNS,UND,UNA].forEach(f=>f&&f());UNM=UNS=UND=UNA=null;
-  CUR=null;GEN++;MSGS=[];SUMS={};DIR={};AVA={};DRAFT={};CTX={};PEND=null;AUD.clear();
+  if(!X)return;stopRec(true);stopPlay();[UNM,UNS,UNS2,UND,UNA,UNDD].forEach(f=>f&&f());UNM=UNS=UNS2=UND=UNA=UNDD=null;
+  CUR=null;GEN++;MSGS=[];SUMS={};SO={};SN={};DIR={};DDIR={};AVA={};DRAFT={};CTX={};PEND=null;AUD.clear();
   const m=g("bcm");if(m)m.remove();["bcfab","bcme"].forEach(id=>{const e=g(id);if(e)e.remove()});
   if(ROOT){ROOT.remove();ROOT=null}
   X=null;
 }
+
 // ---------- مسح الشات القديم المشترك (مرة واحدة، من جهاز المالك) ----------
 // الشات قبل كده كان مشترك (chats/{code} و msgs جوه كل طلب)، فبنمسحه كله علشان محدش يشوف رسايل حد تاني.
 export async function wipeOldChat(db){

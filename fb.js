@@ -116,7 +116,7 @@ if(typeof document!=="undefined"){
 // الشات والإشعارات والصور ومواقع الفروع مش بتتسجّل (كتير ومالهاش لازمة).
 let AUD=null;
 export function setAudit(a){AUD=a&&a.db&&a.e?a:null}
-const NOLOG=new Set(["dm","whdir","push","geo","meta","log","ava","pushlog","chats"]);
+const NOLOG=new Set(["dm","whdir","ddir","push","geo","meta","log","ava","pushlog","chats","pods","giftimg"]);
 function note(op,r,d){
   if(!AUD||!r||!r.path)return null;const p=String(r.path).split("/");if(p.length!==2||NOLOG.has(p[0]))return null;
   if(d&&typeof d==="object"&&Object.keys(d).join()==="msgs")return null;// مسح الشات القديم (مرة واحدة)

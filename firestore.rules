@@ -312,19 +312,28 @@ service cloud.firestore {
 
     // أسماء اللي في المستودع (الفرع بيختار يكلّم مين): whdir/{email} = {n: الاسم, k: الكنية, r: owner|admin|req}
     // المالك بس بيكتبها (staff.js بيظبطها لوحده من تبويب الموظفين)
+    // r = owner/admin/req (بيكلّموا الفروع) أو staff (موظف تاني: بيكلّم السواقين والموظفين بس)
     match /whdir/{em} {
-      allow read:  if isAdmin() || perm('req') || branchOn();
+      allow read:  if isAdmin() || isStaff() || branchOn() || drvOn();
       allow write: if isOwner()
         && request.resource.data.keys().hasOnly(['n','k','r'])
         && request.resource.data.n is string && request.resource.data.n.size() <= 60
         && (!('k' in request.resource.data) || (request.resource.data.k is string && request.resource.data.k.size() <= 40))
-        && request.resource.data.r in ['owner','admin','req'];
+        && request.resource.data.r in ['owner','admin','req','staff'];
       allow delete: if isOwner();
+    }
+    // أسماء السواقين للشات (ddir/{drv1} = {n}): المستودع بيكتبها لوحده من تبويب السيارات (fleet.js)، والكل بيقراها
+    match /ddir/{id} {
+      allow read:  if isAdmin() || isStaff() || branchOn() || drvOn();
+      allow create, update: if isAdmin() && id.matches('^drv[0-9]{1,2}$')
+        && request.resource.data.keys().hasOnly(['n'])
+        && request.resource.data.n is string && request.resource.data.n.size() <= 60;
+      allow delete: if isAdmin();
     }
 
     // صور حسابات المستودع: ava/{email} = {ph: صورة jpeg صغيرة, ts}. كل واحد يرفع أو يشيل صورته هو بس
     match /ava/{em} {
-      allow read:  if isOwner() || isStaff() || branchOn();
+      allow read:  if isOwner() || isStaff() || branchOn() || drvOn();
       allow create, update: if (isOwner() || isStaff()) && em == request.auth.token.email.lower()
         && request.resource.data.keys().hasOnly(['ph','ts'])
         && request.resource.data.ph is string && request.resource.data.ph.size() <= 80000
@@ -371,7 +380,7 @@ service cloud.firestore {
         let d = request.resource.data;
         return d.br + '__' + d.wh == cid && brnOk(d) && whnOk(d) && lastOk(by)
           && ((by == 'br' && d.keys().hasOnly(['br','brn','wh','whn','last','lb','rb','nw']) && d.nw == 1 && d.lb is number && d.rb is number
-               && exists(/databases/$(database)/documents/whdir/$(d.wh)))
+               && get(/databases/$(database)/documents/whdir/$(d.wh)).data.get('r', '') in ['owner','admin','req'])
            || (by == 'wh' && d.keys().hasOnly(['br','brn','wh','whn','last','lw','rw','nb']) && d.nb == 1 && d.lw is number && d.rw is number));
       }
       // رسالة جديدة (العدّاد بيزيد واحد بالظبط) أو "قريت" (العدّاد بيرجع صفر). الطرفين (br, wh) مايتغيّروش
@@ -390,10 +399,54 @@ service cloud.firestore {
                && (!('nw' in ch) || d.nw == 0)
                && (!('lw' in ch) || d.lw is number) && (!('rw' in ch) || d.rw is number)));
       }
-      // القراءة بالحقول (علشان الصفحات بتسأل "محادثاتي": wh == إيميلي، أو br == كود الفرع)
-      allow read:   if (chatWh() && resource.data.wh == me()) || (branchOn() && resource.data.br == myCode());
-      allow create: if (brIn() && newBy('br')) || (whIn() && newBy('wh'));
-      allow update: if (brIn() && updBy('br')) || (whIn() && updBy('wh'));
+      // ---- المحادثات الجديدة (نوفمبر 2026): السواقين، الموظفين مع بعض، والفروع مع بعض ----
+      // dm/{طرف1}__{طرف2} مترتبين أبجدياً. الطرف = b-كود الفرع / d-رقم السواق / w-إيميل الشخص اللي في المستودع.
+      // فرع مع المستودع بيفضل بالشكل القديم فوق ({كود}__{إيميل})، وسواق مع سواق ممنوع.
+      // الملخّص: {ps:[الطرفين], nm:{طرف:اسمه}, last:{by:الطرف,n,t,ts,v}, l0/l1 = آخر رسالة من الطرف 0/1، r0/r1 = قرا لحد إمتى، n0/n1 = لسه ماقراش كام}
+      function myP()  { return isBranch() ? 'b-' + myCode() : (isDriver() ? 'd-' + myDrv() : 'w-' + me()); }
+      function pOn()  { return isBranch() ? branchOn() : (isDriver() ? drvOn() : (isOwner() || (isStaff() && !isViewer()))); }
+      function nps()  { return cid.split('__'); }
+      function nNew() { return cid.matches('^[bdw]-.+__[bdw]-.+$') && nps().size() == 2 && nps()[0] < nps()[1]; }
+      function nSide(){ return nps()[0] == myP() ? 0 : (nps()[1] == myP() ? 1 : -1); }
+      function nIn()  { return nNew() && pOn() && nSide() >= 0; }
+      function nPair(){
+        let a = nps()[0]; let b = nps()[1];
+        return !(a.matches('^d-.*') && b.matches('^d-.*')) && !(a.matches('^b-.*') && b.matches('^w-.*'));
+      }
+      // الطرف التاني لازم يكون موجود: فرع (بالكود)، سواق في ddir، أو شخص في whdir
+      function okP(p) {
+        return p.matches('^b-[0-9]{3}$')
+          || (p.matches('^d-drv[0-9]{1,2}$') && exists(/databases/$(database)/documents/ddir/$(p.replace('^d-', ''))))
+          || (p.matches('^w-.+@.+$') && exists(/databases/$(database)/documents/whdir/$(p.replace('^w-', ''))));
+      }
+      function nLast(l) {
+        return l is map && l.keys().hasOnly(['by','n','t','ts','v']) && l.keys().hasAll(['by','n','t','ts','v'])
+          && l.by == myP() && l.n is string && l.n.size() <= 60 && l.t is string && l.t.size() <= 200 && l.ts is number && l.v is bool;
+      }
+      function nCreate() {
+        let d = request.resource.data; let s = nSide(); let o = 1 - s;
+        return d.keys().hasOnly(['ps','nm','last','l0','l1','r0','r1','n0','n1'])
+          && d.ps == nps() && d.nm is map && d.nm.keys().hasOnly(nps()) && nLast(d.last)
+          && d.get('n' + string(o), 0) == 1 && d.get('n' + string(s), 0) == 0
+          && !(('l' + string(o)) in d) && !(('r' + string(o)) in d);
+      }
+      function nUpdate() {
+        let d = request.resource.data; let r = resource.data; let s = nSide(); let o = 1 - s;
+        let ch = d.diff(r).affectedKeys();
+        return ch.hasOnly(['last','nm','l0','l1','r0','r1','n0','n1'])
+          && !(('l' + string(o)) in ch) && !(('r' + string(o)) in ch)
+          && (!(('n' + string(o)) in ch) || d.get('n' + string(o), 0) == r.get('n' + string(o), 0) + 1)
+          && (!(('n' + string(s)) in ch) || d.get('n' + string(s), 0) == 0)
+          && (!('last' in ch) || nLast(d.last))
+          && (!('nm' in ch) || (d.nm.keys().hasOnly(nps()) && d.nm.diff(r.nm).affectedKeys().hasOnly([myP()])));
+      }
+
+      // القراءة بالحقول (علشان الصفحات بتسأل "محادثاتي": wh == إيميلي، أو br == كود الفرع، أو ps فيها أنا)
+      allow read:   if (chatWh() && resource.data.wh == me()) || (branchOn() && resource.data.br == myCode())
+                    || (pOn() && myP() in resource.data.get('ps', []));
+      allow create: if (brIn() && newBy('br')) || (whIn() && newBy('wh'))
+                    || (nIn() && nPair() && okP(nps()[1 - nSide()]) && nCreate());
+      allow update: if (brIn() && updBy('br')) || (whIn() && updBy('wh')) || (nIn() && nUpdate());
       allow delete: if isOwner();
 
       // الرسايل: نص (t) أو صوت (v + d = المدة بالثواني)، و rq = بخصوص أنهي طلب (اختياري).
@@ -412,15 +465,15 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rd'])
             && request.resource.data.rd is number;
         }
-        allow read:   if whIn() || brIn();
-        allow create: if (brIn() && msgOk('br')) || (whIn() && msgOk('wh'));
-        allow update: if (brIn() && readBy('br')) || (whIn() && readBy('wh'));
+        allow read:   if whIn() || brIn() || nIn();
+        allow create: if (brIn() && msgOk('br')) || (whIn() && msgOk('wh')) || (nIn() && msgOk(myP()));
+        allow update: if (brIn() && readBy('br')) || (whIn() && readBy('wh')) || (nIn() && readBy(myP()));
         allow delete: if isOwner();
       }
       // الصوت نفسه (data URL صوت بس، أقصى حوالي 500 كيلو)
       match /aud/{mid} {
-        allow read:   if whIn() || brIn();
-        allow create: if (whIn() || brIn())
+        allow read:   if whIn() || brIn() || nIn();
+        allow create: if (whIn() || brIn() || nIn())
           && request.resource.data.keys().hasOnly(['a'])
           && request.resource.data.a is string && request.resource.data.a.size() <= 700000
           && request.resource.data.a.matches('data:audio/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+');
