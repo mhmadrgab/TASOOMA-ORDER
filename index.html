@@ -242,6 +242,9 @@ body[data-ty="tr"] .rc:not(.to) small{color:#7fd0dc}
 #my{display:none;background:var(--card);border-radius:16px;padding:16px 20px;margin-top:20px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .lock #my{display:block}#my h3{margin:0 0 10px;font-size:18px}
 #xf{background:var(--card);border-radius:16px;padding:16px 20px;margin-top:20px;box-shadow:0 1px 2px rgba(0,0,0,.05);border-top:4px solid #2a78d6}#xf h3{margin:0 0 4px;font-size:18px}
+.eta{display:block;width:100%;font-size:13.5px;font-weight:700;color:#1c4f86;background:#e3f0fb;border-radius:10px;padding:6px 10px;margin-top:4px}
+.eta.n{color:#fff;background:#1f8a3c;animation:ui-fade .3s ease both}
+@media (prefers-color-scheme:dark){.eta{background:#14304d;color:#9cc7f0}.eta.n{background:#1f8a3c;color:#fff}}
 #xf .xfh{margin:0 0 8px;color:var(--mut);font-size:13.5px}.xfb{background:var(--field);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer}
 #xf button:disabled{opacity:.5}.shot #xf{display:none!important}
 .mr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}.mr:last-child{border:0}
@@ -476,6 +479,17 @@ const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم
 const ST=x=>LBL[x]?x:"new";
 const g=id=>document.getElementById(id);
 let B=null,unsub=null,prev=null,tt,REQS={},paint=()=>{};const opn=new Set();
+// الوقت المتوقع لوصول السواق: عدّ تنازلي بيتحدّث كل دقيقة (تطبيق السواق بيحدّث eta وهو ماشي، وnear لما يقرب)
+const hmT=t=>new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+function etaHtml(r){
+ const e=+r.eta||0,near=(+r.near||0)>(+r.dep||0);
+ if(!e)return near?`<span class="eta n">🔔 السواق قرب يوصلك</span>`:`<span class="eta">🕒 الوقت المتوقع هيظهر أول ما السواق يتحرك</span>`;
+ const m=Math.round((e-Date.now())/6e4);
+ const dq=n=>n===2?"دقيقتين":n>=3&&n<=10?`${n} دقايق`:`${n} دقيقة`;
+ const t=m>=60?`${Math.floor(m/60)} ساعة${m%60?" و"+dq(m%60):""}`:m>1?dq(m):"";
+ if(m<-15)return `<span class="eta">🕒 كان متوقع يوصل ${hmT(e)}، شكله اتأخر شوية</span>`;
+ return `<span class="eta${near||m<=10?" n":""}">${near?"🔔 السواق قرب يوصلك":"🕒 هيوصل"}${t?" خلال ~"+t:" دلوقتي"} (حوالي ${hmT(e)})</span>`;
+}
 // XF = التحويلات المطلوبة من الفرع ده (null = لسه ماتحمّلتش)
 let XF=null;const seenXf=new Set();
 // حالة الطلب للفرع: التحويل اللي جايله بيتجهّز في الفرع التاني مش في المستودع
@@ -526,6 +540,8 @@ function listen(){
  // محتاج فهرس (br + ts) في Firebase؛ لو لسه ماتعملش بنرجع للطريقة القديمة علشان الصفحة ماتقفش
  uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c),where("ts",">=",Date.now()-45*864e5)),sn=>put("r",sn),e=>{
   if(e&&e.code==="failed-precondition")uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c)),sn=>put("r",sn),fail));else fail(e)}));
+ // العدّ التنازلي لوصول السواق بيتحدّث كل دقيقة
+ const tk=setInterval(()=>{if(Object.values(REQS).some(r=>r.st==="go"))paint()},60000);uns.push(()=>clearInterval(tk));
  // التحويلات المطلوبة من الفرع ده (هو اللي هيجهّز ويبعت لفرع تاني)
  uns.push(onSnapshot(query(collection(db,"requests"),where("tr.fr","==",c)),sn=>{
   const old=XF;XF=sn.docs.map(d=>({id:d.id,...d.data()}));
@@ -543,14 +559,16 @@ function listen(){
    const m=r.tr?`في تحويل رايحلك من ${r.tr.frn}: ${+r.codes||0} صنف · ${+r.pcs||0} قطعة`:`المستودع عملك طلب ${r.no}: ${+r.codes||0} صنف · ${+r.pcs||0} قطعة`;
    toast((r.tr?"🔄 ":"📋 ")+m);notify(r.tr?"🔄 تحويل رايحلك":"📋 طلب من المستودع",m,"w"+r.id);beep()});
   if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${lbl(r)}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
+  // السواق قرب (الإشعار على الموبايل بيجي من السيرفر، وهنا لو الصفحة مفتوحة)
+  if(prev)rs.forEach(r=>{const o=prev[r.id];if(o&&r.st==="go"&&(+r.near||0)>o.near&&(+r.near||0)>(+r.dep||0)){toast(`🔔 السواق قرب يوصلك بطلب ${r.no}`);beep()}});
   REQS={};rs.forEach(r=>REQS[r.id]=r);
   setBadge();
-  prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0});
+  prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0,near:+r.near||0});
   paint();
  }
  // بنرسم القائمة لوحدها كمان لما المحادثة تتقفل (علشان رقم الرسايل الجديدة يتحدّث)
  paint=()=>{const rs=Object.values(REQS).sort((a,b)=>b.ts-a.ts);
-  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.tr?`<span class="ed-tag wh-tag">🔄 تحويل من <bdi dir="ltr">${E(r.tr.frn)}</bdi></span>`:r.by==="wh"?`<span class="ed-tag wh-tag">📋 المستودع عمل الطلب ده</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${r.edn?" ("+E(r.edn)+")":""}${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${lbl(r)}</span>${rqBtn(r)}${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}${+r.eta?" · وصول متوقع حوالي "+new Date(+r.eta).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):""}</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
+  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.tr?`<span class="ed-tag wh-tag">🔄 تحويل من <bdi dir="ltr">${E(r.tr.frn)}</bdi></span>`:r.by==="wh"?`<span class="ed-tag wh-tag">📋 المستودع عمل الطلب ده</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${r.edn?" ("+E(r.edn)+")":""}${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${lbl(r)}</span>${rqBtn(r)}${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}</span>${etaHtml(r)}`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
  }
 }
 function enter(b){

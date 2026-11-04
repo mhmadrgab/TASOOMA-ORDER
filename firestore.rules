@@ -121,9 +121,10 @@ service cloud.firestore {
         || (drvOn() && resource.data.asg.drv == myDrv()
             && resource.data.st in ['prep','go']
             && request.resource.data.st in ['prep','go','done']
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','dep','dlv','pod','eta','pk'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','dep','dlv','pod','eta','pk','near'])
             && (!('pod' in request.resource.data) || validPod())
             && (!('pk' in request.resource.data) || request.resource.data.pk is number)
+            && (!('near' in request.resource.data) || request.resource.data.near is number)
             && (!('eta' in request.resource.data) || request.resource.data.eta is number))
         // التحويل: الفرع اللي هيبعت يقول "بدأت أجهّز" (new ← prep) و"جاهزة للسواق" (rdy) بس
         || (branchOn() && resource.data.get('tr', {}).get('fr', '') == myCode()
@@ -156,6 +157,11 @@ service cloud.firestore {
     match /drivers/{code} {
       allow read:  if isAdmin() || perm('fl') || isViewer() || (isDriver() && myDrv() == code);
       allow write: if isAdmin();
+      // السائق يعمل رمز التتبع بتاعه بنفسه (تطبيق TASOOMA / Traccar) لو لسه مالوش رمز. مايقدرش يغيّر أي حاجة تانية
+      allow update: if isDriver() && myDrv() == code
+        && (!('gps' in resource.data) || resource.data.gps == '')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gps'])
+        && request.resource.data.gps is string && request.resource.data.gps.matches('[A-Za-z0-9]{24,40}');
     }
     // عمال المستودع (أسماء بس، من غير حسابات): المدير يضيف ويعدّل، والمحاسب يقرأ علشان يختار مين جهّز
     match /workers/{id} {

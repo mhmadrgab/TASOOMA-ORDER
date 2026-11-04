@@ -143,7 +143,8 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 // آيفون: تطبيق Traccar Client بنفس الرمز السري (drivers/{id}.gps).
 const GPS_URL="https://tasooma-push.tasooma.workers.dev/gps";
 const NAT=window.TasoomaApp||null,IOS=/iphone|ipad|ipod/i.test(navigator.userAgent),DROID=/android/i.test(navigator.userAgent);
-const APK_URL=new URL("./tasooma-driver.apk",location.href).href;
+// ملف التطبيق على GitHub Releases (رفع ملفات كبيرة من صفحة الرفع العادية بيفشل). "latest" = آخر نسخة دايماً
+const APK_URL="https://github.com/mhmadrgab/TASOOMA-ORDER/releases/latest/download/tasooma-driver.apk";
 const natSt=()=>{try{return NAT?String(NAT.state()||""):""}catch(e){return ""}};
 // رمز التتبع: لو السائق مالوش رمز بيعمله لنفسه مرة واحدة (القواعد بتسمحله بده بس)
 const GA="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
