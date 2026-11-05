@@ -284,8 +284,11 @@ function draw(){
     // تحويل بين فرعين: لازم يستلم من الفرع الأول (fr) قبل ما يسلّم للتاني
     const pick=s.fr&&!s.pk&&!s.arr;
     return `<div class="stop ${s.arr?"done":""}"><div>${s.fr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" ✔ "+hm(s.pk):""}</small>`:""}<b>${s.fr?"← سلّم لـ ":""}${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small>${itBtn(s.rid)}</div>${s.arr?"":pick?`<button class="b" data-pk="${E(s.rid)}" type="button">📦 استلمت من ${E(s.frn||s.fr)}</button>`:`<button class="b ok" data-arr="${E(s.rid)}" type="button">وصلت وسلّمت ✅</button>`}</div>`}).join("")}
+  ${(()=>{// توصيلات اتعيّنت له بعد ما بدأ الرحلة: بتظهر هنا ويضيفها للرحلة (بدل ما تستخبى لحد ما ينهي)
+    const nw=REQ.filter(r=>r.st==="prep"&&!st.some(s=>s.rid===r.id));if(!nw.length)return "";
+    return `<div class="card" style="border:2px solid var(--acc)"><h3>📦 ${nw.length===1?"توصيلة جديدة اتعيّنت لك":nw.length+" توصيلات جديدة اتعيّنت لك"}</h3>${nw.map(r=>`<div class="mut" style="padding:4px 0">${r.tr?`🔄 استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ← `:""}<b style="direction:ltr;display:inline-block;color:var(--ink)">${E(r.brn)}</b> · ${N(r.pcs)} قطعة</div>`).join("")}<button class="b g" id="badd" type="button" style="margin-top:8px">➕ ضيفها للرحلة دي</button></div>`})()}
   <div class="row"><button class="b" id="bf" type="button">⛽ بنزين</button><button class="b p" id="be" type="button">🏁 إنهاء الرحلة</button></div>`;
-  g("bf").onclick=fuelForm;g("be").onclick=endForm;
+  g("bf").onclick=fuelForm;g("be").onclick=endForm;if(g("badd"))g("badd").onclick=()=>addToTrip(g("badd"));
   mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));mn.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>pickUp(b.dataset.pk,b));wireIt(mn);wireNat(mn);
   clearInterval(tick);tick=setInterval(()=>{const e=g("el"),t=active();if(e&&t)e.textContent=dur(Date.now()-N(t.start))},30000);
   liveOn();if(g("wk"))g("wk").onchange=()=>{lsSet("drv_wake",g("wk").checked?"1":"0");if(g("wk").checked)wake();else if(LIVE.lock){LIVE.lock.release().catch(()=>{});LIVE.lock=null}};
@@ -297,7 +300,7 @@ function draw(){
  const dayTr=TR.filter(t=>t.st==="done"&&new Date(N(t.start)).toLocaleDateString("en-CA")===today()).sort((a,b)=>N(b.start)-N(a.start));
  mn.innerHTML=hi(rs.length?`عندك ${rs.length} توصيلة مستنياك 📦`:"مفيش توصيلات دلوقتي، المستودع هيبعتلك أول ما يجهّز")+`<div class="card"><h3>رحلة جديدة</h3>
  <label>السيارة</label><select id="sc">${CARS.map(c=>`<option value="${E(c.id)}" ${c.id===cid?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")||'<option value="">لا توجد سيارات — كلّم المستودع</option>'}</select>
- <label>قراءة العداد الحالية (كم)</label><input id="so" inputmode="numeric" value="${E(odoV!==null?odoV:lsGet("drv_odo_"+cid)||"")}" placeholder="مثلاً 85230">
+ <label>قراءة العداد دلوقتي (كم) *${lastCarOdo(cid)?` — آخر قراءة مسجّلة ${lastCarOdo(cid)}`:""}</label><input id="so" inputmode="numeric" autocomplete="off" value="${E(odoV!==null?odoV:"")}" placeholder="بص على العداد واكتب الرقم">
  <label>التوصيلات (${rs.length}) — الترتيب بيتظبط تلقائياً على أقرب مسار</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1">${r.tr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ${N(r.rdy)?"✅ جاهز":"⏳ لسه بيتجهّز"}</small>`:""}<b style="direction:ltr;display:inline-block">${E(r.brn)}</b><small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small></span>${itBtn(r.id)}</label>`).join(""):'<div class="mut">مفيش توصيلات معيّنة ليك دلوقتي. استنى المستودع يعيّن.</div>'}
  <button class="b g" id="bs" type="button" style="margin-top:10px" ${rs.length?"":"disabled"}>🚚 ابدأ الرحلة</button></div>
  <div class="row" style="margin:0 0 14px"><button class="b" id="bf" type="button">⛽ تسجيل بنزين</button></div>
@@ -321,7 +324,9 @@ function items(rid){
 async function startTrip(){
  const c=CARS.find(x=>x.id===g("sc").value),odo=N(toEn(g("so").value)),sel=REQ.filter(r=>r.st==="prep"&&!off.has(r.id)).slice(0,30);
  if(!c){toast("اختر السيارة","er");return}
- if(!(odo>0)){toast("اكتب قراءة العداد","er");return}
+ if(!(odo>0)){toast("اكتب قراءة العداد اللي في العربية دلوقتي","er");return}
+ const lo0=lastCarOdo(c.id);if(lo0&&odo<lo0){toast(`قراءة العداد لازم تكون ${lo0} أو أكتر (آخر قراءة للعربية دي)`,"er");return}
+ if(lo0&&odo-lo0>MAXLEG){toast(`الرقم كبير أوي (${odo-lo0} كم من آخر قراءة). راجع العداد`,"er");return}
  if(!sel.length){toast("اختر توصيلة واحدة على الأقل","er");return}
  g("bs").disabled=true;g("bs").textContent="جاري تحديد الموقع...";
  // الوقت المتوقع من مكانه الحقيقي دلوقتي (والتحويل بيعدّي على الفرع اللي هيستلم منه)
@@ -334,6 +339,21 @@ async function startTrip(){
   b.set(tr,t);rs.forEach(r=>{const u={st:"go",dep:ts,upd:ts};if(et[r.id])u.eta=et[r.id];b.update(doc(db,"requests",r.id),u)});
   await withTimeout(b.commit(),15000);ping(auth,rs.map(r=>r.id),[],[tr.id]);LIVE.last=ts;LIVE.lastPt=loc;lsSet("drv_car",c.id);lsSet("drv_odo_"+c.id,String(odo));odoV=null;toast("بدأت الرحلة. سلامتك 🚚");
  }catch(e){const x=g("bs");if(x){x.disabled=false;x.textContent="🚚 ابدأ الرحلة"}fail(e,"مش مسموح. ممكن المستودع غيّر الطلب.")}
+}
+// إضافة توصيلات للرحلة الشغّالة (اتعيّنت بعد ما بدأ): بتتحط بعد اللي لسه ماسلّمهاش بترتيب الأقرب، والوقت المتوقع بيتحسب من مكانه دلوقتي
+async function addToTrip(btn){
+ const a=active();if(!a)return;const st=Array.isArray(a.stops)?a.stops:[];
+ const nw=REQ.filter(r=>r.st==="prep"&&!st.some(s=>s.rid===r.id)).slice(0,Math.max(0,30-st.length));
+ if(!nw.length){toast("مفيش توصيلات جديدة","er");return}
+ btn.disabled=true;btn.textContent="جاري الإضافة...";
+ const loc=await here(),ts=Date.now(),last=[...st].reverse().find(s=>s.arr),from=loc||(last&&GEO.br[codeOf(last.brn)])||GEO.wh;
+ const add=order(nw,from).map(r=>{const s={rid:r.id,no:String(r.no||"").slice(0,40),brn:String(r.brn||"").slice(0,40),pcs:N(r.pcs)};if(r.tr&&r.tr.fr){s.fr=String(r.tr.fr).slice(0,3);s.frn=String(r.tr.frn||"").slice(0,40);if(N(r.pk))s.pk=N(r.pk)}return s});
+ const all=[...st,...add],pend=all.filter(s=>!s.arr),et=etas(pend,ts,loc?null:(last?codeOf(last.brn):"WH"),loc);
+ try{
+  const b=writeBatch(db);b.update(doc(db,"trips",a.id),{stops:all.map(s=>!s.arr&&et[s.rid]?{...s,eta:et[s.rid]}:s)});
+  add.forEach(s=>{const u={st:"go",dep:ts,upd:ts};if(et[s.rid])u.eta=et[s.rid];b.update(doc(db,"requests",s.rid),u)});
+  await withTimeout(b.commit(),15000);ping(auth,add.map(s=>s.rid));toast(`تمام ✅ اتضافت ${add.length} توصيلة للرحلة`);
+ }catch(e){btn.disabled=false;btn.textContent="➕ ضيفها للرحلة دي";fail(e,"مش مسموح. ممكن المستودع غيّر الطلب.")}
 }
 // تحويل: السواق استلم البضاعة من الفرع اللي بيبعت (pk على الطلب وعلى محطة الرحلة)
 async function pickUp(rid,btn){
@@ -349,6 +369,8 @@ async function pickUp(rid,btn){
 const openM=h=>{g("md").innerHTML=`<div class="card">${h}</div>`;g("md").className="mdl on"};
 const closeM=()=>{g("md").className="mdl";g("md").innerHTML="";draw()};
 // تسليم: اسم المستلم + توقيع + صورة
+// آخر قراءة معروفة للعربية (من الجهاز ده أو من رحلات النهارده): العداد عمره ما بيرجع لورا
+function lastCarOdo(car){if(!car)return 0;let m=N(lsGet("drv_odo_"+car));TR.forEach(t=>{if(t.car===car){m=Math.max(m,N(t.odo0),N(t.odo1));(t.stops||[]).forEach(s=>{m=Math.max(m,N(s.odo))})}});return m}
 // آخر قراءة عداد في الرحلة (البداية أو آخر تسليم): كل قراءة لازم تكون أكبر منها أو زيها
 const lastOdo=a=>Math.max(N(a.odo0),...(a.stops||[]).map(s=>N(s.odo)));
 const MAXLEG=1500;// أكبر مشوار معقول بين قراءتين (كم) علشان غلطة كتابة (رقم زيادة) ماتبوّظش الحساب

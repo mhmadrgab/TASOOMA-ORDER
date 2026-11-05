@@ -429,6 +429,8 @@ function toqUI(){
  const tr=st.ty==="tr";b.hidden=false;q.hidden=!st.sent;b.classList.toggle("sent",!!st.sent);
  if(st.sent)q.innerHTML=st.sentFr?`✅ التحويل اتبعت: من فرع <bdi dir="ltr">${E(st.sentFr)}</bdi> ← فرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> (رقم <bdi dir="ltr">${E(st.sent)}</bdi>)<small>الفرعين وصلهم إشعار. تابعه من تبويب "الطلبات" (فلتر 🔄 تحويلات)، وعيّن السواق من "السيارات". لتحويل تاني دوس "+ ورقة جديدة".</small>`
   :`✅ الورقة دي اتبعتت لفرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> كطلب رقم <bdi dir="ltr">${E(st.sent)}</bdi><small>تابعه من تبويب "الطلبات" زي أي طلب. أي تعديل بعد كده من زرار ✏️ تعديل على الطلب. لطلب تاني دوس "+ ورقة جديدة".</small>`;
+ // نفس الأصناف لفرع تاني (من غير ما تكتبها تاني)
+ if(st.sent)q.insertAdjacentHTML("beforeend",`<button id="tr3" type="button" style="display:block;margin-top:8px;font:inherit;font-weight:700;border:0;border-radius:10px;padding:9px 14px;background:#1b1b1b;color:#fff;cursor:pointer">📋 ابعت نفس الأصناف لفرع تاني</button>`);
  b.disabled=toqBusy;b.textContent=toqBusy?"⏳ جاري الإرسال...":st.sent?`✅ الورقة دي اتبعتت (${st.sent}) · دوس هنا لورقة جديدة`:tr?"🔄 ابعت التحويل للفرعين":"📤 ابعتها طلب للفرع";
 }
 const rid20=()=>{const a="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";return [...crypto.getRandomValues(new Uint32Array(20))].map(x=>a[x%a.length]).join("")};
@@ -441,6 +443,8 @@ $("#tr2").addEventListener("click",()=>{
  const half=st.rows.filter(r=>(r.k||"").trim()&&!(+r.q>0)).length,codes=new Set(f.map(r=>r.k.trim())).size,pcs=f.reduce((a,r)=>a+(+r.q),0);
  const tr=st.ty==="tr",fr=tr?(st.fr||BR[0]):"";
  if(tr&&fr===st.br)return void alert("الفرع اللي هيبعت هو نفس الفرع اللي هيستلم! اختار فرعين مختلفين.");
+ // نسخة من ورقة اتبعتت: لو لسه على نفس الفرع اللي اتبعتله نسأل الأول (علشان مايوصلوش طلب مكرر)
+ if(st.copyOf&&st.copyOf===st.br+"|"+fr&&!confirm(`الأصناف دي اتبعتت قبل كده لفرع ${st.br}${tr?" من "+fr:""}.\nغيّرت الفرع من فوق؟ لو عايز تبعتها لنفس الفرع تاني دوس OK.`))return;
  const tail=`${codes} صنف · ${pcs} قطعة${half?`\nتنبيه: ${half} سطر فيه كود من غير كمية ومش هيتبعت`:""}`;
  if(!confirm(tr?`تحويل من فرع ${fr} ← لفرع ${st.br}\n${tail}\n\n• فرع ${fr} هيوصله إشعار إن المستودع عايز منه الأصناف دي ويبدأ يجهّزها\n• فرع ${st.br} هيوصله إشعار إن فيه تحويل رايحله\n• بعد كده تعيّن سواق من "السيارات" يستلم من ${fr} ويسلّم لـ ${st.br}\n\nكمّل؟`
    :`هيتعمل طلب باسم فرع ${st.br}\n${tail}\n\nالفرع هيوصله إشعار إن المستودع عمله طلب، والطلب هيظهر في "الطلبات" وتجهّزه وتبعته مع سواق عادي.\n\nكمّل؟`))return;
@@ -450,6 +454,14 @@ $("#tr2").addEventListener("click",()=>{
  save();toqBusy=true;toqUI();
  parent.postMessage({t:"sheet2req",rid:st.rid,br:st.br,fr,dt:st.dt,dr:st.dr||"",gn:st.gn||"",rows:st.rows},location.origin);
  clearTimeout(toqT);toqT=setTimeout(()=>{if(!toqBusy)return;toqBusy=false;toqUI();alert("الإرسال اتأخر. اتأكد من النت ودوس تاني (مش هيتعمل طلبين).")},30000);
+});
+document.addEventListener("click",e=>{
+ if(!e.target.closest||!e.target.closest("#tr3")||!st.sent||toqBusy)return;
+ // ورقة جديدة فيها نفس الأصناف والكميات، والفرع بتغيّره من فوق
+ const src=st,nw=mk({br:src.br,dr:src.dr,ty:src.ty,fr:src.fr});
+ nw.rows=src.rows.map(r=>({...r}));while(nw.rows.length<8)nw.rows.push(blank());if(src.gn)nw.gn=src.gn;nw.copyOf=(src.sentBr||src.br)+"|"+(src.sentFr||"");
+ st=nw;lib.cur=nw.id;save();loadUI();window.scrollTo(0,0);
+ alert("✅ عملنا ورقة جديدة فيها نفس الأصناف.\nغيّر الفرع من فوق، وبعدين دوس \"ابعتها طلب للفرع\".");
 });
 addEventListener("message",e=>{
  const d=e.data;if(e.origin!==location.origin||e.source!==parent||!d||d.t!=="sheet2req-r")return;
