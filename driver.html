@@ -81,6 +81,7 @@ const {app,db,auth}=makeFb("drv");
 const g=id=>document.getElementById(id);
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const N=x=>Number.isFinite(+x)?+x:0;
+let SHIPS={};const shipOf=x=>!x.fr&&!(x.tr&&x.tr.fr)&&SHIPS[codeOf(x.brn)]||"";// اسم شركة الشحن لو الطلب/المحطة لفرع خارج الرياض (التحويل بين الفروع مش شحن)
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const hm=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
 const dur=ms=>{const m=Math.max(0,Math.round(N(ms)/60000)),h=Math.floor(m/60);return h?`${h}س ${m%60}د`:`${m}د`};
@@ -202,7 +203,7 @@ async function onPos(pt){
   pend.forEach(s=>{const r=REQ.find(x=>x.id===s.rid);if(!r||r.st!=="go")return;const e=et[s.rid];
    if(e&&Math.abs(e-N(r.eta))>=2*6e4)b.update(doc(db,"requests",s.rid),{eta:e,upd:now});
    const bp=GEO.br[codeOf(s.brn)],close=(e&&e-now<=10*6e4)||(bp&&km2(pt,bp)<1.5);
-   if(close&&!(s.fr&&!s.pk)&&!(N(r.near)>N(r.dep)))near.push(s.rid)});
+   if(close&&!shipOf(s)&&!(s.fr&&!s.pk)&&!(N(r.near)>N(r.dep)))near.push(s.rid)});
   await withTimeout(b.commit(),15000);
   // "قرب يوصل" لوحده (لو القواعد لسه قديمة، الوقت المتوقع يفضل يتحدّث عادي)
   for(const rid of near){try{await withTimeout(updateDoc(doc(db,"requests",rid),{near:now}),15000);ping(auth,[rid])}catch(e){}}
@@ -252,6 +253,8 @@ let firstReq=true;
 function startAll(){
  stopAll();firstReq=true;
  un.push(onSnapshot(collection(db,"cars"),sn=>{CARS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(c=>c.active!==false);draw()},()=>toast("تعذر قراءة السيارات","er")));
+ // الفروع اللي خارج الرياض (ship/main = {c:{كود الفرع: اسم شركة الشحن}}): السواق بيسلّمها لشركة الشحن مش للفرع
+ un.push(onSnapshot(doc(db,"ship","main"),d=>{const v=d.exists()&&d.data().c;SHIPS=v&&typeof v==="object"?v:{};draw()},()=>{}));
  un.push(onSnapshot(doc(db,"geo","main"),d=>{const v=d.exists()?d.data():null;GEO={br:(v&&v.br&&typeof v.br==="object")?v.br:{},wh:v&&v.wh||null,pairs:(v&&v.pairs&&typeof v.pairs==="object")?v.pairs:{}};draw()},()=>{}));
  // توفير القراءات: السائق محتاج بس الطلبات اللي لسه عنده (قيد التجهيز / في الطريق)، مش كل اللي سلّمه من أول يوم
  un.push(onSnapshot(query(collection(db,"requests"),where("asg.drv","==",me.id),where("st","in",["prep","go"])),sn=>{
@@ -282,8 +285,8 @@ function draw(){
    :`<div class="mut">📍 ${me.gps&&!DROID?"تطبيق التتبع (Traccar Client) لسه مابعتش مكانك. اتأكد إنه شغّال (Service status). لحد ما يشتغل: ":""}طول ما التطبيق ده مفتوح قدامك بنحدّث مكانك والوقت المتوقع للفروع.</div><label class="mut" style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="wk" type="checkbox" style="width:22px;height:22px" ${wakeOn()?"checked":""}> 🔆 خلّي الشاشة منورة أثناء الرحلة</label>`}${ml?`<a class="b g" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="${E(ml)}" target="_blank" rel="noopener noreferrer">🗺 افتح المسار في خرائط جوجل</a>`:""}</div>
   ${st.map(s=>{
     // تحويل بين فرعين: لازم يستلم من الفرع الأول (fr) قبل ما يسلّم للتاني
-    const pick=s.fr&&!s.pk&&!s.arr;
-    return `<div class="stop ${s.arr?"done":""}"><div>${s.fr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" ✔ "+hm(s.pk):""}</small>`:""}<b>${s.fr?"← سلّم لـ ":""}${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small>${itBtn(s.rid)}</div>${s.arr?"":pick?`<button class="b" data-pk="${E(s.rid)}" type="button">📦 استلمت من ${E(s.frn||s.fr)}</button>`:`<button class="b ok" data-arr="${E(s.rid)}" type="button">وصلت وسلّمت ✅</button>`}</div>`}).join("")}
+    const pick=s.fr&&!s.pk&&!s.arr,sh=shipOf(s);
+    return `<div class="stop ${s.arr?"done":""}"><div>${s.fr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" ✔ "+hm(s.pk):""}</small>`:""}${sh?`<small style="display:block;color:#1c4f86;font-weight:700">🚚 شحن: سلّمه لشركة ${E(sh)}</small>`:""}<b>${s.fr?"← سلّم لـ ":sh?"← شحن لـ ":""}${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small>${itBtn(s.rid)}</div>${s.arr?"":pick?`<button class="b" data-pk="${E(s.rid)}" type="button">📦 استلمت من ${E(s.frn||s.fr)}</button>`:`<button class="b ok" data-arr="${E(s.rid)}" type="button">${sh?"سلّمت لشركة الشحن ✅":"وصلت وسلّمت ✅"}</button>`}</div>`}).join("")}
   ${(()=>{// توصيلات اتعيّنت له بعد ما بدأ الرحلة: بتظهر هنا ويضيفها للرحلة (بدل ما تستخبى لحد ما ينهي)
     const nw=REQ.filter(r=>r.st==="prep"&&!st.some(s=>s.rid===r.id));if(!nw.length)return "";
     return `<div class="card" style="border:2px solid var(--acc)"><h3>📦 ${nw.length===1?"توصيلة جديدة اتعيّنت لك":nw.length+" توصيلات جديدة اتعيّنت لك"}</h3>${nw.map(r=>`<div class="mut" style="padding:4px 0">${r.tr?`🔄 استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ← `:""}<b style="direction:ltr;display:inline-block;color:var(--ink)">${E(r.brn)}</b> · ${N(r.pcs)} قطعة</div>`).join("")}<button class="b g" id="badd" type="button" style="margin-top:8px">➕ ضيفها للرحلة دي</button></div>`})()}
@@ -301,7 +304,7 @@ function draw(){
  mn.innerHTML=hi(rs.length?`عندك ${rs.length} توصيلة مستنياك 📦`:"مفيش توصيلات دلوقتي، المستودع هيبعتلك أول ما يجهّز")+`<div class="card"><h3>رحلة جديدة</h3>
  <label>السيارة</label><select id="sc">${CARS.map(c=>`<option value="${E(c.id)}" ${c.id===cid?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")||'<option value="">لا توجد سيارات — كلّم المستودع</option>'}</select>
  <label>قراءة العداد دلوقتي (كم) *${lastCarOdo(cid)?` — آخر قراءة مسجّلة ${lastCarOdo(cid)}`:""}</label><input id="so" inputmode="numeric" autocomplete="off" value="${E(odoV!==null?odoV:"")}" placeholder="بص على العداد واكتب الرقم">
- <label>التوصيلات (${rs.length}) — الترتيب بيتظبط تلقائياً على أقرب مسار</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1">${r.tr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ${N(r.rdy)?"✅ جاهز":"⏳ لسه بيتجهّز"}</small>`:""}<b style="direction:ltr;display:inline-block">${E(r.brn)}</b><small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small></span>${itBtn(r.id)}</label>`).join(""):'<div class="mut">مفيش توصيلات معيّنة ليك دلوقتي. استنى المستودع يعيّن.</div>'}
+ <label>التوصيلات (${rs.length}) — الترتيب بيتظبط تلقائياً على أقرب مسار</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1">${r.tr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ${N(r.rdy)?"✅ جاهز":"⏳ لسه بيتجهّز"}</small>`:""}${shipOf(r)?`<small style="display:block;color:#1c4f86;font-weight:700">🚚 شحن: بتسلّمه لشركة ${E(shipOf(r))}</small>`:""}<b style="direction:ltr;display:inline-block">${E(r.brn)}</b><small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small></span>${itBtn(r.id)}</label>`).join(""):'<div class="mut">مفيش توصيلات معيّنة ليك دلوقتي. استنى المستودع يعيّن.</div>'}
  <button class="b g" id="bs" type="button" style="margin-top:10px" ${rs.length?"":"disabled"}>🚚 ابدأ الرحلة</button></div>
  <div class="row" style="margin:0 0 14px"><button class="b" id="bf" type="button">⛽ تسجيل بنزين</button></div>
  ${dayTr.length?`<div class="card"><h3>رحلات النهاردة</h3>${dayTr.map(t=>`<div class="mut" style="padding:6px 0;border-bottom:1px solid var(--line)">${hm(t.start)} ← ${hm(t.end)} · ${dur(N(t.end)-N(t.start))} · ${Math.max(0,N(t.odo1)-N(t.odo0))} كم · ${(t.stops||[]).filter(s=>s.arr).length} توصيلة</div>`).join("")}</div>`:""}`;
@@ -376,12 +379,14 @@ const lastOdo=a=>Math.max(N(a.odo0),...(a.stops||[]).map(s=>N(s.odo)));
 const MAXLEG=1500;// أكبر مشوار معقول بين قراءتين (كم) علشان غلطة كتابة (رقم زيادة) ماتبوّظش الحساب
 function podForm(rid){
  const a=active();if(!a)return;const s=(a.stops||[]).find(x=>x.rid===rid);if(!s)return;let img="",busy=false,drawn=false;const lo=lastOdo(a);
- openM(`<h3>تسليم — <span style="direction:ltr;display:inline-block">${E(s.brn)}</span></h3>
+ const sh=shipOf(s);
+ openM(`<h3>${sh?`🚚 تسليم لشركة الشحن — ${E(sh)}`:`تسليم — <span style="direction:ltr;display:inline-block">${E(s.brn)}</span>`}</h3>${sh?`<div class="mut" style="margin-bottom:6px">الطلب ده لفرع <bdi dir="ltr">${E(s.brn)}</bdi> (خارج الرياض). بتسلّمه لشركة الشحن وهما اللي بيوصّلوه للفرع.</div>`:""}
  <label>قراءة العداد دلوقتي (كم) — آخر قراءة ${lo}</label><input id="po" inputmode="numeric" autocomplete="off" placeholder="مثلاً ${lo+8}">
  <small class="mut">علشان نحسب كيلومترات كل فرع بالظبط</small>
- <label>اسم المستلم في الفرع</label><input id="pn" maxlength="60" autocomplete="off" placeholder="مثلاً: أحمد محمد">
+ <label>${sh?"اسم الموظف في شركة الشحن اللي استلم":"اسم المستلم في الفرع"}</label><input id="pn" maxlength="60" autocomplete="off" placeholder="مثلاً: أحمد محمد">
  <label>توقيع المستلم (بصباعك)</label><canvas id="pc" width="320" height="130" style="width:100%;height:130px;background:#fff;border:1.5px dashed var(--line);border-radius:12px;touch-action:none"></canvas><button class="b" id="pcl" type="button" style="margin-top:6px;padding:8px">مسح التوقيع</button>
- <label>صورة البضاعة / التسليم (اختياري)</label><input id="pf" type="file" accept="image/*"><small class="mut" id="ph"></small>
+ ${sh?`<label>رقم البوليصة / الشحنة (من إيصال الشركة)</label><input id="pw" maxlength="40" autocomplete="off" dir="ltr" placeholder="مثلاً: 1234567890">`:""}
+ <label>${sh?"صورة إيصال الشحن (مطلوبة لو مفيش رقم بوليصة)":"صورة البضاعة / التسليم (اختياري)"}</label><input id="pf" type="file" accept="image/*"><small class="mut" id="ph"></small>
  <div class="row"><button class="b" id="p0" type="button">رجوع</button><button class="b ok" id="p1" type="button">تأكيد التسليم ✅</button></div>`);
  const cv=g("pc"),cx=cv.getContext("2d");cx.lineWidth=2.4;cx.lineCap="round";cx.strokeStyle="#111";let dn=false;
  const pt=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
@@ -396,10 +401,12 @@ function podForm(rid){
   if(!(od>0)){toast("اكتب قراءة العداد","er");return}
   if(od<lo){toast(`قراءة العداد لازم تكون ${lo} أو أكتر (آخر قراءة)`,"er");return}
   if(od-lo>MAXLEG){toast(`الرقم كبير أوي (${od-lo} كم من آخر قراءة). راجع العداد`,"er");return}
+  const wb=sh&&g("pw")?g("pw").value.trim().slice(0,40):"";
+  if(sh&&!wb&&!img){toast("اكتب رقم البوليصة أو صوّر إيصال شركة الشحن","er");return}
   const nm=g("pn").value.trim();if(!nm){toast("اكتب اسم المستلم","er");return}
   if(busy){toast("استنى الصورة تخلص","er");return}
   g("p1").disabled=true;g("p1").textContent="جاري الحفظ...";
-  const ts=Date.now(),loc=await here();let pod={name:nm.slice(0,60),at:ts},pics=null;
+  const ts=Date.now(),loc=await here();let pod={name:nm.slice(0,60),at:ts},pics=null;if(sh){pod.co=String(sh).slice(0,60);if(wb)pod.wb=wb}// تسليم لشركة الشحن: اسم الشركة ورقم البوليصة
   if(drawn){const sg=cv.toDataURL("image/png");if(sg.length<=40000)(pics=pics||{}).sig=sg}
   if(img)(pics=pics||{}).img=img;
   try{

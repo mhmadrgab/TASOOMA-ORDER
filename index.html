@@ -494,7 +494,9 @@ function etaHtml(r){
 // XF = التحويلات المطلوبة من الفرع ده (null = لسه ماتحمّلتش)
 let XF=null;const seenXf=new Set();
 // حالة الطلب للفرع: التحويل اللي جايله بيتجهّز في الفرع التاني مش في المستودع
-const lbl=r=>r.tr&&(r.st==="new"||r.st==="prep")?(+r.rdy?`جاهز في ${r.tr.frn}، مستني السواق`:`بيتجهّز في ${r.tr.frn}`):LBL[ST(r.st)];
+// فرع خارج الرياض: السواق بيسلّم لشركة الشحن (مش للفرع)، والفرع بيستلم من الشركة. SHIP = اسم الشركة (من ship/main)، فاضي = فرع عادي
+let SHIP="";const isShip=r=>!!SHIP&&!r.tr;
+const lbl=r=>isShip(r)&&r.st==="go"?"السواق رايح بيه لشركة الشحن 🚚":isShip(r)&&r.st==="done"?"اتسلّم لشركة الشحن 📦":r.tr&&(r.st==="new"||r.st==="prep")?(+r.rdy?`جاهز في ${r.tr.frn}، مستني السواق`:`بيتجهّز في ${r.tr.frn}`):LBL[ST(r.st)];
 // التحويلات المطلوبة من الفرع ده: بيجهّزها ويقول "جاهزة"، والمستودع بيبعت سواق ياخدها ويوديها للفرع التاني
 function paintXf(){
  let box=g("xf");
@@ -541,6 +543,8 @@ function listen(){
  // محتاج فهرس (br + ts) في Firebase؛ لو لسه ماتعملش بنرجع للطريقة القديمة علشان الصفحة ماتقفش
  uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c),where("ts",">=",Date.now()-45*864e5)),sn=>put("r",sn),e=>{
   if(e&&e.code==="failed-precondition")uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c)),sn=>put("r",sn),fail));else fail(e)}));
+ // شركة الشحن الخاصة بالفرع ده (لو خارج الرياض)
+ uns.push(onSnapshot(doc(db,"ship","main"),d=>{const s=d.exists()&&d.data().c&&typeof d.data().c==="object"&&d.data().c[c]||"";if(String(s)!==SHIP){SHIP=String(s);if(got.o&&got.r)show()}},()=>{}));
  // العدّ التنازلي لوصول السواق بيتحدّث كل دقيقة
  const tk=setInterval(()=>{if(Object.values(REQS).some(r=>r.st==="go"))paint()},60000);uns.push(()=>clearInterval(tk));
  // التحويلات المطلوبة من الفرع ده (هو اللي هيجهّز ويبعت لفرع تاني)
@@ -559,9 +563,9 @@ function listen(){
   if(prev)rs.forEach(r=>{if(prev[r.id]||r.by!=="wh"||r.st!=="new"||Date.now()-(+r.ts||0)>36e5)return;
    const m=r.tr?`في تحويل رايحلك من ${r.tr.frn}: ${+r.codes||0} صنف · ${+r.pcs||0} قطعة`:`المستودع عملك طلب ${r.no}: ${+r.codes||0} صنف · ${+r.pcs||0} قطعة`;
    toast((r.tr?"🔄 ":"📋 ")+m);notify(r.tr?"🔄 تحويل رايحلك":"📋 طلب من المستودع",m,"w"+r.id);beep()});
-  if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${lbl(r)}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
+  if(prev)rs.forEach(r=>{const o=prev[r.id];if(!o)return;if(o.st!==r.st){const m=isShip(r)&&r.st==="done"?`طلب ${r.no}: اتسلّم لشركة الشحن${r.pod&&r.pod.wb?" (بوليصة "+r.pod.wb+")":""} — اضغط "استلمت" لما يوصلك`:r.st==="done"?`طلب ${r.no}: تم التسليم — اضغط "استلمت" بعد ما توصلك`:`طلب ${r.no}: ${lbl(r)}`;toast(m);notify("تاسومة — حالة الطلب",m,"r"+r.id);if(document.hidden)beep()}else if((+r.eat||0)>o.eat){toast(`المستودع عدّل طلب ${r.no}`);notify("تاسومة","المستودع عدّل طلب "+r.no,"e"+r.id)}});
   // السواق قرب (الإشعار على الموبايل بيجي من السيرفر، وهنا لو الصفحة مفتوحة)
-  if(prev)rs.forEach(r=>{const o=prev[r.id];if(o&&r.st==="go"&&(+r.near||0)>o.near&&(+r.near||0)>(+r.dep||0)){toast(`🔔 السواق قرب يوصلك بطلب ${r.no}`);beep()}});
+  if(prev)rs.forEach(r=>{const o=prev[r.id];if(o&&r.st==="go"&&!isShip(r)&&(+r.near||0)>o.near&&(+r.near||0)>(+r.dep||0)){toast(`🔔 السواق قرب يوصلك بطلب ${r.no}`);beep()}});
   REQS={};rs.forEach(r=>REQS[r.id]=r);
   setBadge();
   prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0,near:+r.near||0});
@@ -569,7 +573,7 @@ function listen(){
  }
  // بنرسم القائمة لوحدها كمان لما المحادثة تتقفل (علشان رقم الرسايل الجديدة يتحدّث)
  paint=()=>{const rs=Object.values(REQS).sort((a,b)=>b.ts-a.ts);
-  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.tr?`<span class="ed-tag wh-tag">🔄 تحويل من <bdi dir="ltr">${E(r.tr.frn)}</bdi></span>`:r.by==="wh"?`<span class="ed-tag wh-tag">📋 المستودع عمل الطلب ده</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${r.edn?" ("+E(r.edn)+")":""}${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${lbl(r)}</span>${rqBtn(r)}${r.st==="go"?`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}</span>${etaHtml(r)}`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
+  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.tr?`<span class="ed-tag wh-tag">🔄 تحويل من <bdi dir="ltr">${E(r.tr.frn)}</bdi></span>`:r.by==="wh"?`<span class="ed-tag wh-tag">📋 المستودع عمل الطلب ده</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${r.edn?" ("+E(r.edn)+")":""}${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${lbl(r)}</span>${rqBtn(r)}${r.st==="go"?(isShip(r)?`<span class="gon">🚚 السواق خرج بطلبك رايح لشركة الشحن (${E(SHIP)})${+r.dep?" · خرج "+ago(+r.dep):""}<br>هيوصلك من الشركة بعد ما يتسلّم لها</span>`:`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}</span>${etaHtml(r)}`):""}${r.st==="done"&&isShip(r)?`<span class="gon">📦 اتسلّم لشركة الشحن (${E(r.pod&&r.pod.co||SHIP)})${r.pod&&r.pod.wb?` · بوليصة <bdi dir="ltr">${E(r.pod.wb)}</bdi>`:""}<br>لما الشحنة توصلك دوس "استلمت" وراجع الكميات</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لسه ماتبعتش طلبات.</small>';
  }
 }
 function enter(b){

@@ -90,7 +90,8 @@ service cloud.firestore {
       function validPod() {
         let p = request.resource.data.pod;
         // (ph/sg = فيه صورة/توقيع في pods/{id}. الصور الجديدة مابقتش جوه الطلب، والقديمة لسه مسموحة)
-        return p is map && p.keys().hasOnly(['name','sig','img','at','ph','sg'])
+        return p is map && p.keys().hasOnly(['name','sig','img','at','ph','sg','wb','co'])
+          && (!('wb' in p) || (p.wb is string && p.wb.size() <= 40)) && (!('co' in p) || (p.co is string && p.co.size() <= 60))
           && (!('ph' in p) || p.ph == 1) && (!('sg' in p) || p.sg == 1)
           && p.name is string && p.name.size() <= 60
           && (!('sig' in p) || (p.sig is string && p.sig.size() <= 40000))
@@ -321,6 +322,12 @@ service cloud.firestore {
         && (!('k' in request.resource.data) || (request.resource.data.k is string && request.resource.data.k.size() <= 40))
         && request.resource.data.r in ['owner','admin','req','staff'];
       allow delete: if isOwner();
+    }
+    // الفروع اللي خارج الرياض: ship/main = {c:{كود الفرع: اسم شركة الشحن}}. المدير بيكتبها من تبويب الفروع، والباقي بيقرا
+    // (السواق بيسلّم لشركة الشحن بدل الفرع، والفرع بيعرض حالة الطلب على كده)
+    match /ship/{id} {
+      allow read:  if isAdmin() || isStaff() || branchOn() || drvOn();
+      allow write: if isAdmin() && id == 'main' && request.resource.data.keys().hasOnly(['c']) && request.resource.data.c is map && request.resource.data.c.size() <= 60;
     }
     // مكان السواق اللايف (live/{drv1} = {lat,lng,ts,trip,spd?}): السيرفر بس بيكتبه (من تطبيق التتبع)، واللوحة بتقراه للخريطة
     match /live/{id} {
