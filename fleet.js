@@ -3,7 +3,7 @@ import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,quer
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep,pushOn} from "./notify.js";
 import {ledger} from "./ad-extra.js";
-import {leaflet,baseMap,pin,okPt,MAP_CSS} from "./map.js";
+import {leaflet,baseMap,pin,okPt,MAP_CSS,roadRoute,glide} from "./map.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const dk=t=>new Date(N(t)).toLocaleDateString("en-CA"),hm=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
@@ -113,10 +113,10 @@ function attachLive(){
   .catch(()=>{LM.loading=false;const c=LM.host&&LM.host.querySelector(".tz-mapc");if(c)c.innerHTML='<div class="off" style="padding:30px;text-align:center">تعذر تحميل الخريطة. اتأكد من النت وحدّث الصفحة.</div>'});
 }
 // علامة واحدة: لو موجودة نحرّكها ونحدّث شكلها، ولو جديدة نعملها
-function mark(key,pt,html,pop,tip,z){
+function mark(key,pt,html,pop,tip,z,smooth){
  const L=LM.L;let m=LM.mk.get(key);
  if(!m){m=L.marker([+pt.lat,+pt.lng],{icon:pin(L,html),zIndexOffset:z||0,keyboard:false});m._h=html;if(pop)m.bindPopup(pop);if(tip)m.bindTooltip(tip,{direction:"top"});m.addTo(LM.map);LM.mk.set(key,m)}
- else{m.setLatLng([+pt.lat,+pt.lng]);if(m._h!==html){m.setIcon(pin(L,html));m._h=html}if(pop){if(m.getPopup())m.setPopupContent(pop);else m.bindPopup(pop)}}
+ else{if(smooth)glide(m,pt);else m.setLatLng([+pt.lat,+pt.lng]);if(m._h!==html){m.setIcon(pin(L,html));m._h=html}if(pop){if(m.getPopup())m.setPopupContent(pop);else m.bindPopup(pop)}}
  m._seen=1;return m;
 }
 function line(key,pts,opt){
@@ -134,13 +134,26 @@ function paintLive(){
   const st=Array.isArray(t.stops)?t.stops:[],done=st.filter(s=>s.arr).length,rem=st.filter(s=>!s.arr);
   const rq=s=>X.R().find(r=>r.id===s.rid),eta=s=>{const r=rq(s);return N(r&&r.eta)||N(s.eta)};
   rem.forEach(s=>{nxt.add(bc(s.brn));if(s.fr&&!s.pk)nxt.add(String(s.fr))});
-  if(!okPt(t.loc))return;
-  const old=Date.now()-N(t.loc.ts)>10*6e4,nx=rem[0];
-  const pop=`<b>🚚 ${E(t.drvn)}</b><br>${E(t.carn)}<br>سلّم ${done} من ${st.length}${nx?`<br>رايح لـ <b><bdi dir="ltr">${E(nx.fr&&!nx.pk?(nx.frn||nx.fr)+" (استلام)":nx.brn)}</bdi></b>${eta(nx)?` · متوقع ~${hm(eta(nx))}`:""}`:"<br>خلّص التوصيلات"}<br><span style="color:#6f6b64">آخر مكان: ${ago(t.loc.ts)} (${hm(t.loc.ts)})${t.loc.src==="bg"?" · من التطبيق":""}</span>`;
-  mark("d_"+t.id,t.loc,`<div class="tz-d${old?" old":""}"><b>🚚</b><span>${E(t.drvn)}</span></div>`,pop,null,1000);fit.push(t.loc);
-  // الطريق اللي فاضل: من مكانه دلوقتي على الفروع اللي لسه ماسلّمهاش بالترتيب (خطوط مستقيمة)
-  const path=[t.loc,...rem.flatMap(s=>[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))])].filter(okPt);
-  if(path.length>1){line("p_"+t.id,path,{color:cols[i%cols.length],weight:4,opacity:.75,dashArray:"8 8"});path.slice(1,2).forEach(p=>fit.push(p))}
+  // المكان: الأحدث بين اللي على الرحلة (كل دقيقتين ونص) واللايف (live/{السائق}، كل ~20 ثانية)
+  const lv=LV[t.drv],loc=lv&&lv.trip===t.id&&N(lv.ts)>N(t.loc&&t.loc.ts)&&okPt(lv)?{...lv,src:"bg"}:t.loc;
+  if(!okPt(loc))return;
+  const old=Date.now()-N(loc.ts)>10*6e4,nx=rem[0],rr=RT[t.id]&&RT[t.id].r,nxs=rr&&rr.legs&&rr.legs[0];
+  const pop=`<b>🚚 ${E(t.drvn)}</b><br>${E(t.carn)}<br>سلّم ${done} من ${st.length}${nx?`<br>رايح لـ <b><bdi dir="ltr">${E(nx.fr&&!nx.pk?(nx.frn||nx.fr)+" (استلام)":nx.brn)}</bdi></b>${eta(nx)?` · متوقع ~${hm(eta(nx))}`:""}`:"<br>خلّص التوصيلات"}${nx&&nxs?`<br>🚦 بالزحمة دلوقتي: يوصل خلال ~${Math.max(1,Math.round(nxs/60))} د${rr.delay>60?` (منهم ${Math.round(rr.delay/60)} د زحمة)`:""}`:""}${lv&&lv.trip===t.id&&N(lv.spd)>0?`<br>🏎 ${N(lv.spd)} كم/س`:""}<br><span style="color:#6f6b64">آخر مكان: ${ago(loc.ts)} (${hm(loc.ts)})${loc.src==="bg"?" · من التطبيق":""}</span>`;
+  mark("d_"+t.id,loc,`<div class="tz-d${old?" old":""}"><b>🚚</b><span>${E(t.drvn)}</span></div>`,pop,null,1000,true);fit.push(loc);
+  // الطريق اللي فاضل: من مكانه دلوقتي على الفروع اللي لسه ماسلّمهاش بالترتيب. خط متقطّع لحد ما المسار الحقيقي على الطريق يوصل (TomTom)
+  const path=[loc,...rem.flatMap(s=>[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))])].filter(okPt);
+  if(path.length>1){
+   const c=cols[i%cols.length],rd=rr&&rr.path&&rr.path.length>1;
+   line("p_"+t.id,rd?rr.path.map(([a,b])=>({lat:a,lng:b})):path,rd?{color:c,weight:5,opacity:.8}:{color:c,weight:4,opacity:.75,dashArray:"8 8"});
+   const lp=LM.mk.get("p_"+t.id);if(lp)lp.setStyle(rd?{dashArray:null,weight:5,opacity:.8}:{dashArray:"8 8",weight:4,opacity:.75});
+   path.slice(1,2).forEach(p=>fit.push(p));
+   // نحسب المسار تاني بس لو اتحرك أكتر من 2 كيلو أو عدّى 10 دقايق أو الفروع اتغيّرت (الحد المجاني 2,500 في اليوم لكل الأجهزة)
+   const sig=path.slice(1).map(p=>(+p.lat).toFixed(4)+","+(+p.lng).toFixed(4)).join("|"),o=RT[t.id];
+   if(!o||o.busy!==true&&(o.sig!==sig||Date.now()-o.at>10*6e4||km2r(o.from,loc)>2)){
+    RT[t.id]={...(o||{}),busy:true,sig,from:loc,at:Date.now()};
+    roadRoute(path,10).then(r=>{RT[t.id]={r:r||(o&&o.sig===sig?o.r:null),sig,from:loc,at:Date.now(),busy:false};if(r)paintLive()});
+   }
+  }
  });
  Object.entries(br).forEach(([c,p])=>{if(!okPt(p))return;const n=nm[c]||c,on=nxt.has(c);mark("b_"+c,p,`<div class="tz-b${on?" nx":""}">${E(c)}</div>`,`<b><bdi dir="ltr">${E(n)}</bdi></b>${on?"<br>🚚 سواق رايحله دلوقتي":""}`,null,on?800:0);if(!act.length)fit.push(p)});
  // نشيل اللي مابقاش موجود (رحلة خلصت مثلاً)
@@ -154,7 +167,10 @@ function fitLive(pts){
  const ll=pts.map(p=>[+(p.lat),+(p.lng)]);if(!ll.length)return;
  if(ll.length===1)LM.map.setView(ll[0],14);else LM.map.fitBounds(ll,{padding:[40,40],maxZoom:15});
 }
-function dropLive(){try{if(LM.map)LM.map.remove()}catch(e){}LM.host=null;LM.map=null;LM.mk=new Map();LM.fitKey="";LM.loading=false}
+function dropLive(){try{if(LM.map)LM.map.remove()}catch(e){}LM.host=null;LM.map=null;LM.mk=new Map();LM.fitKey="";LM.loading=false;RT={}}
+// المسار على الطريق لكل رحلة شغّالة (cache)، والمكان اللايف لكل سواق
+let RT={},LV={};
+const km2r=(a,b)=>{if(!okPt(a)||!okPt(b))return 99;const R=6371,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lng-a.lng),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
 // ---------- خريطة في نافذة: مسار رحلة، أو نقطة واحدة ----------
 let MM=null;
 const dropM=()=>{try{if(MM)MM.remove()}catch(e){}MM=null};
@@ -181,7 +197,9 @@ function tripMapM(id){
    n++;add(dl,`<div class="tz-s"><b>${n}</b><span>${hm(s.arr)}</span></div>`,`<b>✔ ${n}. <bdi dir="ltr">${E(s.brn)}</bdi></b><br>اتسلّم ${hm(s.arr)}${s.rcvr?"<br>استلم: "+E(s.rcvr):""}${Number.isFinite(+s.lat)?"":"<br>(مكان الفرع، الموبايل ماسجّلش مكان التسليم)"}`,400);if(okPt(dl))route.push(dl)});
   const e=endPt(t);
   if(t.st==="active"&&okPt(t.loc)){add(t.loc,`<div class="tz-d"><b>🚚</b><span>دلوقتي</span></div>`,`<b>🚚 ${E(t.drvn)} دلوقتي</b><br>آخر مكان: ${ago(t.loc.ts)} (${hm(t.loc.ts)})`,1000);route.push(t.loc)}
-  if(route.length>1)L.polyline(route.map(p=>[+p.lat,+p.lng]),{color:"#6a56c9",weight:4,opacity:.8}).addTo(M);
+  if(route.length>1){const pl=L.polyline(route.map(p=>[+p.lat,+p.lng]),{color:"#6a56c9",weight:4,opacity:.6,dashArray:"6 6"}).addTo(M);
+   // المسار على الطريق الحقيقي (TomTom) بدل الخطوط المستقيمة، لو اتحسب
+   roadRoute(route,1440).then(r=>{if(r&&r.path&&MM===M){pl.setLatLngs(r.path);pl.setStyle({dashArray:null,opacity:.85,weight:5})}})}
   // اللي لسه ما اتسلّمش: خط متقطّع من آخر نقطة
   const rest=[];wt.forEach(s=>{const [pk,dl]=[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))];
    if(okPt(pk)){add(pk,`<div class="tz-s wait"><b>📦</b></div>`,`<b>📦 لسه هيستلم من</b> <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>`,200);rest.push(pk)}
@@ -361,7 +379,7 @@ const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم ا�
 const GPS_URL="https://tasooma-push.tasooma.workers.dev/gps";
 const APK_URL="https://github.com/mhmadrgab/TASOOMA-ORDER/releases/latest/download/tasooma-driver.apk";// GitHub Releases، "latest" = آخر نسخة
 const gpsTok=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(20))].map(x=>a[x%a.length]).join("")};
-const gpsMsg=(d,tok)=>`أهلاً ${d.name}\nعلشان المنصة تعرف مكانك وتقول للفروع إمتى هتوصل، حتى والموبايل في جيبك:\n\n📱 لو موبايلك أندرويد:\nنزّل تطبيق TASOOMA للسواقين من الرابط ده:\n${APK_URL}\nافتحه وادخل بنفس اسم المستخدم وكلمة السر، ووافق على الموقع والإشعارات. خلاص كده، التتبع بيشتغل لوحده أول ما تبدأ الرحلة.\n(لو الموبايل سألك، اسمح بالتثبيت من المصدر ده)\n\n🍎 لو موبايلك آيفون:\n1) نزّل تطبيق "Traccar Client" من App Store (ببلاش)\n2) افتحه واكتب:\nDevice identifier: ${tok}\nServer URL: ${GPS_URL}\nFrequency: 60\n3) شغّل Service status\n4) اسمح بالموقع "طول الوقت / Always"\nوخلّيه شغّال على طول، وشغلك نفسه يفضل من تطبيقنا عادي.`;
+const gpsMsg=(d,tok)=>`أهلاً ${d.name}\nعلشان المنصة تعرف مكانك وتقول للفروع إمتى هتوصل، حتى والموبايل في جيبك:\n\n📱 لو موبايلك أندرويد:\nنزّل تطبيق TASOOMA للسواقين من الرابط ده:\n${APK_URL}\nافتحه وادخل بنفس اسم المستخدم وكلمة السر، ووافق على الموقع والإشعارات. خلاص كده، التتبع بيشتغل لوحده أول ما تبدأ الرحلة.\n(لو الموبايل سألك، اسمح بالتثبيت من المصدر ده)\n\n🍎 لو موبايلك آيفون:\n1) نزّل تطبيق "Traccar Client" من App Store (ببلاش)\n2) افتحه واكتب:\nDevice identifier: ${tok}\nServer URL: ${GPS_URL}\nFrequency: 20\n3) شغّل Service status\n4) اسمح بالموقع "طول الوقت / Always"\nوخلّيه شغّال على طول، وشغلك نفسه يفضل من تطبيقنا عادي.`;
 function gpsForm(d){
  const tok=d.gps,row=(l,v)=>`<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><span class="off" style="min-width:130px">${l}</span><b dir="ltr" style="flex:1;word-break:break-all">${E(v)}</b><button class="bt s" data-fl="gcp" data-v="${E(v)}" type="button">نسخ</button></div>`;
  const a=TR.find(t=>t.drv===d.id&&t.st==="active"),bg=a&&a.loc&&a.loc.src==="bg"?a.loc:null;
@@ -369,7 +387,7 @@ function gpsForm(d){
  <p class="off" style="margin:0 0 10px">مكان السواق بيوصل للمنصة كل دقيقة <b>حتى والموبايل مقفول</b>، والمنصة بتحسب الوقت المتوقع لكل فرع وبتبعت للفرع "🔔 السواق قرب يوصلك". المكان بيتسجّل بس وهو في رحلة.</p>
  <div style="border:1.5px solid var(--line,#ddd);border-radius:12px;padding:10px 12px;margin:8px 0"><b>📱 أندرويد: تطبيق TASOOMA للسواقين</b><div class="off" style="margin:4px 0">ينزّله من الرابط، ويدخل بنفس اسم المستخدم وكلمة السر. <b>مفيش أي إعدادات</b>: التتبع بيشتغل لوحده مع بدء الرحلة وبيقف مع إنهائها، والإشعارات بتوصله والتطبيق مقفول.</div>${row("رابط التطبيق",APK_URL)}</div>
  <div style="border:1.5px solid var(--line,#ddd);border-radius:12px;padding:10px 12px;margin:8px 0"><b>🍎 آيفون: تطبيق Traccar Client</b>
- ${row("Device identifier",tok)}${row("Server URL",GPS_URL)}${row("Frequency",60)}
+ ${row("Device identifier",tok)}${row("Server URL",GPS_URL)}${row("Frequency",20)}
  <ol class="off" style="padding-inline-start:18px;line-height:1.9;margin:8px 0"><li>ينزّل <b>Traccar Client</b> من App Store</li><li>يكتب الـ 3 حاجات اللي فوق في الإعدادات</li><li>يشغّل <b>Service status</b></li><li>يسمح بالموقع <b>طول الوقت (Always)</b></li></ol></div>
  <div class="off" style="margin:6px 0">${a?(bg?`✅ شغّال: آخر مكان وصل من التطبيق ${ago(bg.ts)}`:"⏳ عنده رحلة دلوقتي بس لسه ماوصلش مكان من التطبيق"):"المكان بيظهر هنا أول ما يبدأ رحلة."}</div>
  <div class="fl2" style="margin-top:12px"><button class="bt p" data-fl="gmsg" data-id="${E(d.id)}" type="button">📋 نسخ رسالة للسواق</button><button class="bt" data-fl="gnew" data-id="${E(d.id)}" type="button">🔄 رمز جديد</button><button class="bt" data-fl="cancel" type="button">إغلاق</button></div>`);
@@ -483,6 +501,8 @@ export function initFleet(ctx){
   pT={};nx.forEach(t=>pT[t.id]={st:t.st,n:(Array.isArray(t.stops)?t.stops:[]).filter(s=>s.arr).length});TRL=nx;mergeOld();draw();syncGeo();
  },()=>X.toast("تعذر قراءة الرحلات. حدّث القواعد (Rules)")));
  un.push(onSnapshot(doc(X.db,"geo","main"),d=>{GEOD=d.exists()?d.data():null;geoReady=true;syncGeo()},()=>{}));
+ // مكان السواقين اللايف (كل ~20 ثانية من تطبيق التتبع): بيحرّك العربيات على الخريطة بس (من غير ما اللوحة كلها تترسم تاني)
+ un.push(onSnapshot(collection(X.db,"live"),sn=>{LV={};sn.docs.forEach(d=>{LV[d.id]=d.data()});if(LM.map&&X.tab()==="fl")paintLive()},()=>{}));
  un.push(onSnapshot(query(collection(X.db,"fuel"),where("ts",">=",since)),sn=>{
   FUL=sn.docs.map(d=>({id:d.id,...d.data()}));mergeOld();
   if(pF)FUL.forEach(f=>{if(!(f.id in pF)&&f.drv!=="admin")X.toast(`⛽ ${f.drvn}: ${fmt(f.liters)} لتر بنزين`)});

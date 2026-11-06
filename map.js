@@ -1,5 +1,6 @@
-// خرائط جوه المنصة (من غير ما نفتح خرائط جوجل): مكتبة Leaflet من cdnjs + خريطة OpenStreetMap الرسمية (ببلاش، وأسماء الشوارع عربي).
-// (CARTO بقت بتطلب مفتاح مدفوع، نوفمبر 2026.) شروط OpenStreetMap: استخدام خفيف + كتابة اسمهم على الخريطة (attribution).
+// خرائط جوه المنصة (من غير ما نفتح خرائط جوجل): مكتبة Leaflet من cdnjs + خريطة TomTom وطبقة الزحمة اللايف (حساب مجاني، نوفمبر 2026).
+// TomTom المجاني: ~50 ألف جزء خريطة و2,500 حساب مسار في اليوم. المفتاح ده بيبان في الصفحة عادي (زي أي مفتاح خرائط)؛ اقفله على
+// الدومين من my.tomtom.com ← Keys ← Domain whitelist = mhmadrgab.github.io. لو TomTom وقع بنرجع لـ OpenStreetMap لوحده.
 // المكتبة بتتحمّل أول مرة بس حد يفتح خريطة، ومعاها بصمة (integrity) علشان محدش يقدر يبدّلها.
 const V="1.9.4",CDN=`https://cdnjs.cloudflare.com/ajax/libs/leaflet/${V}/`;
 const SRI_JS="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==";
@@ -17,14 +18,43 @@ export function leaflet(){
  });
  return ready;
 }
+const TT="EKvqbvD3N1wXR53fTP5Ti4XF6lB4BOKX",TTA='&copy; <a href="https://www.tomtom.com" target="_blank" rel="noopener noreferrer">TomTom</a>';
 const dark=()=>!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);
-// خريطة جديدة جوه عنصر (المركز الافتراضي الرياض لحد ما نعرف الأماكن)
+const lsG=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsS=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+// خريطة جديدة جوه عنصر (المركز الافتراضي الرياض لحد ما نعرف الأماكن) + زرار 🚦 الزحمة (بيتفتكر)
 export function baseMap(L,el){
- if(dark())el.classList.add("tz-dark");// الوضع الليلي: نفس الخريطة بألوان غامقة (فلتر)
  const m=L.map(el,{zoomControl:true,attributionControl:true,scrollWheelZoom:true}).setView([24.71,46.68],11);
- L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-  {maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'}).addTo(m);
+ const base=L.tileLayer(`https://api.tomtom.com/map/1/tile/basic/${dark()?"night":"main"}/{z}/{x}/{y}.png?key=${TT}&tileSize=256&language=ar`,{maxZoom:20,attribution:TTA}).addTo(m);
+ // TomTom مارضيش (المفتاح اتقفل أو الحد خلص): نرجع لـ OpenStreetMap
+ let bad=0;base.on("tileerror",()=>{if(++bad===6){m.removeLayer(base);if(dark())el.classList.add("tz-dark");L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'}).addTo(m)}});
+ // الزحمة اللايف (أخضر = ماشي، أصفر/أحمر = زحمة)
+ const tr=L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${TT}&tileSize=256`,{maxZoom:20,opacity:.85,zIndex:5});
+ if(lsG("tz_traffic")!=="0")tr.addTo(m);
+ const C=L.Control.extend({options:{position:"topleft"},onAdd(){const b=L.DomUtil.create("button","tz-trf");b.type="button";const paint=()=>{b.textContent=m.hasLayer(tr)?"🚦 الزحمة: ظاهرة":"🚦 الزحمة: مخفية";b.classList.toggle("off",!m.hasLayer(tr))};paint();
+  L.DomEvent.on(b,"click",e=>{L.DomEvent.stop(e);if(m.hasLayer(tr)){m.removeLayer(tr);lsS("tz_traffic","0")}else{tr.addTo(m);lsS("tz_traffic","1")}paint()});L.DomEvent.disableClickPropagation(b);return b}});
+ new C().addTo(m);
  return m;
+}
+// المسار على الطريق الحقيقي + الوقت بالزحمة دلوقتي (TomTom Routing). pts = [{lat,lng},...] بالترتيب (لحد 25 نقطة).
+// النتيجة بتتحفظ على الجهاز علشان مانصرفش من الحد اليومي على نفس المسار: {path:[[lat,lng]], sec, m, delay}
+const RC=new Map();
+export async function roadRoute(pts,maxAgeMin=10){
+ pts=(pts||[]).filter(okPt).slice(0,25);if(pts.length<2)return null;
+ const key=pts.map(p=>(+p.lat).toFixed(4)+","+(+p.lng).toFixed(4)).join(":"),c=RC.get(key);
+ if(c&&Date.now()-c.at<maxAgeMin*6e4)return c.r;
+ try{
+  const r=await fetch(`https://api.tomtom.com/routing/1/calculateRoute/${key}/json?key=${TT}&traffic=true&routeType=fastest&travelMode=car`);
+  if(!r.ok)return null;const j=await r.json(),rt=j&&j.routes&&j.routes[0];if(!rt)return null;
+  const out={path:rt.legs.flatMap(l=>l.points.map(p=>[p.latitude,p.longitude])),sec:rt.summary.travelTimeInSeconds,m:rt.summary.lengthInMeters,delay:rt.summary.trafficDelayInSeconds||0,legs:rt.legs.map(l=>l.summary.travelTimeInSeconds)};
+  RC.set(key,{at:Date.now(),r:out});if(RC.size>80)RC.delete(RC.keys().next().value);return out;
+ }catch(e){return null}
+}
+// حركة ناعمة للعلامة من مكانها لمكان جديد (بدل ما تنط)
+export function glide(mk,to,ms=1500){
+ const a=mk.getLatLng(),b={lat:+to.lat,lng:+to.lng};if(!a||(Math.abs(a.lat-b.lat)<1e-6&&Math.abs(a.lng-b.lng)<1e-6))return;
+ if(mk._gl)cancelAnimationFrame(mk._gl);const t0=performance.now();
+ const step=t=>{const k=Math.min(1,(t-t0)/ms),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;mk.setLatLng([a.lat+(b.lat-a.lat)*e,a.lng+(b.lng-a.lng)*e]);if(k<1)mk._gl=requestAnimationFrame(step);else mk._gl=0};
+ mk._gl=requestAnimationFrame(step);
 }
 // علامة HTML (من غير صور): مركزها على النقطة بالظبط
 export const pin=(L,html)=>L.divIcon({className:"tz-pin",html:`<div class="tz-in">${html}</div>`,iconSize:[0,0],iconAnchor:[0,0],popupAnchor:[0,-18],tooltipAnchor:[0,-16]});
@@ -35,6 +65,7 @@ export const MAP_CSS=`
 @media (max-width:600px){.tz-mapc{height:300px}}
 .tz-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--mut);margin-top:8px}.tz-bar .bt{width:auto}
 .tz-dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9)}
+.tz-trf{font:700 12.5px "IBM Plex Sans Arabic",Tahoma,sans-serif;background:#fff;color:#1b1b1b;border:2px solid rgba(0,0,0,.2);border-radius:8px;padding:5px 9px;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.2)}.tz-trf.off{opacity:.75}
 .tz-pin{background:none;border:0}
 .tz-in{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:2px;font:600 12px/1.2 "IBM Plex Sans Arabic",Tahoma,sans-serif}
 .tz-d b{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#6a56c9;color:#fff;font-size:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)}

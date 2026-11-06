@@ -322,6 +322,11 @@ service cloud.firestore {
         && request.resource.data.r in ['owner','admin','req','staff'];
       allow delete: if isOwner();
     }
+    // مكان السواق اللايف (live/{drv1} = {lat,lng,ts,trip,spd?}): السيرفر بس بيكتبه (من تطبيق التتبع)، واللوحة بتقراه للخريطة
+    match /live/{id} {
+      allow read:  if isAdmin() || perm('fl') || isViewer();
+      allow write: if false;
+    }
     // أسماء السواقين للشات (ddir/{drv1} = {n}): المستودع بيكتبها لوحده من تبويب السيارات (fleet.js)، والكل بيقراها
     match /ddir/{id} {
       allow read:  if isAdmin() || isStaff() || branchOn() || drvOn();
