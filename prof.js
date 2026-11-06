@@ -23,7 +23,9 @@ export function avatar(em,name,sz){
 export const ownerMe=()=>ME||{};
 export const meReady=()=>ME!==null;// اسم المالك اتحمّل؟
 // زرار "أنا" في شريط اللوحة
-export const chip=()=>X?`<button id="pfme" class="pfme" type="button" title="ملفي الشخصي">${avatar(X.me,X.name(),28)}<span>${E(X.name())}</span></button>`:"";
+// أيقونة "حسابي" (راس وكتفين) زي أي تطبيق، ولو رفع صورته بتظهر بدلها. الاسم بيظهر جوه نافذة الحساب مش على الزرار
+const ICON=sz=>`<span class="pfa pfi" style="width:${sz}px;height:${sz}px"><svg viewBox="0 0 24 24" width="${Math.round(sz*.62)}" height="${Math.round(sz*.62)}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span>`;
+export const chip=()=>X?`<button id="pfme" class="pfme" type="button" title="حسابي: ${E(X.name())}" aria-label="حسابي">${photo(X.me)?avatar(X.me,X.name(),28):ICON(28)}<span>حسابي</span></button>`:"";
 // الصورة بتتقص مربع من النص وتتصغّر (علشان الحجم يفضل صغير في Firebase)
 async function shrink(file){
   const url=URL.createObjectURL(file);
