@@ -1,5 +1,5 @@
 // أدوات العهدة المشتركة بين صفحة الفرع وصفحة المستودع
-export const CATS=["بنزين","صيانة سيارات","نقل وشحن","مستلزمات تعبئة","نظافة","ضيافة","اتصالات","أخرى"];
+export const CATS=["إيجار عمال","نقل ومواصلات","محروقات","مستلزمات ضيافة ونظافة","أخرى"];// البنود القديمة (بنزين، صيانة سيارات...) اتشالت من القايمة، والحركات القديمة بتفضل ببندها
 export const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 export const N=x=>Number.isFinite(+x)?+x:0;
 export const fmt=x=>N(x).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2});

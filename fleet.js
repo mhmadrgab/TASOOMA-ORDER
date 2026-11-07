@@ -65,7 +65,7 @@ function carStat(c){
  const m=dk(Date.now()).slice(0,7),tr=TR.filter(t=>t.car===c.id&&t.st==="done"&&monthOf(t.start)===m);
  const km=tr.reduce((a,t)=>a+Math.max(0,N(t.odo1)-N(t.odo0)),0);
  const fu=FU.filter(f=>f.car===c.id&&String(f.dt).slice(0,7)===m),fl=fu.reduce((a,f)=>a+N(f.liters),0),fc=fu.reduce((a,f)=>a+N(f.cost),0);
- const oth=ledger().filter(e=>e.type==="exp"&&e.car===c.id&&String(e.dt).slice(0,7)===m&&e.cat!=="بنزين").reduce((a,e)=>a+N(e.amt),0);
+ const oth=ledger().filter(e=>e.type==="exp"&&e.car===c.id&&String(e.dt).slice(0,7)===m&&e.cat!=="بنزين"&&e.cat!=="محروقات").reduce((a,e)=>a+N(e.amt),0);
  return {km,fl,fc,oth,kmpl:econ(c.id),cpk:km>0?(fc+oth)/km:null,odo:odoOf(c.id),trips:tr.length};
 }
 // الوقت بين كل مكانين حسب "من فين لفين" (WH = المستودع): المستودع←الملقا غير غرناطة←الملقا
