@@ -100,7 +100,7 @@ export function giftsView(){
  const ok=rs.filter(r=>r.st==="ok"),pcs=ok.reduce((s,r)=>s+N(r.pcs),0);
  const per={};ok.forEach(r=>{const k=r.br;(per[k]=per[k]||{n:0,p:0}).n++;per[k].p+=N(r.pcs)});
  const brs=[...new Set(all().map(r=>r.br))].sort();
- return `<div class="fl" style="margin:0 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><h2 style="margin:0">🎁 الهدايا والعينات</h2>${canApprove()?`<button class="bt g" data-gf="new" type="button" style="margin-inline-start:auto">➕ هدية / عينة من المستودع</button>`:""}</div>
+ return `<div class="fl" style="margin:0 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><h2 style="margin:0">🎁 الهدايا والعينات</h2>${canApprove()&&!X.noNew?`<button class="bt g" data-gf="new" type="button" style="margin-inline-start:auto">➕ هدية / عينة من المستودع</button>`:""}</div>
  ${pend.length?`<div class="gf-pend"><h3 style="margin:0 0 8px">⏳ بانتظار اعتمادك (${pend.length})</h3>${pend.map(r=>card(r,true)).join("")}</div>`:""}
  <div class="gf-f"><div><small>من</small><input type="date" id="gff" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gft" value="${E(F.to)}"></div>
  <div><small>الفرع</small><select id="gfb"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>

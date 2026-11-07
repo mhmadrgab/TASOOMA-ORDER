@@ -1,5 +1,6 @@
 /* i18n-en.js — قاموس الترجمة الإنجليزية (مفتاح: النص العربي الفصيح كما يظهر في المنصة). يُحمَّل فقط عند اختيار English. */
 export default {
+" كمدير تسويق (الهدايا فقط)":" as a marketing manager (gifts only)",
 "، بانتظار السائق":", waiting for the driver",
 "، تأكد من الإنترنت":", check the internet",
 "، حتى والتطبيق مغلق":", even when the app is closed",
@@ -13,6 +14,7 @@ export default {
 "؟ سيفقد كل الصلاحيات":"? He will lose all permissions",
 "؟ لن يتمكن من الدخول أو إرسال الطلبات":"? It will not be able to log in or send orders",
 "(اختياري)":"(optional)",
+"📣 مدير تسويق (الهدايا فقط)":"📣 Marketing manager (gifts only)",
 "آخر 30 يوم":"Last 30 days",
 "آخر 7 أيام":"Last 7 days",
 "آخر تعبئات البنزين":"Latest fuel fill-ups",
@@ -1143,6 +1145,7 @@ export default {
 "لا يوجد عمال بعد. أضفهم من تبويب \"العمال":"No workers yet. Add them from the \"Workers",
 "لا يوجد متابعون بعد. أضفه من الأعلى واختر":"No viewers yet. Add him from above and choose",
 "لا يوجد محاسبون بعد":"No accountants yet",
+"لا يوجد مديرو تسويق بعد. أضفه من الأعلى واختر \"📣 مدير تسويق":"No marketing managers yet. Add him from above and choose \"📣 Marketing manager",
 "لا يوجد مديرون بعد":"No managers yet",
 "لا يوجد موقع مسجّل بعد":"No location recorded yet",
 "لا يوجد ميكروفون يعمل على هذا الجهاز":"No working microphone on this device",
@@ -1236,6 +1239,7 @@ export default {
 "محمد رجب":"Mohamed Ragab",
 "مدير":"Manager",
 "مدير المستودع":"Warehouse manager",
+"مديرو التسويق":"Marketing managers",
 "مرات":"times",
 "مرتبط بسيارة (اختياري":"Linked to a vehicle (optional",
 "مرفوض":"Rejected",
@@ -1400,6 +1404,7 @@ export default {
 "يُحسب من الرحلات المنتهية":"Calculated from completed trips",
 "يُحسب من قراءات العداد التي يكتبها السائقون عند كل تسليم":"Calculated from the odometer readings the drivers enter at each delivery",
 "يدخل في تكلفة السيارة":"it counts toward the vehicle cost",
+"يدخل ويرى مديول الهدايا والعينات فقط، ويعتمد هدايا الفروع أو يرفضها.":"Sees the gifts and samples module only, and approves or rejects the branches' gifts.",
 "يسجّل":"recording",
 "يُسجَّل المكان فقط أثناء الرحلة":"The location is recorded only during the trip",
 "يُسجَّل المكان فقط أثناء الرحلة.":"The location is recorded only during the trip.",

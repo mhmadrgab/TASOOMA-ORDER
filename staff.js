@@ -7,6 +7,8 @@ export const OWNER_NAME="محمد رجب";
 const g=id=>document.getElementById(id);
 // gift = محاسب الهدايا: يشوف الهدايا والعينات ويطلّع تقاريرها بس (الاعتماد للي معاه "الطلبات" وللمديرين)
 const PERMS=[["req","الطلبات"],["cus","العهدة"],["fl","السيارات والسائقين"],["gift","🎁 الهدايا (مشاهدة وتقارير)"]];
+// مدير التسويق: الهدايا والعينات فقط (يعتمدها ويرفضها). p.gm فقط من غير أي صلاحية تانية
+const isMkt=s=>s.v!==true&&s.admin!==true&&!!(s.p&&s.p.gm===true&&!s.p.req&&!s.p.cus&&!s.p.fl&&!s.p.gift);
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
 const EMAIL=/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/;
 // DV = أجهزة الإشعارات لكل إيميل [{dv:"m"|"pc"|"", ts}] (المالك بس)
@@ -18,7 +20,7 @@ export function syncDir(){
  if(!X||!X.owner||!SL||!WD||!X.me||!meReady())return;
  const me=ownerMe(),want={[X.me]:{n:String(me.n||OWNER_NAME).slice(0,60),k:String(me.k||"").slice(0,40),r:"owner"}};
  // كل الموظفين المفعّلين (ما عدا المتابع): r = admin/req بيكلّموا الفروع، و staff بيكلّموا السائقين والموظفين بس (نوفمبر 2026)
- S.forEach(s=>{const id=String(s.id).toLowerCase();if(id!==X.me&&s.enabled&&s.v!==true)want[id]={n:String(s.name||id.split("@")[0]).slice(0,60),k:String(s.k||"").slice(0,40),r:s.admin===true?"admin":(s.p&&s.p.req)?"req":"staff"}});
+ S.forEach(s=>{const id=String(s.id).toLowerCase();if(id!==X.me&&s.enabled&&s.v!==true&&!isMkt(s))want[id]={n:String(s.name||id.split("@")[0]).slice(0,60),k:String(s.k||"").slice(0,40),r:s.admin===true?"admin":(s.p&&s.p.req)?"req":"staff"}});
  Object.entries(want).forEach(([id,v])=>{const o=WD[id];if(!o||o.n!==v.n||(o.k||"")!==v.k||o.r!==v.r)setDoc(doc(X.db,"whdir",id),v).catch(()=>{})});
  Object.keys(WD).forEach(id=>{if(!want[id])deleteDoc(doc(X.db,"whdir",id)).catch(()=>{})});
 }
@@ -29,7 +31,7 @@ const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم ا�
 // الصفحة مقسومة: مالك النظام، المديرين، المحاسبين. المالك بس اللي بيعدّل؛ المدير بيشوف بس (ويلاقي نفسه في قسم المديرين)
 export function view(){
  // V = المتابعين (صاحب الشركة): بيشوفوا كل حاجة من غير تعديل
- const pw=PW(),own=X.owner,me=X.me,V=S.filter(s=>s.v===true),M=S.filter(s=>s.v!==true&&s.admin===true),A=S.filter(s=>s.v!==true&&s.admin!==true);
+ const pw=PW(),own=X.owner,me=X.me,V=S.filter(s=>s.v===true),M=S.filter(s=>s.v!==true&&s.admin===true),G=S.filter(s=>isMkt(s)),A=S.filter(s=>s.v!==true&&s.admin!==true&&!isMkt(s));
  const you=id=>id===me?' <span class="pill go">أنت</span>':"";
  const st=s=>`<span class="pill ${s.enabled?"":"off2"}">${s.enabled?"مفعّل":"معطّل"}</span>`;
  const pwc=s=>`<td>${pw[s.id]?`<span class="pin" data-spc="${E(s.id)}">••••••••</span> <button class="bt s" data-sf="show" data-id="${E(s.id)}" type="button">إظهار</button>`:'<span class="off">—</span>'}</td>`;
@@ -46,9 +48,11 @@ export function view(){
  const nc=s=>own?`<td style="white-space:nowrap">${dvs(s.id)} <button class="bt s" data-sf="ntest" data-id="${E(s.id)}" type="button" ${testing?"disabled":""}>${testing===s.id?"⏳":"🔔 جرّب"}</button></td>`:"";
  return `${own?`<div class="pan"><h3 style="margin:0 0 10px">👑 مالك النظام</h3><div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px">${avatar(me,on,44)}<div><b>${E(on)}</b>${mo.k?` <span class="pill">${E(mo.k)}</span>`:""}<div class="off" dir="ltr" style="font-size:13px">${E(me)}</div></div><span class="pill go">أنت</span><span class="off" style="font-size:13.5px">🔔 ${dvs(me)}</span> <button class="bt s" data-sf="ntest" data-id="${E(me)}" type="button" ${testing?"disabled":""}>${testing===me?"⏳":"🔔 جرّب"}</button><button class="bt s" data-pfopen type="button" style="margin-inline-start:auto">✏️ اسمي وكنيتي وصورتي</button></div></div>
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 10px">➕ إضافة موظف</h3>
- <div class="fl" style="margin:0"><input id="sfe" type="email" dir="ltr" placeholder="البريد الإلكتروني" value="${E(f.e)}" autocomplete="off" style="flex:1;min-width:190px"><input id="sfn" placeholder="الاسم" value="${E(f.n)}" maxlength="40" style="flex:1;min-width:140px"><input id="sfp" dir="ltr" placeholder="كلمة المرور (اختياري)" value="${E(f.p)}" autocomplete="off" style="flex:1;min-width:150px"><select id="sfr"><option value="acc" ${f.r==="acc"?"selected":""}>محاسب</option><option value="adm" ${f.r==="adm"?"selected":""}>مدير</option><option value="view" ${f.r==="view"?"selected":""}>👁 متابع (صاحب الشركة)</option></select><button class="bt p" data-sf="add" type="button" ${busy?"disabled":""}>إضافة</button></div></div>`:""}
+ <div class="fl" style="margin:0"><input id="sfe" type="email" dir="ltr" placeholder="البريد الإلكتروني" value="${E(f.e)}" autocomplete="off" style="flex:1;min-width:190px"><input id="sfn" placeholder="الاسم" value="${E(f.n)}" maxlength="40" style="flex:1;min-width:140px"><input id="sfp" dir="ltr" placeholder="كلمة المرور (اختياري)" value="${E(f.p)}" autocomplete="off" style="flex:1;min-width:150px"><select id="sfr"><option value="acc" ${f.r==="acc"?"selected":""}>محاسب</option><option value="adm" ${f.r==="adm"?"selected":""}>مدير</option><option value="mkt" ${f.r==="mkt"?"selected":""}>📣 مدير تسويق (الهدايا فقط)</option><option value="view" ${f.r==="view"?"selected":""}>👁 متابع (صاحب الشركة)</option></select><button class="bt p" data-sf="add" type="button" ${busy?"disabled":""}>إضافة</button></div></div>`:""}
  ${own||V.length?`<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 4px">👁 المتابعين (${V.length})</h3><p class="off" style="margin:0 0 8px;font-size:13px">مثل صاحب الشركة: يرى لوحة الأداء والطلبات والتحويلات والعهدة والسيارات والعمال والسجل، ولا يستطيع تعديل أو حذف أي شيء. وليس له دردشة ولا كلمات مرور.</p><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
  ${V.length?V.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,""):""}</tr>`).join(""):empty(own?7:4,"لا يوجد متابعون بعد. أضفه من الأعلى واختر \"👁 متابع\"")}</tbody></table></div></div>`:""}
+ ${own||G.length?`<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 4px">📣 مديرو التسويق (${G.length})</h3><p class="off" style="margin:0 0 8px;font-size:13px">يدخل ويرى مديول الهدايا والعينات فقط، ويعتمد هدايا الفروع أو يرفضها.</p><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
+ ${G.length?G.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,""):""}</tr>`).join(""):empty(own?7:4,"لا يوجد مديرو تسويق بعد. أضفه من الأعلى واختر \"📣 مدير تسويق\"")}</tbody></table></div></div>`:""}
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🛡 المديرين (${M.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
  ${M.length?M.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,`<button class="bt s" data-sf="toacc" data-id="${E(s.id)}" type="button">تحويل لمحاسب</button> `):""}</tr>`).join(""):empty(own?7:4,"لا يوجد مديرون بعد")}</tbody></table></div></div>
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🧾 المحاسبين (${A.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${PERMS.map(p=>`<th>${p[1]}</th>`).join("")}${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
@@ -65,10 +69,10 @@ async function add(){
   if(pw){try{await signInWithEmailAndPassword(a,e,pw)}finally{try{await signOut(a)}catch(x){}}}
   else{pw=genPw();try{await createUserWithEmailAndPassword(a,e,pw)}finally{try{await signOut(a)}catch(x){}}}
   await setDoc(doc(X.db,"secrets",e),{pw});
-  const adm=f.r==="adm",vw=f.r==="view";
+  const adm=f.r==="adm",vw=f.r==="view",mk=f.r==="mkt";
   // المتابع: من غير أي صلاحية تعديل (v = يشوف بس)
-  await setDoc(doc(X.db,"staff",e),vw?{name:n,enabled:true,admin:false,v:true,p:{}}:{name:n,enabled:true,admin:adm,p:{req:true,cus:true,fl:true}});
-  f={e:"",n:"",p:"",r:"acc"};X.toast("تمت إضافة "+n+(vw?" كمتابع (للمشاهدة فقط)":adm?" كمدير":" — راجع الصلاحيات"));
+  await setDoc(doc(X.db,"staff",e),vw?{name:n,enabled:true,admin:false,v:true,p:{}}:mk?{name:n,enabled:true,admin:false,p:{gm:true}}:{name:n,enabled:true,admin:adm,p:{req:true,cus:true,fl:true}});
+  f={e:"",n:"",p:"",r:"acc"};X.toast("تمت إضافة "+n+(vw?" كمتابع (للمشاهدة فقط)":mk?" كمدير تسويق (الهدايا فقط)":adm?" كمدير":" — راجع الصلاحيات"));
  }catch(x){if(!(window.uiAuthErr&&uiAuthErr(x,"الموظف")))X.toast(AERR(x))}
  busy=false;X.redraw();
 }

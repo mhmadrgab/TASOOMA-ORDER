@@ -144,12 +144,14 @@ const g=id=>document.getElementById(id);
 const code=b=>b.split("-")[0];
 let ROLE={admin:false,owner:false,v:false,p:{},name:""},stW=null,lastErr="";
 const can=k=>ROLE.admin||ROLE.p[k]===true;
+// مدير التسويق (p.gm): مديول الهدايا والعينات فقط (يعتمد ويرفض)، بدون الدردشة وباقي التبويبات
+const onlyGm=()=>!ROLE.admin&&ROLE.v!==true&&ROLE.p.gm===true&&!ROLE.p.req&&!ROLE.p.cus&&!ROLE.p.fl&&!ROLE.p.gift;
 // يشوف (المتابع بيشوف كل حاجة من غير ما يعدّل)
 const see=k=>can(k)||ROLE.v===true;
 // شات الفروع: الرقم الأحمر = عدد الفروع اللي باعتة رسايل لم تُقرأ بعد
 const chatLbl=()=>{const n=bcUnread();return `💬 الدردشة${n?` <b class="tbn">${n}</b>`:""}`};
 const giftLbl=()=>{const n=giftPend();return `🎁 الهدايا${n?` <b class="tbn">${n}</b>`:""}`};
-const TABS=[["req","الطلبات",()=>see("req")],["chat",chatLbl,()=>ROLE.v!==true],["fl","السيارات",()=>see("fl")],["cus","العهدة",()=>see("cus")],["wk","العمال",()=>ROLE.admin||ROLE.v===true],["br","الفروع",()=>ROLE.admin],["stf","الموظفين",()=>ROLE.admin],["gift",giftLbl,()=>see("req")||see("gift")],["log","📜 السجل",()=>ROLE.owner===true||ROLE.v===true],["sh","ورقة يدوية",()=>can("req")]];
+const TABS=[["req","الطلبات",()=>see("req")],["chat",chatLbl,()=>ROLE.v!==true&&!onlyGm()],["fl","السيارات",()=>see("fl")],["cus","العهدة",()=>see("cus")],["wk","العمال",()=>ROLE.admin||ROLE.v===true],["br","الفروع",()=>ROLE.admin],["stf","الموظفين",()=>ROLE.admin],["gift",giftLbl,()=>see("req")||see("gift")||can("gm")],["log","📜 السجل",()=>ROLE.owner===true||ROLE.v===true],["sh","ورقة يدوية",()=>can("req")]];
 // حساب المتابع: أزرار الحفظ والتعديل والحذف بتستخبى وبتتقفل (والقواعد في Firebase بتمنع أي كتابة أصلاً). العرض والطباعة والتقارير شغّالة
 const RO_SEL='[data-a]:not([data-a="print"]),[data-fl]:not([data-fl="trd"]):not([data-fl="tmap"]):not([data-fl="pmap"]):not([data-fl="mfit"]):not([data-fl="rep"]):not([data-fl="mrep"]):not([data-fl="cancel"]),[data-cx]:not([data-cx="img"]):not([data-cx="ps"]):not([data-cx="stmt"]):not([data-cx="cancel"]),[data-wk]:not([data-wk="rep"]):not([data-wk="slip"]),[data-gf="ok"],[data-gf="no"],[data-gf="new"],[data-gf="edit"],[data-gf="del"],[data-wst],[data-asd],[data-asc],[data-bk],#bkall,[data-bkd],#bkd,#bkc';
 document.addEventListener("click",e=>{if(ROLE.v===true&&e.target.closest(RO_SEL)){e.preventDefault();e.stopImmediatePropagation();toast("👁 حسابك للمتابعة فقط، وليس للتعديل")}},true);
@@ -255,7 +257,7 @@ function start(){
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك فقط
  // 🎁 الهدايا والعينات: المستودع والمديرين بيعتمدوا (approver)، والمحاسب (gift) والمتابع بيشوفوا ويطلّعوا تقارير
- if(adm||can("req")||can("gift")||vw)initGifts({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},approver:adm||can("req"),view:vw,owner:()=>ROLE.owner===true,branches:BR,redraw:draw,tab:()=>tab,
+ if(adm||can("req")||can("gift")||can("gm")||vw)initGifts({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},approver:adm||can("req")||can("gm"),noNew:!(adm||can("req")),view:vw,owner:()=>ROLE.owner===true,branches:BR,redraw:draw,tab:()=>tab,
   ping:ids=>ping(auth,[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="gift"]');if(b)b.innerHTML=giftLbl()}});
  if(adm||can("fl")||vw)initFleet({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
@@ -266,7 +268,7 @@ function start(){
  if(adm||can("req")||vw)initWorkers({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,loadAll:loadAllReqs,ping:ids=>ping(auth,ids)});
  // الدردشة الخاص مع الفروع (لكل اللي بيشتغل على الطلبات): كل شخص ليه محادثاته هو بس مع كل فرع، محدش غيره بيشوفها
  // كل اللي في المستودع (مش المتابع): يكلّم السائقين والموظفين، واللي معاه الطلبات أو مدير يكلّم الفروع أيضاً
- if(!vw){
+ if(!vw&&!onlyGm()){
   initBChat({db,party:"w-"+me,canBr:adm||can("req"),codes:BR,name:()=>ROLE.name||"",myLabel:()=>ROLE.name||me.split("@")[0],brn:c=>BR.find(b=>code(b)===c)||c,toast,beep,notify,ping:c=>ping(auth,[],[c]),visible:()=>tab==="chat",
    show:()=>{if(tab!=="chat"){tab="chat";draw()}},onBadge:()=>{const b=document.querySelector('[data-t="chat"]');if(b)b.innerHTML=chatLbl()}});
   // فتح من الإشعار: admin.html?chat=003 (فرع) أو ?chat=d-drv1 / w-إيميل
