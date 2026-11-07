@@ -52,6 +52,7 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
 .stop.done{background:var(--soft);border-color:var(--ok)}.stop b{font-size:19px;direction:ltr;display:inline-block}.stop small{display:block;color:var(--mut)}
 .stop .b{width:auto;padding:11px 14px;white-space:nowrap}
 .pick{display:flex;gap:12px;align-items:center;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;cursor:pointer}.pick input{width:24px;height:24px;flex:none}
+.ctn{display:flex;gap:8px;align-items:center;margin-top:8px}.ctn small{margin:0!important;color:var(--mut)}.ctn input{width:84px!important;height:42px!important;font-size:18px;text-align:center;border:1.5px solid var(--line);border-radius:10px;padding:0 6px}
 .pill{border-radius:999px;padding:2px 12px;font-size:13px;font-weight:700;background:#e4def7;color:#44348a}
 .kp{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.kp span{background:var(--soft);border-radius:10px;padding:4px 12px;font-size:15px}
 .mut{color:var(--mut);font-size:14px}.er{color:#c4362b;min-height:22px;font-size:15px;margin-top:8px}
@@ -89,6 +90,9 @@ const dur=ms=>{const m=Math.max(0,Math.round(N(ms)/60000)),h=Math.floor(m/60);re
 const today=()=>new Date().toLocaleDateString("en-CA");
 const codeOf=b=>String(b||"").split("-")[0];
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+// عدد الكراتين لكل طلب (اختياري): بيتكتب قبل الرحلة أو أثناءها، ويتحفظ على الرحلة (stops[].ct)
+const CT=(()=>{try{return JSON.parse(lsGet("drv_ct")||"{}")||{}}catch(e){return {}}})(),ctSave=()=>{const k=Object.keys(CT);if(k.length>200)k.slice(0,k.length-200).forEach(x=>delete CT[x]);lsSet("drv_ct",JSON.stringify(CT))},ctV=v=>{const n=Math.round(N(toEn(String(v||""))));return n>0?Math.min(9999,n):0};
+const ctBox=(rid,sh,v)=>`<div class="ctn" onclick="if(event.target.tagName!=='INPUT')event.preventDefault()"><small>📦 ${sh?"عدد الكراتين لشركة الشحن":"عدد الكراتين للفرع"} (اختياري)</small><input data-ct="${E(rid)}" inputmode="numeric" autocomplete="off" placeholder="0" value="${v?E(v):""}"></div>`;
 let me=null,CARS=[],REQ=[],TR=[],FU=[],GEO={br:{},wh:null},un=[],off=new Set(),odoV=null,tt,tick=null;
 const toast=(m,er)=>{const t=g("toast");t.textContent=m;t.className="on"+(er?" er":"");clearTimeout(tt);tt=setTimeout(()=>t.className="",er?5000:3200)};
 const ERR=c=>({"auth/invalid-credential":"اسم المستخدم أو كلمة المرور غير صحيحة","auth/user-disabled":"الحساب معطّل. تواصل مع المستودع.","auth/too-many-requests":"محاولات كثيرة، انتظر قليلاً","auth/network-request-failed":"لا يوجد اتصال بالإنترنت","auth/invalid-email":"اسم المستخدم غير صحيح"}[c]||"تعذر الدخول، حاول مجدداً.");
@@ -287,13 +291,13 @@ function draw(){
   ${st.map(s=>{
     // تحويل بين فرعين: لازم يستلم من الفرع الأول (fr) قبل ما يسلّم للمجدداً
     const pick=s.fr&&!s.pk&&!s.arr,sh=shipOf(s);
-    return `<div class="stop ${s.arr?"done":""}"><div>${s.fr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" ✔ "+hm(s.pk):""}</small>`:""}${sh?`<small style="display:block;color:#1c4f86;font-weight:700">🚚 شحن: سلّمه لشركة ${E(sh)}</small>`:""}<b>${s.fr?"← سلّم لـ ":sh?"← شحن لـ ":""}${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small>${itBtn(s.rid)}</div>${s.arr?"":pick?`<button class="b" data-pk="${E(s.rid)}" type="button">📦 استلمت من ${E(s.frn||s.fr)}</button>`:`<button class="b ok" data-arr="${E(s.rid)}" type="button">${sh?"سلّمت لشركة الشحن ✅":"وصلت وسلّمت ✅"}</button>`}</div>`}).join("")}
+    return `<div class="stop ${s.arr?"done":""}"><div>${s.fr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" ✔ "+hm(s.pk):""}</small>`:""}${sh?`<small style="display:block;color:#1c4f86;font-weight:700">🚚 شحن: سلّمه لشركة ${E(sh)}</small>`:""}<b>${s.fr?"← سلّم لـ ":sh?"← شحن لـ ":""}${E(s.brn)}</b><small><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${s.arr?" · ✔ "+hm(s.arr):s.eta?" · متوقع ~"+hm(s.eta):""}</small>${itBtn(s.rid)}${s.arr?(N(s.ct)>0?`<small style="color:var(--ink);font-weight:700">📦 ${N(s.ct)} كرتون</small>`:""):ctBox(s.rid,sh,s.ct||CT[s.rid])}</div>${s.arr?"":pick?`<button class="b" data-pk="${E(s.rid)}" type="button">📦 استلمت من ${E(s.frn||s.fr)}</button>`:`<button class="b ok" data-arr="${E(s.rid)}" type="button">${sh?"سلّمت لشركة الشحن ✅":"وصلت وسلّمت ✅"}</button>`}</div>`}).join("")}
   ${(()=>{// توصيلات اتعيّنت له بعد ما بدأ الرحلة: بتظهر هنا ويضيفها للرحلة (بدل ما تستخبى إلى ما ينهي)
     const nw=REQ.filter(r=>r.st==="prep"&&!st.some(s=>s.rid===r.id));if(!nw.length)return "";
     return `<div class="card" style="border:2px solid var(--acc)"><h3>📦 ${nw.length===1?"توصيلة جديدة عُيّنت لك":nw.length+" توصيلات جديدة عُيّنت لك"}</h3>${nw.map(r=>`<div class="mut" style="padding:4px 0">${r.tr?`🔄 استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ← `:""}<b style="direction:ltr;display:inline-block;color:var(--ink)">${E(r.brn)}</b> · ${N(r.pcs)} قطعة</div>`).join("")}<button class="b g" id="badd" type="button" style="margin-top:8px">➕ أضفها إلى هذه الرحلة</button></div>`})()}
   <div class="row"><button class="b" id="bf" type="button">⛽ بنزين</button><button class="b p" id="be" type="button">🏁 إنهاء الرحلة</button></div>`;
   g("bf").onclick=fuelForm;g("be").onclick=endForm;if(g("badd"))g("badd").onclick=()=>addToTrip(g("badd"));
-  mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));mn.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>pickUp(b.dataset.pk,b));wireIt(mn);wireNat(mn);
+  mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));mn.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>pickUp(b.dataset.pk,b));mn.querySelectorAll("[data-ct]").forEach(i=>i.onchange=()=>saveCt(i));wireIt(mn);wireNat(mn);
   clearInterval(tick);tick=setInterval(()=>{const e=g("el"),t=active();if(e&&t)e.textContent=dur(Date.now()-N(t.start))},30000);
   liveOn();if(g("wk"))g("wk").onchange=()=>{lsSet("drv_wake",g("wk").checked?"1":"0");if(g("wk").checked)wake();else if(LIVE.lock){LIVE.lock.release().catch(()=>{});LIVE.lock=null}};
   return;
@@ -305,12 +309,13 @@ function draw(){
  mn.innerHTML=hi(rs.length?`لديك ${rs.length} توصيلة بانتظارك 📦`:"لا توجد توصيلات حالياً، سيرسل لك المستودع فور التجهيز")+`<div class="card"><h3>رحلة جديدة</h3>
  <label>السيارة</label><select id="sc">${CARS.map(c=>`<option value="${E(c.id)}" ${c.id===cid?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")||'<option value="">لا توجد سيارات — تواصل مع المستودع</option>'}</select>
  <label>قراءة العداد الآن (كم) *${lastCarOdo(cid)?` — آخر قراءة مسجّلة ${lastCarOdo(cid)}`:""}</label><input id="so" inputmode="numeric" autocomplete="off" value="${E(odoV!==null?odoV:"")}" placeholder="انظر إلى العداد واكتب الرقم">
- <label>التوصيلات (${rs.length}) — يُضبط الترتيب تلقائياً على أقرب مسار</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1">${r.tr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ${N(r.rdy)?"✅ جاهز":"⏳ لا يزال قيد التجهيز"}</small>`:""}${shipOf(r)?`<small style="display:block;color:#1c4f86;font-weight:700">🚚 شحن: تسلّمه لشركة ${E(shipOf(r))}</small>`:""}<b style="direction:ltr;display:inline-block">${E(r.brn)}</b><small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small></span>${itBtn(r.id)}</label>`).join(""):'<div class="mut">لا توجد توصيلات معيّنة لك حالياً. انتظر تعيين المستودع.</div>'}
+ <label>التوصيلات (${rs.length}) — يُضبط الترتيب تلقائياً على أقرب مسار</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1">${r.tr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ${N(r.rdy)?"✅ جاهز":"⏳ لا يزال قيد التجهيز"}</small>`:""}${shipOf(r)?`<small style="display:block;color:#1c4f86;font-weight:700">🚚 شحن: تسلّمه لشركة ${E(shipOf(r))}</small>`:""}<b style="direction:ltr;display:inline-block">${E(r.brn)}</b><small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small>${ctBox(r.id,shipOf(r),CT[r.id])}</span>${itBtn(r.id)}</label>`).join(""):'<div class="mut">لا توجد توصيلات معيّنة لك حالياً. انتظر تعيين المستودع.</div>'}
  <button class="b g" id="bs" type="button" style="margin-top:10px" ${rs.length?"":"disabled"}>🚚 ابدأ الرحلة</button></div>
  <div class="row" style="margin:0 0 14px"><button class="b" id="bf" type="button">⛽ تسجيل بنزين</button></div>
  ${dayTr.length?`<div class="card"><h3>رحلات اليوم</h3>${dayTr.map(t=>`<div class="mut" style="padding:6px 0;border-bottom:1px solid var(--line)">${hm(t.start)} ← ${hm(t.end)} · ${dur(N(t.end)-N(t.start))} · ${Math.max(0,N(t.odo1)-N(t.odo0))} كم · ${(t.stops||[]).filter(s=>s.arr).length} توصيلة</div>`).join("")}</div>`:""}`;
  g("sc").onchange=()=>{lsSet("drv_car",g("sc").value);odoV=null;draw()};g("so").oninput=()=>{odoV=g("so").value};
  mn.querySelectorAll("[data-r]").forEach(c=>c.onchange=()=>{c.checked?off.delete(c.dataset.r):off.add(c.dataset.r)});
+ mn.querySelectorAll("[data-ct]").forEach(i=>i.oninput=()=>{const v=ctV(i.value);if(v)CT[i.dataset.ct]=v;else delete CT[i.dataset.ct];ctSave()});
  mn.insertAdjacentHTML("beforeend",gpsCard());wireCpy(mn);wireNat(mn);
  g("bf").onclick=fuelForm;g("bs").onclick=startTrip;wireIt(mn);
 }
@@ -336,7 +341,7 @@ async function startTrip(){
  // الوقت المتوقع من مكانه الحقيقي حالياً (والتحويل بيعدّي على الفرع اللي هيستلم منه)
  const loc=await here(),ts=Date.now(),rs=order(sel,loc),et=etas(rs.map(r=>({rid:r.id,brn:r.brn,fr:r.tr&&r.tr.fr,pk:N(r.pk)})),ts,"WH",loc);
  try{
-  const b=writeBatch(db),tr=doc(collection(db,"trips")),t={drv:me.id,drvn:me.name,car:c.id,carn:c.name+(c.plate?" "+c.plate:""),st:"active",start:ts,odo0:odo,stops:rs.map(r=>{const s={rid:r.id,no:String(r.no||"").slice(0,40),brn:String(r.brn||"").slice(0,40),pcs:N(r.pcs)};if(et[r.id])s.eta=et[r.id];
+  const b=writeBatch(db),tr=doc(collection(db,"trips")),t={drv:me.id,drvn:me.name,car:c.id,carn:c.name+(c.plate?" "+c.plate:""),st:"active",start:ts,odo0:odo,stops:rs.map(r=>{const s={rid:r.id,no:String(r.no||"").slice(0,40),brn:String(r.brn||"").slice(0,40),pcs:N(r.pcs)};if(et[r.id])s.eta=et[r.id];const ct0=ctV(CT[r.id]);if(ct0)s.ct=ct0;
     if(r.tr&&r.tr.fr){s.fr=String(r.tr.fr).slice(0,3);s.frn=String(r.tr.frn||"").slice(0,40);if(N(r.pk))s.pk=N(r.pk)}// تحويل: يستلم من الفرع ده الأول
     return s})};
   if(loc){t.loc0=loc;t.loc={...loc,ts}}
@@ -351,13 +356,19 @@ async function addToTrip(btn){
  if(!nw.length){toast("لا توجد توصيلات جديدة","er");return}
  btn.disabled=true;btn.textContent="جاري الإضافة...";
  const loc=await here(),ts=Date.now(),last=[...st].reverse().find(s=>s.arr),from=loc||(last&&GEO.br[codeOf(last.brn)])||GEO.wh;
- const add=order(nw,from).map(r=>{const s={rid:r.id,no:String(r.no||"").slice(0,40),brn:String(r.brn||"").slice(0,40),pcs:N(r.pcs)};if(r.tr&&r.tr.fr){s.fr=String(r.tr.fr).slice(0,3);s.frn=String(r.tr.frn||"").slice(0,40);if(N(r.pk))s.pk=N(r.pk)}return s});
+ const add=order(nw,from).map(r=>{const s={rid:r.id,no:String(r.no||"").slice(0,40),brn:String(r.brn||"").slice(0,40),pcs:N(r.pcs)};if(r.tr&&r.tr.fr){s.fr=String(r.tr.fr).slice(0,3);s.frn=String(r.tr.frn||"").slice(0,40);if(N(r.pk))s.pk=N(r.pk)}const ct1=ctV(CT[r.id]);if(ct1)s.ct=ct1;return s});
  const all=[...st,...add],pend=all.filter(s=>!s.arr),et=etas(pend,ts,loc?null:(last?codeOf(last.brn):"WH"),loc);
  try{
   const b=writeBatch(db);b.update(doc(db,"trips",a.id),{stops:all.map(s=>!s.arr&&et[s.rid]?{...s,eta:et[s.rid]}:s)});
   add.forEach(s=>{const u={st:"go",dep:ts,upd:ts};if(et[s.rid])u.eta=et[s.rid];b.update(doc(db,"requests",s.rid),u)});
   await withTimeout(b.commit(),15000);ping(auth,add.map(s=>s.rid));toast(`حسناً ✅ أُضيفت ${add.length} توصيلة للرحلة`);
  }catch(e){btn.disabled=false;btn.textContent="➕ أضفها إلى هذه الرحلة";fail(e,"غير مسموح. ربما غيّر المستودع الطلب.")}
+}
+// عدد الكراتين لطلب أثناء الرحلة (اختياري): بيتحفظ على محطة الرحلة
+async function saveCt(i){
+ const a=active();if(!a)return;const rid=i.dataset.ct,v=ctV(i.value);if(v)CT[rid]=v;else delete CT[rid];ctSave();
+ const st=(a.stops||[]).map(x=>{if(x.rid!==rid)return x;if(v)return {...x,ct:v};const {ct,...o}=x;return o});
+ try{const b=writeBatch(db);b.update(doc(db,"trips",a.id),{stops:st});await withTimeout(b.commit(),15000);toast(v?"تم حفظ عدد الكراتين ✅":"تم مسح العدد")}catch(e){fail(e,"تعذر حفظ عدد الكراتين")}
 }
 // تحويل: السائق استلم البضاعة من الفرع اللي بيبعت (pk على الطلب وعلى محطة الرحلة)
 async function pickUp(rid,btn){
@@ -384,6 +395,7 @@ function podForm(rid){
  openM(`<h3>${sh?`🚚 تسليم لشركة الشحن — ${E(sh)}`:`تسليم — <span style="direction:ltr;display:inline-block">${E(s.brn)}</span>`}</h3>${sh?`<div class="mut" style="margin-bottom:6px">هذا الطلب لفرع <bdi dir="ltr">${E(s.brn)}</bdi> (خارج الرياض). تسلّمه لشركة الشحن وهي التي توصله للفرع.</div>`:""}
  <label>قراءة العداد الآن (كم) — آخر قراءة ${lo}</label><input id="po" inputmode="numeric" autocomplete="off" placeholder="مثلاً ${lo+8}">
  <small class="mut">لنحسب كيلومترات كل فرع بالضبط</small>
+ <label>📦 عدد الكراتين ${sh?"لشركة الشحن":"للفرع"} (اختياري)</label><input id="pct" inputmode="numeric" autocomplete="off" placeholder="0" value="${N(s.ct)||CT[rid]||""}">
  <label>${sh?"اسم موظف شركة الشحن الذي استلم":"اسم المستلم في الفرع"}</label><input id="pn" maxlength="60" autocomplete="off" placeholder="مثلاً: أحمد محمد">
  <label>توقيع المستلم (بإصبعك)</label><canvas id="pc" width="320" height="130" style="width:100%;height:130px;background:#fff;border:1.5px dashed var(--line);border-radius:12px;touch-action:none"></canvas><button class="b" id="pcl" type="button" style="margin-top:6px;padding:8px">مسح التوقيع</button>
  ${sh?`<label>رقم البوليصة / الشحنة (من إيصال الشركة)</label><input id="pw" maxlength="40" autocomplete="off" dir="ltr" placeholder="مثلاً: 1234567890">`:""}
@@ -418,13 +430,13 @@ function podForm(rid){
     try{await withTimeout(setDoc(doc(db,"pods",rid),{...pics,at:ts,drv:me.id}),15000);if(pics.img)pod.ph=1;if(pics.sig)pod.sg=1}
     catch(e){if(e&&e.code==="permission-denied")pod={...pod,...pics};else throw e}
    }
-   const st=(a.stops||[]).map(x=>{if(x.rid!==rid)return x;const o={...x,arr:ts,rcvr:nm.slice(0,60),odo:od};if(loc){o.lat=loc.lat;o.lng=loc.lng}return o});
+   const st=(a.stops||[]).map(x=>{if(x.rid!==rid)return x;const o={...x,arr:ts,rcvr:nm.slice(0,60),odo:od};const ct2=ctV(g("pct")?g("pct").value:"");if(ct2)o.ct=ct2;if(loc){o.lat=loc.lat;o.lng=loc.lng}return o});
    const rem=st.filter(x=>!x.arr),et=etas(rem,ts,codeOf(s.brn));// الباقي محسوب من الفرع اللي سُلِّم حالياً
    const stt=st.map(x=>et[x.rid]?{...x,eta:et[x.rid]}:x);
    const b=writeBatch(db),tu={stops:stt};if(loc)tu.loc={...loc,ts};
    b.update(doc(db,"trips",a.id),tu);b.update(doc(db,"requests",rid),{st:"done",dlv:ts,upd:ts,pod});
    rem.forEach(x=>{if(et[x.rid])b.update(doc(db,"requests",x.rid),{eta:et[x.rid]})});
-   await withTimeout(b.commit(),15000);ping(auth,[rid]);closeM();lsSet("drv_odo_"+a.car,String(od));
+   await withTimeout(b.commit(),15000);delete CT[rid];ctSave();ping(auth,[rid]);closeM();lsSet("drv_odo_"+a.car,String(od));
    // آخر فرع: نفكّره ينهي الرحلة لما يرجع (علشان رحلة قصيرة الرجوع يتحسب)
    toast(rem.length?"تم تسجيل التسليم ✅":"تم التسليم ✅ أنهيت كل التوصيلات. عند عودتك إلى المستودع اضغط 🏁 إنهاء الرحلة واكتب العداد");
   }catch(e){const x=g("p1");if(x){x.disabled=false;x.textContent="تأكيد التسليم ✅"}fail(e,"غير مسموح. ربما غيّر المستودع حالة الطلب.")}
