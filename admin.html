@@ -188,6 +188,13 @@ function login(msg){
   if(g("lg"))g("lg").disabled=false};
  g("lg").onclick=go;[g("la"),g("lm")].forEach(i=>i.addEventListener("keydown",e=>{if(e.key==="Enter")go()}));g((g("lm").value?"la":"lm")).focus();
 }
+// يفتح طلب معيّن ويمرّر عليه ويلمّعه (مستني الطلب لحد ما يتحمّل لو لسه)
+function deepReq(id){
+ let n=0;const iv=setInterval(()=>{n++;if(n>40||!authed){clearInterval(iv);return}
+  if(!R.some(r=>r.id===id))return;clearInterval(iv);
+  tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
+  setTimeout(()=>{const d=document.querySelector(`details[data-id="${id}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
+window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
 function stop(){stopGifts();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 60 يوم. وزرار "الأقدم" بيحمّل الباقي عند الحاجة.
@@ -277,6 +284,11 @@ function start(){
  }
  // الدردشة القديم كان مشترك بين الكل: بيتمسح مرة واحدة من جهاز المالك
  if(ROLE.owner)wipeOldChat(db);
+ // الضغط على إشعار (من الموبايل أو الصفحة): admin.html?req=رقم الطلب يفتح الطلب نفسه، و?tab=fl / gift يفتح التبويب
+ {const q=new URLSearchParams(location.search),rq=q.get("req"),tb=q.get("tab");
+  if(tb&&okTab(tb))tab=tb;
+  if(rq&&/^[A-Za-z0-9_-]{6,40}$/.test(rq)&&okTab("req")){tab="req";deepReq(rq)}
+  if(rq||tb)try{history.replaceState(null,"",location.pathname)}catch(e){}}
  draw();
 }
 const podHtml=r=>{const p=r.pod;if(!p||typeof p!=="object")return "";

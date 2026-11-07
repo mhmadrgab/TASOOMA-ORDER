@@ -3,7 +3,7 @@ export const canNotify=()=>"Notification" in window;
 export async function askNotify(){if(!canNotify())return "unsupported";try{return await Notification.requestPermission()}catch(e){return "denied"}}
 // إشعار الجهاز: لما الصفحة مش قدامه (تبويب تاني، أو الصفحة مفتوحة بس هو شغّال في برنامج مجدداً على الحاسوب)
 export const away=()=>document.hidden||!document.hasFocus();
-export function notify(title,body,tag){try{if(canNotify()&&Notification.permission==="granted"&&away()){new Notification(window.TZL?TZL.t(title):title,{body:window.TZL?TZL.t(body):body,tag,icon:"./icon-192.png",dir:document.documentElement.dir||"rtl",lang:document.documentElement.lang||"ar"})}}catch(e){}}
+export function notify(title,body,tag){try{if(canNotify()&&Notification.permission==="granted"&&away()){const n=new Notification(window.TZL?TZL.t(title):title,{body:window.TZL?TZL.t(body):body,tag,icon:"./icon-192.png",dir:document.documentElement.dir||"rtl",lang:document.documentElement.lang||"ar"});n.onclick=()=>{try{window.focus()}catch(e){}window.dispatchEvent(new CustomEvent("tz-open",{detail:{tag:String(tag||"")}}));try{n.close()}catch(e){}}}}catch(e){}}
 export function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),v=c.createGain();o.connect(v);v.connect(c.destination);o.frequency.value=880;v.gain.setValueAtTime(.2,c.currentTime);v.gain.exponentialRampToValueAtTime(.001,c.currentTime+.6);o.start();o.stop(c.currentTime+.6)}catch(e){}}
 export function badge(n){try{if(navigator.setAppBadge){n>0?navigator.setAppBadge(n):navigator.clearAppBadge()}}catch(e){}}
 let dip=null;

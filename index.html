@@ -594,6 +594,17 @@ function enter(b){
 }
 // الرقم على أيقونة التطبيق: طلبات بانتظار تأكيد + رسايل جديدة
 function setBadge(){const all=Object.values(REQS);badge(all.filter(r=>r.st==="done").length+(XF||[]).filter(r=>(r.st==="new"||r.st==="prep")&&!+r.rdy).length+bcUnread())}
+// الضغط على إشعار: index.html?req=رقم الطلب يفتح الطلب نفسه، و?gift=1 يفتح الهدايا
+function deepReq(id){
+ let n=0;const iv=setInterval(()=>{n++;if(n>40){clearInterval(iv);return}
+  if(!REQS[id])return;clearInterval(iv);
+  opn.add(id);paint();
+  setTimeout(()=>{const d=document.querySelector(`details[data-id="${id}"]`),a=d&&d.closest(".mr");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
+{const q=new URLSearchParams(location.search),rq=q.get("req");
+ if(rq&&/^[A-Za-z0-9_-]{6,40}$/.test(rq))deepReq(rq);
+ if(q.get("gift")){let n=0;const iv=setInterval(()=>{n++;const b=document.querySelector('[data-gf="bopen"]');if(b){clearInterval(iv);b.click()}else if(n>40)clearInterval(iv)},500)}
+ if(rq||q.get("gift"))try{history.replaceState(null,"",location.pathname)}catch(e){}}
+window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
 function gateOn(){B=null;stopBranch();stopGifts();stopBChat();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{

@@ -181,3 +181,6 @@ body.ui-stage #gate,.lg,.gc{position:relative;z-index:1}
 
 /* الطباعة: خلفية الصفحة بيضاء دايماً (في التطبيق المثبّت خلفية الصفحة غامقة وكانت بتطلع سودا تحت الورقة وتخلّص الحبر) */
 @media print{html,html.app,html.aw,body{background:#fff!important}}
+
+/* الإشعار: الطلب اللي اتفتح من الإشعار بيلمع ثواني */
+.tzflash{animation:tzf 3.5s ease-out}@keyframes tzf{0%,65%{box-shadow:0 0 0 3px #d4ae5c,0 0 26px rgba(212,174,92,.65)}100%{box-shadow:0 0 0 0 transparent}}
