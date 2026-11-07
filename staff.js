@@ -25,7 +25,7 @@ export function syncDir(){
  Object.keys(WD).forEach(id=>{if(!want[id])deleteDoc(doc(X.db,"whdir",id)).catch(()=>{})});
 }
 export const staffName=id=>{const s=S.find(x=>x.id===id);return s?s.name||id:id};
-const AERR=e=>({"auth/email-already-in-use":"هذا البريد لديه حساب في Firebase بالفعل. اكتب كلمة مروره الحالية لنربطه.","auth/operation-not-allowed":"فعّل Email/Password من Authentication في Firebase","auth/weak-password":"كلمة المرور ضعيفة (6 أحرف على الأقل)","auth/network-request-failed":"لا يوجد اتصال بالإنترنت","auth/invalid-credential":"كلمة المرور غير صحيحة","auth/invalid-email":"البريد الإلكتروني غير صحيح","auth/too-many-requests":"محاولات كثيرة، انتظر قليلاً","auth/admin-restricted-operation":"التسجيل متوقف في Firebase. فعّله مؤقتاً من Authentication ← Settings ← User actions"}[e&&e.code]||("خطأ: "+(e&&e.code||e&&e.message)));
+const AERR=e=>({"auth/email-already-in-use":"هذا البريد لديه حساب في Firebase بالفعل. اكتب كلمة مروره الحالية لنربطه.","auth/operation-not-allowed":"فعّل Email/Password من Authentication في Firebase","auth/weak-password":"كلمة المرور ضعيفة (6 أحرف على الأقل)","auth/network-request-failed":"لا يوجد اتصال بالإنترنت","auth/invalid-credential":"كلمة المرور غير صحيحة","x/exists-wrong-pw":"هذا البريد لديه حساب بالفعل وكلمة المرور المكتوبة ليست كلمته الحالية. اكتب كلمته الحالية أو استخدم بريداً آخر.","auth/invalid-email":"البريد الإلكتروني غير صحيح","auth/too-many-requests":"محاولات كثيرة، انتظر قليلاً","auth/admin-restricted-operation":"التسجيل متوقف في Firebase. فعّله مؤقتاً من Authentication ← Settings ← User actions"}[e&&e.code]||("خطأ: "+(e&&e.code||e&&e.message)));
 const msg=s=>`أهلاً ${s.name||""}\nلوحة المستودع:\n${new URL("./admin.html",location.href).href}\nالبريد الإلكتروني: ${s.id}\nكلمة المرور: ${PW()[s.id]||""}`;
 const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم النسخ")}catch(e){prompt("انسخ الرسالة:",t)}};
 // الصفحة مقسومة: مالك النظام، المديرين، المحاسبين. المالك بس اللي بيعدّل؛ المدير بيشوف بس (ويلاقي نفسه في قسم المديرين)
@@ -66,7 +66,12 @@ async function add(){
  busy=true;X.redraw();
  try{
   const a=makeFb("sec").auth;let pw=f.p.trim();
-  if(pw){try{await signInWithEmailAndPassword(a,e,pw)}finally{try{await signOut(a)}catch(x){}}}
+  // كلمة مرور مكتوبة: ننشئ الحساب بها، ولو البريد له حساب بالفعل نربطه بنفس كلمة المرور (لازم تكون كلمته الحالية)
+  if(pw){
+   try{await createUserWithEmailAndPassword(a,e,pw)}
+   catch(x){if(x&&x.code==="auth/email-already-in-use"){try{await signInWithEmailAndPassword(a,e,pw)}catch(y){if(y&&(y.code==="auth/invalid-credential"||y.code==="auth/wrong-password"))throw {code:"x/exists-wrong-pw"};throw y}}else throw x}
+   finally{try{await signOut(a)}catch(x){}}
+  }
   else{pw=genPw();try{await createUserWithEmailAndPassword(a,e,pw)}finally{try{await signOut(a)}catch(x){}}}
   await setDoc(doc(X.db,"secrets",e),{pw});
   const adm=f.r==="adm",vw=f.r==="view",mk=f.r==="mkt";

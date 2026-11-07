@@ -1331,6 +1331,7 @@ export default {
 "هدية / عينة من المستودع":"Gift / sample from the warehouse",
 "هدية لعميل":"Gift for a customer",
 "هذا الاسم موجود":"This name already exists",
+"هذا البريد لديه حساب بالفعل وكلمة المرور المكتوبة ليست كلمته الحالية. اكتب كلمته الحالية أو استخدم بريداً آخر.":"This email already has an account and the password you typed is not its current one. Type its current password or use another email.",
 "هذا البريد لديه حساب في":"This email already has an account in",
 "هذا الجهاز غير قادر على تشغيل هذه الرسالة الصوتية":"This device cannot play this voice message",
 "هذا الجهاز لم يعد يستقبل (أُزيل":"This device no longer receives (it was removed",
