@@ -178,3 +178,6 @@ body.ui-stage #gate,.lg,.gc{position:relative;z-index:1}
  *,*::before,*::after{animation:none!important;transition:none!important}
  .hd::after,.ui-stage::before,.ui-stage::after{display:none!important}
 }
+
+/* الطباعة: خلفية الصفحة بيضاء دايماً (في التطبيق المثبّت خلفية الصفحة غامقة وكانت بتطلع سودا تحت الورقة وتخلّص الحبر) */
+@media print{html,html.app,html.aw,body{background:#fff!important}}

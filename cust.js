@@ -47,7 +47,7 @@ export function stmtHtml(info,logo){
 }
 const CSS=`#pa{display:none}
 @media print{
- @page{size:A4;margin:12mm 14mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ @page{size:A4;margin:12mm 14mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,html.app{background:#fff!important}
  body.ps{background:#fff!important;color:#000!important}body.ps>*:not(#pa){display:none!important}body.ps #pa{display:block!important;color:#000;font-size:12pt}
  #pa .st .ph{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:4mm;margin-bottom:5mm}#pa .st .ph img{height:16mm;filter:invert(1)}#pa .st h2{margin:0;font-size:19pt}
  #pa .st .rt{display:flex;gap:5mm;margin-bottom:5mm}#pa .st .rt div{flex:1;border:1.5px solid #000;border-radius:3mm;padding:2mm 4mm}#pa .st .rt small{display:block;font-size:9pt;color:#444}#pa .st .rt b{font-size:13pt}
