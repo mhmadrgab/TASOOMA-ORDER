@@ -1,11 +1,11 @@
-// الشات الخاص: نص + رسايل صوتية. كل محادثة بين طرفين بس، ومحدش غيرهم يقدر يشوفها (ولا حتى المالك والمديرين).
-// الأطراف: الفروع (b-كود)، اللي في المستودع (w-إيميل)، السواقين (d-رقم). سواق مع سواق ممنوع (نوفمبر 2026).
+// الدردشة الخاص: نص + رسايل صوتية. كل محادثة بين طرفين بس، ومحدش غيرهم يقدر يشوفها (ولا حتى المالك والمديرين).
+// الأطراف: الفروع (b-كود)، اللي في المستودع (w-إيميل)، السائقين (d-رقم). سائق مع سائق ممنوع (نوفمبر 2026).
 //   فرع مع المستودع (الشكل القديم، زي ما هو):
 // كل محادثة = فرع واحد + شخص واحد من المستودع (المالك أو مدير أو موظف طلبات). محدش غيرهم يقدر يشوفها، حتى المالك والمديرين
 // (firestore.rules هي اللي بتمنع ده، مش الصفحة بس). الفرع بيختار يكلّم مين من قايمة الأسماء (whdir).
 //   dm/{code}__{email}  = ملخّص: {br, brn, wh:إيميل الشخص, whn:اسمه, last:{by,n,t,ts,v}, lb, lw, rb, rw, nb, nw}
-//                         lb/lw = آخر رسالة من الفرع/المستودع، rb/rw = قرا لحد إمتى، nb/nw = رسايل لسه ماتقرتش عند الفرع/المستودع
-//   dm/{cid}/msgs/{id}  = رسالة: {by:"br"|"wh", n:اسم اللي كتب, t?:النص, v?+d?:صوت ومدته بالثواني, ts, rq?:{id,no} بخصوص طلب, rd?:اتقرت إمتى}
+//                         lb/lw = آخر رسالة من الفرع/المستودع، rb/rw = قرا إلى إمتى، nb/nw = رسايل لم تُقرأ بعد عند الفرع/المستودع
+//   dm/{cid}/msgs/{id}  = رسالة: {by:"br"|"wh", n:اسم اللي كتب, t?:النص, v?+d?:صوت ومدته بالثواني, ts, rq?:{id,no} بخصوص طلب, rd?:قُرئت إمتى}
 //   dm/{cid}/aud/{id}   = الصوت نفسه {a: data URL}، بيتحمّل بس لما حد يدوس تشغيل (توفير قراءات)
 //   whdir/{email}       = {n, k, r}: أسماء اللي في المستودع وكنيتهم (المالك بس بيكتبها، staff.js). ava/{email} = صورهم
 //   كل شخص بيظهر باسمه وكنيته وصورته بس (من غير "مدير" أو "مالك النظام")
@@ -16,9 +16,10 @@ const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
 const isMob=()=>/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
 const SILENT="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
-const QUICK={b:["محتاجين بضاعة ضروري 🙏","فين طلبنا؟","تمام، شكراً 👍"],w:["تمام 👍","جاري التجهيز ⏳","هيوصلكم النهارده 🚚","الصنف مش موجود حالياً"],d:["في الطريق 🚚","وصلت ✅","هتأخر شوية ⏳","تمام 👍"]};
+const QUICK={b:["نحتاج بضاعة بشكل عاجل 🙏","أين طلبنا؟","حسناً، شكراً 👍"],w:["حسناً 👍","جاري التجهيز ⏳","سيصلكم اليوم 🚚","الصنف غير متوفر حالياً"],d:["في الطريق 🚚","وصلت ✅","سأتأخر قليلاً ⏳","حسناً 👍"]};
 // المحادثات الجديدة (سواقين، موظفين مع بعض، فروع مع بعض): dm/{طرف1}__{طرف2} مترتبين = {ps:[الطرفين], nm:{طرف:اسمه}, last:{by:الطرف,...},
-//   l0/l1 آخر رسالة من الطرف 0/1، r0/r1 قرا لحد إمتى، n0/n1 لسه ماقراش كام}، والرسايل by = الطرف. ddir/{drv1} = {n} أسماء السواقين
+//   l0/l1 آخر رسالة من الطرف 0/1، r0/r1 قرا إلى إمتى، n0/n1 لا يزال ماقراش كام}، والرسائل by = الطرف. ddir/{drv1} = {n} أسماء السائقين
+const QALL=new Set([].concat(...Object.values(QUICK)));// الردود السريعة تُترجم، أما ما يكتبه الناس فلا (data-notr)
 const ROLE_O={owner:0,admin:1,req:2};// ترتيب القايمة عند الفرع بس (مش بيظهر)
 // CUR = المحادثة المفتوحة (cid). CTX = "بخصوص طلب" لكل محادثة، PEND = طلب مستني الفرع يختار يكلّم مين عنه. AVA = الصور
 let X=null,SUMS={},SO={},SN={},DIR={},DDIR={},AVA={},FILT="",CUR=null,GEN=0,UNM=null,UNS=null,UNS2=null,UND=null,UNA=null,UNDD=null,MSGS=[],LIM=PAGE,DRAFT={},CTX={},PEND=null,REC=null,PLAY={id:null,au:null},busy=false,marking=false,first=true,keepTop=null,ROOT=null,Q="";
@@ -113,7 +114,7 @@ const hm=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-
 const dayOf=t=>new Date(N(t)).toLocaleDateString("ar-EG-u-nu-latn",{weekday:"long",day:"numeric",month:"long"});
 const when=t=>{if(!t)return "";const d=new Date(N(t)),n=new Date();return d.toDateString()===n.toDateString()?hm(t):Date.now()-N(t)<6*864e5?d.toLocaleDateString("ar-EG-u-nu-latn",{weekday:"short"}):d.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit"})};
 const mmss=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
-// الأطراف: b-كود الفرع / w-إيميل الشخص اللي في المستودع / d-رقم السواق. X.me = طرفي أنا
+// الأطراف: b-كود الفرع / w-إيميل الشخص اللي في المستودع / d-رقم السائق. X.me = طرفي أنا
 const T=()=>X.me[0];
 const pv=p=>String(p).slice(2);
 const isOld=c=>/^\d{3}__/.test(c);// فرع مع المستودع: الشكل القديم {كود}__{إيميل}
@@ -130,29 +131,29 @@ function pname(p,c){const t=p[0],v=pv(p),s=c&&SUMS[c];
   const d=DIR[v];return (d&&d.n)||(s&&(s.whn||(s.nm&&s.nm[p])))||v.split("@")[0]}
 const pk=p=>p[0]==="w"?((DIR[pv(p)]||{}).k||""):"";
 const ph=p=>p&&p[0]==="w"?AVA[pv(p)]||"":"";
-// لسه ماقريتش كام في المحادثة دي
+// لا يزال ماقريتش كام في المحادثة دي
 function unreadOf(s){if(!s)return 0;
   if(s._old)return T()==="b"?(N(s.nb)||(N(s.lw)>N(s.rb)?1:0)):(N(s.nw)||(N(s.lb)>N(s.rw)?1:0));
   const i=s.ps.indexOf(X.me),o=1-i;return N(s["n"+i])||(N(s["l"+o])>N(s["r"+i])?1:0)}
-// المستودع: كام محادثة مستنية رد. الفرع والسواق: كام رسالة جديدة
+// المستودع: كام محادثة بانتظار رد. الفرع والسائق: كام رسالة جديدة
 export function unreadTotal(){if(!X)return 0;return Object.values(SUMS).reduce((a,s)=>a+(T()==="w"?(unreadOf(s)?1:0):unreadOf(s)),0)}
 // زرار "كلّم ... عن الطلب ده" على كارت الطلب (cls = شكل الزرار في الصفحة)
-export const rqBtn=(r,cls)=>X&&T()!=="d"?`<button class="${cls||"bcrqb"}" data-bcrq="${E(r.id)}" data-no="${E(r.no||"")}" data-br="${E(r.br||"")}" type="button" title="محادثة خاصة بخصوص الطلب ده">💬 ${T()==="b"?"كلّم المستودع":"كلّم الفرع"}</button>`:"";
-const modal=()=>T()!=="w";// الفرع والسواق: نافذة. المستودع: تبويب
-const GRP={w:[["","الكل"],["b","الفروع"],["d","السواقين"],["w","الموظفين"]],b:[["","الكل"],["w","المستودع"],["d","السواقين"],["b","الفروع"]],d:[["","الكل"],["w","المستودع"],["b","الفروع"]]};
-// ---------- المحادثة نفسها (مشتركة بين اللوحة والفرع والسواق) ----------
+export const rqBtn=(r,cls)=>X&&T()!=="d"?`<button class="${cls||"bcrqb"}" data-bcrq="${E(r.id)}" data-no="${E(r.no||"")}" data-br="${E(r.br||"")}" type="button" title="محادثة خاصة بخصوص هذا الطلب">💬 ${T()==="b"?"تواصل مع المستودع":"تواصل مع الفرع"}</button>`:"";
+const modal=()=>T()!=="w";// الفرع والسائق: نافذة. المستودع: تبويب
+const GRP={w:[["","الكل"],["b","الفروع"],["d","السائقين"],["w","الموظفين"]],b:[["","الكل"],["w","المستودع"],["d","السائقين"],["b","الفروع"]],d:[["","الكل"],["w","المستودع"],["b","الفروع"]]};
+// ---------- المحادثة نفسها (مشتركة بين اللوحة والفرع والسائق) ----------
 function convHtml(){
-  return `<div class="bch"><button class="bcback" data-bcback type="button" aria-label="رجوع">→</button><span id="bcav"></span><div><b id="bct"></b><small id="bcsub"></small></div>${modal()?`<button data-bcclose type="button" aria-label="قفل">✕</button>`:""}</div>
+  return `<div class="bch"><button class="bcback" data-bcback type="button" aria-label="رجوع">→</button><span id="bcav"></span><div><b id="bct"></b><small id="bcsub"></small></div>${modal()?`<button data-bcclose type="button" aria-label="إغلاق">✕</button>`:""}</div>
   <div class="bcms" id="bcms"></div>
   <div class="bcrq" id="bcrq" hidden></div>
   <div class="bcq">${(QUICK[T()]||[]).map(q=>`<button data-bcq="${E(q)}" type="button">${E(q)}</button>`).join("")}</div>
   <div class="bcf" id="bcfoot"><textarea id="bcin" rows="1" maxlength="${LEN}" placeholder="اكتب رسالة..."></textarea><button class="mic" id="bcmic" type="button" title="رسالة صوتية" aria-label="رسالة صوتية">🎤</button><button id="bcsend" type="button">إرسال</button></div>
   <div class="bcr2" id="bcrec" hidden><span class="dot"></span><span class="tm" id="bcrt">0:00</span><button class="x" data-bccancel type="button">✕ إلغاء</button><button class="ok" data-bcstop type="button">✔ إرسال</button></div>`;
 }
-const emptyTxt=()=>`<div class="bcnone">💬<br>اختار من القائمة علشان تبدأ محادثة<br><small>🔒 محادثاتك خاصة بيك، محدش غيرك بيشوفها</small></div>`;
+const emptyTxt=()=>`<div class="bcnone">💬<br>اختر من القائمة لتبدأ محادثة<br><small>🔒 محادثاتك خاصة بك، لا يراها أحد غيرك</small></div>`;
 function buildRoot(){
   const r=document.createElement("div");r.className="bcw"+(modal()?" one":"");
-  r.innerHTML=`<aside class="bcl">${modal()?`<div class="bclh"><div><b>💬 المحادثات</b><small id="bcpend"></small></div><button data-bcclose type="button" aria-label="قفل">✕</button></div>`:""}<div class="bcs"><input id="bcqs" type="search" placeholder="🔎 دوّر على اسم أو فرع" autocomplete="off"><div class="bcfl">${(GRP[T()]||[]).filter(([k])=>!(T()==="w"&&k==="b"&&!X.canBr)).map(([k,l])=>`<button type="button" data-bcf="${k}" class="${FILT===k?"on":""}">${E(l)}</button>`).join("")}</div></div><div class="bcli"></div></aside><section class="bcv empty">${convHtml()}</section>`;
+  r.innerHTML=`<aside class="bcl">${modal()?`<div class="bclh"><div><b>💬 المحادثات</b><small id="bcpend"></small></div><button data-bcclose type="button" aria-label="إغلاق">✕</button></div>`:""}<div class="bcs"><input id="bcqs" type="search" placeholder="🔎 ابحث عن اسم أو فرع" autocomplete="off"><div class="bcfl">${(GRP[T()]||[]).filter(([k])=>!(T()==="w"&&k==="b"&&!X.canBr)).map(([k,l])=>`<button type="button" data-bcf="${k}" class="${FILT===k?"on":""}">${E(l)}</button>`).join("")}</div></div><div class="bcli"></div></aside><section class="bcv empty">${convHtml()}</section>`;
   wire(r);
   r.addEventListener("scroll",e=>{const t=e.target;if(t.id==="bcms")SCR={...SCR,t:t.scrollTop,end:t.scrollHeight-t.scrollTop-t.clientHeight<90};else if(t.classList&&t.classList.contains("bcli"))SCR.l=t.scrollTop},true);
   r.querySelector("#bcms").innerHTML=modal()?"":emptyTxt();
@@ -175,7 +176,7 @@ function wire(el){
     const r=t.closest("[data-bcc]");if(r){setCode(cidFor(r.dataset.bcc));if(ROOT)ROOT.classList.add("open");paintList();if(!isMob())setTimeout(()=>{const i=g("bcin");if(i)i.focus()},50)}
   });
   el.addEventListener("keydown",e=>{
-    // الكمبيوتر: Enter يبعت و Shift+Enter سطر جديد. الموبايل: Enter سطر جديد عادي
+    // الحاسوب: Enter يبعت و Shift+Enter سطر جديد. الجوال: Enter سطر جديد عادي
     if(e.target.id==="bcin"&&e.key==="Enter"&&!e.shiftKey&&!isMob()){e.preventDefault();sendText()}
   });
   el.addEventListener("input",e=>{if(e.target.id==="bcin"){grow();if(CUR)DRAFT[CUR]=e.target.value}if(e.target.id==="bcqs"){Q=e.target.value.trim().toLowerCase();paintList()}});
@@ -187,12 +188,12 @@ function paintHead(){
   if(!CUR){g("bct").textContent="";g("bcsub").textContent="";return}
   const p=peerOf(CUR),k=pk(p),img=ph(p);
   g("bct").innerHTML=`${p[0]==="d"?"🚚 ":p[0]==="b"?"🏬 ":""}<bdi${p[0]==="b"?' dir="ltr"':""}>${E(pname(p,CUR))}</bdi>`;
-  g("bcsub").textContent=`${k?k+" · ":""}🔒 محادثة خاصة بينكم بس`;
+  g("bcsub").textContent=`${k?k+" · ":""}🔒 محادثة خاصة بينكما فقط`;
   if(av&&img)av.innerHTML=`<img class="av" src="${img}" alt="">`;
 }
-function paintCtx(){const b=g("bcrq");if(!b)return;const c=CUR&&CTX[CUR];b.hidden=!c;if(c)b.innerHTML=`<span>📦 بخصوص طلب <bdi dir="ltr">${E(c.no)}</bdi></span><button data-bcrqx type="button" aria-label="شيل">✕</button>`}
-function paintPend(){const p=g("bcpend");if(p)p.innerHTML=PEND?`📦 بخصوص طلب <bdi dir="ltr">${E(PEND.no)}</bdi> — اختار تكلّم مين`:"اختار تكلّم مين · 🔒 كل محادثة خاصة"}
-// كل تغيير في المحادثة المفتوحة: نقفل السماع القديم ونبدأ جديد. GEN بيتأكد إن أي رد متأخر من محادثة تانية يتجاهل (مفيش تداخل)
+function paintCtx(){const b=g("bcrq");if(!b)return;const c=CUR&&CTX[CUR];b.hidden=!c;if(c)b.innerHTML=`<span>📦 بخصوص طلب <bdi dir="ltr">${E(c.no)}</bdi></span><button data-bcrqx type="button" aria-label="أزل">✕</button>`}
+function paintPend(){const p=g("bcpend");if(p)p.innerHTML=PEND?`📦 بخصوص طلب <bdi dir="ltr">${E(PEND.no)}</bdi> — اختر من تريد محادثته`:"اختر من تريد محادثته · 🔒 كل محادثة خاصة"}
+// كل تغيير في المحادثة المفتوحة: نقفل السماع القديم ونبدأ جديد. GEN بيتأكد إن أي رد متأخر من محادثة تانية يتجاهل (لا يوجد تداخل)
 function setCode(cid){
   if(CUR===cid)return;
   stopRec(true);stopPlay();
@@ -215,11 +216,11 @@ function listen(my){
     MSGS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m&&typeof m.by==="string").sort((a,b)=>N(a.ts)-N(b.ts));
     paintMsgs();markRead();
   },e=>{if(my!==GEN||!g("bcms"))return;
-    // محادثة جديدة لسه مااتعملتش (مفيش ولا رسالة): مش غلط
+    // محادثة جديدة لا يزال مااتعملتش (لا يوجد ولا رسالة): مش غلط
     if(e&&e.code==="permission-denied"&&!SUMS[cid]){MSGS=[];paintMsgs();return}
-    g("bcms").innerHTML=`<div class="bcmt">⚠️ تعذر تحميل الرسايل${e&&e.code==="permission-denied"?" (مش مسموح)":"، اتأكد من النت"}</div>`});
+    g("bcms").innerHTML=`<div class="bcmt">⚠️ تعذر تحميل الرسائل${e&&e.code==="permission-denied"?" (غير مسموح)":"، تأكد من الإنترنت"}</div>`});
 }
-// اتقرت إمتى: لو نفس يوم الإرسال الساعة بس، غير كده اليوم كمان
+// قُرئت إمتى: لو نفس يوم الإرسال الساعة بس، غير كده اليوم أيضاً
 const rdAt=(rd,ts)=>new Date(N(rd)).toDateString()===new Date(N(ts)).toDateString()?hm(rd):when(rd)+" "+hm(rd);
 function whoHtml(ap,m){
   if(ap[0]==="w"){const img=ph(ap),k=pk(ap),n=(DIR[pv(ap)]&&DIR[pv(ap)].n)||m.n||"المستودع";return `${img?`<img src="${img}" alt="">`:""}${E(n)}${k?` · ${E(k)}`:""}`}
@@ -229,20 +230,20 @@ function whoHtml(ap,m){
 function paintMsgs(){
   const box=g("bcms");if(!box||!CUR)return;
   const atEnd=box.scrollHeight-box.scrollTop-box.clientHeight<90,firstPaint=!box.querySelector(".bcg,.bcmt.ok");
-  let h=MSGS.length>=LIM?`<button class="bcmore" data-bcmore type="button">⬆ رسايل أقدم</button>`:"",d="";
-  if(!MSGS.length)h+=`<div class="bcmt ok">💬 مفيش رسايل لسه.<br>اكتب لـ ${E(pname(peerOf(CUR),CUR))} أي حاجة، أو دوس 🎤 وسجّل رسالة صوتية.<br><small>🔒 الرسايل هنا محدش يشوفها غيركم</small></div>`;
+  let h=MSGS.length>=LIM?`<button class="bcmore" data-bcmore type="button">⬆ رسائل أقدم</button>`:"",d="";
+  if(!MSGS.length)h+=`<div class="bcmt ok">💬 لا توجد رسائل بعد.<br>اكتب لـ ${E(pname(peerOf(CUR),CUR))} أي شيء، أو اضغط 🎤 وسجّل رسالة صوتية.<br><small>🔒 الرسائل هنا لا يراها أحد غيركم</small></div>`;
   MSGS.forEach(m=>{const dd=dayOf(m.ts);if(dd!==d){d=dd;h+=`<div class="bcday">${E(dd)}</div>`}
     const me=mine(CUR,m.by),who=whoHtml(byParty(CUR,m.by),m);
     // gone: السيرفر مسح الصوت بعد 30 يوم (علشان مساحة Firebase المجانية)
-    const body=m.v&&m.gone?`<div class="bcgone">🎤 رسالة صوتية (${mmss(m.d)}) · اتمسحت تلقائياً بعد 30 يوم</div>`:m.v?`<div class="bcvo"><button data-play="${E(m.id)}" type="button" aria-label="تشغيل">${PLAY.id===m.id?"⏸":"▶"}</button><span class="bar"><b id="bcpb-${E(m.id)}"></b></span><span class="du">${mmss(m.d)}</span></div>`:E(m.t||"");
+    const body=m.v&&m.gone?`<div class="bcgone">🎤 رسالة صوتية (${mmss(m.d)}) · حُذفت تلقائياً بعد 30 يوماً</div>`:m.v?`<div class="bcvo"><button data-play="${E(m.id)}" type="button" aria-label="تشغيل">${PLAY.id===m.id?"⏸":"▶"}</button><span class="bar"><b id="bcpb-${E(m.id)}"></b></span><span class="du">${mmss(m.d)}</span></div>`:QALL.has(m.t)?E(m.t):`<span data-notr>${E(m.t||"")}</span>`;
     const rq=m.rq&&m.rq.no?`<span class="rqt">📦 بخصوص طلب <bdi dir="ltr">${E(m.rq.no)}</bdi></span>`:"";
-    // الاسم + وقت الإرسال + (لرسايلي) اتقرت إمتى
-    h+=`<div class="bcg ${me?"me":"ot"}"><i>${who}</i>${rq}${body}<small><span>🕒 ${hm(m.ts)}</span>${me?(m.rd?`<em>✓✓ اتقرت ${rdAt(m.rd,m.ts)}</em>`:"<span>✓ لسه ماتقرتش</span>"):""}</small></div>`});
+    // الاسم + وقت الإرسال + (لرسايلي) قُرئت إمتى
+    h+=`<div class="bcg ${me?"me":"ot"}"><i>${who}</i>${rq}${body}<small><span>🕒 ${hm(m.ts)}</span>${me?(m.rd?`<em>✓✓ قُرئت ${rdAt(m.rd,m.ts)}</em>`:"<span>✓ لم تُقرأ بعد</span>"):""}</small></div>`});
   box.innerHTML=h;
   if(keepTop){box.scrollTop=box.scrollHeight-keepTop.h+keepTop.t;keepTop=null}
   else if(atEnd||firstPaint)box.scrollTop=box.scrollHeight;
 }
-// "اتقرت": لما المحادثة مفتوحة قدامه فعلاً. بنسجّل وقت القراية على كل رسالة من الطرف التاني (rd) + نصفّر العدّاد
+// "قُرئت": لما المحادثة مفتوحة قدامه فعلاً. بنسجّل وقت القراية على كل رسالة من الطرف المجدداً (rd) + نصفّر العدّاد
 function markRead(){
   if(!X||!CUR||document.hidden||marking||!X.visible())return;
   const s=SUMS[CUR],un=MSGS.filter(m=>!mine(CUR,m.by)&&!m.rd).slice(-100);
@@ -278,10 +279,10 @@ async function deliver(cid,m,a,onOk){
   try{await withTimeout(write(cid,m,a),20000);onOk&&onOk();X.ping(cid)}
   catch(x){
     const w=await failReason(x);
-    // النت بطيء: الرسالة محفوظة على الجهاز وهتتبعت لوحدها (ما نبعتهاش تاني علشان ما تتكررش)
-    if(w==="slow"){onOk&&onOk();X.toast("⏳ النت بطيء: الرسالة هتتبعت لوحدها أول ما الاتصال يتحسّن");X.ping(cid)}
+    // النت بطيء: الرسالة محفوظة على الجهاز وهتتبعت لوحدها (ما نبعتهاش مجدداً علشان ما تتكررش)
+    if(w==="slow"){onOk&&onOk();X.toast("⏳ الإنترنت بطيء: سترسل الرسالة تلقائياً فور تحسّن الاتصال");X.ping(cid)}
     else{const p=peerOf(cid),gone=(p[0]==="w"&&!DIR[pv(p)])||(p[0]==="d"&&!DDIR[pv(p)]);
-      X.toast(w==="denied"?(gone?"الشخص ده مابقاش موجود. اختار حد تاني":"مش مسموح لك تبعت في المحادثة دي (ممكن القواعد لسه ما اتحدّثتش)"):FAIL_MSG[w]||"تعذر الإرسال",true)}
+      X.toast(w==="denied"?(gone?"هذا الشخص لم يعد موجوداً. اختر شخصاً آخر":"غير مسموح لك بالإرسال في هذه المحادثة (ربما لم تتحدّث القواعد بعد)"):FAIL_MSG[w]||"تعذر الإرسال",true)}
   }
   busy=false;if(g("bcsend"))g("bcsend").disabled=false;
 }
@@ -291,18 +292,18 @@ function sendText(){
   deliver(cid,{t},null,()=>{DRAFT[cid]="";if(CUR===cid){i.value="";grow()}});
 }
 
-// ---------- الرسايل الصوتية ----------
+// ---------- الرسائل الصوتية ----------
 function paintRec(){
   const r=g("bcrec"),f=g("bcfoot"),q=ROOT&&ROOT.querySelector(".bcq");if(!r)return;
   r.hidden=!REC;f.hidden=!!REC;if(q)q.hidden=!!REC;
-  if(REC)g("bcrt").innerHTML=`${mmss((Date.now()-REC.t0)/1000)} <small>/ ${mmss(MAXS)} · بيسجّل…</small>`;
+  if(REC)g("bcrt").innerHTML=`${mmss((Date.now()-REC.t0)/1000)} <small>/ ${mmss(MAXS)} · يسجّل…</small>`;
 }
 async function startRec(){
   if(!CUR||REC||busy)return;
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder)return void X.toast("المتصفح ده مش بيدعم تسجيل الصوت. جرّب Chrome أو حدّث المتصفح.",true);
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder)return void X.toast("هذا المتصفح لا يدعم تسجيل الصوت. جرّب Chrome أو حدّث المتصفح.",true);
   const cid=CUR,my=GEN;let stream;
   try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}
-  catch(e){return void X.toast(e&&(e.name==="NotAllowedError"||e.name==="SecurityError")?(isMob()?"اسمح للمنصة تستخدم المايك: من إعدادات الموقع أو التطبيق ← الميكروفون ← سماح":"اسمح للمنصة تستخدم المايك: علامة القفل 🔒 جنب الرابط ← الميكروفون ← سماح"):"مفيش مايك شغّال على الجهاز ده",true)}
+  catch(e){return void X.toast(e&&(e.name==="NotAllowedError"||e.name==="SecurityError")?(isMob()?"اسمح للمنصة باستخدام الميكروفون: من إعدادات الموقع أو التطبيق ← الميكروفون ← سماح":"اسمح للمنصة باستخدام الميكروفون: علامة القفل 🔒 بجانب الرابط ← الميكروفون ← سماح"):"لا يوجد ميكروفون يعمل على هذا الجهاز",true)}
   if(my!==GEN||cid!==CUR||REC){stream.getTracks().forEach(t=>t.stop());return}
   const type=["audio/webm;codecs=opus","audio/mp4","audio/ogg;codecs=opus","audio/webm"].find(t=>{try{return MediaRecorder.isTypeSupported(t)}catch(e){return false}})||"";
   let mr;try{mr=new MediaRecorder(stream,{...(type?{mimeType:type}:{}),audioBitsPerSecond:24000})}catch(e){mr=new MediaRecorder(stream)}
@@ -322,7 +323,7 @@ async function finishRec(r){
   if(r.done)return;r.done=true;try{r.stream.getTracks().forEach(t=>t.stop())}catch(e){}
   if(r.cancel)return;
   if(r.my!==GEN||r.cid!==CUR)return;// المحادثة اتغيّرت أثناء التسجيل: نلغي
-  if(N(r.dur)<1)return void X.toast("الرسالة قصيرة أوي. دوس 🎤 واتكلم، وبعدين دوس إرسال");
+  if(N(r.dur)<1)return void X.toast("الرسالة قصيرة جداً. اضغط 🎤 وتحدّث، ثم اضغط إرسال");
   const blob=new Blob(r.chunks,{type:String(r.mr.mimeType||(r.chunks[0]&&r.chunks[0].type)||"audio/webm").split(";")[0]||"audio/webm"});
   if(blob.size>MAXB*1.05)return void X.toast("الرسالة الصوتية طويلة. سجّل رسالة أقصر",true);
   let a="";try{a=await new Promise((ok,no)=>{const f=new FileReader();f.onload=()=>ok(String(f.result||""));f.onerror=no;f.readAsDataURL(blob)})}catch(e){}
@@ -343,18 +344,18 @@ async function play(id){
     let none=false;
     try{const s=await withTimeout(getDoc(doc(X.db,"dm",cid,"aud",id)),15000);none=!s.exists();a=none?"":String(s.data().a||"")}catch(e){a=""}
     if(my!==GEN||PLAY.au!==au)return;
-    if(!/^data:audio\//.test(a)){stopPlay();return void X.toast(none?"الرسالة الصوتية دي اتمسحت (أقدم من 30 يوم)":"تعذر تحميل الرسالة الصوتية",true)}
+    if(!/^data:audio\//.test(a)){stopPlay();return void X.toast(none?"حُذفت هذه الرسالة الصوتية (أقدم من 30 يوماً)":"تعذر تحميل الرسالة الصوتية",true)}
     AUD.set(key,a);if(AUD.size>40)AUD.delete(AUD.keys().next().value);
   }
   au.src=a;
   au.ontimeupdate=()=>{const bar=g("bcpb-"+id);if(bar&&au.duration&&isFinite(au.duration))bar.style.width=Math.min(100,au.currentTime/au.duration*100)+"%"};
   au.onended=()=>{if(PLAY.au===au)stopPlay()};
-  au.onerror=()=>{if(PLAY.au===au){stopPlay();X.toast("الجهاز ده مش قادر يشغّل الرسالة الصوتية دي",true)}};
-  try{await au.play();const b=btn();if(b&&PLAY.au===au)b.textContent="⏸"}catch(e){if(PLAY.au===au){stopPlay();X.toast("دوس ▶ تاني علشان تسمع الرسالة")}}
+  au.onerror=()=>{if(PLAY.au===au){stopPlay();X.toast("هذا الجهاز غير قادر على تشغيل هذه الرسالة الصوتية",true)}};
+  try{await au.play();const b=btn();if(b&&PLAY.au===au)b.textContent="⏸"}catch(e){if(PLAY.au===au){stopPlay();X.toast("اضغط ▶ مجدداً لتسمع الرسالة")}}
 }
 // ---------- القايمة: كل اللي أقدر أكلّمهم ----------
-// المستودع: الفروع (لو معاه الطلبات أو مدير) + السواقين + الموظفين. الفرع: المستودع (اللي بيرد على الفروع بس) + السواقين + الفروع.
-// السواق: المستودع + الفروع. (سواق مع سواق ممنوع)
+// المستودع: الفروع (لو معاه الطلبات أو مدير) + السائقين + الموظفين. الفرع: المستودع (اللي بيرد على الفروع بس) + السائقين + الفروع.
+// السائق: المستودع + الفروع. (سائق مع سائق ممنوع)
 function people(){
   const out=[],seen=new Set(),add=p=>{if(p&&p!==X.me&&!seen.has(p)){seen.add(p);out.push(p)}};
   const brs=()=>(X.codes||[]).forEach(b=>add("b-"+String(b).split("-")[0]));
@@ -368,15 +369,15 @@ function paintList(){
   if(!ROOT)return;const box=ROOT.querySelector(".bcli");if(!box)return;
   const rows=people().filter(p=>!FILT||p[0]===FILT).map(p=>{
     const cid=cidFor(p),s=SUMS[cid],n=pname(p,cid),t=p[0],d=t==="w"?DIR[pv(p)]:null;
-    const role=t==="w"?(d?d.k||"":"مابقاش في المستودع"):t==="d"?(DDIR[pv(p)]?"سواق":"مابقاش موجود"):"";
+    const role=t==="w"?(d?d.k||"":"لم يعد في المستودع"):t==="d"?(DDIR[pv(p)]?"سائق":"لم يعد موجوداً"):"";
     return {p,cid,s,u:unreadOf(s),n,img:ph(p),av:t==="b"?E(pv(p)):t==="d"?"🚚":E([...n][0]||"؟"),cls:t==="b"?"":" p",role,o:t==="w"?(d?ROLE_O[d.r]??3:9):t==="d"?4:5};
   }).filter(x=>!Q||x.n.toLowerCase().includes(Q)||x.p.toLowerCase().includes(Q))
     .sort((a,b)=>(b.u>0)-(a.u>0)||N(b.s&&b.s.last&&b.s.last.ts)-N(a.s&&a.s.last&&a.s.last.ts)||a.o-b.o||a.n.localeCompare(b.n));
-  box.innerHTML=rows.map(x=>{const l=x.s&&x.s.last;const pvw=l?(mine(x.cid,l.by)?"أنت: ":"")+l.t:"ابدأ محادثة";
-    return `<button class="bcr${x.cid===CUR?" on":""}${x.u?" nw":""}" data-bcc="${E(x.p)}" type="button">${x.img?`<img class="av" src="${x.img}" alt="">`:`<span class="av${x.cls}">${x.av}</span>`}<span class="nm"><b><bdi${x.p[0]==="b"?' dir="ltr"':""}>${E(x.n)}</bdi>${x.role?`<u>${E(x.role)}</u>`:""}</b><small>${E(pvw)}</small></span><span class="mt"><small>${l?when(l.ts):""}</small>${x.u?`<i>${x.u}</i>`:""}</span></button>`}).join("")
-    ||`<div class="bcnone">${Q?"مفيش نتايج بالاسم ده":"لسه مفيش حد هنا"}</div>`;
+  box.innerHTML=rows.map(x=>{const l=x.s&&x.s.last;const pvw=l?`${mine(x.cid,l.by)?E("أنت: "):""}<span data-notr>${E(l.t)}</span>`:E("ابدأ محادثة");
+    return `<button class="bcr${x.cid===CUR?" on":""}${x.u?" nw":""}" data-bcc="${E(x.p)}" type="button">${x.img?`<img class="av" src="${x.img}" alt="">`:`<span class="av${x.cls}">${x.av}</span>`}<span class="nm"><b><bdi${x.p[0]==="b"?' dir="ltr"':""}>${E(x.n)}</bdi>${x.role?`<u>${E(x.role)}</u>`:""}</b><small>${pvw}</small></span><span class="mt"><small>${l?when(l.ts):""}</small>${x.u?`<i>${x.u}</i>`:""}</span></button>`}).join("")
+    ||`<div class="bcnone">${Q?"لا توجد نتائج بهذا الاسم":"لا يوجد أحد هنا بعد"}</div>`;
 }
-// الصفحة بتعيد رسم نفسها كتير، فالشات عنصر ثابت بنحطّه في مكانه كل مرة (الكتابة والتسجيل مايضيعوش)
+// الصفحة بتعيد رسم نفسها كتير، فالدردشة عنصر ثابت بنحطّه في مكانه كل مرة (الكتابة والتسجيل مايضيعوش)
 export function mountWh(host){
   if(!X||!host||modal())return;
   if(!ROOT)ROOT=buildRoot();
@@ -385,7 +386,7 @@ export function mountWh(host){
   const ms=ROOT.querySelector("#bcms"),li=ROOT.querySelector(".bcli");ms.scrollTop=SCR.end?ms.scrollHeight:SCR.t;li.scrollTop=SCR.l;
   if(CUR){paintHead();markRead()}
 }
-// خرجنا من تبويب الشات: نقفل المحادثة المفتوحة (توفير قراءات + وقف أي تسجيل)
+// خرجنا من تبويب الدردشة: نقفل المحادثة المفتوحة (توفير قراءات + وقف أي تسجيل)
 export function hideWh(){if(CUR&&X&&!modal()){setCode(null);if(ROOT)ROOT.classList.remove("open")}}
 // المستودع: يفتح محادثة مع طرف (rq = بخصوص طلب)
 export function openPeer(p,rq){
@@ -395,11 +396,11 @@ export function openPeer(p,rq){
   const cid=cidFor(p);if(rq)CTX[cid]=rq;setCode(cid);paintCtx();ROOT.classList.add("open");paintList();
 }
 export function openWh(code,rq){if(/^\d{3}$/.test(String(code||"")))openPeer("b-"+code,rq)}
-// ---------- الفرع والسواق: زرار عائم + نافذة ----------
+// ---------- الفرع والسائق: زرار عائم + نافذة ----------
 function paintFab(){
   if(!X||!modal())return;const n=unreadTotal();
   const f=g("bcfab");if(f){f.innerHTML=`💬${n?`<i>${n}</i>`:""}`;f.classList.toggle("nw",!!n);f.title=n?`${n} رسالة جديدة`:"المحادثات"}
-  const m=g("bcme");if(m)m.innerHTML=`💬 ${T()==="b"?"المحادثات":"الرسايل"}${n?` <i>${n}</i>`:""}`;
+  const m=g("bcme");if(m)m.innerHTML=`💬 ${T()==="b"?"المحادثات":"الرسائل"}${n?` <i>${n}</i>`:""}`;
   if(X.onBadge)X.onBadge(n);
 }
 // peer = الطرف (أو إيميل الشخص من إشعارات قديمة)، rq = بخصوص طلب (الفرع يختار يكلّم مين عنه)
@@ -418,9 +419,9 @@ export function openBr(peer,rq){
 }
 function closeBr(){const m=g("bcm");if(m)m.className="";PEND=null;setCode(null);if(ROOT)ROOT.classList.remove("open");paintFab()}
 // ---------- التشغيل ----------
-// ctx = {db, party:"b-003"|"w-email"|"d-drv1", name:()=>اسم الكاتب, myLabel?:()=>اسمي في القايمة عند التاني, brn:code=>اسم الفرع,
+// ctx = {db, party:"b-003"|"w-email"|"d-drv1", name:()=>اسم الكاتب, myLabel?:()=>اسمي في القايمة عند المجدداً, brn:code=>اسم الفرع,
 //        codes:[قائمة الفروع], canBr (المستودع: يقدر يكلّم الفروع؟), toast, beep, notify, ping:cid=>..., visible:()=>المحادثة قدامه؟,
-//        onBadge(n), show:()=>يفتح تبويب الشات (المستودع)}
+//        onBadge(n), show:()=>يفتح تبويب الدردشة (المستودع)}
 export function initBChat(ctx){
   stopBChat();
   // (توافق: الصفحات القديمة كانت بتبعت by + me/code)
@@ -445,7 +446,7 @@ export function initBChat(ctx){
   };
   let gotO=T()==="d"||(T()==="w"&&!X.canBr),gotN=false;
   const fire=()=>{if(gotO&&gotN)onSum()};
-  // أسماء وكنيات وصور اللي في المستودع، وأسماء السواقين
+  // أسماء وكنيات وصور اللي في المستودع، وأسماء السائقين
   const again=()=>{paintList();paintHead();if(CUR)paintMsgs()};
   UND=onSnapshot(collection(X.db,"whdir"),sn=>{DIR={};sn.docs.forEach(d=>{DIR[d.id]=d.data()});again()},()=>{});
   UNA=onSnapshot(collection(X.db,"ava"),sn=>{AVA={};sn.docs.forEach(d=>{const p=d.data().ph;if(typeof p==="string"&&/^data:image\/jpeg;base64,/.test(p))AVA[d.id]=p});again()},()=>{});
@@ -468,8 +469,8 @@ export function stopBChat(){
   X=null;
 }
 
-// ---------- مسح الشات القديم المشترك (مرة واحدة، من جهاز المالك) ----------
-// الشات قبل كده كان مشترك (chats/{code} و msgs جوه كل طلب)، فبنمسحه كله علشان محدش يشوف رسايل حد تاني.
+// ---------- مسح الدردشة القديم المشترك (مرة واحدة، من جهاز المالك) ----------
+// الدردشة قبل كده كان مشترك (chats/{code} و msgs جوه كل طلب)، فبنمسحه كله علشان محدش يشوف رسايل حد مجدداً.
 export async function wipeOldChat(db){
   try{
     if((await getDoc(doc(db,"meta","chatv2"))).exists())return;

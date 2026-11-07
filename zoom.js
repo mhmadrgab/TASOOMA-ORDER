@@ -1,10 +1,10 @@
 // عارض الصور: أي صورة عليها data-zoom لما حد يدوس عليها بتفتح كبيرة على الشاشة كلها، ومعاها "حفظ الصورة".
-// الحذف للمالك بس (محمد): data-zdel="المجموعة/الرقم/الحقل" (القواعد في Firebase كمان بتمنع أي حد غيره).
+// الحذف للمالك فقط (محمد): data-zdel="المجموعة/الرقم/الحقل" (القواعد في Firebase أيضاً بتمنع أي حد غيره).
 import {doc,getDoc,updateDoc,deleteField} from "./fb.js";
 let C=null,cur=null;
-// الحاجات اللي ينفع تتمسح من هنا بس (مايتمسحش أي حقل تاني بالغلط)
+// الحاجات اللي ينفع تتمسح من هنا بس (مايتمسحش أي حقل مجدداً بالغلط)
 const OK={"requests":["pod.img","pod.sig"],"ledger":["img"],"pods":["img","sig"],"giftimg":["img"]};
-// صور التسليم الجديدة في pods/{رقم الطلب}: لما تتمسح بنشيل العلامة اللي على الطلب كمان (ph/sg)
+// صور التسليم الجديدة في pods/{رقم الطلب}: لما تتمسح بنشيل العلامة اللي على الطلب أيضاً (ph/sg)
 const FLAG={img:"pod.ph",sig:"pod.sg"};
 const isData=s=>typeof s==="string"&&/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(s);
 const CSS=`#zbx{display:none;position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.9);align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:14px}
@@ -31,14 +31,14 @@ export function zoomOpen(src,title,del){
  b.querySelector('[data-zx="close"]').onclick=zoomClose;
  const d=b.querySelector('[data-zx="del"]');
  if(d)d.onclick=async()=>{
-  if(!confirm("تمسح الصورة دي نهائياً؟ مش هتقدر ترجّعها."))return;
+  if(!confirm("هل تريد حذف هذه الصورة نهائياً؟ لن تتمكن من استعادتها."))return;
   d.disabled=true;d.textContent="جاري الحذف...";
   try{await updateDoc(doc(C.db,cur.col,cur.id),{[cur.field]:deleteField()});
    if(cur.col==="pods")PC.delete(cur.id);
    if(cur.col==="giftimg")await updateDoc(doc(C.db,"gifts",cur.id),{img:deleteField()}).catch(()=>{});// علامة "فيه سند" على الهدية
    if(cur.col==="pods")await updateDoc(doc(C.db,"requests",cur.id),{[FLAG[cur.field]]:deleteField()}).catch(()=>{});
-   C.toast("اتمسحت ✅");zoomClose()}
-  catch(e){d.disabled=false;d.textContent="🗑 حذف";C.toast(e&&e.code==="permission-denied"?"الحذف للمالك بس":"تعذر الحذف، جرّب تاني")}
+   C.toast("حُذفت ✅");zoomClose()}
+  catch(e){d.disabled=false;d.textContent="🗑 حذف";C.toast(e&&e.code==="permission-denied"?"الحذف للمالك فقط":"تعذر الحذف، حاول مجدداً")}
  };
 }
 // بنجيب الصورة من pods/{رقم الطلب} وقت الضغط بس (قراءة واحدة)
@@ -48,8 +48,8 @@ export async function podOpen(rid,which,title,btn){
  const t0=btn&&btn.textContent;if(btn){btn.disabled=true;btn.textContent="⏳"}
  try{
   let d=PC.get(rid);if(!d){const s=await getDoc(doc(C.db,"pods",rid));d=s.exists()?s.data():{};PC.set(rid,d);setTimeout(()=>PC.delete(rid),5*6e4)}
-  if(isData(d[which]))zoomOpen(d[which],title,`pods/${rid}/${which}`);else C.toast(which==="img"?"مفيش صورة (ممكن اتمسحت)":"مفيش توقيع (ممكن اتمسح)");
- }catch(e){C.toast(e&&e.code==="permission-denied"?"مش مسموح تشوف الصورة دي":"تعذر تحميل الصورة، اتأكد من النت")}
+  if(isData(d[which]))zoomOpen(d[which],title,`pods/${rid}/${which}`);else C.toast(which==="img"?"لا توجد صورة (ربما حُذفت)":"لا يوجد توقيع (ربما حُذف)");
+ }catch(e){C.toast(e&&e.code==="permission-denied"?"غير مسموح لك برؤية هذه الصورة":"تعذر تحميل الصورة، تأكد من الإنترنت")}
  finally{if(btn){btn.disabled=false;btn.textContent=t0}}
 }
 export function initZoom(ctx){

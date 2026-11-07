@@ -31,7 +31,7 @@ const openX=h=>{g("xm").innerHTML=`<div class="xk">${h}</div>`;g("xm").className
 function openRcv(id){
  const r=(X.reqs()||{})[id];if(!r||r.st!=="done")return;
  const rows=(Array.isArray(r.rows)?r.rows:[]).slice(0,400);
- openX(`<h3>تأكيد استلام طلب <bdi dir="ltr">${E(r.no)}</bdi></h3><p style="margin:0 0 8px;color:var(--mut);font-size:14px">لو كل حاجة وصلت زي ما هي اضغط تأكيد مباشرة. لو فيه نقص أو تالف اكتب الكمية اللي استلمتها فعلاً.</p>
+ openX(`<h3>تأكيد استلام طلب <bdi dir="ltr">${E(r.no)}</bdi></h3><p style="margin:0 0 8px;color:var(--mut);font-size:14px">إن وصل كل شيء كما هو اضغط تأكيد مباشرة. وإن وُجد نقص أو تالف اكتب الكمية التي استلمتها فعلاً.</p>
  <div style="max-height:46vh;overflow:auto"><table><thead><tr><th>الكود</th><th>اللون</th><th>المقاس</th><th>مطلوب</th><th>استلمت</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td><bdi dir="ltr">${E(x.k)}</bdi></td><td><bdi dir="ltr">${E(x.c||"-")}</bdi></td><td>${E(x.z||"")}</td><td><b>${N(x.q)}</b></td><td><input data-i="${i}" type="number" inputmode="numeric" min="0" max="99999" value="${N(x.q)}"></td></tr>`).join("")}</tbody></table></div>
  <label for="rn">ملاحظات (تالف، ناقص، مختلف...)</label><textarea id="rn" rows="2" maxlength="500" placeholder="اختياري"></textarea>
  <div class="row"><button class="b" id="rc0" type="button">رجوع</button><button class="b p" id="rc1" type="button">✅ تأكيد الاستلام</button></div>`);
@@ -45,7 +45,7 @@ function openRcv(id){
   if(!note)delete rcv.note;
   g("rc1").disabled=true;
   try{await withTimeout(updateDoc(doc(X.db,"requests",id),{st:"recv",rcv}),15000);if(X.ping)X.ping([id]);closeX();X.toast(rcv.ok?"تم تأكيد الاستلام ✅":"تم تسجيل الاستلام مع الملاحظات ✅")}
-  catch(e){g("rc1").disabled=false;const why=await failReason(e);X.toast(why==="denied"?"مش مسموح. ممكن المستودع غيّر حالة الطلب.":FAIL_MSG[why],"er")}
+  catch(e){g("rc1").disabled=false;const why=await failReason(e);X.toast(why==="denied"?"غير مسموح. ربما غيّر المستودع حالة الطلب.":FAIL_MSG[why],"er")}
  };
 }
 export function initBranch(ctx){X=ctx;ui()}

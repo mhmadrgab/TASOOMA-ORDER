@@ -12,7 +12,7 @@
  // عدّاد من صفر للرقم (للإحصائيات)
  const count=b=>{const t=b.textContent.trim();if(!/^\d{1,5}$/.test(t)||t==="0")return;const n=+t,t0=performance.now();
   const step=now=>{const p=Math.min(1,(now-t0)/700);b.textContent=String(Math.round(n*(1-Math.pow(1-p,3))));if(p<1)requestAnimationFrame(step)};requestAnimationFrame(step)};
- // الكارت يظهر بحركة لو جديد، أو لو المستخدم لسه ضاغط حاجة (تبويب، فلتر...). التحديث اللحظي لنفس البيانات مابيتحرّكش.
+ // الكارت يظهر بحركة لو جديد، أو لو المستخدم لا يزال ضاغط حاجة (تبويب، فلتر...). التحديث اللحظي لنفس البيانات مابيتحرّكش.
  function enter(list){
   const tap=Date.now()-lastTap<900;let i=0;
   for(const el of list){
@@ -33,7 +33,7 @@
   const gate=document.getElementById("gate");
   if(gate&&gate.classList.contains("ui-stage")!==(ov===gate))gate.classList.toggle("ui-stage",ov===gate);
  };
- // الموبايل: شريط التبويبات بيتسحب؛ بعد كل تحديث للصفحة نخلي التبويب المفتوح باين
+ // الجوال: شريط التبويبات بيتسحب؛ بعد كل تحديث للصفحة نخلي التبويب المفتوح باين
  const keepTab=()=>{const on=document.querySelector(".tabs button.on"),t=on&&on.parentElement;if(!t||t.scrollWidth<=t.clientWidth)return;
   const a=on.getBoundingClientRect(),b=t.getBoundingClientRect();if(a.left<b.left+10||a.right>b.right-10)t.scrollLeft+=(a.left+a.width/2)-(b.left+b.width/2)};
  const mo=new MutationObserver(ms=>{
@@ -53,7 +53,7 @@
  });
  // ---------- كارت الترحيب: "صباح الخير يا فلان" + الساعة والتاريخ (ميلادي وهجري) ----------
  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
- const greet=()=>{const h=new Date().getHours();return h>=4&&h<12?["صباح الخير","☀️"]:h<17&&h>=12?["مساء الخير","🌤️"]:h>=17?["مساء الخير","🌙"]:["سهرانين؟ ربنا يقويك","🌙"]};
+ const greet=()=>{const h=new Date().getHours();return h>=4&&h<12?["صباح الخير","☀️"]:h<17&&h>=12?["مساء الخير","🌤️"]:h>=17?["مساء الخير","🌙"]:["تعملون في وقت متأخر؟ بارك الله فيكم","🌙"]};
  const fmtT=()=>{const d=new Date();let t="",dt="",hj="";
   try{t=d.toLocaleTimeString("ar-EG-u-nu-latn",{hour:"numeric",minute:"2-digit"});dt=d.toLocaleDateString("ar-EG-u-nu-latn",{weekday:"long",day:"numeric",month:"long"});hj=d.toLocaleDateString("ar-SA-u-ca-islamic-umalqura-nu-latn",{day:"numeric",month:"long",year:"numeric"})}catch(e){t=d.toTimeString().slice(0,5)}
   return {t,dt,hj}};
@@ -68,9 +68,9 @@
  // ---------- إنشاء حساب والتسجيل مقفول في Firebase ----------
  // Firebase بيرفض أي حساب جديد طول ما "Enable create (sign-up)" مقفول. بدل رسالة إنجليزي، نافذة بالخطوات.
  window.uiSignupOff=what=>{let m=document.getElementById("uim");if(!m){m=document.createElement("div");m.id="uim";m.addEventListener("click",e=>{if(e.target===m||e.target.closest("[data-uix]"))m.className=""});document.body.appendChild(m)}
-  m.innerHTML=`<div class="uik"><div class="uii">🔐</div><h3>افتح التسجيل في Firebase دقيقة</h3><p>علشان الأمان، Firebase بيمنع إنشاء أي حساب جديد طول ما التسجيل مقفول. علشان تضيف ${esc(what||"الحساب")}:</p>
-  <ol><li>اضغط الزرار اللي تحت، هيفتحلك إعدادات Firebase</li><li>من <b>User actions</b> علّم على <b>Enable create (sign-up)</b> واضغط <b>Save</b></li><li>ارجع هنا واضغط الإضافة تاني</li><li>بعد ما تخلص: شيل العلامة واضغط <b>Save</b> تاني</li></ol>
-  <div class="uib"><a class="bt p" href="https://console.firebase.google.com/project/tasooma-ad4fe/authentication/settings" target="_blank" rel="noopener noreferrer">فتح إعدادات Firebase</a><button class="bt" data-uix type="button">تمام</button></div></div>`;
+  m.innerHTML=`<div class="uik"><div class="uii">🔐</div><h3>افتح التسجيل في Firebase دقيقة</h3><p>للأمان، Firebase يمنع إنشاء أي حساب جديد ما دام التسجيل مغلقاً. لإضافة ${esc(what||"الحساب")}:</p>
+  <ol><li>اضغط الزر الموجود بالأسفل وسيفتح لك إعدادات Firebase</li><li>من <b>User actions</b> حدّد <b>Enable create (sign-up)</b> واضغط <b>Save</b></li><li>ارجع إلى هنا واضغط الإضافة مجدداً</li><li>بعد الانتهاء: أزل العلامة واضغط <b>Save</b> مجدداً</li></ol>
+  <div class="uib"><a class="bt p" href="https://console.firebase.google.com/project/tasooma-ad4fe/authentication/settings" target="_blank" rel="noopener noreferrer">فتح إعدادات Firebase</a><button class="bt" data-uix type="button">حسناً</button></div></div>`;
   m.className="on"};
  // أي خطأ تسجيل: لو السبب إن التسجيل مقفول نعرض الخطوات ونرجّع true
  window.uiAuthErr=(x,what)=>{if(x&&x.code==="auth/admin-restricted-operation"){window.uiSignupOff(what);return true}return false};
@@ -79,8 +79,8 @@
  addEventListener("online",net);addEventListener("offline",net);net();
  mo.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class","hidden"]});
  stage();enter([...document.querySelectorAll(SEL)]);
- // شاشة البداية + انتظار الدخول: محتوى الصفحة مخفي (aw) لحد ما الصفحة تقول "عرفنا مين داخل" بـ uiReady()
- // في التطبيق المثبّت بنستنى كمان رسمة اللوجو تكمل (حوالي 1.7 ثانية)
+ // شاشة البداية + انتظار الدخول: محتوى الصفحة مخفي (aw) إلى ما الصفحة تقول "عرفنا مين داخل" بـ uiReady()
+ // في التطبيق المثبّت بنستنى أيضاً رسمة اللوجو تكمل (حوالي 1.7 ثانية)
  const H=document.documentElement,boot=document.getElementById("boot");
  let ready=false,minDone=!H.classList.contains("app");
  const hide=()=>{if(!ready||!minDone||!boot||!boot.isConnected||boot.classList.contains("out"))return;boot.classList.add("out");setTimeout(()=>boot.remove(),600)};

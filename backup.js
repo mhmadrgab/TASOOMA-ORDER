@@ -1,10 +1,10 @@
 // النسخة الاحتياطية (لمالك النظام بس): زرار "📥 نسخة" بيحمّل بيانات المنصة في ملف JSON على الجهاز.
-// أول نسخة = كل حاجة. بعد كده (علشان حصة القراءة اليومية في الخطة المجانية): الطلبات والرحلات والبنزين ورسايل الشات
+// أول نسخة = كل حاجة. بعد كده (علشان حصة القراءة اليومية في الخطة المجانية): الطلبات والرحلات والبنزين ورسايل الدردشة
 // من 60 يوم قبل آخر نسخة + الطلبات المفتوحة، وباقي البيانات (الفروع، العهدة، الموظفين، العربيات...) كاملة كل مرة.
 // علشان كده لازم كل الملفات تتحفظ مع بعض. مش بتشمل: كلمات السر، وتسجيلات الإشعارات، والصوت نفسه.
 // meta/backup = {at, n}: آخر نسخة إمتى وكام سجل (للتنبيه لو عدّى أسبوع).
 import {collection,doc,getDoc,getDocs,setDoc,query,where,withTimeout} from "./fb.js";
-// (الشات القديم "chats" اتمسح. الشات الخاص dm مش في النسخة: القواعد مش بتسمح لحد يقرا محادثات غيره، ولا حتى المالك)
+// (الدردشة القديم "chats" اتمسح. الدردشة الخاص dm مش في النسخة: القواعد مش بتسمح إلى يقرا محادثات غيره، ولا حتى المالك)
 const ALL=["branches","staff","ledger","settlements","drivers","workers","wrate","geo","cars","whdir"];
 const BYTIME=[["requests","ts"],["trips","start"],["fuel","ts"],["pods","at"],["log","ts"]];
 const OVERLAP=60*864e5,NAG=7*864e5;
@@ -27,15 +27,15 @@ export function stopBackup(){X=null;META=null}
 // زرار في شريط اللوحة (عليه نقطة حمرا لو النسخة متأخرة)
 export const backupBtn=()=>X&&X.owner?`<button id="bkp" type="button" title="نسخة احتياطية">📥 نسخة${late()?'<i class="bkd"></i>':""}</button>`:"";
 // تنبيه فوق الصفحة لو عدّى أسبوع من غير نسخة
-export const backupNag=()=>late()?`<div class="bkn"><span>💾 ${N(META.at)?`آخر نسخة احتياطية من ${Math.floor((Date.now()-N(META.at))/864e5)} يوم`:"لسه ماخدتش أي نسخة احتياطية من بيانات المنصة"}</span><button data-bkp type="button">📥 خد نسخة دلوقتي</button></div>`:"";
+export const backupNag=()=>late()?`<div class="bkn"><span>💾 ${N(META.at)?`آخر نسخة احتياطية من ${Math.floor((Date.now()-N(META.at))/864e5)} يوم`:"لم تأخذ أي نسخة احتياطية من بيانات المنصة بعد"}</span><button data-bkp type="button">📥 خذ نسخة الآن</button></div>`:"";
 
 async function run(){
   if(busy||!X||!X.owner)return;
   const ctx=X;
-  if(!META){try{const s=await withTimeout(getDoc(doc(ctx.db,"meta","backup")),15000);META=s.exists()?s.data():{}}catch(e){return void ctx.toast("تعذر الاتصال. اتأكد من النت وجرّب تاني")}}
+  if(!META){try{const s=await withTimeout(getDoc(doc(ctx.db,"meta","backup")),15000);META=s.exists()?s.data():{}}catch(e){return void ctx.toast("تعذر الاتصال. تأكد من الإنترنت وحاول مجدداً")}}
   const full=!N(META.at),from=full?0:N(META.at)-OVERLAP;
-  if(!confirm(full?"هتاخد نسخة كاملة من كل بيانات المنصة، وهتتحمّل كملف على الجهاز ده. ممكن تاخد دقيقة.\n\nكمّل؟"
-    :`هتاخد نسخة من بيانات المنصة (الطلبات والرحلات ورسايل الشات من ${dd(from)} لحد النهارده، وكل الباقي كامل).\n\nاحفظ الملف ده مع النسخ القديمة في مكان واحد (مثلاً Google Drive).\n\nكمّل؟`))return;
+  if(!confirm(full?"ستأخذ نسخة كاملة من كل بيانات المنصة، وستُحمَّل كملف على هذا الجهاز. قد تستغرق دقيقة.\n\nهل تريد المتابعة؟"
+    :`ستأخذ نسخة من بيانات المنصة (الطلبات والرحلات ورسائل الدردشة من ${dd(from)} حتى اليوم، وكل الباقي كاملاً).\n\nاحفظ هذا الملف مع النسخ القديمة في مكان واحد (مثلاً Google Drive).\n\nهل تريد المتابعة؟`))return;
   busy=true;ctx.toast("⏳ جاري تجهيز النسخة الاحتياطية...");
   try{
     const at=Date.now(),out={app:"tasooma",v:1,at,from,full,data:{},chat:{}};let n=0;
@@ -43,15 +43,15 @@ async function run(){
     const get=(q,ms=60000)=>withTimeout(getDocs(q),ms);
     for(const c of ALL)out.data[c]=take(await get(collection(ctx.db,c)));
     for(const [c,f] of BYTIME)out.data[c]=take(await get(full?collection(ctx.db,c):query(collection(ctx.db,c),where(f,">=",from)),120000));
-    // الطلبات اللي لسه مفتوحة حتى لو قديمة
+    // الطلبات اللي لا يزال مفتوحة حتى لو قديمة
     if(!full)take(await get(query(collection(ctx.db,"requests"),where("st","in",["new","prep","go","done"]))),out.data.requests);
     const blob=new Blob([JSON.stringify(out)],{type:"application/json"});
     save(blob,`tasooma-backup-${new Date(at).toLocaleDateString("en-CA")}${full?"-full":""}.json`);
     await withTimeout(setDoc(doc(ctx.db,"meta","backup"),{at,n}),15000).catch(()=>{});
     if(X===ctx){META={at,n};ctx.redraw()}
-    ctx.toast(`✅ النسخة اتحمّلت (${n} سجل · ${blob.size<1048576?Math.max(1,Math.round(blob.size/1024))+" كيلو":(blob.size/1048576).toFixed(1)+" ميجا"}). احفظ الملف في Google Drive أو فلاشة`);
+    ctx.toast(`✅ تم تحميل النسخة (${n} سجل · ${blob.size<1048576?Math.max(1,Math.round(blob.size/1024))+" كيلو":(blob.size/1048576).toFixed(1)+" ميجا"}). احفظ الملف في Google Drive أو ذاكرة فلاش`);
   }catch(e){
-    ctx.toast(e&&e.code==="permission-denied"?"مش مسموح: اتأكد إنك نشرت القواعد (Rules) الجديدة":"تعذر أخد النسخة. اتأكد من النت وجرّب تاني");
+    ctx.toast(e&&e.code==="permission-denied"?"غير مسموح: تأكد من نشر القواعد (Rules) الجديدة":"تعذر أخذ النسخة. تأكد من الإنترنت وحاول مجدداً");
   }finally{busy=false}
 }
 function save(blob,name){

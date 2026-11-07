@@ -30,7 +30,7 @@ const hasBy=r=>r&&r.prep&&Array.isArray(r.prep.by)&&r.prep.by.length>0;
 export const has=()=>W.some(w=>w.active!==false);
 // نهاية التجهيز: خروج السيارة، أو التسليم، أو لما المستودع علّم "تم التسليم"
 const endOf=r=>N(r.dep)||N(r.dlv)||((r.st==="done"||r.st==="recv")?N(r.upd):0);
-// الدقة: الفرع استلم كامل = تمام. استلم بملاحظات = المدير يراجع (غلطة تجهيز ولا لأ)
+// الدقة: الفرع استلم كامل = حسناً. استلم بملاحظات = المدير يراجع (خطأ تجهيز ولا لأ)
 function verdict(r){
  if(r.st!=="recv"||!r.rcv)return null;
  if(r.rcv.ok!==false)return "ok";
@@ -55,7 +55,7 @@ function stats(mo){
   const p=avgLpd>0?Math.min(1,s.lpd/avgLpd/1.3):1;          // سطور في اليوم: 130% من متوسط الفريق = الدرجة كاملة
   const judged=s.ok+s.err,acc=judged?s.ok/judged:1;          // من غير طلبات اتراجعت = كاملة
   const sp=s.mpl&&teamMpl?Math.min(1,teamMpl/s.mpl/1.2):1/1.2;// أسرع من المتوسط بـ 20% = كاملة
-  s.star=N(stars[s.id]);const st=s.star||3;                  // من غير تقييم = 3 نجوم
+  s.star=N(stars[s.id]);const st=s.star||3;                  // دون تقييم = 3 نجوم
   s.acc=judged?acc:null;s.sc={p:40*p,a:30*acc,s:15*sp,m:15*st/5};
   s.score=Math.round(s.sc.p+s.sc.a+s.sc.s+s.sc.m);
  });
@@ -73,23 +73,23 @@ export function view(){
  const stars=(RT[mo]&&RT[mo].stars)||{};
  return `<div class="fl"><h3 style="margin:0">👷 تقييم العمال</h3><select id="wmon" style="margin-inline-start:auto">${ms.map(m=>`<option ${m===mo?"selected":""}>${m}</option>`).join("")}</select><button class="bt" data-wk="rep" type="button">🖨 التقرير الشهري</button></div>
  ${top?`<div class="wtop"><div class="ic">🏆</div><div><small>عامل الشهر (${E(mo)})</small><b>${E(nm(top.id))}</b><small>${fmt(Math.round(top.lines))} سطر · ${fmt(Math.round(top.pcs))} قطعة</small></div><div class="sc2">${top.score}</div></div>`:""}
- ${wait.length?`<div class="pan" style="margin-bottom:14px"><h3>⚠️ ملاحظات استلام محتاجة مراجعتك (${wait.length})</h3><p class="off" style="font-size:13px;margin:0 0 10px">الفرع استلم بملاحظات. حدد هل دي غلطة تجهيز (بتتحسب على العمال) ولا لأ (تلف في الطريق، نقص من المخزن...).</p>
+ ${wait.length?`<div class="pan" style="margin-bottom:14px"><h3>⚠️ ملاحظات استلام تحتاج إلى مراجعتك (${wait.length})</h3><p class="off" style="font-size:13px;margin:0 0 10px">استلم الفرع بملاحظات. حدّد هل هذا خطأ في التجهيز (يُحسب على العمال) أم لا (تلف في الطريق، نقص من المخزن...).</p>
   ${wait.map(r=>`<div class="wrv"><b>${E(r.brn)}</b> · <bdi dir="ltr">${E(r.no)}</bdi><div class="rn">👷 ${E(r.prep.by.map(nm).join("، "))}${(r.rcv.lines||[]).slice(0,6).map(x=>`<br><bdi dir="ltr">${E(x.k)} ${E(x.c||"")} ${E(x.z||"")}</bdi>: مطلوب ${N(x.q)} · استلم ${N(x.r)}`).join("")}${r.rcv.note?`<br>📝 ${E(r.rcv.note)}`:""}</div>
-  <div class="fl" style="margin:0"><button class="bt s" data-wk="fault" data-id="${E(r.id)}" type="button" style="color:#c4362b">غلطة تجهيز</button><button class="bt s" data-wk="nofault" data-id="${E(r.id)}" type="button">مش غلطة العمال</button></div></div>`).join("")}</div>`:""}
- <div class="pan"><div class="tw"><table><thead><tr><th>#</th><th>العامل</th><th>الدرجة</th><th>سطور</th><th>قطع</th><th>طلبات</th><th>دقيقة / 10 سطور</th><th>الدقة</th><th>تقييمك</th><th>عن الشهر اللي فات</th><th></th></tr></thead><tbody>
- ${rows.length?rows.map((s,i)=>{const d=s.id in pv?s.score-pv[s.id]:null;return `<tr><td>${i+1}</td><td><b>${E(nm(s.id))}</b><small class="off" style="display:block">${s.days.size} يوم شغل</small></td>
+  <div class="fl" style="margin:0"><button class="bt s" data-wk="fault" data-id="${E(r.id)}" type="button" style="color:#c4362b">خطأ تجهيز</button><button class="bt s" data-wk="nofault" data-id="${E(r.id)}" type="button">ليس خطأ العمال</button></div></div>`).join("")}</div>`:""}
+ <div class="pan"><div class="tw"><table><thead><tr><th>#</th><th>العامل</th><th>الدرجة</th><th>سطور</th><th>قطع</th><th>طلبات</th><th>دقيقة / 10 سطور</th><th>الدقة</th><th>تقييمك</th><th>عن الشهر الماضي</th><th></th></tr></thead><tbody>
+ ${rows.length?rows.map((s,i)=>{const d=s.id in pv?s.score-pv[s.id]:null;return `<tr><td>${i+1}</td><td><b>${E(nm(s.id))}</b><small class="off" style="display:block">${s.days.size} يوم عمل</small></td>
   <td><span class="wsc ${cls(s.score)}" title="إنتاجية ${Math.round(s.sc.p)}/40 · دقة ${Math.round(s.sc.a)}/30 · سرعة ${Math.round(s.sc.s)}/15 · تقييمك ${Math.round(s.sc.m)}/15">${s.score}</span>
   <div class="wbr" title="إنتاجية · دقة · سرعة · تقييمك"><i style="width:${s.sc.p}px;background:#a8832f"></i><i style="width:${s.sc.a}px;background:#2f8f3e"></i><i style="width:${s.sc.s}px;background:#1d8a99"></i><i style="width:${s.sc.m}px;background:#6a56c9"></i></div></td>
   <td>${fmt(Math.round(s.lines))}</td><td>${fmt(Math.round(s.pcs))}</td><td>${fmt(Math.round(s.reqs*10)/10)}</td><td>${minPer10(s)??"—"}</td>
-  <td>${s.acc===null?'<span class="off">—</span>':Math.round(s.acc*100)+"%"}${s.err?`<small style="display:block;color:#c4362b">${s.err} غلطة</small>`:""}${s.wait?`<small class="off" style="display:block">${s.wait} مستني مراجعة</small>`:""}</td>
+  <td>${s.acc===null?'<span class="off">—</span>':Math.round(s.acc*100)+"%"}${s.err?`<small style="display:block;color:#c4362b">${s.err} خطأ</small>`:""}${s.wait?`<small class="off" style="display:block">${s.wait} بانتظار المراجعة</small>`:""}</td>
   <td>${X.admin?`<select data-wst="${E(s.id)}" style="padding:6px 8px"><option value="">—</option>${[5,4,3,2,1].map(n=>`<option value="${n}" ${N(stars[s.id])===n?"selected":""}>${"★".repeat(n)}</option>`).join("")}</select>`:(s.star?"★".repeat(s.star):"—")}</td>
   <td>${d===null?'<span class="off">—</span>':d>0?`<span class="wup">▲ ${d}</span>`:d<0?`<span class="wdn">▼ ${-d}</span>`:"="}</td>
-  <td><button class="bt s" data-wk="slip" data-id="${E(s.id)}" type="button">🖨</button></td></tr>`}).join(""):`<tr><td colspan="11" class="off" style="text-align:center;padding:24px">${W.length?"لسه مفيش طلبات اتحدد مين جهّزها في الشهر ده. اختار العمال لما تضغط \"بدء التجهيز\".":"ابدأ بإضافة العمال من تحت."}</td></tr>`}
- ${idle.map(w=>`<tr class="off"><td></td><td>${E(w.name)}</td><td colspan="9">ماجهّزش طلبات في الشهر ده</td></tr>`).join("")}</tbody></table></div>
- <p class="wnote">الدرجة من 100: <b>إنتاجية 40</b> (السطور في اليوم مقارنة بمتوسط الفريق) · <b>دقة 30</b> (الطلبات اللي وصلت من غير غلطة تجهيز) · <b>سرعة 15</b> (وقت التجهيز لكل سطر مقارنة بالفريق) · <b>تقييمك 15</b> (من غير تقييم = 3 نجوم). الطلب اللي جهّزه أكتر من عامل بيتقسم عليهم.</p></div>
+  <td><button class="bt s" data-wk="slip" data-id="${E(s.id)}" type="button">🖨</button></td></tr>`}).join(""):`<tr><td colspan="11" class="off" style="text-align:center;padding:24px">${W.length?"لا توجد طلبات حُدِّد من جهّزها في هذا الشهر بعد. اختر العمال عند الضغط على \"بدء التجهيز\".":"ابدأ بإضافة العمال من الأسفل."}</td></tr>`}
+ ${idle.map(w=>`<tr class="off"><td></td><td>${E(w.name)}</td><td colspan="9">لم يجهّز طلبات في هذا الشهر</td></tr>`).join("")}</tbody></table></div>
+ <p class="wnote">الدرجة من 100: <b>إنتاجية 40</b> (السطور في اليوم مقارنة بمتوسط الفريق) · <b>دقة 30</b> (الطلبات التي وصلت دون خطأ في التجهيز) · <b>سرعة 15</b> (وقت التجهيز لكل سطر مقارنة بالفريق) · <b>تقييمك 15</b> (دون تقييم = 3 نجوم). الطلب الذي جهّزه أكثر من عامل يُقسَّم عليهم.</p></div>
  ${X.admin?`<div class="pan" style="margin-top:12px"><h3>👥 العمال</h3><div class="fl" style="margin:0 0 10px"><input id="wnew" maxlength="40" placeholder="اسم العامل" style="flex:1;min-width:160px"><button class="bt p" data-wk="add" type="button">➕ إضافة</button></div>
- ${W.length?W.slice().sort((a,b)=>(a.active===false)-(b.active===false)||String(a.name).localeCompare(b.name,"ar")).map(w=>`<div class="bar" style="justify-content:space-between"><span style="width:auto;direction:rtl">${E(w.name)} ${w.active===false?'<span class="pill off2">موقوف</span>':""}</span><span style="width:auto;display:flex;gap:6px"><button class="bt s" data-wk="ren" data-id="${E(w.id)}" type="button">تعديل الاسم</button><button class="bt s" data-wk="tg" data-id="${E(w.id)}" type="button">${w.active===false?"تفعيل":"إيقاف"}</button></span></div>`).join(""):'<div class="off">لسه مفيش عمال.</div>'}
- <p class="wnote" style="margin-top:8px">العامل اللي ساب الشغل اعمله "إيقاف" بدل الحذف، علشان تقييماته القديمة تفضل.</p></div>`:""}`;
+ ${W.length?W.slice().sort((a,b)=>(a.active===false)-(b.active===false)||String(a.name).localeCompare(b.name,"ar")).map(w=>`<div class="bar" style="justify-content:space-between"><span style="width:auto;direction:rtl">${E(w.name)} ${w.active===false?'<span class="pill off2">موقوف</span>':""}</span><span style="width:auto;display:flex;gap:6px"><button class="bt s" data-wk="ren" data-id="${E(w.id)}" type="button">تعديل الاسم</button><button class="bt s" data-wk="tg" data-id="${E(w.id)}" type="button">${w.active===false?"تفعيل":"إيقاف"}</button></span></div>`).join(""):'<div class="off">لا يوجد عمال بعد.</div>'}
+ <p class="wnote" style="margin-top:8px">العامل الذي ترك العمل اختر له "إيقاف" بدل الحذف، حتى تبقى تقييماته القديمة.</p></div>`:""}`;
 }
 // ---------- اختيار مين جهّز الطلب ----------
 function box(){let m=g("wkm");if(!m){m=document.createElement("div");m.id="wkm";m.className="wkm";m.addEventListener("click",e=>{if(e.target===m)close()});document.body.appendChild(m)}return m}
@@ -99,9 +99,9 @@ export function pick(r){
  const act=W.filter(w=>w.active!==false).sort((a,b)=>String(a.name).localeCompare(b.name,"ar"));
  const pre=new Set(hasBy(r)?r.prep.by:lastSel()),start=r.st==="new";
  const m=box();m.className="wkm on";
- m.innerHTML=`<div class="wkk"><h3>👷 مين هيجهّز الطلب؟</h3><div class="off" style="font-size:14px"><bdi dir="ltr">${E(r.brn)}</bdi> · <bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف</div>
- ${act.length?act.map(w=>`<label class="wkp"><input type="checkbox" value="${E(w.id)}" ${pre.has(w.id)?"checked":""}> <b>${E(w.name)}</b></label>`).join(""):`<p class="off">لسه مفيش عمال. ضيفهم من تبويب "العمال".</p>`}
- <div class="fl" style="margin:14px 0 0"><button class="bt p" id="wkok" type="button">${start?"بدء التجهيز":"حفظ"}</button>${start?'<button class="bt" id="wkno" type="button">ابدأ من غير تحديد</button>':""}<button class="bt" id="wkx" type="button">رجوع</button></div></div>`;
+ m.innerHTML=`<div class="wkk"><h3>👷 من سيجهّز الطلب؟</h3><div class="off" style="font-size:14px"><bdi dir="ltr">${E(r.brn)}</bdi> · <bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف</div>
+ ${act.length?act.map(w=>`<label class="wkp"><input type="checkbox" value="${E(w.id)}" ${pre.has(w.id)?"checked":""}> <b>${E(w.name)}</b></label>`).join(""):`<p class="off">لا يوجد عمال بعد. أضفهم من تبويب "العمال".</p>`}
+ <div class="fl" style="margin:14px 0 0"><button class="bt p" id="wkok" type="button">${start?"بدء التجهيز":"حفظ"}</button>${start?'<button class="bt" id="wkno" type="button">ابدأ دون تحديد</button>':""}<button class="bt" id="wkx" type="button">رجوع</button></div></div>`;
  g("wkx").onclick=close;
  const save=async by=>{
   const t=Date.now(),u={prep:{by,names:by.map(nm),at:N(r.prep&&r.prep.at)||(start?t:N(r.upd)||t)}};
@@ -109,7 +109,7 @@ export function pick(r){
   try{await updateDoc(doc(X.db,"requests",r.id),u);if(X.ping)X.ping([r.id]);close();X.toast(start?"بدأ التجهيز":"تم الحفظ")}catch(e){X.toast("تعذر الحفظ: "+(e&&e.code||e&&e.message))}
  };
  g("wkok").onclick=()=>{const by=[...m.querySelectorAll("input:checked")].map(i=>i.value).slice(0,10);
-  if(!by.length){X.toast("اختار عامل واحد على الأقل");return}
+  if(!by.length){X.toast("اختر عاملاً واحداً على الأقل");return}
   try{localStorage.setItem("wk_last",JSON.stringify(by))}catch(e){}save(by)};
  if(g("wkno"))g("wkno").onclick=async()=>{try{await updateDoc(doc(X.db,"requests",r.id),{st:"prep",upd:Date.now()});if(X.ping)X.ping([r.id]);close()}catch(e){X.toast("تعذر الحفظ: "+(e&&e.code||e&&e.message))}};
 }
@@ -120,16 +120,16 @@ function report(){
  ${rows[0]?`<div class="rt"><div><small>عامل الشهر</small><b>${E(nm(rows[0].id))}</b></div><div><small>الدرجة</small><b>${rows[0].score} / 100</b></div><div><small>إجمالي السطور</small><b>${fmt(Math.round(rows.reduce((a,s)=>a+s.lines,0)))}</b></div><div><small>عدد العمال</small><b>${rows.length}</b></div></div>`:""}
  <table class="stt"><thead><tr><th>#</th><th>العامل</th><th>الدرجة</th><th>إنتاجية /40</th><th>دقة /30</th><th>سرعة /15</th><th>تقييم /15</th><th>سطور</th><th>قطع</th><th>أيام</th></tr></thead><tbody>
  ${rows.map((s,i)=>`<tr><td class="n">${i+1}</td><td>${E(nm(s.id))}</td><td class="n"><b>${s.score}</b></td><td class="n">${Math.round(s.sc.p)}</td><td class="n">${Math.round(s.sc.a)}</td><td class="n">${Math.round(s.sc.s)}</td><td class="n">${Math.round(s.sc.m)}</td><td class="n">${fmt(Math.round(s.lines))}</td><td class="n">${fmt(Math.round(s.pcs))}</td><td class="n">${s.days.size}</td></tr>`).join("")||'<tr><td colspan="10" style="text-align:center">—</td></tr>'}</tbody></table>
- <p style="font-size:10pt;color:#444">إنتاجية = السطور في اليوم مقارنة بالفريق · دقة = الطلبات من غير غلطة تجهيز · سرعة = وقت التجهيز لكل سطر · تقييم = تقييم المدير</p>
+ <p style="font-size:10pt;color:#444">إنتاجية = السطور في اليوم مقارنة بالفريق · دقة = الطلبات دون خطأ في التجهيز · سرعة = وقت التجهيز لكل سطر · تقييم = تقييم المدير</p>
  <div class="sg"><span>مسؤول المستودع</span><span>المدير</span></div></div>`);
 }
 function slip(id){
  const s=stats(mon).find(x=>x.id===id);if(!s)return;
  printStmt(`<div class="st"><div class="ph"><h2>كشف تقييم: ${E(nm(id))}</h2><div>${E(mon)}</div></div>
- <div class="rt"><div><small>الدرجة</small><b>${s.score} / 100</b></div><div><small>السطور</small><b>${fmt(Math.round(s.lines))}</b></div><div><small>القطع</small><b>${fmt(Math.round(s.pcs))}</b></div><div><small>أيام الشغل</small><b>${s.days.size}</b></div></div>
+ <div class="rt"><div><small>الدرجة</small><b>${s.score} / 100</b></div><div><small>السطور</small><b>${fmt(Math.round(s.lines))}</b></div><div><small>القطع</small><b>${fmt(Math.round(s.pcs))}</b></div><div><small>أيام العمل</small><b>${s.days.size}</b></div></div>
  <table class="stt"><thead><tr><th>البند</th><th>الدرجة</th><th>التفاصيل</th></tr></thead><tbody>
  <tr><td>الإنتاجية</td><td class="n">${Math.round(s.sc.p)} / 40</td><td>${fmt(Math.round(s.lpd))} سطر في اليوم</td></tr>
- <tr><td>الدقة</td><td class="n">${Math.round(s.sc.a)} / 30</td><td>${s.acc===null?"مفيش طلبات اتراجعت":Math.round(s.acc*100)+"% من غير غلطة"}${s.err?` (${s.err} غلطة)`:""}</td></tr>
+ <tr><td>الدقة</td><td class="n">${Math.round(s.sc.a)} / 30</td><td>${s.acc===null?"لا توجد طلبات تمت مراجعتها":Math.round(s.acc*100)+"% دون خطأ"}${s.err?` (${s.err} خطأ)`:""}</td></tr>
  <tr><td>السرعة</td><td class="n">${Math.round(s.sc.s)} / 15</td><td>${minPer10(s)??"—"} دقيقة لكل 10 سطور</td></tr>
  <tr><td>تقييم المدير</td><td class="n">${Math.round(s.sc.m)} / 15</td><td>${s.star?"★".repeat(s.star):"لم يُقيّم (3 نجوم)"}</td></tr></tbody></table>
  <div class="sg"><span>العامل</span><span>المدير</span></div></div>`);
@@ -140,8 +140,8 @@ async function click(e){
  try{
   if(a==="rep")report();
   else if(a==="slip")slip(id);
-  else if(!X.admin){X.toast("الصلاحية دي للمدير فقط");return}
-  else if(a==="add"){const n=(g("wnew").value||"").trim().slice(0,40);if(!n){X.toast("اكتب اسم العامل");return}if(W.some(w=>w.name===n)){X.toast("الاسم ده موجود");return}await setDoc(doc(collection(X.db,"workers")),{name:n,active:true,ts:Date.now()});X.toast("تمت الإضافة")}
+  else if(!X.admin){X.toast("هذه الصلاحية للمدير فقط");return}
+  else if(a==="add"){const n=(g("wnew").value||"").trim().slice(0,40);if(!n){X.toast("اكتب اسم العامل");return}if(W.some(w=>w.name===n)){X.toast("هذا الاسم موجود");return}await setDoc(doc(collection(X.db,"workers")),{name:n,active:true,ts:Date.now()});X.toast("تمت الإضافة")}
   else if(a==="ren"){const w=W.find(x=>x.id===id);const n=(prompt("الاسم الجديد:",w?w.name:"")||"").trim().slice(0,40);if(n)await setDoc(doc(X.db,"workers",id),{name:n},{merge:true})}
   else if(a==="tg"){const w=W.find(x=>x.id===id);if(w)await setDoc(doc(X.db,"workers",id),{active:w.active===false},{merge:true})}
   else if(a==="fault"||a==="nofault")await updateDoc(doc(X.db,"requests",id),{qa:{fault:a==="fault",at:Date.now()}});

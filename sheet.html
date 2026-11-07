@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
+<script src="./i18n.js"></script>
 <script>/* الورقة اليدوية بتفتح جوه لوحة المستودع بس (بعد تسجيل الدخول). لو حد فتح الرابط لوحده: مايشوفش حاجة ويروح لصفحة الدخول */if(window.top===window){document.documentElement.style.display="none";location.replace("./admin.html")}</script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
@@ -227,15 +228,15 @@ body[data-ty="tr"] .rc:not(.to) small{color:#7fd0dc}
   <div><label for="dr">السائق / المسؤول</label><input id="dr" type="text" placeholder="اختياري"></div>
  </div>
  <div class="twx"><table class="en"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th><th>ملاحظات</th><th class="nx"></th><th></th></tr></thead><tbody id="rs"></tbody></table></div>
- <div class="pvw"><div class="pvl"><label style="display:inline-flex;gap:8px;align-items:center;font-size:14px;color:var(--ink)"><input type="checkbox" id="cm" checked style="width:auto"> شكل مضغوط (الكود مرة واحدة، واللون والمقاس فوق خط والكمية تحته)</label></div><div id="pv"></div></div><div class="tot"><span>عدد الأصناف <b id="n">0</b></span><span>إجمالي القطع <b id="t">0</b></span></div>
+ <div class="pvw"><div class="pvl"><label style="display:inline-flex;gap:8px;align-items:center;font-size:14px;color:var(--ink)"><input type="checkbox" id="cm" checked style="width:auto"> شكل مضغوط (الكود مرة واحدة، واللون والمقاس فوق الخط والكمية تحته)</label></div><div id="pv"></div></div><div class="tot"><span>عدد الأصناف <b id="n">0</b></span><span>إجمالي القطع <b id="t">0</b></span></div>
  <div class="gn e0"><label for="gn">ملاحظات عامة على الورقة</label><textarea id="gn" rows="2" placeholder="مثال: التسليم قبل الساعة 5، البضاعة هشة"></textarea></div>
  <div class="sg"><span>أمين المستودع</span><span>المستلم</span></div>
 </div>
 <div class="hist" id="hist"><div class="hh"><h3>سجل الأوراق</h3><div class="hf"><input id="hq" placeholder="ابحث: رقم أو فرع أو تاريخ"><input id="hd" type="date" aria-label="اليوم"></div></div><div id="hs"></div><div id="hl"></div><div class="hb"><button class="b sm2" id="bk" type="button">نسخة احتياطية</button><button class="b sm2" id="rs2" type="button">استعادة</button></div></div>
-<p class="tip">نصيحة: انسخ 4 أعمدة (كود، لون، مقاس، كمية) من إكسل والصقهم في أول خانة كود، والورقة تتملي لوحدها. و Enter بينقلك للخانة اللي بعدها.</p>
+<p class="tip">نصيحة: انسخ 4 أعمدة (كود، لون، مقاس، كمية) من إكسل والصقها في أول خانة كود، وستمتلئ الورقة تلقائياً. و Enter ينقلك إلى الخانة التالية.</p>
 <div class="sb" id="sb"><button class="b p" id="sv" type="button">📷 حفظ كصورة (جودة عالية)</button><button class="b" id="xs" type="button">رجوع</button></div>
-<div class="ov" id="ov"><div class="ob"><p>الصورة جاهزة بأعلى جودة ✅ التنزيل بدأ لوحده. لو مانزلتش اضغط "تنزيل الصورة".</p><img id="oi" alt="الورقة"><div class="act2"><a class="b p" id="od" href="#" download>⬇️ تنزيل الصورة</a><button class="b" id="oc" type="button">إغلاق</button></div></div></div>
-<datalist id="dc"></datalist><datalist id="dz"></datalist><div class="toq" id="toq" hidden></div><div class="act"><button class="b p" id="tr2" type="button" hidden>📤 ابعتها طلب للفرع</button><button class="b p" id="pr" type="button">طباعة الورقة</button><button class="b" id="add" type="button">+ سطر</button><button class="b" id="cp" type="button">نسخ كنص</button><button class="b" id="so" type="button">رتّب حسب الكود</button><button class="b" id="sh" type="button">وضع الصورة</button><button class="b" id="clr" type="button">+ ورقة جديدة</button></div>
+<div class="ov" id="ov"><div class="ob"><p>الصورة جاهزة بأعلى جودة ✅ بدأ التنزيل تلقائياً. إن لم يبدأ اضغط "تنزيل الصورة".</p><img id="oi" alt="الورقة"><div class="act2"><a class="b p" id="od" href="#" download>⬇️ تنزيل الصورة</a><button class="b" id="oc" type="button">إغلاق</button></div></div></div>
+<datalist id="dc"></datalist><datalist id="dz"></datalist><div class="toq" id="toq" hidden></div><div class="act"><button class="b p" id="tr2" type="button" hidden>📤 أرسلها طلباً للفرع</button><button class="b p" id="pr" type="button">طباعة الورقة</button><button class="b" id="add" type="button">+ سطر</button><button class="b" id="cp" type="button">نسخ كنص</button><button class="b" id="so" type="button">رتّب حسب الكود</button><button class="b" id="sh" type="button">وضع الصورة</button><button class="b" id="clr" type="button">+ ورقة جديدة</button></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
@@ -288,7 +289,7 @@ function pv(){
   h+=`<div class="cg"><div class="ck"><b>${E(k)}</b><span>${tot} قطعة</span></div>${rs.map(([c,Z])=>`<div class="cr"><div class="cl">${E(c)}</div><div class="cc">${[...Z].sort((a,b)=>sk(a[0])-sk(b[0])).map(([z,q])=>`<div class="cd"><div class="cn">${E(z)}</div><div class="cq">${q}</div>${nt(k,c,z)?`<div class="cm">${E(nt(k,c,z))}</div>`:""}</div>`).join("")}</div></div>`).join("")}</div>`;
  });
  //END
- $("#pv").innerHTML=h?`<div class="pvg">${h}</div>`:'<div class="tip" style="margin:0">اكتب الأصناف فوق وهتظهر هنا مجمّعة.</div>';
+ $("#pv").innerHTML=h?`<div class="pvg">${h}</div>`:'<div class="tip" style="margin:0">اكتب الأصناف في الأعلى وستظهر هنا مجمّعة.</div>';
 }
 function pvT(){
  const G=new Map();
@@ -302,10 +303,10 @@ function pvT(){
   const ch=[...Z].sort((a,b)=>sk(a[0])-sk(b[0])).map(([z,q])=>`<span class="ch">${z?`<i>${E(z)}</i>`:""}<b>${q}</b></span>`).join("");
   const tot=[...Z.values()].reduce((a,b)=>a+b,0);
   h+=`<tr>${first?`<td class="kc" rowspan="${C.size}">${E(k)}</td>`:""}<td>${E(c)}</td><td>${ch}</td><td class="tq">${tot}</td><td class="cm3">${[...Z.keys()].map(z=>nt(k,c,z)).filter(Boolean).join(" / ")}</td><td><span class="bx2"></span></td></tr>`;first=false})});
- $("#pv").innerHTML=h?`<table class="g"><thead><tr><th>الكود</th><th>اللون</th><th>المقاس / الكمية</th><th>الإجمالي</th><th>ملاحظات</th><th></th></tr></thead><tbody>${h}</tbody></table>`:'<div class="tip" style="margin:0">اكتب الأصناف فوق وهتظهر هنا مجمّعة.</div>';
+ $("#pv").innerHTML=h?`<table class="g"><thead><tr><th>الكود</th><th>اللون</th><th>المقاس / الكمية</th><th>الإجمالي</th><th>ملاحظات</th><th></th></tr></thead><tbody>${h}</tbody></table>`:'<div class="tip" style="margin:0">اكتب الأصناف في الأعلى وستظهر هنا مجمّعة.</div>';
 }
 function draw(focus){
- $("#rs").innerHTML=st.rows.map((r,i)=>`<tr><td>${i+1}</td>${K.map((k,j)=>`<td class="${k==="q"?"q":""}${j<3||k==="n"?" c":""}"><input data-i="${i}" data-k="${k}" value="${E(r[k])}" ${k==="q"?'type="number" inputmode="numeric" min="0"':'type="text" autocomplete="off"'+(k==="c"?' list="dc"':k==="z"?' list="dz"':"")} ${k==="k"?'inputmode="numeric" placeholder="كود"':k==="n"?'placeholder="مثال: مستعجل"':k==="q"&&r.i?`placeholder="${E(r.i)}" title="${E(r.t||"")}"`:""} aria-label="${["الكود","اللون","المقاس","الكمية","ملاحظات"][j]}"></td>`).join("")}<td class="nx"><span class="bx"></span></td><td class="xc"><span class="fh" data-f="${i}" title="اسحب لتكرار الصف (كود ولون ومقاس) من غير الكمية">⇣</span><button class="x" data-d="${i}" type="button" aria-label="حذف السطر">×</button></td></tr>`).join("");
+ $("#rs").innerHTML=st.rows.map((r,i)=>`<tr><td>${i+1}</td>${K.map((k,j)=>`<td class="${k==="q"?"q":""}${j<3||k==="n"?" c":""}"><input data-i="${i}" data-k="${k}" value="${E(r[k])}" ${k==="q"?'type="number" inputmode="numeric" min="0"':'type="text" autocomplete="off"'+(k==="c"?' list="dc"':k==="z"?' list="dz"':"")} ${k==="k"?'inputmode="numeric" placeholder="كود"':k==="n"?'placeholder="مثال: مستعجل"':k==="q"&&r.i?`placeholder="${E(r.i)}" title="${E(r.t||"")}"`:""} aria-label="${["الكود","اللون","المقاس","الكمية","ملاحظات"][j]}"></td>`).join("")}<td class="nx"><span class="bx"></span></td><td class="xc"><span class="fh" data-f="${i}" title="اسحب لتكرار الصف (الكود واللون والمقاس) دون الكمية">⇣</span><button class="x" data-d="${i}" type="button" aria-label="حذف السطر">×</button></td></tr>`).join("");
  totals();
  if(focus){const el=document.querySelector(`input[data-i="${focus[0]}"][data-k="${focus[1]}"]`);if(el)el.focus()}
 }
@@ -363,22 +364,22 @@ function hist(){
  const day=d||today(),D=L.filter(x=>x.s.dt===day&&x.t>0),by={};D.forEach(x=>by[x.s.br]=(by[x.s.br]||0)+x.t);
  $("#hs").innerHTML=`<div class="sm"><b>${E(day)}</b>: ${D.length} ورقة · ${D.reduce((a,x)=>a+x.t,0).toLocaleString("en-US")} قطعة${Object.keys(by).length?"<br>"+Object.entries(by).map(([b,t])=>`<bdi>${E(b)}</bdi> ${t}`).join(" &nbsp;|&nbsp; "):""}</div>`;
  const F=L.filter(x=>(!q||`${x.s.no} ${x.s.br} ${x.s.dt}`.toLowerCase().includes(q))&&(!d||x.s.dt===d));
- $("#hl").innerHTML=F.length?F.map(x=>`<div class="hr${x.s===st?" cur":""}"><div><b>ورقة ${x.s.no}</b> ${x.s.ty==="tr"?`تحويل <bdi>${E(x.s.fr||"?")}</bdi> ← <bdi>${E(x.s.br)}</bdi>`:`<bdi>${E(x.s.br)}</bdi>`}<small>${E(x.s.dt)} · ${x.n} صنف · ${x.t.toLocaleString("en-US")} قطعة${x.s.sent?` · ✅ اتبعتت طلب <bdi dir="ltr">${E(x.s.sent)}</bdi>`:""}${x.s===st?" · مفتوحة الآن":""}</small></div><div><button class="b sm2" data-o="${x.s.id}" type="button">فتح</button><button class="b sm2" data-x="${x.s.id}" type="button">حذف</button></div></div>`).join(""):'<div class="tip" style="margin:0">مفيش أوراق محفوظة بالبحث ده.</div>';
+ $("#hl").innerHTML=F.length?F.map(x=>`<div class="hr${x.s===st?" cur":""}"><div><b>ورقة ${x.s.no}</b> ${x.s.ty==="tr"?`تحويل <bdi>${E(x.s.fr||"?")}</bdi> ← <bdi>${E(x.s.br)}</bdi>`:`<bdi>${E(x.s.br)}</bdi>`}<small>${E(x.s.dt)} · ${x.n} صنف · ${x.t.toLocaleString("en-US")} قطعة${x.s.sent?` · ✅ أُرسلت كطلب <bdi dir="ltr">${E(x.s.sent)}</bdi>`:""}${x.s===st?" · مفتوحة الآن":""}</small></div><div><button class="b sm2" data-o="${x.s.id}" type="button">فتح</button><button class="b sm2" data-x="${x.s.id}" type="button">حذف</button></div></div>`).join(""):'<div class="tip" style="margin:0">لا توجد أوراق محفوظة لهذا البحث.</div>';
 }
 document.addEventListener("click",e=>{
  const o=e.target.closest("[data-o]"),x=e.target.closest("[data-x]");
  if(o){const t=lib.sheets.find(y=>y.id===o.dataset.o);if(t){st=t;lib.cur=t.id;save();loadUI();window.scrollTo(0,0)}}
- if(x&&confirm("حذف الورقة دي نهائياً؟")){lib.sheets=lib.sheets.filter(y=>y.id!==x.dataset.x);if(!lib.sheets.length)mk();if(st.id===x.dataset.x)st=lib.sheets[lib.sheets.length-1];save();loadUI()}
+ if(x&&confirm("حذف هذه الورقة نهائياً؟")){lib.sheets=lib.sheets.filter(y=>y.id!==x.dataset.x);if(!lib.sheets.length)mk();if(st.id===x.dataset.x)st=lib.sheets[lib.sheets.length-1];save();loadUI()}
 });
 ["hq","hd"].forEach(id=>$("#"+id).addEventListener("input",hist));
 $("#bk").addEventListener("click",async()=>{
  const t=JSON.stringify(lib);
  try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove()}
- const b=$("#bk");b.textContent="تم النسخ ✓ احفظه في ملاحظات";setTimeout(()=>b.textContent="نسخة احتياطية",2400);
+ const b=$("#bk");b.textContent="تم النسخ ✓ احفظه في الملاحظات";setTimeout(()=>b.textContent="نسخة احتياطية",2400);
 });
 $("#rs2").addEventListener("click",()=>{
  const t=prompt("الصق النسخة الاحتياطية هنا");if(!t)return;
- try{const l=JSON.parse(t);if(!l.sheets)throw 0;const ids=new Set(lib.sheets.map(y=>y.id));l.sheets.forEach(y=>{if(!ids.has(y.id))lib.sheets.push(y)});lib.n=Math.max(lib.n||0,l.n||0,...lib.sheets.map(y=>y.no));save();loadUI()}catch(e){alert("النسخة مش صحيحة")}
+ try{const l=JSON.parse(t);if(!l.sheets)throw 0;const ids=new Set(lib.sheets.map(y=>y.id));l.sheets.forEach(y=>{if(!ids.has(y.id))lib.sheets.push(y)});lib.n=Math.max(lib.n||0,l.n||0,...lib.sheets.map(y=>y.no));save();loadUI()}catch(e){alert("النسخة غير صحيحة")}
 });
 document.addEventListener("change",e=>{
  const t=e.target;if(t.dataset.i==null)return;
@@ -397,11 +398,11 @@ $("#so").addEventListener("click",()=>{
 let lastBlob=null,lastName="";
 async function snap(){
  const b=$("#sv"),t=b.textContent;
- if(typeof html2canvas==="undefined"){b.textContent="مكتبة الصورة ما اتحملتش";setTimeout(()=>b.textContent=t,2500);return}
+ if(typeof html2canvas==="undefined"){b.textContent="لم يتم تحميل مكتبة الصور";setTimeout(()=>b.textContent=t,2500);return}
  b.disabled=true;b.textContent="جاري تجهيز الصورة...";
  try{
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
-  // أعلى جودة يقدر الموبايل يتحمّلها: لحد 6 أضعاف، من غير ما نعدّي حد حجم الصورة في الآيفون (حوالي 16 مليون بكسل)
+  // أعلى جودة يقدر الجوال يتحمّلها: إلى 6 أضعاف، من غير ما نعدّي حد حجم الصورة في الآيفون (حوالي 16 مليون بكسل)
   const sh=$(".sheet"),ar=Math.max(1,sh.offsetWidth*sh.offsetHeight),sc=Math.max(2,Math.min(6,Math.sqrt(16e6/ar)));
   const cv=await html2canvas(sh,{scale:sc,backgroundColor:getComputedStyle(document.body).backgroundColor,useCORS:true,logging:false});
   const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
@@ -409,7 +410,7 @@ async function snap(){
   let done=false;
 
   if(!done){const u=URL.createObjectURL(blob),a=$("#od");$("#oi").src=u;a.href=u;a.download=lastName;$("#ov").classList.add("on");a.click()}// تنزيل مباشر كملف PNG
- }catch(e){b.textContent="تعذر عمل الصورة";setTimeout(()=>b.textContent=t,2500);b.disabled=false;return}
+ }catch(e){b.textContent="تعذر إنشاء الصورة";setTimeout(()=>b.textContent=t,2500);b.disabled=false;return}
  b.disabled=false;b.textContent=t;
 }
 $("#sv").addEventListener("click",snap);
@@ -421,17 +422,17 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.body.class
 $("#cm").addEventListener("change",pv);
 // ---- الورقة ← طلب حقيقي باسم الفرع (بس جوه لوحة المستودع، ولورقة "تحميل من المستودع") ----
 // اللوحة (admin.html) هي اللي بتكتب الطلب في Firebase وتبعت الإشعار للفرع. الورقة بتحتفظ برقم الطلب (rid)،
-// فلو النت قطع ودوست تاني مش هيتعمل طلبين. (var علشان route() بتنادي toqUI قبل السطور دي ما تتنفّذ)
+// فلو النت قطع ودوست مجدداً مش هيتعمل طلبين. (var علشان route() بتنادي toqUI قبل السطور دي ما تتنفّذ)
 var INADM=(()=>{try{return !!window.frameElement&&window.frameElement.id==="sf"}catch(e){return false}})(),toqBusy=false,toqT=0;
 function toqUI(){
  const b=$("#tr2"),q=$("#toq");if(!INADM||!b||!q)return;
  // الزرار ظاهر دايماً: لو الورقة المفتوحة اتبعتت قبل كده بيقول كده وبيبقى "ابدأ ورقة جديدة" (علشان ماتتبعتش مرتين)
  const tr=st.ty==="tr";b.hidden=false;q.hidden=!st.sent;b.classList.toggle("sent",!!st.sent);
- if(st.sent)q.innerHTML=st.sentFr?`✅ التحويل اتبعت: من فرع <bdi dir="ltr">${E(st.sentFr)}</bdi> ← فرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> (رقم <bdi dir="ltr">${E(st.sent)}</bdi>)<small>الفرعين وصلهم إشعار. تابعه من تبويب "الطلبات" (فلتر 🔄 تحويلات)، وعيّن السواق من "السيارات". لتحويل تاني دوس "+ ورقة جديدة".</small>`
-  :`✅ الورقة دي اتبعتت لفرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> كطلب رقم <bdi dir="ltr">${E(st.sent)}</bdi><small>تابعه من تبويب "الطلبات" زي أي طلب. أي تعديل بعد كده من زرار ✏️ تعديل على الطلب. لطلب تاني دوس "+ ورقة جديدة".</small>`;
- // نفس الأصناف لفرع تاني (من غير ما تكتبها تاني)
- if(st.sent)q.insertAdjacentHTML("beforeend",`<button id="tr3" type="button" style="display:block;margin-top:8px;font:inherit;font-weight:700;border:0;border-radius:10px;padding:9px 14px;background:#1b1b1b;color:#fff;cursor:pointer">📋 ابعت نفس الأصناف لفرع تاني</button>`);
- b.disabled=toqBusy;b.textContent=toqBusy?"⏳ جاري الإرسال...":st.sent?`✅ الورقة دي اتبعتت (${st.sent}) · دوس هنا لورقة جديدة`:tr?"🔄 ابعت التحويل للفرعين":"📤 ابعتها طلب للفرع";
+ if(st.sent)q.innerHTML=st.sentFr?`✅ تم إرسال التحويل: من فرع <bdi dir="ltr">${E(st.sentFr)}</bdi> ← فرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> (رقم <bdi dir="ltr">${E(st.sent)}</bdi>)<small>وصل الفرعين إشعار. تابعه من تبويب "الطلبات" (فلتر 🔄 تحويلات)، وعيّن السائق من "السيارات". لتحويل آخر اضغط "+ ورقة جديدة".</small>`
+  :`✅ هذه الورقة أُرسلت إلى فرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> كطلب رقم <bdi dir="ltr">${E(st.sent)}</bdi><small>تابعه من تبويب "الطلبات" كأي طلب. أي تعديل بعد ذلك من زر ✏️ تعديل على الطلب. لطلب آخر اضغط "+ ورقة جديدة".</small>`;
+ // نفس الأصناف لفرع مجدداً (من غير ما تكتبها مجدداً)
+ if(st.sent)q.insertAdjacentHTML("beforeend",`<button id="tr3" type="button" style="display:block;margin-top:8px;font:inherit;font-weight:700;border:0;border-radius:10px;padding:9px 14px;background:#1b1b1b;color:#fff;cursor:pointer">📋 أرسل نفس الأصناف لفرع آخر</button>`);
+ b.disabled=toqBusy;b.textContent=toqBusy?"⏳ جاري الإرسال...":st.sent?`✅ هذه الورقة أُرسلت (${st.sent}) · اضغط هنا لورقة جديدة`:tr?"🔄 أرسل التحويل للفرعين":"📤 أرسلها طلباً للفرع";
 }
 const rid20=()=>{const a="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";return [...crypto.getRandomValues(new Uint32Array(20))].map(x=>a[x%a.length]).join("")};
 $("#tr2").addEventListener("click",()=>{
@@ -439,21 +440,21 @@ $("#tr2").addEventListener("click",()=>{
  if(st.sent&&!toqBusy){st=mk({br:st.br,dr:st.dr,ty:st.ty,fr:st.fr});lib.cur=st.id;save();loadUI();window.scrollTo(0,0);return}
  if(toqBusy||!INADM)return;
  const f=st.rows.filter(r=>(r.k||"").trim()&&+r.q>0);
- if(!f.length)return void alert("الورقة فاضية. اكتب كود وكمية على الأقل.");
+ if(!f.length)return void alert("الورقة فارغة. اكتب كوداً وكمية على الأقل.");
  const half=st.rows.filter(r=>(r.k||"").trim()&&!(+r.q>0)).length,codes=new Set(f.map(r=>r.k.trim())).size,pcs=f.reduce((a,r)=>a+(+r.q),0);
  const tr=st.ty==="tr",fr=tr?(st.fr||BR[0]):"";
- if(tr&&fr===st.br)return void alert("الفرع اللي هيبعت هو نفس الفرع اللي هيستلم! اختار فرعين مختلفين.");
- // نسخة من ورقة اتبعتت: لو لسه على نفس الفرع اللي اتبعتله نسأل الأول (علشان مايوصلوش طلب مكرر)
- if(st.copyOf&&st.copyOf===st.br+"|"+fr&&!confirm(`الأصناف دي اتبعتت قبل كده لفرع ${st.br}${tr?" من "+fr:""}.\nغيّرت الفرع من فوق؟ لو عايز تبعتها لنفس الفرع تاني دوس OK.`))return;
- const tail=`${codes} صنف · ${pcs} قطعة${half?`\nتنبيه: ${half} سطر فيه كود من غير كمية ومش هيتبعت`:""}`;
- if(!confirm(tr?`تحويل من فرع ${fr} ← لفرع ${st.br}\n${tail}\n\n• فرع ${fr} هيوصله إشعار إن المستودع عايز منه الأصناف دي ويبدأ يجهّزها\n• فرع ${st.br} هيوصله إشعار إن فيه تحويل رايحله\n• بعد كده تعيّن سواق من "السيارات" يستلم من ${fr} ويسلّم لـ ${st.br}\n\nكمّل؟`
-   :`هيتعمل طلب باسم فرع ${st.br}\n${tail}\n\nالفرع هيوصله إشعار إن المستودع عمله طلب، والطلب هيظهر في "الطلبات" وتجهّزه وتبعته مع سواق عادي.\n\nكمّل؟`))return;
+ if(tr&&fr===st.br)return void alert("الفرع المُرسِل هو نفسه الفرع المستلم! اختر فرعين مختلفين.");
+ // نسخة من ورقة اتبعتت: لو لا يزال على نفس الفرع اللي اتبعتله نسأل الأول (علشان مايوصلوش طلب مكرر)
+ if(st.copyOf&&st.copyOf===st.br+"|"+fr&&!confirm(`هذه الأصناف أُرسلت سابقاً لفرع ${st.br}${tr?" من "+fr:""}.\nهل غيّرت الفرع من الأعلى؟ إن أردت إرسالها لنفس الفرع مجدداً اضغط OK.`))return;
+ const tail=`${codes} صنف · ${pcs} قطعة${half?`\nتنبيه: ${half} سطر فيه كود دون كمية ولن يُرسل`:""}`;
+ if(!confirm(tr?`تحويل من فرع ${fr} ← لفرع ${st.br}\n${tail}\n\n• فرع ${fr} سيصله إشعار بأن المستودع يطلب منه هذه الأصناف ليبدأ تجهيزها\n• فرع ${st.br} سيصله إشعار بأن هناك تحويلاً متجهاً إليه\n• بعد ذلك تعيّن سائقاً من "السيارات" ليستلم من ${fr} ويسلّم إلى ${st.br}\n\nهل تريد المتابعة؟`
+   :`سيتم إنشاء طلب باسم فرع ${st.br}\n${tail}\n\nسيصل الفرع إشعار بأن المستودع أنشأ له طلباً، وسيظهر الطلب في "الطلبات" لتجهّزه وترسله مع سائق عادي.\n\nهل تريد المتابعة؟`))return;
  // فرع مختلف (أو نوع مختلف) = طلب مختلف
  const key=st.br+"|"+fr;
  if(!st.rid||st.ridBr!==key){st.rid=rid20();st.ridBr=key}
  save();toqBusy=true;toqUI();
  parent.postMessage({t:"sheet2req",rid:st.rid,br:st.br,fr,dt:st.dt,dr:st.dr||"",gn:st.gn||"",rows:st.rows},location.origin);
- clearTimeout(toqT);toqT=setTimeout(()=>{if(!toqBusy)return;toqBusy=false;toqUI();alert("الإرسال اتأخر. اتأكد من النت ودوس تاني (مش هيتعمل طلبين).")},30000);
+ clearTimeout(toqT);toqT=setTimeout(()=>{if(!toqBusy)return;toqBusy=false;toqUI();alert("تأخر الإرسال. تأكد من الإنترنت واضغط مجدداً (لن يُنشأ طلبان).")},30000);
 });
 document.addEventListener("click",e=>{
  if(!e.target.closest||!e.target.closest("#tr3")||!st.sent||toqBusy)return;
@@ -461,7 +462,7 @@ document.addEventListener("click",e=>{
  const src=st,nw=mk({br:src.br,dr:src.dr,ty:src.ty,fr:src.fr});
  nw.rows=src.rows.map(r=>({...r}));while(nw.rows.length<8)nw.rows.push(blank());if(src.gn)nw.gn=src.gn;nw.copyOf=(src.sentBr||src.br)+"|"+(src.sentFr||"");
  st=nw;lib.cur=nw.id;save();loadUI();window.scrollTo(0,0);
- alert("✅ عملنا ورقة جديدة فيها نفس الأصناف.\nغيّر الفرع من فوق، وبعدين دوس \"ابعتها طلب للفرع\".");
+ alert("✅ أنشأنا ورقة جديدة فيها نفس الأصناف.\nغيّر الفرع من الأعلى، ثم اضغط \"أرسلها طلباً للفرع\".");
 });
 addEventListener("message",e=>{
  const d=e.data;if(e.origin!==location.origin||e.source!==parent||!d||d.t!=="sheet2req-r")return;

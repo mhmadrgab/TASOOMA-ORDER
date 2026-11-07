@@ -1,4 +1,4 @@
-// 🎁 الهدايا والعينات: الفرع (أو المستودع) بيسجّل هدية/عينة طلعت + سند يثبتها، والمديرين أو المستودع بيعتمدوها،
+// 🎁 الهدايا والعينات: الفرع (أو المستودع) يسجّل هدية/عينة طلعت + سند يثبتها، والمديرين أو المستودع بيعتمدوها،
 // والمحاسب (صلاحية gift) بيشوف ويطلّع تقارير لكل فرع أو للمستودع (طباعة PDF وملف إكسل). التعديل والمسح لمالك النظام بس.
 // gifts/{id} = {br:"003"|"WH", brn, no, ts, dt, rows:[{k,c,z,q}], pcs, to:{n,ph?}, why, note?, img:1, by:{e,n}, st:"pend"|"ok"|"no", ap?:{e,n,at,note?}}
 // صورة السند لوحدها في giftimg/{id} = {img} (بتتحمّل بس لما حد يدوس 📎، علشان القايمة تفضل خفيفة).
@@ -8,7 +8,7 @@ import {initZoom,zoomOpen} from "./zoom.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const WHY=["هدية لعميل","تعويض عميل","عينة","تسويق / مؤثر","مناسبة / حدث","أخرى"];
-const STL={pend:"⏳ مستنية اعتماد",ok:"✅ معتمدة",no:"❌ مرفوضة"};
+const STL={pend:"⏳ بانتظار الاعتماد",ok:"✅ معتمدة",no:"❌ مرفوضة"};
 const D=864e5,LIVE=90;// آخر 90 يوم بيتسمعوا لايف في المستودع، والأقدم بيتحمّل وقت التقرير
 let X=null,L=new Map(),PEND=new Map(),OLD=new Map(),un=[],bun=null,BL=[],img="",imgBusy=false,edit=null;
 let F={from:"",to:"",br:"",st:""};
@@ -53,7 +53,7 @@ export function initGifts(ctx){
  else{
   const draw=()=>{if(X&&X.tab()==="gift")X.redraw();else if(X&&X.badge)X.badge()};
   if(canApprove())un.push(onSnapshot(query(collection(X.db,"gifts"),where("st","==","pend")),sn=>{PEND=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},()=>{}));
-  un.push(onSnapshot(query(collection(X.db,"gifts"),where("ts",">=",Date.now()-LIVE*D)),sn=>{L=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},()=>X.toast("تعذر قراءة الهدايا. اتأكد إنك نشرت القواعد (Rules) الجديدة")));
+  un.push(onSnapshot(query(collection(X.db,"gifts"),where("ts",">=",Date.now()-LIVE*D)),sn=>{L=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},()=>X.toast("تعذر قراءة الهدايا. تأكد من نشر القواعد (Rules) الجديدة")));
  }
  if(!window.__gfc){window.__gfc=1;document.addEventListener("click",click);document.addEventListener("change",change)}
 }
@@ -67,14 +67,14 @@ function addBranchButton(){
 }
 function openBranch(){
  if(bun)bun();BL=[];
- bun=onSnapshot(query(collection(X.db,"gifts"),where("br","==",X.code)),sn=>{BL=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>N(b.ts)-N(a.ts));if(g("gfm")&&g("gfm").dataset.v==="list")paintBranch()},e=>X.toast("تعذر قراءة الهدايا. كلّم المستودع","er"));
+ bun=onSnapshot(query(collection(X.db,"gifts"),where("br","==",X.code)),sn=>{BL=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>N(b.ts)-N(a.ts));if(g("gfm")&&g("gfm").dataset.v==="list")paintBranch()},e=>X.toast("تعذر قراءة الهدايا. تواصل مع المستودع","er"));
  paintBranch();
 }
 function paintBranch(){
  const pend=BL.filter(r=>r.st==="pend").length;
- openM(`<h3>🎁 الهدايا والعينات</h3><div class="m" style="color:var(--mut);font-size:14px;margin-bottom:10px">أي هدية أو عينة بتطلع من الفرع لازم تتسجّل هنا بالسند، والمستودع بيعتمدها.</div>
+ openM(`<h3>🎁 الهدايا والعينات</h3><div class="m" style="color:var(--mut);font-size:14px;margin-bottom:10px">أي هدية أو عينة تخرج من الفرع يجب تسجيلها هنا مع السند، ويعتمدها المستودع.</div>
  <button class="b p" data-gf="new" type="button" style="width:100%">➕ تسجيل هدية / عينة جديدة</button>
- <div style="margin-top:14px">${BL.length?`${pend?`<div class="m" style="margin-bottom:6px">⏳ ${pend} مستنية اعتماد</div>`:""}${BL.slice(0,40).map(r=>card(r,false)).join("")}`:'<div class="m" style="text-align:center;padding:20px;color:var(--mut)">لسه مفيش هدايا متسجّلة</div>'}</div>
+ <div style="margin-top:14px">${BL.length?`${pend?`<div class="m" style="margin-bottom:6px">⏳ ${pend} بانتظار الاعتماد</div>`:""}${BL.slice(0,40).map(r=>card(r,false)).join("")}`:'<div class="m" style="text-align:center;padding:20px;color:var(--mut)">لا توجد هدايا مسجّلة بعد</div>'}</div>
  <div class="gf-act"><button class="b" data-gf="close" type="button">إغلاق</button></div>`,"list");
 }
 // ---------- الكارت ----------
@@ -84,7 +84,7 @@ function card(r,wh){
  <div class="m">👤 ${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?` · <bdi dir="ltr">${E(r.to.ph)}</bdi>`:""} · 🏷 ${E(r.why||"")}${r.note?` · ${E(r.note)}`:""}</div>
  <div class="gf-it">${(Array.isArray(r.rows)?r.rows:[]).map(x=>`<span><bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi> × <b>${N(x.q)}</b></span>`).join("")}</div>
  <div class="m">سجّلها: ${E(r.by&&r.by.n||"")} · ${hm(r.ts)} · ${N(r.pcs)} قطعة${st!=="pend"&&ap.n?` · ${st==="ok"?"اعتمدها":"رفضها"}: ${E(ap.n)} ${hm(ap.at)}`:""}${st==="no"&&ap.note?`<br><b style="color:#c4362b">سبب الرفض: ${E(ap.note)}</b>`:""}</div>
- <div class="gf-b">${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">⚠️ من غير سند</span>'}
+ <div class="gf-b">${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">⚠️ بدون سند</span>'}
  ${wh&&canApprove()&&st==="pend"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${isOwner()?`<button class="bt s" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt s" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}</div></div>`;
 }
@@ -101,56 +101,56 @@ export function giftsView(){
  const per={};ok.forEach(r=>{const k=r.br;(per[k]=per[k]||{n:0,p:0}).n++;per[k].p+=N(r.pcs)});
  const brs=[...new Set(all().map(r=>r.br))].sort();
  return `<div class="fl" style="margin:0 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><h2 style="margin:0">🎁 الهدايا والعينات</h2>${canApprove()?`<button class="bt g" data-gf="new" type="button" style="margin-inline-start:auto">➕ هدية / عينة من المستودع</button>`:""}</div>
- ${pend.length?`<div class="gf-pend"><h3 style="margin:0 0 8px">⏳ مستنية اعتمادك (${pend.length})</h3>${pend.map(r=>card(r,true)).join("")}</div>`:""}
- <div class="gf-f"><div><small>من</small><input type="date" id="gff" value="${E(F.from)}"></div><div><small>لحد</small><input type="date" id="gft" value="${E(F.to)}"></div>
+ ${pend.length?`<div class="gf-pend"><h3 style="margin:0 0 8px">⏳ بانتظار اعتمادك (${pend.length})</h3>${pend.map(r=>card(r,true)).join("")}</div>`:""}
+ <div class="gf-f"><div><small>من</small><input type="date" id="gff" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gft" value="${E(F.to)}"></div>
  <div><small>الفرع</small><select id="gfb"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
  <div><small>الحالة</small><select id="gfs"><option value="">الكل</option>${Object.entries(STL).map(([k,v])=>`<option value="${k}" ${F.st===k?"selected":""}>${v}</option>`).join("")}</select></div>
  <button class="bt" data-gf="print" type="button">🖨 تقرير PDF</button><button class="bt" data-gf="csv" type="button">⬇️ إكسل</button></div>
- <div class="gf-sum"><span>🎁 <b>${rs.length}</b> في الفترة</span><span>✅ <b>${ok.length}</b> معتمدة · <b>${fmt(pcs)}</b> قطعة</span><span>⏳ <b>${rs.filter(r=>r.st==="pend").length}</b> مستنية</span><span>❌ <b>${rs.filter(r=>r.st==="no").length}</b> مرفوضة</span></div>
+ <div class="gf-sum"><span>🎁 <b>${rs.length}</b> في الفترة</span><span>✅ <b>${ok.length}</b> معتمدة · <b>${fmt(pcs)}</b> قطعة</span><span>⏳ <b>${rs.filter(r=>r.st==="pend").length}</b> بانتظار</span><span>❌ <b>${rs.filter(r=>r.st==="no").length}</b> مرفوضة</span></div>
  ${Object.keys(per).length>1?`<div class="pan" style="margin-bottom:12px"><h3 style="margin:0 0 8px">المعتمد لكل فرع</h3><div class="tw"><table><thead><tr><th>الفرع</th><th>عدد</th><th>قطع</th></tr></thead><tbody>${Object.entries(per).sort((a,b)=>b[1].p-a[1].p).map(([k,v])=>`<tr><td class="l"><bdi dir="ltr">${E(brName(k))}</bdi></td><td>${v.n}</td><td>${fmt(v.p)}</td></tr>`).join("")}</tbody></table></div></div>`:""}
- ${rs.length?rs.map(r=>card(r,true)).join(""):'<div class="pan off" style="text-align:center;padding:24px">مفيش هدايا في الفترة دي</div>'}`;
+ ${rs.length?rs.map(r=>card(r,true)).join(""):'<div class="pan off" style="text-align:center;padding:24px">لا توجد هدايا في هذه الفترة</div>'}`;
 }
 // لو الفترة أقدم من اللي بيتسمع لايف: نحمّلها مرة واحدة
 async function ensureRange(){
  const a=F.from?new Date(F.from+"T00:00:00").getTime():0;if(a>=Date.now()-LIVE*D)return;
  const b=Math.min(F.to?new Date(F.to+"T23:59:59").getTime():Date.now(),Date.now()-LIVE*D);
  try{const sn=await getDocs(query(collection(X.db,"gifts"),where("ts",">=",a),where("ts","<=",b)));sn.docs.forEach(d=>OLD.set(d.id,{id:d.id,...d.data()}))}
- catch(e){X.toast("تعذر تحميل الفترة دي، اتأكد من النت")}
+ catch(e){X.toast("تعذر تحميل هذه الفترة، تأكد من الإنترنت")}
 }
 // ---------- النافذة ----------
 function box(){let m=g("gfm");if(!m){m=document.createElement("div");m.id="gfm";m.className="gfm";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}
 function openM(h,v){const m=box();m.innerHTML=`<div class="gfk">${h}</div>`;m.className="gfm on";m.dataset.v=v||""}
 function closeM(){const m=g("gfm");if(m){m.className="gfm";m.innerHTML="";m.dataset.v=""}img="";imgBusy=false;edit=null;if(bun&&!(g("gfm")&&g("gfm").dataset.v)){bun();bun=null}}
 // ---------- نموذج التسجيل ----------
-const rowHtml=(x={})=>`<div class="gf-row"><input data-r="k" placeholder="الكود" dir="ltr" maxlength="40" value="${E(x.k||"")}"><input data-r="c" placeholder="اللون" maxlength="40" value="${E(x.c||"")}"><input data-r="z" placeholder="المقاس" maxlength="20" value="${E(x.z||"")}"><input data-r="q" placeholder="العدد" inputmode="numeric" value="${x.q?E(x.q):""}"><button type="button" data-gf="rmrow" title="شيل السطر">✕</button></div>`;
+const rowHtml=(x={})=>`<div class="gf-row"><input data-r="k" placeholder="الكود" dir="ltr" maxlength="40" value="${E(x.k||"")}"><input data-r="c" placeholder="اللون" maxlength="40" value="${E(x.c||"")}"><input data-r="z" placeholder="المقاس" maxlength="20" value="${E(x.z||"")}"><input data-r="q" placeholder="العدد" inputmode="numeric" value="${x.q?E(x.q):""}"><button type="button" data-gf="rmrow" title="احذف السطر">✕</button></div>`;
 function form(r){
  edit=r||null;img="";imgBusy=false;
  const wh=X.mode!=="branch",lsName=(()=>{try{return localStorage.getItem("gf_by")||""}catch(e){return ""}})();
- openM(`<h3>${r?"✏️ تعديل":"🎁 تسجيل"} هدية / عينة</h3><div style="color:var(--mut);font-size:13.5px">${r?`<bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.brn||brName(r.br))}`:wh?"من المستودع (بتتعتمد على طول)":"من "+E(X.brn)+" — هتروح للمستودع يعتمدها"}</div>
+ openM(`<h3>${r?"✏️ تعديل":"🎁 تسجيل"} هدية / عينة</h3><div style="color:var(--mut);font-size:13.5px">${r?`<bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.brn||brName(r.br))}`:wh?"من المستودع (تُعتمد مباشرة)":"من "+E(X.brn)+" — سترسل إلى المستودع ليعتمدها"}</div>
  <label>الأصناف</label><div class="gf-rows" id="gfrows">${(r&&Array.isArray(r.rows)&&r.rows.length?r.rows:[{}]).map(rowHtml).join("")}</div>
  <button class="bt s" data-gf="addrow" type="button" style="margin-top:6px;width:auto">➕ صنف</button>
  <div class="gf-2"><div><label>اسم المستلم *</label><input id="gfn" maxlength="60" value="${E(r&&r.to&&r.to.n||"")}" placeholder="مثلاً: أ. محمد علي"></div>
  <div><label>جوال المستلم</label><input id="gfp" maxlength="20" inputmode="tel" dir="ltr" value="${E(r&&r.to&&r.to.ph||"")}" placeholder="05xxxxxxxx"></div></div>
  <div class="gf-2"><div><label>السبب *</label><select id="gfw">${WHY.map(w=>`<option ${r&&r.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div>
- <div><label>${wh?"اسمك":"اسمك (اللي بيسجّل) *"}</label><input id="gfby" maxlength="60" value="${E(r&&r.by?r.by.n:wh?(X.me.n||""):lsName)}" ${wh||r?"disabled":""}></div></div>
+ <div><label>${wh?"اسمك":"اسمك (من يسجّل) *"}</label><input id="gfby" maxlength="60" value="${E(r&&r.by?r.by.n:wh?(X.me.n||""):lsName)}" ${wh||r?"disabled":""}></div></div>
  <label>ملاحظة</label><textarea id="gfnote" rows="2" maxlength="300" placeholder="اختياري">${E(r&&r.note||"")}</textarea>
- <label>صورة السند ${r?"(اختار صورة جديدة لو عايز تبدّلها)":"*"}</label><input type="file" id="gff1" accept="image/*" hidden><label class="gf-up" id="gfup" for="gff1"><span id="gfupt">📎 ${r?"صورة سند جديدة (اختياري)":"دوس هنا وصوّر السند أو اختار صورته"}</span><img id="gfupi" alt="" hidden></label>
+ <label>صورة السند ${r?"(اختر صورة جديدة إن أردت استبدالها)":"*"}</label><input type="file" id="gff1" accept="image/*" hidden><label class="gf-up" id="gfup" for="gff1"><span id="gfupt">📎 ${r?"صورة سند جديدة (اختياري)":"اضغط هنا وصوّر السند أو اختر صورته"}</span><img id="gfupi" alt="" hidden></label>
  <div class="gf-act"><button class="bt p" data-gf="save" type="button">${r?"💾 حفظ التعديل":"✅ تسجيل"}</button><button class="bt" data-gf="${X.mode==="branch"&&!r?"bopen":"close"}" type="button">رجوع</button></div>`,"form");
  g("gff1").onchange=async()=>{const f=g("gff1").files[0],u=g("gfup"),tx=g("gfupt"),pv=g("gfupi");if(!f)return;imgBusy=true;u.className="gf-up";tx.textContent="⏳ جاري تجهيز الصورة...";pv.hidden=true;
-  try{img=await shrink(f,1400,230000);u.className="gf-up ok";tx.textContent="✅ السند جاهز (دوس تاني لو عايز تغيّره)";pv.src=img;pv.hidden=false}
-  catch(e){img="";tx.textContent="⚠️ الصورة مش صالحة، جرّب تاني"}
+  try{img=await shrink(f,1400,230000);u.className="gf-up ok";tx.textContent="✅ السند جاهز (اضغط مجدداً إن أردت تغييره)";pv.src=img;pv.hidden=false}
+  catch(e){img="";tx.textContent="⚠️ الصورة غير صالحة، حاول مجدداً"}
   imgBusy=false};
 }
 async function save(){
- if(imgBusy){X.toast("استنى الصورة تخلص");return}
+ if(imgBusy){X.toast("انتظر حتى تنتهي الصورة");return}
  const rows=[...document.querySelectorAll("#gfrows .gf-row")].map(el=>{const v=k=>el.querySelector(`[data-r="${k}"]`).value.trim();return {k:v("k").slice(0,40),c:v("c").slice(0,40),z:v("z").slice(0,20),q:Math.min(99999,Math.round(N(toEn(v("q")))))}}).filter(x=>x.k&&x.q>0).map(x=>{const o={k:x.k,q:x.q};if(x.c)o.c=x.c;if(x.z)o.z=x.z;return o});
  const to={n:g("gfn").value.trim().slice(0,60)},ph=toEn(g("gfp").value).replace(/[^\d+]/g,"").slice(0,20);if(ph)to.ph=ph;
  const why=g("gfw").value,note=g("gfnote").value.trim().slice(0,300),byN=g("gfby").value.trim().slice(0,60);
- if(!rows.length){X.toast("اكتب صنف واحد على الأقل (الكود والعدد)");return}
- if(rows.length>100){X.toast("الأصناف كتير أوي (أكتر من 100)");return}
+ if(!rows.length){X.toast("اكتب صنفاً واحداً على الأقل (الكود والعدد)");return}
+ if(rows.length>100){X.toast("الأصناف كثيرة جداً (أكثر من 100)");return}
  if(!to.n){X.toast("اكتب اسم المستلم");return}
  if(!byN){X.toast("اكتب اسمك");return}
- if(!edit&&!img){X.toast("لازم ترفع صورة السند");return}
+ if(!edit&&!img){X.toast("يجب رفع صورة السند");return}
  const btn=document.querySelector('[data-gf="save"]');if(btn){btn.disabled=true;btn.textContent="⏳ جاري الحفظ..."}
  try{
   const pcs=rows.reduce((s,x)=>s+x.q,0);
@@ -167,26 +167,26 @@ async function save(){
   await withTimeout(b.commit(),20000);
   if(!wh)try{localStorage.setItem("gf_by",byN)}catch(e){}
   if(X.ping)X.ping([ref.id]);
-  X.toast(wh?"تم التسجيل ✅":"اتسجّلت ✅ ومستنية اعتماد المستودع");
+  X.toast(wh?"تم التسجيل ✅":"سُجّلت ✅ وبانتظار اعتماد المستودع");
   if(X.mode==="branch")openBranch();else closeM();
- }catch(e){if(btn){btn.disabled=false;btn.textContent=edit?"💾 حفظ التعديل":"✅ تسجيل"}const w=await failReason(e);X.toast(w==="denied"?"مش مسموح. ممكن القواعد (Rules) لسه ما اتحدّثتش":FAIL_MSG[w],"er")}
+ }catch(e){if(btn){btn.disabled=false;btn.textContent=edit?"💾 حفظ التعديل":"✅ تسجيل"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
 }
 // ---------- الاعتماد / الرفض ----------
 async function decide(id,ok){
  const r=PEND.get(id)||L.get(id);if(!r||r.st!=="pend")return;
- let note="";if(!ok){note=(prompt(`سبب رفض هدية ${r.no}؟`)||"").trim().slice(0,300);if(!note){X.toast("لازم تكتب سبب الرفض");return}}
+ let note="";if(!ok){note=(prompt(`سبب رفض هدية ${r.no}؟`)||"").trim().slice(0,300);if(!note){X.toast("يجب كتابة سبب الرفض");return}}
  else if(!confirm(`اعتماد هدية ${r.no} (${r.brn||brName(r.br)} · ${N(r.pcs)} قطعة)؟`))return;
  const ap={e:X.me.e,n:String(X.me.n||X.me.e).slice(0,60),at:Date.now()};if(note)ap.note=note;
- try{await withTimeout(updateDoc(doc(X.db,"gifts",id),{st:ok?"ok":"no",ap}),15000);if(X.ping)X.ping([id]);X.toast(ok?"اتعمدت ✅":"اترفضت")}
- catch(e){const w=await failReason(e);X.toast(w==="denied"?"مش مسموح (ممكن حد تاني اعتمدها)":FAIL_MSG[w])}
+ try{await withTimeout(updateDoc(doc(X.db,"gifts",id),{st:ok?"ok":"no",ap}),15000);if(X.ping)X.ping([id]);X.toast(ok?"اعتُمدت ✅":"رُفضت")}
+ catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح (ربما اعتمدها شخص آخر)":FAIL_MSG[w])}
 }
 // ---------- السند ----------
 async function showImg(id){
  const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);
  try{const s=await withTimeout(getDoc(doc(X.db,"giftimg",id)),15000);const im=s.exists()?s.data().img:"";
-  if(!im){X.toast("مفيش صورة سند (ممكن اتمسحت)");return}
+  if(!im){X.toast("لا توجد صورة سند (ربما حُذفت)");return}
   zoomOpen(im,`سند ${r?r.no:""} · ${r?(r.brn||brName(r.br)):""}`,`giftimg/${id}/img`);
- }catch(e){X.toast(e&&e.code==="permission-denied"?"مش مسموح تشوف السند ده":"تعذر تحميل السند، اتأكد من النت")}
+ }catch(e){X.toast(e&&e.code==="permission-denied"?"غير مسموح لك برؤية هذا السند":"تعذر تحميل السند، تأكد من الإنترنت")}
 }
 // ---------- التقارير ----------
 function reportRows(){return filtered()}
@@ -197,7 +197,7 @@ function printReport(){
  <div class="rt"><div><small>الفرع</small><b><bdi dir="ltr">${E(who)}</bdi></b></div><div><small>الفترة</small><b style="font-size:11pt">${E(F.from||"—")} ← ${E(F.to||today())}</b></div><div><small>الحالة</small><b style="font-size:11pt">${E(stl)}</b></div></div>
  ${Object.keys(per).length?`<table class="stt" style="margin-bottom:5mm"><thead><tr><th>الفرع</th><th>عدد المعتمد</th><th>قطع</th></tr></thead><tbody>${Object.entries(per).map(([k,v])=>`<tr><td>${E(brName(k))}</td><td class="n">${v.n}</td><td class="n">${fmt(v.p)}</td></tr>`).join("")}</tbody></table>`:""}
  <table class="stt"><thead><tr><th>#</th><th>التاريخ</th><th>الفرع</th><th>الرقم</th><th>المستلم</th><th>السبب</th><th>الأصناف</th><th>قطع</th><th>الحالة</th><th>سجّلها / اعتمدها</th></tr></thead><tbody>
- ${rs.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.dt||"")}</td><td>${E(r.brn||brName(r.br))}</td><td>${E(r.no)}</td><td>${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?"<br>"+E(r.to.ph):""}</td><td>${E(r.why||"")}${r.note?"<br>"+E(r.note):""}</td><td>${E(itemsTxt(r))}</td><td class="n">${N(r.pcs)}</td><td>${E((STL[r.st]||"").replace(/^\S+\s/,""))}${r.st==="no"&&r.ap&&r.ap.note?"<br>"+E(r.ap.note):""}</td><td>${E(r.by&&r.by.n||"")}${r.ap&&r.ap.n?"<br>"+E(r.ap.n):""}</td></tr>`).join("")||'<tr><td colspan="10" style="text-align:center">مفيش هدايا</td></tr>'}</tbody></table>
+ ${rs.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.dt||"")}</td><td>${E(r.brn||brName(r.br))}</td><td>${E(r.no)}</td><td>${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?"<br>"+E(r.to.ph):""}</td><td>${E(r.why||"")}${r.note?"<br>"+E(r.note):""}</td><td>${E(itemsTxt(r))}</td><td class="n">${N(r.pcs)}</td><td>${E((STL[r.st]||"").replace(/^\S+\s/,""))}${r.st==="no"&&r.ap&&r.ap.note?"<br>"+E(r.ap.note):""}</td><td>${E(r.by&&r.by.n||"")}${r.ap&&r.ap.n?"<br>"+E(r.ap.n):""}</td></tr>`).join("")||'<tr><td colspan="10" style="text-align:center">لا توجد هدايا</td></tr>'}</tbody></table>
  <div class="tt"><span>العدد ${rs.length}</span><span>المعتمد ${ok.length}</span><span><b>قطع معتمدة ${fmt(ok.reduce((s,r)=>s+N(r.pcs),0))}</b></span></div>
  <div class="sg"><span>المحاسب</span><span>مدير المستودع</span><span>المدير</span></div></div>`);
 }
@@ -222,8 +222,8 @@ async function click(e){
  if(a==="print")return void printReport();
  if(a==="csv")return void csv();
  if(a==="edit"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(r)form(r);return}
- if(a==="del"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r||!confirm(`حذف هدية ${r.no} نهائياً هي والسند بتاعها؟`))return;
-  try{const b=writeBatch(X.db);b.delete(doc(X.db,"gifts",id));b.delete(doc(X.db,"giftimg",id));await withTimeout(b.commit(),15000);L.delete(id);OLD.delete(id);PEND.delete(id);X.toast("اتمسحت");if(X.redraw)X.redraw()}
+ if(a==="del"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r||!confirm(`حذف هدية ${r.no} نهائياً مع السند الخاص بها؟`))return;
+  try{const b=writeBatch(X.db);b.delete(doc(X.db,"gifts",id));b.delete(doc(X.db,"giftimg",id));await withTimeout(b.commit(),15000);L.delete(id);OLD.delete(id);PEND.delete(id);X.toast("حُذفت");if(X.redraw)X.redraw()}
   catch(e){X.toast("تعذر الحذف")}}
 }
 function change(e){

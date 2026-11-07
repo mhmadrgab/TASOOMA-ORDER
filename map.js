@@ -13,7 +13,7 @@ export function leaflet(){
   if(!document.getElementById("lf-css")){const l=document.createElement("link");l.id="lf-css";l.rel="stylesheet";l.href=CDN+"leaflet.min.css";l.integrity=SRI_CSS;l.crossOrigin="anonymous";document.head.appendChild(l)}
   const s=document.createElement("script");s.src=CDN+"leaflet.min.js";s.integrity=SRI_JS;s.crossOrigin="anonymous";
   s.onload=()=>window.L&&window.L.map?res(window.L):(ready=null,rej(new Error("leaflet")));
-  s.onerror=()=>{ready=null;s.remove();rej(new Error("leaflet"))};// مفيش نت: نحاول تاني المرة الجاية
+  s.onerror=()=>{ready=null;s.remove();rej(new Error("leaflet"))};// لا يوجد نت: نحاول مجدداً المرة الجاية
   document.head.appendChild(s);
  });
  return ready;
@@ -21,21 +21,21 @@ export function leaflet(){
 const TT="EKvqbvD3N1wXR53fTP5Ti4XF6lB4BOKX",TTA='&copy; <a href="https://www.tomtom.com" target="_blank" rel="noopener noreferrer">TomTom</a>';
 const dark=()=>!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);
 const lsG=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsS=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
-// خريطة جديدة جوه عنصر (المركز الافتراضي الرياض لحد ما نعرف الأماكن) + زرار 🚦 الزحمة (بيتفتكر)
+// خريطة جديدة جوه عنصر (المركز الافتراضي الرياض إلى ما نعرف الأماكن) + زرار 🚦 الزحمة (بيتفتكر)
 export function baseMap(L,el){
  const m=L.map(el,{zoomControl:true,attributionControl:true,scrollWheelZoom:true}).setView([24.71,46.68],11);
  const base=L.tileLayer(`https://api.tomtom.com/map/1/tile/basic/${dark()?"night":"main"}/{z}/{x}/{y}.png?key=${TT}&tileSize=256&language=ar`,{maxZoom:20,attribution:TTA}).addTo(m);
- // TomTom مارضيش (المفتاح اتقفل أو الحد خلص): نرجع لـ OpenStreetMap
+ // TomTom لم يتم (المفتاح اتقفل أو الحد خلص): نرجع لـ OpenStreetMap
  let bad=0;base.on("tileerror",()=>{if(++bad===6){m.removeLayer(base);if(dark())el.classList.add("tz-dark");L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'}).addTo(m)}});
  // الزحمة اللايف (أخضر = ماشي، أصفر/أحمر = زحمة)
  const tr=L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${TT}&tileSize=256`,{maxZoom:20,opacity:.85,zIndex:5});
  if(lsG("tz_traffic")!=="0")tr.addTo(m);
- const C=L.Control.extend({options:{position:"topleft"},onAdd(){const b=L.DomUtil.create("button","tz-trf");b.type="button";const paint=()=>{b.textContent=m.hasLayer(tr)?"🚦 الزحمة: ظاهرة":"🚦 الزحمة: مخفية";b.classList.toggle("off",!m.hasLayer(tr))};paint();
+ const C=L.Control.extend({options:{position:"topleft"},onAdd(){const b=L.DomUtil.create("button","tz-trf");b.type="button";const paint=()=>{b.textContent=m.hasLayer(tr)?"🚦 الزحام: ظاهر":"🚦 الزحام: مخفي";b.classList.toggle("off",!m.hasLayer(tr))};paint();
   L.DomEvent.on(b,"click",e=>{L.DomEvent.stop(e);if(m.hasLayer(tr)){m.removeLayer(tr);lsS("tz_traffic","0")}else{tr.addTo(m);lsS("tz_traffic","1")}paint()});L.DomEvent.disableClickPropagation(b);return b}});
  new C().addTo(m);
  return m;
 }
-// المسار على الطريق الحقيقي + الوقت بالزحمة دلوقتي (TomTom Routing). pts = [{lat,lng},...] بالترتيب (لحد 25 نقطة).
+// المسار على الطريق الحقيقي + الوقت بالزحمة حالياً (TomTom Routing). pts = [{lat,lng},...] بالترتيب (إلى 25 نقطة).
 // النتيجة بتتحفظ على الجهاز علشان مانصرفش من الحد اليومي على نفس المسار: {path:[[lat,lng]], sec, m, delay}
 const RC=new Map();
 export async function roadRoute(pts,maxAgeMin=10){

@@ -16,7 +16,7 @@ export const emailOf=c=>`${c}@${DOMAIN}`;
 // كل صفحة بتفتح "تطبيق" باسم مختلف علشان جلسة الدخول ما تتخلطش (فرع / مستودع / إنشاء حسابات)
 export function makeFb(name){
   const app=getApps().find(a=>a.name===name)||initializeApp(firebaseConfig,name);
-  // الدخول بيتفتكر على الجهاز ده لحد ما يدوس "خروج" (طلب محمد، نوفمبر 2026). كل صفحة ليها دخول لوحدها (فرع / مستودع / سائق).
+  // الدخول بيتفتكر على الجهاز ده إلى ما يدوس "خروج" (طلب محمد، نوفمبر 2026). كل صفحة ليها دخول لوحدها (فرع / مستودع / سائق).
   // "sec" (إنشاء حسابات الفروع والموظفين) مابيتفتكرش خالص
   // localStorage بس، من غير indexedDB: على بعض الموبايلات indexedDB بيعلّق، وFirebase بيستنى كل الأنواع قبل ما يبدأ،
   // فتسجيل الدخول كان بيقف ويقول "الاتصال بطيء" (نوفمبر 2026). لو localStorage مقفول (تصفح خاص) Firebase بيكمّل في الذاكرة.
@@ -24,43 +24,45 @@ export function makeFb(name){
   return {app,db:getFirestore(app),auth};
 }
 export const withTimeout=(p,ms=15000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
-// ---------- إشعارات الموبايل (حتى والتطبيق مقفول) ----------
-// بعد الدخول وتفعيل التنبيهات: الجهاز بيسجّل نفسه في push/{token}، والسيرفر بيبعتله.
-// info = {role: "staff"|"branch"|"driver", key: الإيميل أو كود الفرع أو اسم السائق, email}
+// ---------- إشعارات الجوال (حتى والتطبيق مقفول) ----------
+// بعد الدخول وتفعيل التنبيهات: الجهاز يسجّل نفسه في push/{token}، والسيرفر بيبعتله.
+// info = {role: "staff"|"branch"|"driver", key: البريد الإلكتروني أو كود الفرع أو اسم السائق, email}
 export async function pushRegister(app,db,info){
   try{
     if(!("Notification" in window)||Notification.permission!=="granted"||!("serviceWorker" in navigator))return false;
     const m=await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js");
     if(!(await m.isSupported()))return false;
-    // نسجّل خدمة الإشعارات بنفسنا (لو مسجّلة قبل كده بيرجع نفس التسجيل) ونستنى لحد ما تشتغل
+    // نسجّل خدمة الإشعارات بنفسنا (لو مسجّلة قبل كده بيرجع نفس التسجيل) ونستنى إلى ما تشتغل
     await navigator.serviceWorker.register("./sw.js");
     const reg=await withTimeout(navigator.serviceWorker.ready,20000);
     const msg=m.getMessaging(app),tok=await withTimeout(m.getToken(msg,{serviceWorkerRegistration:reg}),20000);
     if(!tok)return false;
-    // الصفحة مفتوحة: Firebase بيدّي الإشعار للصفحة بدل ما يظهر على الجهاز. لو الصفحة مش قدامه (مثلاً شغّال في برنامج تاني
-    // على الكمبيوتر) بنعرضه احنا. (إشعار التجربة بيظهر دايماً)
+    // الصفحة مفتوحة: Firebase بيدّي الإشعار للصفحة بدل ما يظهر على الجهاز. لو الصفحة مش قدامه (مثلاً شغّال في برنامج مجدداً
+    // على الحاسوب) بنعرضه احنا. (إشعار التجربة بيظهر دايماً)
     if(!window.__fgm){window.__fgm=1;m.onMessage(msg,p=>{
       const n=(p&&p.notification)||{},d=(p&&p.data)||{};
       if(!(document.hidden||!document.hasFocus())&&d.tag!=="test")return;
-      reg.showNotification(n.title||d.t||"تاسومة",{body:n.body||d.b||"",tag:d.tag||undefined,icon:"./icon-192.png",dir:"rtl",lang:"ar",data:{link:(p.fcmOptions&&p.fcmOptions.link)||d.link||""}}).catch(()=>{});
+      reg.showNotification(n.title||d.t||"تاسومة",{body:n.body||d.b||"",tag:d.tag||undefined,icon:"./icon-192.png",dir:document.documentElement.dir||"rtl",lang:document.documentElement.lang||"ar",data:{link:(p.fcmOptions&&p.fcmOptions.link)||d.link||""}}).catch(()=>{});
     })}
-    // نفس الموبايل ممكن يبقى مستودع وفرع وسائق مع بعض (نفس الموقع = نفس رقم الجهاز)، فكل دور ليه تسجيل لوحده.
-    // dv = موبايل ولا كمبيوتر (المالك بيشوف أجهزة كل واحد في تبويب الموظفين)
+    // نفس الجوال ممكن يبقى مستودع وفرع وسائق مع بعض (نفس الموقع = نفس رقم الجهاز)، فكل دور ليه تسجيل لوحده.
+    // dv = جوال ولا حاسوب (المالك بيشوف أجهزة كل واحد في تبويب الموظفين)
     await pushSave(db,info,tok);
     return true;
   }catch(e){console.warn("push",e);return false}
 }
-// تسجيل رقم الجهاز في push (من المتصفح، أو من تطبيق TASOOMA للسواقين اللي بيدّي رقمه بنفسه)
+// تسجيل رقم الجهاز في push (من المتصفح، أو من تطبيق TASOOMA للسائقين اللي بيدّي رقمه بنفسه)
 export async function pushSave(db,info,tok){
   const mob=/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent)||(/macintosh/i.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
   const rec={role:info.role,key:String(info.key),email:String(info.email||"").toLowerCase(),tok,ts:Date.now()},ref=doc(db,"push",info.role+"__"+tok);
-  // لو القواعد اللي في Firebase لسه قديمة (مابتعرفش dv)، بنسجّل من غيره بدل ما الجهاز يفضل من غير إشعارات
-  try{await setDoc(ref,{...rec,dv:mob?"m":"pc"})}catch(e){if(e&&e.code==="permission-denied")await setDoc(ref,rec);else throw e}
+  // لو القواعد اللي في Firebase لا يزال قديمة (مابتعرفش dv)، بنسجّل من غيره بدل ما الجهاز يفضل من غير إشعارات
+  // lg = لغة الجهاز (English فقط): السيرفر يبعت الإشعارات بالإنجليزية. لو القواعد قديمة نسجّل بدونها بدل ما الجهاز يفضل من غير إشعارات
+  const en=window.TZL&&TZL.lang==="en",dv=mob?"m":"pc",deny=e=>e&&e.code==="permission-denied";
+  try{await setDoc(ref,{...rec,dv,...(en?{lg:"en"}:{})})}catch(e){if(!deny(e))throw e;try{await setDoc(ref,{...rec,dv})}catch(e2){if(deny(e2))await setDoc(ref,rec);else throw e2}}
 }
 // ---------- تنبيه سيرفر الإشعارات (Cloudflare) إن طلب اتغيّر، علشان يبعت للموبايلات في نفس الثانية ----------
 // السيرفر بيقرا الطلب بنفسه ويقرر يبعت لمين؛ هنا بس بنقوله "بص على الطلبات دي" ومعانا توكن الدخول
 export const PUSH_URL="https://tasooma-push.tasooma.workers.dev";// سيرفر الإشعارات على Cloudflare (مجلد push-server)
-// ids = طلبات اتغيّرت، chats = محادثات خاصة (dm: كود الفرع__إيميل الشخص) اتبعت فيها رسالة جديدة، trips = رحلات بدأت أو خلصت
+// ids = طلبات اتغيّرت، chats = محادثات خاصة (dm: كود الفرع__إيميل الشخص) أُرسل فيها رسالة جديدة، trips = رحلات بدأت أو خلصت
 export async function ping(auth,ids,chats,trips,gifts){
   try{
     const u0=a=>[...new Set((a||[]).filter(Boolean))];ids=u0(ids);chats=u0(chats);trips=u0(trips);gifts=u0(gifts);if(!PUSH_URL||!(ids.length||chats.length||trips.length||gifts.length))return;
@@ -72,7 +74,7 @@ export async function ping(auth,ids,chats,trips,gifts){
     jobs.forEach(b=>fetch(PUSH_URL+"/notify",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({ids:[],chats:[],trips:[],gifts:[],...b}),keepalive:true}).catch(()=>{}));
   }catch(e){}
 }
-// إشعار تجربة: لأجهزتي أنا، أو (للمالك) لأجهزة شخص تاني. بيرجّع {n: عدد الأجهزة, dev:[{dv, ok, gone}]}
+// إشعار تجربة: لأجهزتي أنا، أو (للمالك) لأجهزة شخص مجدداً. بيرجّع {n: عدد الأجهزة, dev:[{dv, ok, gone}]}
 export async function pushTest(auth,to){
   const u=auth&&auth.currentUser;if(!u)throw new Error("login");
   const r=await withTimeout(fetch(PUSH_URL+"/test",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+await u.getIdToken()},body:JSON.stringify(to?{to}:{})}),20000);
@@ -99,9 +101,9 @@ export async function failReason(x){
   return "slow";
 }
 export const FAIL_MSG={
-  quota:"خدمة Firebase وقفت مؤقتاً لأن الحد اليومي المجاني خلص (مش النت). البيانات محفوظة على جهازك، جرّب تاني بعدين، وبلّغ المستودع.",
-  offline:"مفيش اتصال بالإنترنت دلوقتي. البيانات محفوظة، جرّب تاني أول ما النت يرجع.",
-  slow:"الاتصال بطيء ومتأكدناش إن الحفظ تم. اضغط تاني، ومش هيتكرر."
+  quota:"خدمة Firebase توقفت مؤقتاً لأن الحد اليومي المجاني انتهى (وليس الإنترنت). البيانات محفوظة على جهازك، حاول لاحقاً، وأبلغ المستودع.",
+  offline:"لا يوجد اتصال بالإنترنت حالياً. البيانات محفوظة، حاول مجدداً فور عودة الإنترنت.",
+  slow:"الاتصال بطيء ولم نتأكد من اكتمال الحفظ. اضغط مجدداً ولن يتكرر."
 };
 if(typeof document!=="undefined"){
   let last=0;const chk=()=>{if(Date.now()-last<5*6e4)return;last=Date.now();checkQuota()};
@@ -113,13 +115,13 @@ if(typeof document!=="undefined"){
 // ---------- سجل "مين عمل إيه" (لوحة المستودع بس) ----------
 // كل حفظ/تعديل/حذف بيعمله حساب في المستودع بيتسجّل لوحده في log/{id} = {e:إيميله, n:اسمه, op, c:المجموعة, id, t:وصف, k:الحقول, s:الحالة, x?:عدد, ts}
 // (بعد ما الحفظ ينجح بس). المالك بس اللي بيشوف السجل (audit.js). صفحات الفرع والسائق مش بتسجّل (setAudit مش متنادية فيها).
-// الشات والإشعارات والصور ومواقع الفروع مش بتتسجّل (كتير ومالهاش لازمة).
+// الدردشة والإشعارات والصور ومواقع الفروع مش بتتسجّل (كتير ومالهاش لازمة).
 let AUD=null;
 export function setAudit(a){AUD=a&&a.db&&a.e?a:null}
 const NOLOG=new Set(["dm","whdir","ddir","push","geo","meta","log","ava","pushlog","chats","pods","giftimg"]);
 function note(op,r,d){
   if(!AUD||!r||!r.path)return null;const p=String(r.path).split("/");if(p.length!==2||NOLOG.has(p[0]))return null;
-  if(d&&typeof d==="object"&&Object.keys(d).join()==="msgs")return null;// مسح الشات القديم (مرة واحدة)
+  if(d&&typeof d==="object"&&Object.keys(d).join()==="msgs")return null;// مسح الدردشة القديم (مرة واحدة)
   // الوصف بيتحسب قبل الحفظ (بعد الحذف الحاجة بتختفي من الصفحة)
   let t="";try{t=String(AUD.label&&AUD.label(p[0],p[1],d)||"")}catch(e){}
   const o=d&&typeof d==="object"?d:{};

@@ -15,7 +15,7 @@ const STYLE=`.pfa{border-radius:50%;object-fit:cover;flex:none;display:inline-bl
 #pfm label{display:block;text-align:start;font-size:13px;color:var(--mut);margin-top:10px}`;
 let X=null,AV={},ME=null,un=[],busy=false;
 export const photo=em=>AV[String(em||"").toLowerCase()]||"";
-// صورة الشخص، ولو مفيش: أول حرف من اسمه
+// صورة الشخص، ولو لا يوجد: أول حرف من اسمه
 export function avatar(em,name,sz){
   sz=sz||36;const p=photo(em),st=`width:${sz}px;height:${sz}px`;
   return p?`<img class="pfa" src="${p}" alt="" style="${st}">`:`<span class="pfa pfi" style="${st};font-size:${Math.round(sz*.44)}px">${E([...String(name||"؟").trim()][0]||"؟")}</span>`;
@@ -40,11 +40,11 @@ function paint(){
   const m=document.getElementById("pfm");if(!m||!X)return;
   const own=X.owner,n=X.name(),k=X.k?X.k():"";
   m.innerHTML=`<div class="bx">${avatar(X.me,n,96)}<h3>${E(n)}</h3><div class="k">${E(k)}</div><div class="off" dir="ltr">${E(X.me)}</div>
-  ${own?`<label for="pfn">اسمك (بيظهر للفروع في الشات)</label><input id="pfn" type="text" maxlength="60" value="${E(ME&&ME.n||n)}">
-  <label for="pfk">كنيتك (بتظهر جنب اسمك)</label><input id="pfk" type="text" maxlength="40" placeholder="مثلاً: المدير العام" value="${E(ME&&ME.k||"")}">`
-  :`<p class="off" style="margin:12px 0 0">الاسم والكنية بيحددهم مالك النظام.</p>`}
+  ${own?`<label for="pfn">اسمك (يظهر للفروع في الدردشة)</label><input id="pfn" type="text" maxlength="60" value="${E(ME&&ME.n||n)}">
+  <label for="pfk">كنيتك (تظهر بجانب اسمك)</label><input id="pfk" type="text" maxlength="40" placeholder="مثلاً: المدير العام" value="${E(ME&&ME.k||"")}">`
+  :`<p class="off" style="margin:12px 0 0">يحدد مالك النظام الاسم والكنية.</p>`}
   <input id="pff" type="file" accept="image/*" hidden>
-  <div class="row"><button class="bt p" data-pf="up" type="button" ${busy?"disabled":""}>${busy?"⏳ جاري الرفع...":photo(X.me)?"📷 غيّر الصورة":"📷 ارفع صورتك"}</button>${photo(X.me)?`<button class="bt" data-pf="rm" type="button">🗑 شيل الصورة</button>`:""}</div>
+  <div class="row"><button class="bt p" data-pf="up" type="button" ${busy?"disabled":""}>${busy?"⏳ جاري الرفع...":photo(X.me)?"📷 غيّر الصورة":"📷 ارفع صورتك"}</button>${photo(X.me)?`<button class="bt" data-pf="rm" type="button">🗑 إزالة الصورة</button>`:""}</div>
   <div class="row">${own?`<button class="bt g" data-pf="save" type="button">حفظ الاسم والكنية</button>`:""}<button class="bt" data-pf="x" type="button">إغلاق</button></div></div>`;
 }
 function open(){let m=document.getElementById("pfm");if(!m){m=document.createElement("div");m.id="pfm";document.body.appendChild(m);m.addEventListener("click",e=>{if(e.target===m)m.className=""})}m.className="on";paint()}
@@ -55,20 +55,20 @@ async function click(e){
   if(a==="x"){m.className="";return}
   if(a==="up"){document.getElementById("pff").click();return}
   try{
-    if(a==="rm"&&confirm("تشيل صورتك؟")){await deleteDoc(doc(X.db,"ava",X.me));X.toast("اتشالت الصورة")}
+    if(a==="rm"&&confirm("هل تريد إزالة صورتك؟")){await deleteDoc(doc(X.db,"ava",X.me));X.toast("أُزيلت الصورة")}
     if(a==="save"&&X.owner){
       const n=document.getElementById("pfn").value.trim().slice(0,60),k=document.getElementById("pfk").value.trim().slice(0,40);
       if(!n)return void X.toast("اكتب اسمك");
-      await setDoc(doc(X.db,"meta","me"),{n,k});X.toast("اتحفظ الاسم والكنية");m.className="";
+      await setDoc(doc(X.db,"meta","me"),{n,k});X.toast("حُفظ الاسم والكنية");m.className="";
     }
   }catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message))}
 }
 async function pick(e){
   if(!X||e.target.id!=="pff")return;const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;
-  if(!/^image\//.test(f.type))return void X.toast("اختار صورة");
+  if(!/^image\//.test(f.type))return void X.toast("اختر صورة");
   busy=true;paint();
-  try{const ph=await shrink(f);if(ph.length>78000)throw new Error("big");await setDoc(doc(X.db,"ava",X.me),{ph,ts:Date.now()});X.toast("✅ اترفعت صورتك")}
-  catch(x){X.toast(x&&x.message==="big"?"الصورة كبيرة، جرّب صورة تانية":"تعذر رفع الصورة: "+(x&&x.code||x&&x.message))}
+  try{const ph=await shrink(f);if(ph.length>78000)throw new Error("big");await setDoc(doc(X.db,"ava",X.me),{ph,ts:Date.now()});X.toast("✅ رُفعت صورتك")}
+  catch(x){X.toast(x&&x.message==="big"?"الصورة كبيرة، جرّب صورة أخرى":"تعذر رفع الصورة: "+(x&&x.code||x&&x.message))}
   busy=false;paint();
 }
 export function initProf(ctx){

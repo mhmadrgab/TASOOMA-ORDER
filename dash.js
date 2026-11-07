@@ -1,10 +1,10 @@
-// لوحة الأداء (أول تبويب الطلبات): دواير نسب بتلف، ومراحل الطلبات دلوقتي، والطلبات مقابل اللي اتسلّم يوم بيوم، وأكتر الفروع والأكواد.
-// كله محسوب من الطلبات اللي محمّلة أصلاً في الصفحة (R)، فمفيش ولا قراءة زيادة من Firebase.
+// لوحة الأداء (أول تبويب الطلبات): دواير نسب بتلف، ومراحل الطلبات حالياً، والطلبات مقابل اللي سُلِّم يوماً بيوم، وأكتر الفروع والأكواد.
+// كله محسوب من الطلبات اللي محمّلة أصلاً في الصفحة (R)، فلا يوجد ولا قراءة زيادة من Firebase.
 // الدواير والأرقام بتتحرك بس لما القيمة نفسها تتغيّر (مش مع كل رسمة للصفحة).
-// ألوان الرسم (ذهبي = طلبات، تركواز = اتسلّم) متجرّبة لعمى الألوان في الوضع الفاتح والغامق.
+// ألوان الرسم (ذهبي = طلبات، تركواز = سُلِّم) متجرّبة لعمى الألوان في الوضع الفاتح والغامق.
 let X=null,PER="7",SEEN={};
 try{PER=localStorage.getItem("dz_per")||"7"}catch(e){}
-const PERS=[["1","النهارده"],["7","آخر 7 أيام"],["30","آخر 30 يوم"]];
+const PERS=[["1","اليوم"],["7","آخر 7 أيام"],["30","آخر 30 يوم"]];
 const H=36e5,D=864e5,N=x=>Number.isFinite(+x)?+x:0;
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=n=>Math.round(n).toLocaleString("en-US");
@@ -103,7 +103,7 @@ export function initDash(ctx){
   });
 }
 // لازم تتحرك؟ (أول مرة، أو القيمة اتغيّرت، أو الفترة اتغيّرت). الصفحة بتترسم كذا مرة ورا بعض،
-// فلو اترسمت والحركة لسه شغّالة بنكمّلها من مكانها (رقم سالب = الحركة بدأت من كام ملّي ثانية) بدل ما تقف أو تبدأ من الأول.
+// فلو اترسمت والحركة لا يزال شغّالة بنكمّلها من مكانها (رقم سالب = الحركة بدأت من كام ملّي ثانية) بدل ما تقف أو تبدأ من الأول.
 const DUR=1500;
 const moved=(id,v)=>{const k=PER+"|"+v,s=SEEN[id],now=Date.now();
   if(!s||s.k!==k){SEEN[id]={k,t:now};return 0}
@@ -113,14 +113,14 @@ const cu=(el,v)=>el>=0?`data-cu="${v}" data-t0="${Date.now()-el}"`:"";
 
 function ring(id,color,pct,label,sub,pill){
   const C=2*Math.PI*42,has=pct!==null,v=has?Math.max(0,Math.min(100,pct)):0,off=C*(1-v/100),el=has?moved(id,Math.round(v)):-1;
-  return `<div class="dz-card dz-ring" role="img" aria-label="${E(label)}: ${has?Math.round(v)+"%":"مفيش بيانات"}. ${E(sub)}">
+  return `<div class="dz-card dz-ring" role="img" aria-label="${E(label)}: ${has?Math.round(v)+"%":"لا توجد بيانات"}. ${E(sub)}">
    <div class="w"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="tr" cx="50" cy="50" r="42"/>${has&&v>0?`<circle class="vl${el>=0?" dz-anim":""}" cx="50" cy="50" r="42" style="color:${color};stroke:${color};--c:${C.toFixed(2)};${delay(el)}" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>`:""}</svg>
    <div class="ct"><b>${has?`<span ${cu(el,Math.round(v))}>${Math.round(v)}</span><i>%</i>`:"—"}</b></div></div>
    <h4>${E(label)}</h4><p>${E(sub)}</p>${pill||""}</div>`;
 }
 // حالة النسبة: أيقونة + كلمة (اللون لوحده مش كفاية)
-const pill=pct=>pct===null?"":pct>=90?`<span class="dz-pill"><i style="background:var(--dz-good)"></i>ممتاز</span>`:pct>=70?`<span class="dz-pill"><i style="background:var(--dz-warn)"></i>كويس</span>`:`<span class="dz-pill"><i style="background:var(--dz-bad)"></i>محتاج متابعة</span>`;
-// سطر الملخّص تحت العنوان (أرقام الفترة نفسها، مش حالة الطلبات دلوقتي)
+const pill=pct=>pct===null?"":pct>=90?`<span class="dz-pill"><i style="background:var(--dz-good)"></i>ممتاز</span>`:pct>=70?`<span class="dz-pill"><i style="background:var(--dz-warn)"></i>جيد</span>`:`<span class="dz-pill"><i style="background:var(--dz-bad)"></i>يحتاج إلى متابعة</span>`;
+// سطر الملخّص تحت العنوان (أرقام الفترة نفسها، مش حالة الطلبات حالياً)
 const sum=(id,icon,val,label)=>`<span>${icon} <b ${cu(moved(id,val),val)}>${fmt(val)}</b> ${E(label)}</span>`;
 
 export function dashView(R){
@@ -128,8 +128,8 @@ export function dashView(R){
   const t0=from(PER),now=Date.now(),RQ=R.filter(r=>!r.tr),C=RQ.filter(r=>N(r.ts)>=t0);// التحويلات ليها كارت لوحدها
   const dl=C.filter(r=>r.st==="done"||r.st==="recv"),rc=C.filter(r=>r.st==="recv"),ok=rc.filter(r=>!r.rcv||r.rcv.ok!==false);
   const tt=dl.map(r=>dlvAt(r)-N(r.ts)).filter(x=>x>0),fast=tt.filter(x=>x<=24*H).length,avg=tt.length?tt.reduce((a,b)=>a+b,0)/tt.length:0;
-  // الوقت في كل مرحلة لوحدها (بدل رقم واحد "بيخرج من المستودع" كان بيجمع الانتظار والتجهيز وانتظار السواق مع بعض ومش مفهوم).
-  // ⚠️ prep.at = وقت "بدء التجهيز" (مش خلصه): مفيش وقت مسجّل لـ "خلص التجهيز" في الطلبات العادية، فالمرحلة التانية = التجهيز + انتظار السواق.
+  // الوقت في كل مرحلة لوحدها (بدل رقم واحد "بيخرج من المستودع" كان بيجمع الانتظار والتجهيز وانتظار السائق مع بعض ومش مفهوم).
+  // ⚠️ prep.at = وقت "بدء التجهيز" (مش خلصه): لا يوجد وقت مسجّل لـ "خلص التجهيز" في الطلبات العادية، فالمرحلة التانية = التجهيز + انتظار السائق.
   // الوسيط (النص الطلبات أسرع والنص أبطأ) بدل المتوسط: طلب واحد اتعمل بالليل واتجهّز الصبح مايبوّظش الرقم.
   const med=a=>{a=a.filter(x=>x>0&&x<14*D).sort((x,y)=>x-y);return a.length?(a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2):0};
   const hm2=ms=>{const m=Math.max(1,Math.round(ms/6e4)),h=Math.floor(m/60);return h>=48?`${(ms/D).toFixed(1)} يوم`:h?`${h} س${m%60?` و${m%60} د`:""}`:`${m} دقيقة`};
@@ -138,10 +138,10 @@ export function dashView(R){
   const pc=(a,b)=>b?a/b*100:null,p1=pc(dl.length,C.length),p2=pc(rc.length,dl.length),p3=pc(ok.length,rc.length),p4=pc(fast,tt.length);
   const pcs=C.reduce((a,r)=>a+N(r.pcs),0),brs=new Set(C.map(r=>String(r.br||String(r.brn||"").split("-")[0]))).size;
   const lbl=(PERS.find(p=>p[0]===PER)||PERS[1])[1];
-  // المراحل دلوقتي (مهما كان تاريخ الطلب)
+  // المراحل حالياً (مهما كان تاريخ الطلب)
   const stage=(st,icon,name,k)=>{const L=RQ.filter(r=>r.st===st),old=L.length?Math.min(...L.map(r=>st==="new"?N(r.ts):st==="prep"?(N(r.prep&&r.prep.at)||N(r.ts)):st==="go"?(N(r.dep)||N(r.ts)):(dlvAt(r)||N(r.ts)))):0;
-    return `<button class="dz-st" data-s="${st}" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${L.length}"><span class="ic">${icon}</span><b><span ${cu(moved("st"+st,L.length),L.length)}>${fmt(L.length)}</span></b><span class="nm">${E(name)}</span><small>${L.length?"أقدم واحد من "+dur(now-old):"مفيش"}</small></button>`};
-  // يوم بيوم: طلبات اتعملت (ذهبي) مقابل اتسلّمت (تركواز)
+    return `<button class="dz-st" data-s="${st}" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${L.length}"><span class="ic">${icon}</span><b><span ${cu(moved("st"+st,L.length),L.length)}>${fmt(L.length)}</span></b><span class="nm">${E(name)}</span><small>${L.length?"أقدم واحد منذ "+dur(now-old):"لا يوجد"}</small></button>`};
+  // يوماً بيوم: طلبات اتعملت (ذهبي) مقابل سُلِّمت (تركواز)
   const days=Math.max(7,+PER),d0=midnight(now)-(days-1)*D,rows=[];
   for(let i=0;i<days;i++){const a=d0+i*D,b=a+D;rows.push({a,n:RQ.filter(r=>N(r.ts)>=a&&N(r.ts)<b).length,d:RQ.filter(r=>{const t=dlvAt(r);return t>=a&&t<b}).length})}
   const mx0=Math.max(1,...rows.map(x=>Math.max(x.n,x.d))),step=mx0<=4?1:mx0<=10?2:mx0<=20?5:mx0<=50?10:Math.ceil(mx0/50)*10,mx=Math.ceil(mx0/step)*step;
@@ -149,53 +149,53 @@ export function dashView(R){
   const dn=t=>new Date(t).toLocaleDateString("en-GB",{day:"numeric",month:"numeric"}),wd=t=>new Date(t).toLocaleDateString("ar-EG",{weekday:"long"});
   const every=days>14?5:1;
   const bars=rows.map((x,i)=>{const h=v=>v?Math.max(2,v/mx*100):0;
-    return `<button class="dz-day" type="button" aria-label="${E(wd(x.a))} ${dn(x.a)}: ${x.n} طلب، ${x.d} اتسلّم"><i class="a${x.n?"":" z"}" style="height:${h(x.n)||2}%;${delay(gEl)}"></i><i class="b${x.d?"":" z"}" style="height:${h(x.d)||2}%;${delay(gEl)}"></i>
-     ${(days-1-i)%every===0?`<span class="x">${i===days-1?"النهارده":dn(x.a)}</span>`:""}<span class="dz-tip${i<2?" r":i>=days-2?" l":""}"><b>${E(wd(x.a))} ${dn(x.a)}</b><span><i style="background:var(--dz-s1)"></i>${x.n} طلب جديد</span><span><i style="background:var(--dz-s2)"></i>${x.d} اتسلّم</span></span></button>`}).join("");
+    return `<button class="dz-day" type="button" aria-label="${E(wd(x.a))} ${dn(x.a)}: ${x.n} طلب، ${x.d} سُلِّم"><i class="a${x.n?"":" z"}" style="height:${h(x.n)||2}%;${delay(gEl)}"></i><i class="b${x.d?"":" z"}" style="height:${h(x.d)||2}%;${delay(gEl)}"></i>
+     ${(days-1-i)%every===0?`<span class="x">${i===days-1?"اليوم":dn(x.a)}</span>`:""}<span class="dz-tip${i<2?" r":i>=days-2?" l":""}"><b>${E(wd(x.a))} ${dn(x.a)}</b><span><i style="background:var(--dz-s1)"></i>${x.n} طلب جديد</span><span><i style="background:var(--dz-s2)"></i>${x.d} سُلِّم</span></span></button>`}).join("");
   const grid=[0,.5,1].map(f=>`<i class="dz-gl" style="bottom:${f*100}%"></i>`).join("");
   // أكتر الفروع (بالقطع في الفترة) وأكتر الأكواد (الطلبات المفتوحة)
   const per={};C.forEach(r=>{const k=String(r.brn||"");per[k]=(per[k]||0)+N(r.pcs)});
   const topB=Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const opn={};RQ.filter(r=>r.st==="new"||r.st==="prep").forEach(r=>(Array.isArray(r.rows)?r.rows:[]).forEach(x=>{const k=String(x&&x.k||"");if(k)opn[k]=(opn[k]||0)+N(x&&x.q)}));
   const topC=Object.entries(opn).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const tops=(L,id)=>{if(!L.length)return `<div class="dz-none">مفيش بيانات في الفترة دي</div>`;const m=L[0][1]||1,el=moved(id,JSON.stringify(L));
+  const tops=(L,id)=>{if(!L.length)return `<div class="dz-none">لا توجد بيانات في هذه الفترة</div>`;const m=L[0][1]||1,el=moved(id,JSON.stringify(L));
     return `<div class="dz-top${el>=0?" dz-grow2":""}">${L.map(([n,v])=>`<div class="dz-tr"><span title="${E(n)}">${E(n)}</span><div class="t"><i style="width:${Math.max(3,v/m*100)}%;${delay(el)}"></i></div><em>${fmt(v)}</em></div>`).join("")}</div>`};
   if(!reduce())requestAnimationFrame(countUp);
   return `<section class="dz" aria-label="لوحة الأداء">
   <div class="dz-hd"><h2>📊 لوحة الأداء <small>${E(lbl)}</small></h2><div class="dz-per" role="group" aria-label="الفترة">${PERS.map(([k,n])=>`<button type="button" data-dp="${k}" class="${PER===k?"on":""}" aria-pressed="${PER===k}">${n}</button>`).join("")}</div></div>
-  <div class="dz-sum">${C.length?`${sum("k1","🧾",C.length,"طلب")}${sum("k2","🏬",brs,"فرع طلبوا")}${sum("k3","📦",pcs,"قطعة")}${stg("⏰","لحد ما يبدأ التجهيز",tPrep,"من وصول الطلب للمستودع لحد ما حد يدوس \"بدء التجهيز\"")}${stg("🧰","التجهيز لحد خروج السواق",tWait,"من \"بدء التجهيز\" لحد ما السواق يبدأ الرحلة بالطلب (التجهيز نفسه + انتظار السواق)")}${stg("🚚","الطريق",tRoad,"من خروج السواق لحد ما يسلّم للفرع")}`:`<span>💤 مفيش طلبات اتعملت ${PER==="1"?"النهارده":"في الفترة دي"} لسه</span>`}</div>
+  <div class="dz-sum">${C.length?`${sum("k1","🧾",C.length,"طلب")}${sum("k2","🏬",brs,"فرع قدّموا طلبات")}${sum("k3","📦",pcs,"قطعة")}${stg("⏰","حتى يبدأ التجهيز",tPrep,"من وصول الطلب إلى المستودع حتى يضغط أحدهم \"بدء التجهيز\"")}${stg("🧰","التجهيز حتى خروج السائق",tWait,"من \"بدء التجهيز\" حتى يبدأ السائق الرحلة بالطلب (التجهيز نفسه + انتظار السائق)")}${stg("🚚","الطريق",tRoad,"من خروج السائق حتى يسلّم للفرع")}`:`<span>💤 لم يتم إنشاء طلبات ${PER==="1"?"اليوم":"في هذه الفترة"} لا يزال</span>`}</div>
   <div class="dz-rings">
-   ${ring("r1","var(--dz-r1)",p1,"اتسلّمت",C.length?`${fmt(dl.length)} من ${fmt(C.length)} طلب`:"مفيش طلبات في الفترة دي")}
-   ${ring("r2","var(--dz-r2)",p2,"أكّدوا الاستلام",dl.length?`${fmt(rc.length)} من ${fmt(dl.length)} اتسلّم`:"لسه مفيش تسليم",pill(p2))}
-   ${ring("r3","var(--dz-r3)",p3,"استلام سليم",rc.length?(rc.length-ok.length?`${fmt(rc.length-ok.length)} بملاحظات نقص/تلف`:"من غير أي ملاحظات"):"لسه مفيش تأكيد",pill(p3))}
-   ${ring("r4","var(--dz-r4)",p4,"وصلت خلال 24 ساعة",tt.length?`متوسط التوصيل ${dur(avg)}`:"لسه مفيش تسليم",pill(p4))}
+   ${ring("r1","var(--dz-r1)",p1,"سُلِّمت",C.length?`${fmt(dl.length)} من ${fmt(C.length)} طلب`:"لا توجد طلبات في هذه الفترة")}
+   ${ring("r2","var(--dz-r2)",p2,"أكّدوا الاستلام",dl.length?`${fmt(rc.length)} من ${fmt(dl.length)} سُلِّم`:"لا يوجد تسليم بعد",pill(p2))}
+   ${ring("r3","var(--dz-r3)",p3,"استلام سليم",rc.length?(rc.length-ok.length?`${fmt(rc.length-ok.length)} بملاحظات نقص/تلف`:"دون أي ملاحظات"):"لا يوجد تأكيد بعد",pill(p3))}
+   ${ring("r4","var(--dz-r4)",p4,"وصلت خلال 24 ساعة",tt.length?`متوسط التوصيل ${dur(avg)}`:"لا يوجد تسليم بعد",pill(p4))}
   </div>
-  <div class="dz-card"><h3>الطلبات دلوقتي <small>دوس على أي مرحلة تشوف طلباتها</small></h3><div class="dz-flow">
-   ${stage("new","🆕","جديد","--dz-new")}${stage("prep","⏳","قيد التجهيز","--dz-prep")}${stage("go","🚚","في الطريق","--dz-go")}${stage("done","📦","وصل ومستني تأكيد","--dz-done")}
+  <div class="dz-card"><h3>الطلبات حالياً <small>اضغط على أي مرحلة لترى طلباتها</small></h3><div class="dz-flow">
+   ${stage("new","🆕","جديد","--dz-new")}${stage("prep","⏳","قيد التجهيز","--dz-prep")}${stage("go","🚚","في الطريق","--dz-go")}${stage("done","📦","وصل وبانتظار التأكيد","--dz-done")}
   </div></div>
   ${trCard(R,now)}
   <div class="dz-row">
-   <div class="dz-card"><h3>يوم بيوم <span class="dz-lg"><span><i style="background:var(--dz-s1)"></i>طلبات جديدة</span><span><i style="background:var(--dz-s2)"></i>اتسلّمت</span></span></h3>
+   <div class="dz-card"><h3>يوماً بيوم <span class="dz-lg"><span><i style="background:var(--dz-s1)"></i>طلبات جديدة</span><span><i style="background:var(--dz-s2)"></i>سُلِّمت</span></span></h3>
     <div class="dz-ch"><div class="dz-ax" aria-hidden="true"><span>${mx}</span><span>${mx/2%1?"":mx/2}</span><span>0</span></div><div class="dz-pl${gEl>=0?" dz-grow":""}">${grid}${bars}</div></div>
-    <details class="dz-tbl"><summary>📋 الأرقام يوم بيوم</summary><table><thead><tr><th>اليوم</th><th>طلبات جديدة</th><th>اتسلّمت</th></tr></thead><tbody>${rows.slice().reverse().map(x=>`<tr><td>${E(wd(x.a))} ${dn(x.a)}</td><td>${x.n}</td><td>${x.d}</td></tr>`).join("")}</tbody></table></details>
+    <details class="dz-tbl"><summary>📋 الأرقام يوماً بيوم</summary><table><thead><tr><th>اليوم</th><th>طلبات جديدة</th><th>سُلِّمت</th></tr></thead><tbody>${rows.slice().reverse().map(x=>`<tr><td>${E(wd(x.a))} ${dn(x.a)}</td><td>${x.n}</td><td>${x.d}</td></tr>`).join("")}</tbody></table></details>
    </div>
-   <div class="dz-card"><h3>أكتر الفروع طلباً <small>بالقطع · ${E(lbl)}</small></h3>${tops(topB,"tb")}
-    <h3 style="margin-top:18px">أكتر الأكواد المطلوبة <small>الطلبات المفتوحة</small></h3>${tops(topC,"tc")}</div>
+   <div class="dz-card"><h3>أكثر الفروع طلباً <small>بالقطع · ${E(lbl)}</small></h3>${tops(topB,"tb")}
+    <h3 style="margin-top:18px">أكثر الأكواد طلباً <small>الطلبات المفتوحة</small></h3>${tops(topC,"tc")}</div>
   </div>
  </section>`;
 }
-// التحويلات بين الفروع: مين مستني إيه دلوقتي + آخر التحويلات المفتوحة. الضغط = فلتر "🔄 تحويلات"
-// (لو لسه مفيش ولا تحويل: سطر بيقول إزاي تعمل واحد، بدل خانات كلها أصفار)
-const trWhere=r=>r.st==="new"||r.st==="prep"?(N(r.rdy)?"✅ جاهز للسواق":r.st==="prep"?"⏳ الفرع بيجهّز":"📭 الفرع لسه مابدأش"):r.st==="go"?(N(r.pk)?"🚚 السواق استلم ورايح":"🚚 في الطريق"):"";
+// التحويلات بين الفروع: مين مستني إيه حالياً + آخر التحويلات المفتوحة. الضغط = فلتر "🔄 تحويلات"
+// (لو لا يزال لا يوجد ولا تحويل: سطر بيقول إزاي تعمل واحد، بدل خانات كلها أصفار)
+const trWhere=r=>r.st==="new"||r.st==="prep"?(N(r.rdy)?"✅ جاهز للسائق":r.st==="prep"?"⏳ الفرع يجهّز":"📭 لم يبدأ الفرع بعد"):r.st==="go"?(N(r.pk)?"🚚 السائق استلم ومتجه":"🚚 في الطريق"):"";
 function trCard(R,now){
-  if(!R.some(r=>r.tr))return `<div class="dz-card" style="margin-top:12px"><h3>🔄 التحويلات بين الفروع</h3><div class="dz-none">لسه مفيش تحويلات. تعمل تحويل من تبويب <b>"ورقة يدوية"</b> ← نوع الورقة: <b>تحويل بين الفروع</b> ← اختار من فرع وإلى فرع ← <b>"🔄 ابعت التحويل للفرعين"</b>. أول ما تبعته هيظهر هنا وتتابعه خطوة بخطوة.</div></div>`;
+  if(!R.some(r=>r.tr))return `<div class="dz-card" style="margin-top:12px"><h3>🔄 التحويلات بين الفروع</h3><div class="dz-none">لا توجد تحويلات بعد. أنشئ تحويلاً من تبويب <b>"ورقة يدوية"</b> ← نوع الورقة: <b>تحويل بين الفروع</b> ← اختر من فرع وإلى فرع ← <b>"🔄 أرسل التحويل للفرعين"</b>. فور إرساله سيظهر هنا وتتابعه خطوة بخطوة.</div></div>`;
   const TA=R.filter(r=>r.tr&&r.st!=="done"&&r.st!=="recv").sort((a,b)=>N(a.ts)-N(b.ts)),nd=R.filter(r=>r.tr&&r.st==="done").length;
   const wait=TA.filter(r=>r.st!=="go"&&!N(r.rdy)).length,rdy=TA.filter(r=>r.st!=="go"&&N(r.rdy)).length,go=TA.filter(r=>r.st==="go").length;
   const cell=(id,n,icon,name,k,sub)=>`<button class="dz-st" data-s="tr" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${n}"><span class="ic">${icon}</span><b><span ${cu(moved(id,n),n)}>${fmt(n)}</span></b><span class="nm">${E(name)}</span><small>${E(sub)}</small></button>`;
-  return `<div class="dz-card" style="margin-top:12px"><h3>🔄 التحويلات بين الفروع <small>دوس على أي خانة تشوف التحويلات</small></h3><div class="dz-flow">
-   ${cell("t1",wait,"📭","الفرع بيجهّز","--dz-new","مستنيين الفرع اللي هيبعت")}${cell("t2",rdy,"✅","جاهز للسواق","--dz-prep","عيّن سواق من السيارات")}${cell("t3",go,"🚚","في الطريق","--dz-go","مع السواق")}${cell("t4",nd,"📦","وصل ومستني تأكيد","--dz-done","الفرع اللي استلم يأكّد")}</div>
-   ${TA.length?`<div class="dz-trl">${TA.slice(0,8).map(r=>`<div><b><bdi dir="ltr">${E(r.tr.frn)}</bdi> ← <bdi dir="ltr">${E(r.brn)}</bdi></b> · ${fmt(N(r.pcs))} قطعة<small>${E(trWhere(r))}${r.asg&&r.asg.drvn?" · 🚚 "+E(r.asg.drvn):""} · من ${dur(now-N(r.ts))} · <bdi dir="ltr">${E(r.no)}</bdi></small></div>`).join("")}${TA.length>8?`<small>و${TA.length-8} كمان…</small>`:""}</div>`:""}</div>`;
+  return `<div class="dz-card" style="margin-top:12px"><h3>🔄 التحويلات بين الفروع <small>اضغط على أي خانة لترى التحويلات</small></h3><div class="dz-flow">
+   ${cell("t1",wait,"📭","الفرع يجهّز","--dz-new","بانتظار الفرع المُرسِل")}${cell("t2",rdy,"✅","جاهز للسائق","--dz-prep","عيّن سائقاً من السيارات")}${cell("t3",go,"🚚","في الطريق","--dz-go","مع السائق")}${cell("t4",nd,"📦","وصل وبانتظار التأكيد","--dz-done","الفرع المستلم يؤكّد")}</div>
+   ${TA.length?`<div class="dz-trl">${TA.slice(0,8).map(r=>`<div><b><bdi dir="ltr">${E(r.tr.frn)}</bdi> ← <bdi dir="ltr">${E(r.brn)}</bdi></b> · ${fmt(N(r.pcs))} قطعة<small>${E(trWhere(r))}${r.asg&&r.asg.drvn?" · 🚚 "+E(r.asg.drvn):""} · منذ ${dur(now-N(r.ts))} · <bdi dir="ltr">${E(r.no)}</bdi></small></div>`).join("")}${TA.length>8?`<small>و${TA.length-8} أيضاً…</small>`:""}</div>`:""}</div>`;
 }
-// الأرقام بتعدّ من صفر لحد قيمتها
+// الأرقام بتعدّ من صفر إلى قيمتها
 function countUp(){
   document.querySelectorAll(".dz [data-cu]").forEach(el=>{
     const to=N(el.dataset.cu),t0=N(el.dataset.t0)||Date.now();el.removeAttribute("data-cu");if(!to)return;
