@@ -13,7 +13,7 @@ var PL={item:"items",piece:"pieces",minute:"minutes",hour:"hours",day:"days",row
 var AGO=/\bago\s+(\d[\d,]*(?:\.\d+)?)\s+([A-Za-z]+)/g;
 var NUMN=/(^|[^\w.\-])(\d[\d,]*(?:\.\d+)?)(\s+(?:(?:new|open|late|more)\s+)?)([A-Za-z]+)(?![A-Za-z'’])/g;
 function post(s){
-  s=s.replace(/،/g,",").replace(/؟/g,"?").replace(/؛/g,";");
+  s=s.replace(/،/g,",").replace(/؟/g,"?").replace(/؛/g,";").replace(/←/g,"→");// الاتجاه من اليسار لليمين: السهم يشير لليمين
   s=s.replace(AGO,"$1 $2 ago");
   s=s.replace(NUMN,function(m,pre,num,mid,noun){
     var pl=PL[noun.toLowerCase()];

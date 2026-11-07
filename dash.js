@@ -193,7 +193,7 @@ function trCard(R,now){
   const cell=(id,n,icon,name,k,sub)=>`<button class="dz-st" data-s="tr" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${n}"><span class="ic">${icon}</span><b><span ${cu(moved(id,n),n)}>${fmt(n)}</span></b><span class="nm">${E(name)}</span><small>${E(sub)}</small></button>`;
   return `<div class="dz-card" style="margin-top:12px"><h3>🔄 التحويلات بين الفروع <small>اضغط على أي خانة لترى التحويلات</small></h3><div class="dz-flow">
    ${cell("t1",wait,"📭","الفرع يجهّز","--dz-new","بانتظار الفرع المُرسِل")}${cell("t2",rdy,"✅","جاهز للسائق","--dz-prep","عيّن سائقاً من السيارات")}${cell("t3",go,"🚚","في الطريق","--dz-go","مع السائق")}${cell("t4",nd,"📦","وصل وبانتظار التأكيد","--dz-done","الفرع المستلم يؤكّد")}</div>
-   ${TA.length?`<div class="dz-trl">${TA.slice(0,8).map(r=>`<div><b><bdi dir="ltr">${E(r.tr.frn)}</bdi> ← <bdi dir="ltr">${E(r.brn)}</bdi></b> · ${fmt(N(r.pcs))} قطعة<small>${E(trWhere(r))}${r.asg&&r.asg.drvn?" · 🚚 "+E(r.asg.drvn):""} · منذ ${dur(now-N(r.ts))} · <bdi dir="ltr">${E(r.no)}</bdi></small></div>`).join("")}${TA.length>8?`<small>و${TA.length-8} أيضاً…</small>`:""}</div>`:""}</div>`;
+   ${TA.length?`<div class="dz-trl">${TA.slice(0,8).map(r=>`<div><b><bdi dir="ltr">${E(r.tr.frn)} → ${E(r.brn)}</bdi></b> · ${fmt(N(r.pcs))} قطعة<small>${E(trWhere(r))}${r.asg&&r.asg.drvn?" · 🚚 "+E(r.asg.drvn):""} · منذ ${dur(now-N(r.ts))} · <bdi dir="ltr">${E(r.no)}</bdi></small></div>`).join("")}${TA.length>8?`<small>و${TA.length-8} أيضاً…</small>`:""}</div>`:""}</div>`;
 }
 // الأرقام بتعدّ من صفر إلى قيمتها
 function countUp(){

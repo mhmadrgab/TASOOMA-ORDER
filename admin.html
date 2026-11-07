@@ -216,7 +216,7 @@ function onReqs(k,sn){
   if(nw.length){const d=nw[0].doc.data();beep();toast(`طلب جديد من ${d.brn}`);notify("🔔 طلب جديد",d.brn,"n"+nw[0].doc.id);document.title="🔔 طلب جديد - تاسومة"}
   if(k==="r")sn.docChanges().filter(c=>c.type==="modified"&&old[c.doc.id]!==c.doc.data().st).forEach(c=>{const d=c.doc.data();if(d.st==="recv"&&d.rcv&&d.rcv.ok===false){beep();toast(`${d.brn} استلم طلب ${d.no} بملاحظات`);notify("⚠ استلام بملاحظات",d.brn+" — "+d.no,"r"+c.doc.id)}else if(d.st==="recv"){toast(`${d.brn} أكّد استلام ${d.no}`)}});
   // تحويل: الفرع اللي بيبعت قال "جاهزة" ← نعيّن سائق
-  if(k==="r")sn.docChanges().filter(c=>c.type==="modified"&&c.doc.data().tr&&NUM(c.doc.data().rdy)&&!oldR[c.doc.id]).forEach(c=>{const d=c.doc.data();beep();toast(`✅ ${d.tr.frn} جهّز التحويل ${d.no}. عيّن سائقاً من "السيارات"`);notify("✅ تحويل جاهز",`${d.tr.frn} ← ${d.brn}`,"y"+c.doc.id)});
+  if(k==="r")sn.docChanges().filter(c=>c.type==="modified"&&c.doc.data().tr&&NUM(c.doc.data().rdy)&&!oldR[c.doc.id]).forEach(c=>{const d=c.doc.data();beep();toast(`✅ ${d.tr.frn} جهّز التحويل ${d.no}. عيّن سائقاً من "السيارات"`);notify("✅ تحويل جاهز",`${d.tr.frn} → ${d.brn}`,"y"+c.doc.id)});
  }
  R.forEach(r=>seenReq.add(r.id));
  if(!ready)return;
@@ -285,7 +285,7 @@ const rcvHtml=r=>{const v=r.rcv;if(r.st!=="recv"||!v||typeof v!=="object")return
  return `<div class="rcb"><b>⚠ سجّل الفرع ملاحظات على الاستلام · ${ago(NUM(v.at))}</b>${ls.map(x=>`<div><bdi dir="ltr">${E(x.k)} ${E(x.c||"")} ${E(x.z||"")}</bdi>: مطلوب ${NUM(x.q)} · استلم ${NUM(x.r)} <b>(${NUM(x.r)-NUM(x.q)})</b></div>`).join("")}${v.note?`<div>${E(v.note)}</div>`:""}</div>`};
 // التحويل بين فرعين: فين وصل عند الفرع اللي بيبعت (هو اللي بيجهّز، مش المستودع)
 const trWhere=r=>r.st==="new"?(NUM(r.rdy)?"✅ جاهز عند الفرع":"📭 لم يبدأ الفرع بعد"):r.st==="prep"?(NUM(r.rdy)?"✅ جاهز للسائق":"⏳ الفرع يجهّز"):r.st==="go"?(NUM(r.pk)?"🚚 السائق استلم ومتجه":"🚚 في الطريق"):"";
-const trHead=r=>`🔄 <bdi dir="ltr">${E(r.tr.frn)}</bdi> ← <bdi dir="ltr">${E(r.brn)}</bdi>`;
+const trHead=r=>`🔄 <bdi dir="ltr">${E(r.tr.frn)} → ${E(r.brn)}</bdi>`;
 function reqView(){
  const cnt=s=>R.filter(r=>s==="all"||r.st===s).length,nTr=R.filter(r=>r.tr&&!isDn(r)).length;
  if(fs==="chat")fs="all";

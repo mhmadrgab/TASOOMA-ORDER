@@ -237,7 +237,7 @@ function alerts(){
  TR.filter(t=>now-N(t.start)<2*864e5).forEach(t=>{const {leg,from}=odoLegs(t);(t.stops||[]).forEach(s=>{const k=leg[s.rid];if(k===undefined)return;const av=op[from[s.rid]+">"+bc(s.brn)];
   // نقارن بباقي المرات (من غير الرحلة قصيرة ده نفسه)، ومحتاجين 3 مرات على الأقل علشان المتوسط يبقى له معنى
   const on=av?av.n-(t.st==="done"?1:0):0,oa=on>0?(av.km*av.n-(t.st==="done"?k:0))/on:0;
-  if(on>=3&&k>Math.max(oa*2,oa+10))A.push({l:"al w",t:`🛣 ${E(t.drvn)}: رحلة قصيرة ${E(lb(from[s.rid]))} ← ${E(lb(bc(s.brn)))} طلع ${fmt(k)} كم بالعداد، والمعتاد ~${fmt(Math.round(oa))} كم — راجع`})})});
+  if(on>=3&&k>Math.max(oa*2,oa+10))A.push({l:"al w",t:`🛣 ${E(t.drvn)}: رحلة قصيرة <bdi dir="ltr">${E(lb(from[s.rid]))} → ${E(lb(bc(s.brn)))}</bdi> طلع ${fmt(k)} كم بالعداد، والمعتاد ~${fmt(Math.round(oa))} كم — راجع`})})});
  return A.slice(-12);
 }
 // ---------- الواجهة ----------
