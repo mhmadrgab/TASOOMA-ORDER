@@ -72,7 +72,7 @@ function openBranch(){
 }
 function paintBranch(){
  const pend=BL.filter(r=>r.st==="pend").length;
- openM(`<h3>🎁 الهدايا والعينات</h3><div class="m" style="color:var(--mut);font-size:14px;margin-bottom:10px">أي هدية أو عينة تخرج من الفرع يجب تسجيلها هنا مع السند، ويعتمدها المستودع.</div>
+ openM(`<h3>🎁 الهدايا والعينات</h3><div class="m" style="color:var(--mut);font-size:14px;margin-bottom:10px">أي هدية أو عينة تخرج من الفرع يجب تسجيلها هنا (ويمكنك إرفاق صورة السند)، ويعتمدها المستودع.</div>
  <button class="b p" data-gf="new" type="button" style="width:100%">➕ تسجيل هدية / عينة جديدة</button>
  <div style="margin-top:14px">${BL.length?`${pend?`<div class="m" style="margin-bottom:6px">⏳ ${pend} بانتظار الاعتماد</div>`:""}${BL.slice(0,40).map(r=>card(r,false)).join("")}`:'<div class="m" style="text-align:center;padding:20px;color:var(--mut)">لا توجد هدايا مسجّلة بعد</div>'}</div>
  <div class="gf-act"><button class="b" data-gf="close" type="button">إغلاق</button></div>`,"list");
@@ -84,7 +84,7 @@ function card(r,wh){
  <div class="m">👤 ${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?` · <bdi dir="ltr">${E(r.to.ph)}</bdi>`:""} · 🏷 ${E(r.why||"")}${r.note?` · ${E(r.note)}`:""}</div>
  <div class="gf-it">${(Array.isArray(r.rows)?r.rows:[]).map(x=>`<span><bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi> × <b>${N(x.q)}</b></span>`).join("")}</div>
  <div class="m">سجّلها: ${E(r.by&&r.by.n||"")} · ${hm(r.ts)} · ${N(r.pcs)} قطعة${st!=="pend"&&ap.n?` · ${st==="ok"?"اعتمدها":"رفضها"}: ${E(ap.n)} ${hm(ap.at)}`:""}${st==="no"&&ap.note?`<br><b style="color:#c4362b">سبب الرفض: ${E(ap.note)}</b>`:""}</div>
- <div class="gf-b">${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">⚠️ بدون سند</span>'}
+ <div class="gf-b">${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">بدون مرفق</span>'}
  ${wh&&canApprove()&&st==="pend"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${isOwner()?`<button class="bt s" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt s" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}</div></div>`;
 }
@@ -134,7 +134,7 @@ function form(r){
  <div class="gf-2"><div><label>السبب *</label><select id="gfw">${WHY.map(w=>`<option ${r&&r.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div>
  <div><label>${wh?"اسمك":"اسمك (من يسجّل) *"}</label><input id="gfby" maxlength="60" value="${E(r&&r.by?r.by.n:wh?(X.me.n||""):lsName)}" ${wh||r?"disabled":""}></div></div>
  <label>ملاحظة</label><textarea id="gfnote" rows="2" maxlength="300" placeholder="اختياري">${E(r&&r.note||"")}</textarea>
- <label>صورة السند ${r?"(اختر صورة جديدة إن أردت استبدالها)":"*"}</label><input type="file" id="gff1" accept="image/*" hidden><label class="gf-up" id="gfup" for="gff1"><span id="gfupt">📎 ${r?"صورة سند جديدة (اختياري)":"اضغط هنا وصوّر السند أو اختر صورته"}</span><img id="gfupi" alt="" hidden></label>
+ <label>صورة السند (اختياري)</label><input type="file" id="gff1" accept="image/*" hidden><label class="gf-up" id="gfup" for="gff1"><span id="gfupt">📎 ${r?"صورة سند جديدة (اختياري)":"اضغط هنا لإضافة صورة السند (اختياري)"}</span><img id="gfupi" alt="" hidden></label>
  <div class="gf-act"><button class="bt p" data-gf="save" type="button">${r?"💾 حفظ التعديل":"✅ تسجيل"}</button><button class="bt" data-gf="${X.mode==="branch"&&!r?"bopen":"close"}" type="button">رجوع</button></div>`,"form");
  g("gff1").onchange=async()=>{const f=g("gff1").files[0],u=g("gfup"),tx=g("gfupt"),pv=g("gfupi");if(!f)return;imgBusy=true;u.className="gf-up";tx.textContent="⏳ جاري تجهيز الصورة...";pv.hidden=true;
   try{img=await shrink(f,1400,230000);u.className="gf-up ok";tx.textContent="✅ السند جاهز (اضغط مجدداً إن أردت تغييره)";pv.src=img;pv.hidden=false}
@@ -150,7 +150,7 @@ async function save(){
  if(rows.length>100){X.toast("الأصناف كثيرة جداً (أكثر من 100)");return}
  if(!to.n){X.toast("اكتب اسم المستلم");return}
  if(!byN){X.toast("اكتب اسمك");return}
- if(!edit&&!img){X.toast("يجب رفع صورة السند");return}
+ 
  const btn=document.querySelector('[data-gf="save"]');if(btn){btn.disabled=true;btn.textContent="⏳ جاري الحفظ..."}
  try{
   const pcs=rows.reduce((s,x)=>s+x.q,0);
@@ -161,9 +161,9 @@ async function save(){
   }
   const wh=X.mode!=="branch",ts=Date.now(),dd=new Date(ts),p=n=>String(n).padStart(2,"0"),br=wh?"WH":X.code;
   const ref=doc(collection(X.db,"gifts")),no=`G-${br}-${p(dd.getMonth()+1)}${p(dd.getDate())}-${p(dd.getHours())}${p(dd.getMinutes())}`;
-  const d={br,brn:wh?"المستودع":String(X.brn||br).slice(0,40),no,ts,dt:today(),rows,pcs,to,why,img:1,by:{e:X.me.e,n:byN},st:wh?"ok":"pend"};
-  if(note)d.note=note;if(wh)d.ap={e:X.me.e,n:byN,at:ts};
-  const b=writeBatch(X.db);b.set(ref,d);b.set(doc(X.db,"giftimg",ref.id),{img});
+  const d={br,brn:wh?"المستودع":String(X.brn||br).slice(0,40),no,ts,dt:today(),rows,pcs,to,why,by:{e:X.me.e,n:byN},st:wh?"ok":"pend"};
+  if(note)d.note=note;if(img)d.img=1;if(wh)d.ap={e:X.me.e,n:byN,at:ts};
+  const b=writeBatch(X.db);b.set(ref,d);if(img)b.set(doc(X.db,"giftimg",ref.id),{img});
   await withTimeout(b.commit(),20000);
   if(!wh)try{localStorage.setItem("gf_by",byN)}catch(e){}
   if(X.ping)X.ping([ref.id]);
