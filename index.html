@@ -607,7 +607,7 @@ function enter(b){
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
  // 🎁 الهدايا والعينات: زرار فوق جنب "تغيير الفرع"، والفرع يسجّل الهدية بالسند والمستودع بيعتمدها
  // 📢 التعميمات من الإدارة (الفرع بيقرا بس). الزرار في شريط الفرع
- initAnn({db,auth,toast,party:code(b),email:"",name:()=>b,canPost:false,mount:btn=>{const tl=document.querySelector("#me .tl");if(tl)tl.prepend(btn);else{const mx=g("mx");if(mx)mx.parentNode.insertBefore(btn,mx)}}});
+ initAnn({db,auth,toast,party:code(b),email:"",name:()=>b,canPost:false,popup:true});// مفيش زرار تعميمات عند الفرع: التعميم بيطلع في وشه لحد ما يقفله
  initGifts({db,toast,mode:"branch",code:code(b),brn:b,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:""},owner:()=>false,ping:ids=>ping(auth,[],[],[],ids)});
  // الدردشة الخاص مع المستودع (زرار عائم 💬 + زرار "تواصل مع المستودع" فوق + زرار على كل طلب): الفرع بيختار يكلّم مين،
  // وكل محادثة خاصة بين الفرع والشخص ده بس

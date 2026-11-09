@@ -1,7 +1,7 @@
 // 📢 التعميمات (نوفمبر 2026، طلب محمد): "جروب" فيه المستودع والمدير وكل الفروع. المالك والمديرين بيبعتوا، والكل بيشوف.
 // ann/{id} = {t: النص, by: إيميل اللي بعت, n: اسمه, ts}. ann/{id}/rd/{الطرف} = {ts, n} قرأها إمتى (الطرف = كود الفرع أو الإيميل)
 // الإشعار لكل الأجهزة من السيرفر (/ann) على دفعات (annPush في fb.js). العلامة الحمرا على الزرار = جديد من آخر مرة فتحت (على الجهاز ده).
-import {collection,doc,addDoc,setDoc,getDoc,getDocs,onSnapshot,query,orderBy,limit,withTimeout,failReason,FAIL_MSG,annPush} from "./fb.js";
+import {collection,doc,addDoc,setDoc,getDoc,getDocs,deleteDoc,onSnapshot,query,orderBy,limit,withTimeout,failReason,FAIL_MSG,annPush} from "./fb.js";
 const g=id=>document.getElementById(id);
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const N=x=>Number.isFinite(+x)?+x:0;
@@ -24,10 +24,16 @@ const CSS=`
 .anni.nw{background:#fff8e6}.anni .hd2{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--mut)}.anni .hd2 b{color:var(--ink);font-size:14.5px}
 .anni .tx{white-space:pre-wrap;word-wrap:break-word;font-size:16px;line-height:1.7;margin-top:6px}
 .anni .rd{margin-top:8px;font-size:12.5px;color:#1d6fb8;font-weight:700;cursor:pointer}
+.rdrow{display:flex;align-items:center;gap:10px;margin-top:8px}.rdrow .rd{margin-top:0}
+.anndel{margin-inline-start:auto;font:inherit;font-size:12.5px;font-weight:800;border:1px solid #e3b4ad;background:transparent;color:#c0392b;border-radius:10px;padding:4px 12px;cursor:pointer}.anndel:hover{background:#c0392b;color:#fff}
+#annp{display:none;position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.6);padding:14px;overflow:auto;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}#annp.on{display:flex;align-items:center;justify-content:center}
+.annpk{width:100%;max-width:560px;margin:0}.annpk.pop{animation:ann-pop .42s cubic-bezier(.2,.9,.3,1.25)}@keyframes ann-pop{from{opacity:0;transform:translateY(24px) scale(.92)}to{opacity:1;transform:none}}
+.annpb{padding:18px 22px 22px;max-height:60vh;overflow:auto}.annpb .tx{white-space:pre-wrap;word-wrap:break-word;font-size:18px;line-height:1.8}
+.annpn{margin-top:14px;font-size:13px;color:var(--mut);font-weight:700}
 .annrd{margin-top:6px;font-size:12.5px;color:var(--mut);line-height:1.9}
 .anne{text-align:center;color:var(--mut);padding:30px 10px;line-height:2}
 @media (prefers-color-scheme:dark){.anni.nw{background:#2b2210}}
-@media print{#annb,#annm{display:none!important}}
+@media print{#annb,#annm,#annp{display:none!important}}
 `;
 const me=()=>X&&X.party;
 const seen=()=>{try{return N(localStorage.getItem(LS))}catch(e){return 0}};
@@ -46,12 +52,48 @@ export function initAnn(ctx){
   // آخر 30 تعميم (قراءة خفيفة)
   UN=onSnapshot(query(collection(X.db,"ann"),orderBy("ts","desc"),limit(30)),sn=>{
     const old=A.length?N(A[0].ts):0;A=sn.docs.map(d=>({id:d.id,...d.data()}));paintBtn();
+    if(X.popup){checkPop();return}
     const nw=A[0];if(old&&nw&&N(nw.ts)>old&&nw.by!==X.email&&X.toast)X.toast(`📢 تعميم جديد من ${nw.n||"الإدارة"}`);
     if(g("annm")&&g("annm").classList.contains("on")){paint();markRead()}
   },()=>{});
-  if(new URLSearchParams(location.search).get("ann"))setTimeout(open,900);
+  if(!X.popup&&new URLSearchParams(location.search).get("ann"))setTimeout(open,900);
 }
-export function stopAnn(){if(UN){UN();UN=null}if(RDU){RDU();RDU=null}A=[];CNT={};const b=g("annb");if(b)b.remove();const m=g("annm");if(m)m.remove();X=null}
+export function stopAnn(){if(UN){UN();UN=null}if(RDU){RDU();RDU=null}A=[];CNT={};Q=[];CHK={};const b=g("annb");if(b)b.remove();const m=g("annm");if(m)m.remove();const p=g("annp");if(p)p.remove();X=null}
+
+// 🔔 وضع الفرع (طلب محمد): مفيش زرار تعميمات عند الفرع. أي تعميم جديد بيطلع في وش الفرع (أول ما يفتح، أو فوراً لو فاتح)
+// ومش بيختفي غير لما الفرع يقفله من ✕. القفل بيتسجل في ann/{id}/rd/{كود الفرع} (عشان ميطلعش تاني على أي جهاز) + نسخة على الجهاز.
+const DAYS=14;let Q=[],CHK={};
+const dkey=()=>"ann_dis_"+me();
+const dis=()=>{try{return JSON.parse(localStorage.getItem(dkey())||"[]")}catch(e){return []}};
+const addDis=id=>{try{const l=dis().filter(x=>A.some(a=>a.id===x));if(!l.includes(id))l.push(id);localStorage.setItem(dkey(),JSON.stringify(l.slice(-60)))}catch(e){}};
+async function checkPop(){
+  if(!X||!X.popup)return;const p=me();if(!p)return;const from=Date.now()-DAYS*864e5,d=dis();
+  const live=new Set(A.map(a=>a.id));Q=Q.filter(a=>live.has(a.id));// تعميم اتمسح: يختفي من الطابور
+  for(const a of A){
+    if(N(a.ts)<from||d.includes(a.id)||CHK[a.id])continue;CHK[a.id]=1;
+    try{const s=await getDoc(doc(X.db,"ann",a.id,"rd",p));if(s.exists()){addDis(a.id);continue}}catch(e){}
+    if(!Q.some(q=>q.id===a.id))Q.push(a);
+  }
+  Q.sort((a,b)=>N(a.ts)-N(b.ts));showPop();
+}
+function showPop(){
+  let m=g("annp");const a=Q[0];
+  if(!a){if(m)m.className="";return}
+  if(!m){m=document.createElement("div");m.id="annp";document.body.appendChild(m)}
+  const fresh=m.dataset.id!==a.id;m.dataset.id=a.id;m.className="on";
+  m.innerHTML=`<div class="annk annpk${fresh?" pop":""}"><div class="annh"><span style="font-size:30px">📢</span><div><b>تعميم من الإدارة</b><small>${E(a.n||"الإدارة")} · ${when(a.ts)}</small></div><button type="button" data-annpx aria-label="إغلاق">✕</button></div>
+  <div class="annpb"><div class="tx" data-notr>${E(a.t)}</div>${Q.length>1?`<div class="annpn">يوجد ${Q.length-1} تعميم آخر بعد هذا</div>`:""}</div></div>`;
+}
+async function dismissPop(){
+  const a=Q.shift();if(!a||!X)return showPop();addDis(a.id);showPop();
+  try{await setDoc(doc(X.db,"ann",a.id,"rd",me()),{ts:Date.now(),n:String(X.name()||me()).slice(0,60)})}catch(e){}
+}
+async function delAnn(id){
+  if(!X||!X.canPost)return;
+  if(!confirm("حذف هذا التعميم نهائياً؟ سيختفي من عند الجميع."))return;
+  try{await withTimeout(deleteDoc(doc(X.db,"ann",id)),20000);X.toast("🗑 حُذف التعميم")}
+  catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
+}
 
 function box(){let m=g("annm");if(!m){m=document.createElement("div");m.id="annm";m.addEventListener("click",e=>{if(e.target===m)close()});document.body.appendChild(m)}return m}
 function close(){const m=g("annm");if(m)m.className="";markSeen()}
@@ -61,7 +103,7 @@ function paint(){
   m.innerHTML=`<div class="annk"><div class="annh"><span style="font-size:30px">📢</span><div><b>التعميمات</b><small>رسائل الإدارة والمستودع لكل الفروع</small></div><button type="button" data-annx aria-label="إغلاق">✕</button></div>
   ${X.canPost?`<div class="annc"><textarea id="annt" maxlength="2000" placeholder="اكتب تعميماً يصل إلى كل الفروع والمستودع..."></textarea><div class="row"><small>سيصل إشعار فوري لكل الفروع والمستودع</small><button type="button" data-anns>📢 إرسال للجميع</button></div></div>`:""}
   <div class="annl">${A.length?A.map(a=>`<div class="anni${N(a.ts)>s&&a.by!==X.email?" nw":""}"><div class="hd2"><b>${E(a.n||"الإدارة")}</b><span>· ${when(a.ts)}</span></div><div class="tx" data-notr>${E(a.t)}</div>
-   ${X.canPost?`<div class="rd" data-annr="${E(a.id)}">👁 ${CNT[a.id]!=null?`قرأه ${CNT[a.id].n}`:"من قرأه؟"}</div>${CNT[a.id]&&CNT[a.id].open?`<div class="annrd">${CNT[a.id].names.map(E).join(" · ")||"لا أحد بعد"}</div>`:""}`:""}</div>`).join(""):`<div class="anne">📭<br>لا توجد تعميمات بعد</div>`}</div></div>`;
+   ${X.canPost?`<div class="rdrow"><span class="rd" data-annr="${E(a.id)}">👁 ${CNT[a.id]!=null?`قرأه ${CNT[a.id].n}`:"من قرأه؟"}</span><button type="button" class="anndel" data-anndel="${E(a.id)}">🗑 حذف</button></div>${CNT[a.id]&&CNT[a.id].open?`<div class="annrd">${CNT[a.id].names.map(E).join(" · ")||"لا أحد بعد"}</div>`:""}`:""}</div>`).join(""):`<div class="anne">📭<br>لا توجد تعميمات بعد</div>`}</div></div>`;
   const t=g("annt");if(t&&keep)t.value=keep;
 }
 // "قرأتها": كل طرف بيسجّل مرة واحدة على آخر التعميمات اللي ظهرتله
@@ -89,5 +131,7 @@ document.addEventListener("click",e=>{
   if(t.closest("[data-annopen]"))return void open();
   if(t.closest("[data-annx]"))return void close();
   if(t.closest("[data-anns]"))return void post();
+  if(t.closest("[data-annpx]"))return void dismissPop();
+  const dl=t.closest("[data-anndel]");if(dl)return void delAnn(dl.dataset.anndel);
   const r=t.closest("[data-annr]");if(r)return void readers(r.dataset.annr);
 });

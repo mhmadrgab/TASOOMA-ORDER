@@ -121,8 +121,9 @@ service cloud.firestore {
       // الطلب اللي الفرع أكّد استلامه (recv) حالته ماتتغيّرش تاني (علشان محدش "يعيد فتحه" وبعدين يمسحه)
       allow update: if (resource.data.get('st', '') != 'recv' || request.resource.data.get('st', '') == 'recv') && (
         (isAdmin() && (isOwner() || request.resource.data.get('pod', null) == resource.data.get('pod', null)))
-        || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat','edn','prep'])
-            && (!('prep' in request.resource.data) || validPrep()))
+        || (perm('req') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','upd','rows','codes','pcs','gn','edited','eat','edn','prep','pdn'])
+            && (!('prep' in request.resource.data) || validPrep())
+            && (!('pdn' in request.resource.data) || request.resource.data.pdn is number))
         || (perm('fl') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asg','st','upd']))
         || (drvOn() && resource.data.asg.drv == myDrv()
             && resource.data.st in ['prep','go']
@@ -143,8 +144,8 @@ service cloud.firestore {
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','rcv'])
               && validRcv())
         )));
-      // الطلب اللي الفرع أكّد استلامه (recv) مايتمسحش خالص، ولا حتى من المالك (سجل نهائي)
-      allow delete: if isAdmin() && resource.data.st != 'recv';
+      // الطلب اللي الفرع أكّد استلامه (recv): المالك بس يقدر يمسحه (طلب محمد، نوفمبر 2026). المديرين لأ
+      allow delete: if isOwner() || (isAdmin() && resource.data.st != 'recv');
     }
 
     // صورة التسليم وتوقيع المستلم: pods/{رقم الطلب} = {img?, sig?, at, drv}. لوحدها علشان الطلبات تفضل خفيفة
@@ -164,18 +165,18 @@ service cloud.firestore {
     }
 
     // 🎁 الهدايا والعينات (gifts.js): الفرع بيسجّل (مستنية اعتماد)، والمستودع/المديرين بيعتمدوا أو يرفضوا،
-    // والمحاسب (perm gift) والمتابع بيشوفوا بس. هدايا المستودع نفسه بتتسجّل معتمدة. التعديل والحذف لمالك النظام بس.
+    // والمحاسب (perm gift) والمتابع بيشوفوا بس. هدايا المستودع نفسه بتستنى الاعتماد زي الفروع. التعديل والحذف لمالك النظام بس.
     match /gifts/{id} {
       function giftOk(d) {
         return d.keys().hasOnly(['br','brn','no','ts','dt','rows','pcs','to','why','note','img','by','st','ap'])
-          && d.keys().hasAll(['br','brn','no','ts','dt','rows','pcs','to','why','img','by','st'])
+          && d.keys().hasAll(['br','brn','no','ts','dt','rows','pcs','to','why','by','st'])
           && d.rows is list && d.rows.size() > 0 && d.rows.size() <= 100
           && d.pcs is number && d.pcs > 0 && d.pcs <= 100000
           && d.to is map && d.to.keys().hasOnly(['n','ph']) && d.to.n is string && d.to.n.size() > 0 && d.to.n.size() <= 60
           && (!('ph' in d.to) || (d.to.ph is string && d.to.ph.size() <= 20))
           && d.why is string && d.why.size() <= 40
           && (!('note' in d) || (d.note is string && d.note.size() <= 300))
-          && d.img == 1 && d.ts is number && d.dt is string && d.dt.size() <= 12
+          && (!('img' in d) || d.img == 1) && d.ts is number && d.dt is string && d.dt.size() <= 12
           && d.no is string && d.no.size() <= 40 && d.brn is string && d.brn.size() <= 40
           && d.by is map && d.by.keys().hasOnly(['e','n']) && d.by.e == request.auth.token.email.lower()
           && d.by.n is string && d.by.n.size() > 0 && d.by.n.size() <= 60;
@@ -185,21 +186,47 @@ service cloud.firestore {
           && a.at is number && a.n is string && a.n.size() <= 60
           && (!('note' in a) || (a.note is string && a.note.size() <= 300));
       }
-      function approver() { return isAdmin() || perm('req'); }
-      allow read: if approver() || perm('gift') || isViewer() || (branchOn() && resource.data.br == myCode());
+      // الاعتماد (نوفمبر 2026، طلب محمد): مدير التسويق (gm) واللي المالك اداله "اعتماد الهدايا" (ga) بس.
+      // المستودع (المديرين وصلاحية الطلبات) بيسجّل هدايا المستودع، وبتروح بانتظار الاعتماد زي الفروع
+      function approver() { return perm('gm') || perm('ga'); }
+      function recorder() { return isAdmin() || perm('req'); }
+      // المحاسب (gift) بيشوف المعتمد بس (ok = مستني تسوية، set = اتسوّى)، مش اللي لسه بانتظار الاعتماد أو المرفوض
+      allow read: if approver() || recorder() || isViewer() || (branchOn() && resource.data.br == myCode())
+                  || (perm('gift') && resource.data.st in ['ok','set']);
       allow create: if (branchOn() && giftOk(request.resource.data) && request.resource.data.br == myCode()
                         && request.resource.data.st == 'pend' && !('ap' in request.resource.data))
-                    || (approver() && giftOk(request.resource.data) && request.resource.data.br == 'WH'
-                        && request.resource.data.st == 'ok' && apOk(request.resource.data.ap));
+                    || (recorder() && giftOk(request.resource.data) && request.resource.data.br == 'WH'
+                        && request.resource.data.st == 'pend' && !('ap' in request.resource.data));
       allow update: if isOwner()
         || (approver() && resource.data.st == 'pend' && request.resource.data.st in ['ok','no']
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','ap'])
-            && apOk(request.resource.data.ap));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','ap','rt'])
+            && (!('rt' in request.resource.data) || request.resource.data.rt is bool)
+            && apOk(request.resource.data.ap))
+        // رجوع العينة (rt = true): اللي طلّعها يسجّل اللي رجع (الفرع لهداياه، والمستودع لهدايا المستودع)، مرة واحدة وقبل التسوية
+        || (resource.data.st == 'ok' && resource.data.get('rt', false) == true && !('rb' in resource.data)
+            && ((branchOn() && resource.data.br == myCode()) || (recorder() && resource.data.br == 'WH'))
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rb'])
+            && request.resource.data.rb is map && request.resource.data.rb.keys().hasOnly(['e','n','at','q','lines','note'])
+            && request.resource.data.rb.e == request.auth.token.email.lower() && request.resource.data.rb.at is number
+            && request.resource.data.rb.n is string && request.resource.data.rb.n.size() > 0 && request.resource.data.rb.n.size() <= 60
+            && request.resource.data.rb.q is number && request.resource.data.rb.q > 0 && request.resource.data.rb.q <= resource.data.pcs
+            && request.resource.data.rb.lines is list && request.resource.data.rb.lines.size() <= 100
+            && (!('note' in request.resource.data.rb) || (request.resource.data.rb.note is string && request.resource.data.rb.note.size() <= 200)))
+        // التسوية: المحاسب (أو المدير) كتب رقم/مرجع السند في السيستم بعد ما خصم الهدية من مخزون الفرع
+        || ((perm('gift') || isAdmin()) && resource.data.st == 'ok' && request.resource.data.st == 'set'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','sa','sm'])
+            && request.resource.data.sm is string && request.resource.data.sm.size() == 7
+            && request.resource.data.sa is map && request.resource.data.sa.keys().hasOnly(['e','n','at','ref','net'])
+            && (!('net' in request.resource.data.sa) || request.resource.data.sa.net is number)
+            && request.resource.data.sa.e == request.auth.token.email.lower() && request.resource.data.sa.at is number
+            && request.resource.data.sa.n is string && request.resource.data.sa.n.size() <= 60
+            && request.resource.data.sa.ref is string && request.resource.data.sa.ref.size() > 0 && request.resource.data.sa.ref.size() <= 60);
       allow delete: if isOwner();
     }
     // صورة سند الهدية لوحدها (giftimg/{نفس رقم الهدية}) بتتكتب مع الهدية في نفس المرة
     match /giftimg/{id} {
-      allow read: if isAdmin() || perm('req') || perm('gift') || isViewer()
+      allow read: if isAdmin() || perm('req') || perm('gm') || perm('ga') || isViewer()
+        || (perm('gift') && get(/databases/$(database)/documents/gifts/$(id)).data.st in ['ok','set'])
         || (branchOn() && get(/databases/$(database)/documents/gifts/$(id)).data.br == myCode());
       allow create: if request.resource.data.keys().hasOnly(['img']) && request.resource.data.img is string
         && request.resource.data.img.size() <= 300000
@@ -373,6 +400,17 @@ service cloud.firestore {
 
     // الشات الخاص: dm/{code}__{email} = محادثة بين فرع واحد وشخص واحد من المستودع.
     // محدش غيرهم يقدر يقرا أو يكتب فيها، حتى المالك والمديرين (كل واحد ليه محادثاته هو بس).
+    // 📷 رسالة صورة (الشات الخاص والجروبات): المصغّرة جوه الرسالة، والأصلية في img/{نفس الرقم}
+    function imgOk(d) {
+      return d.keys().hasAll(['img','w','h','th']) && !('v' in d) && d.img == 1
+        && d.w is number && d.h is number && d.th is string && d.th.size() <= 120000
+        && d.th.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+')
+        && (!('t' in d) || (d.t is string && d.t.size() <= 1000));
+    }
+    function fullImgOk() {
+      return request.resource.data.keys().hasOnly(['i']) && request.resource.data.i is string
+        && request.resource.data.i.size() <= 1000000 && request.resource.data.i.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+');
+    }
     match /dm/{cid} {
       function me() { return request.auth.token.email.lower(); }
       function chatWh() { return isAdmin() || perm('req'); }
@@ -466,11 +504,12 @@ service cloud.firestore {
       match /msgs/{mid} {
         function msgOk(by) {
           let d = request.resource.data;
-          return d.keys().hasOnly(['by','n','t','v','d','ts','rq']) && d.keys().hasAll(['by','n','ts'])
+          return d.keys().hasOnly(['by','n','t','v','d','ts','rq','img','w','h','th']) && d.keys().hasAll(['by','n','ts'])
             && d.by == by && d.n is string && d.n.size() <= 60 && d.ts is number
             && (!('rq' in d) || (d.rq is map && d.rq.keys().hasOnly(['id','no']) && d.rq.id is string && d.rq.id.size() <= 40 && d.rq.no is string && d.rq.no.size() <= 40))
-            && ((d.keys().hasAll(['t']) && !('v' in d) && d.t is string && d.t.size() > 0 && d.t.size() <= 1000)
-             || (d.keys().hasAll(['v','d']) && !('t' in d) && d.v == true && d.d is number && d.d > 0 && d.d <= 120));
+            && ((d.keys().hasAll(['t']) && !('v' in d) && !('img' in d) && d.t is string && d.t.size() > 0 && d.t.size() <= 1000)
+             || (d.keys().hasAll(['v','d']) && !('t' in d) && !('img' in d) && d.v == true && d.d is number && d.d > 0 && d.d <= 120)
+             || imgOk(d));
         }
         function readBy(by) {
           return resource.data.by != by && !('rd' in resource.data)
@@ -480,6 +519,11 @@ service cloud.firestore {
         allow read:   if whIn() || brIn() || nIn();
         allow create: if (brIn() && msgOk('br')) || (whIn() && msgOk('wh')) || (nIn() && msgOk(myP()));
         allow update: if (brIn() && readBy('br')) || (whIn() && readBy('wh')) || (nIn() && readBy(myP()));
+        allow delete: if isOwner();
+      }
+      match /img/{mid} {
+        allow read:   if whIn() || brIn() || nIn();
+        allow create: if (whIn() || brIn() || nIn()) && fullImgOk();
         allow delete: if isOwner();
       }
       // الصوت نفسه (data URL صوت بس، أقصى حوالي 500 كيلو)
@@ -493,13 +537,68 @@ service cloud.firestore {
       }
     }
 
+    // 👥 الجروبات (bchat.js): المالك والمديرين بيعملوا الجروب ويختاروا الأعضاء (فروع/مستودع/سواقين).
+    // grp/{gid} = {name, ms:[الأعضاء], ad:[مديرين الجروب], by, ts, last, u:{مفتاح:عدّاد}, r:{مفتاح:قرا لحد إمتى}, nm:{مفتاح:اسم}}
+    // المفتاح = الطرف من غير رموز. الأعضاء بس يقروا ويكتبوا، ومحدش برّه الجروب يشوف حاجة (ولا المالك لو مش عضو)
+    match /grp/{gid} {
+      function gMe()  { return request.auth.token.email.lower(); }
+      function gP()   { return isBranch() ? 'b-' + myCode() : (isDriver() ? 'd-' + myDrv() : 'w-' + gMe()); }
+      function gOn()  { return isBranch() ? branchOn() : (isDriver() ? drvOn() : (isOwner() || (isStaff() && !isViewer()))); }
+      function gK()   { return gP().replace('[^A-Za-z0-9]', '_'); }
+      function lastG(l) {
+        return l is map && l.keys().hasOnly(['by','n','t','ts','v']) && l.by == gP()
+          && l.n is string && l.n.size() <= 60 && l.t is string && l.t.size() <= 200 && l.ts is number && l.v is bool;
+      }
+      function shapeOk(d) {
+        return d.keys().hasOnly(['name','ms','ad','by','ts','last','u','r','nm'])
+          && d.name is string && d.name.size() > 0 && d.name.size() <= 60
+          && d.ms is list && d.ms.size() >= 2 && d.ms.size() <= 80 && d.ad is list && d.ad.size() >= 1 && d.ad.size() <= 10
+          && d.u is map && d.r is map && d.nm is map;
+      }
+      allow read:   if gOn() && gP() in resource.data.ms;
+      allow create: if isAdmin() && shapeOk(request.resource.data) && request.resource.data.by == gP()
+                    && gP() in request.resource.data.ms && gP() in request.resource.data.ad && lastG(request.resource.data.last);
+      // مدير الجروب (أو المالك): الاسم والأعضاء. أي عضو: آخر رسالة والعدّادات وقريت لحد إمتى واسمه
+      allow update: if gOn() && gP() in resource.data.ms && shapeOk(request.resource.data) && (
+          ((isOwner() || (isAdmin() && gP() in resource.data.ad))
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','ms','ad','last','u','r','nm']))
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last','u','r','nm'])
+            && (!('last' in request.resource.data.diff(resource.data).affectedKeys()) || lastG(request.resource.data.last))
+            && request.resource.data.nm.diff(resource.data.nm).affectedKeys().hasOnly([gK()])
+            && request.resource.data.r.diff(resource.data.r).affectedKeys().hasOnly([gK()])));
+      allow delete: if isOwner() || (isAdmin() && gP() in resource.data.ad);
+      function gMem() { return gOn() && gP() in get(/databases/$(database)/documents/grp/$(gid)).data.ms; }
+      match /msgs/{mid} {
+        allow read:   if gMem();
+        allow create: if gMem() && request.resource.data.keys().hasOnly(['by','n','t','v','d','ts','rq','img','w','h','th'])
+          && request.resource.data.by == gP() && request.resource.data.n is string && request.resource.data.n.size() <= 60 && request.resource.data.ts is number
+          && !('rq' in request.resource.data)
+          && ((request.resource.data.keys().hasAll(['t']) && !('v' in request.resource.data) && !('img' in request.resource.data) && request.resource.data.t is string && request.resource.data.t.size() > 0 && request.resource.data.t.size() <= 1000)
+            || (request.resource.data.keys().hasAll(['v','d']) && !('t' in request.resource.data) && !('img' in request.resource.data) && request.resource.data.v == true && request.resource.data.d is number && request.resource.data.d > 0 && request.resource.data.d <= 120)
+            || imgOk(request.resource.data));
+        allow delete: if isOwner();
+      }
+      match /aud/{mid} {
+        allow read:   if gMem();
+        allow create: if gMem() && request.resource.data.keys().hasOnly(['a']) && request.resource.data.a is string
+          && request.resource.data.a.size() <= 700000 && request.resource.data.a.matches('data:audio/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+');
+        allow delete: if isOwner();
+      }
+      match /img/{mid} {
+        allow read:   if gMem();
+        allow create: if gMem() && fullImgOk();
+        allow delete: if isOwner();
+      }
+    }
+
     // أجهزة إشعارات الموبايل: كل جهاز بيسجّل نفسه باسم صاحبه بس (السيرفر بيقرا بصلاحياته الخاصة)
     // push/{role__token}: نفس الموبايل ممكن يتسجّل بأكتر من دور (مستودع + فرع على نفس الجهاز)
     match /push/{pid} {
       function okPush() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['role','key','email','ts','tok','dv'])
+        return d.keys().hasOnly(['role','key','email','ts','tok','dv','lg'])
           && (!('dv' in d) || d.dv in ['m','pc'])
+          && (!('lg' in d) || d.lg == 'en')
           && d.email == request.auth.token.email && d.ts is number && d.key is string && d.key.size() <= 120
           && d.tok is string && d.tok.size() <= 400 && pid == d.role + '__' + d.tok
           && ((d.role == 'branch' && isBranch() && d.key == myCode())
@@ -514,6 +613,35 @@ service cloud.firestore {
 
     // آخر نسخة احتياطية إمتى (meta/backup = {at, n})، ومسح الشات القديم اتعمل إمتى (meta/chatv2)،
     // واسم المالك وكنيته (meta/me = {n, k}): لمالك النظام بس
+    // 📢 التعميمات (ann.js): المالك والمديرين بيبعتوا، والكل بيقرا (المستودع والفروع). rd = مين قرا (كل طرف بيكتب نفسه بس)
+    match /ann/{id} {
+      allow read: if isAdmin() || isStaff() || branchOn();
+      allow create: if isAdmin() && request.resource.data.keys().hasOnly(['t','by','n','ts'])
+        && request.resource.data.t is string && request.resource.data.t.size() > 0 && request.resource.data.t.size() <= 2000
+        && request.resource.data.by == request.auth.token.email.lower()
+        && request.resource.data.n is string && request.resource.data.n.size() <= 60 && request.resource.data.ts is number;
+      allow delete: if isOwner() || isAdmin();// المالك والمديرين يمسحوا التعميم
+      match /rd/{p} {
+        allow read: if isAdmin() || isStaff() || branchOn();
+        allow create: if request.resource.data.keys().hasOnly(['ts','n']) && request.resource.data.ts is number
+          && request.resource.data.n is string && request.resource.data.n.size() <= 60
+          && ((branchOn() && p == myCode()) || ((isAdmin() || isStaff()) && p == request.auth.token.email.lower()));
+      }
+    }
+    // 🛒 النواقص: "اتعمل طلب شراء" للكود ده (short.js). المستودع (مدير/طلبات) بيكتب، والكل في المستودع بيقرا
+    match /buy/{key} {
+      allow read: if isAdmin() || perm('req') || isViewer();
+      allow write: if (isAdmin() || perm('req')) && request.resource.data.keys().hasOnly(['k','c','z','at','by','n'])
+        && request.resource.data.at is number && request.resource.data.by == request.auth.token.email.lower()
+        && request.resource.data.k is string && request.resource.data.k.size() <= 40
+        && request.resource.data.n is string && request.resource.data.n.size() <= 60;
+    }
+    // 📊 التقرير الأسبوعي: مين يوصله (المالك بس بيحدد)
+    match /cfg/{id} {
+      allow read: if isAdmin() || isViewer();
+      allow write: if isOwner() && id == 'weekly' && request.resource.data.keys().hasOnly(['to'])
+        && request.resource.data.to is list && request.resource.data.to.size() <= 20;
+    }
     match /meta/{id} {
       allow read:  if isOwner();
       allow write: if isOwner() && (
