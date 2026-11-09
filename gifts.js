@@ -23,7 +23,7 @@ const canRet=r=>waitRet(r)&&!!X&&(X.mode==="branch"?r.br===X.code:(r.br==="WH"&&
 function retHtml(r){
  if(!isAp(r))return "";
  if(r.rt===true&&!r.rb)return `<div class="gf-ret w">↩️ العينة يجب أن ترجع ${r.br==="WH"?"إلى المستودع":"إلى الفرع"} · لم ترجع بعد</div>`;
- if(r.rb)return `<div class="gf-ret ok">↩️ رجع ${N(r.rb.q)} من ${N(r.pcs)} قطعة · ${hm(r.rb.at)}${r.rb.n?" · سجّلها: "+E(r.rb.n):""} · <b>الصافي ${net(r)} قطعة</b>${r.rb.note?"<br>"+E(r.rb.note):""}</div>`;
+ if(r.rb)return `<div class="gf-ret ok">↩️ رجع ${N(r.rb.q)} من ${N(r.pcs)} قطعة · ${hm(r.rb.at)}${r.rb.n?" · سجّلها: <bdi>"+E(r.rb.n)+"</bdi>":""} · <b>الصافي ${net(r)} قطعة</b>${r.rb.note?"<br>"+E(r.rb.note):""}</div>`;
  if(r.rt===false&&isSample(r))return `<div class="gf-ret no">العينة لا ترجع</div>`;
  return "";
 }
@@ -47,6 +47,27 @@ const CSS=`
 .gf-card h4{margin:0 0 4px;font-size:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}.gf-card .m{color:var(--mut);font-size:13.5px}
 .gf-st{border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700;background:#f6edd2;color:#6b5314}.gf-st.set{background:#dde9f7;color:#1c4f86}.gf-card.set{border-inline-start-color:#2a78d6}
 .gf-set{margin-top:8px;background:#eef4fb;color:#1c4f86;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8}.gf-set small{color:#4a6a90}
+/* ورقة الهدية (زي ورقة تحميل النواقص) */
+.gfk:has(.gs){padding:0;overflow:hidden}.gs{margin:0;background:var(--card)}
+.gs-hd{display:flex;align-items:center;gap:14px;background:#1b1b1b;border-bottom:3px solid #d4ae5c;padding:18px 22px;color:#fff}
+.gs-hd img{width:52px;height:52px;border-radius:12px;flex:none}.gs-hd b{display:block;font-size:20px}.gs-hd small{color:#cdb67a;font-size:13px;direction:ltr;display:block;text-align:right}
+.gs-hd .gf-st{margin-inline-start:auto}
+.gs-bd{padding:18px 22px 0}
+.gs-rt{display:flex;align-items:stretch;gap:10px;margin-bottom:16px}.gs-rt>div{flex:1;min-width:0;border-radius:14px;padding:10px 14px;background:var(--field,#f3f1ed);border:1.5px solid var(--line)}
+.gs-rt>div.to{background:#1b1b1b;color:#fff;border-color:#1b1b1b}.gs-rt small{display:block;font-size:12px;opacity:.7}.gs-rt b{display:block;font-size:17px;line-height:1.4;word-break:break-word}
+.gs-rt .ar{flex:none;align-self:center;background:none;border:0;padding:0;color:#d4ae5c;font-size:26px;font-weight:800}
+.gs-mt{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}.gs-mt div{background:var(--soft,#f6f2e9);border-radius:12px;padding:8px 12px}.gs-mt small{display:block;color:var(--mut);font-size:12px}.gs-mt b{font-size:15px}
+.gs-tb{width:100%;border-collapse:collapse;font-size:15px}.gs-tb th{font-size:12.5px;color:var(--mut);font-weight:700;padding:8px 6px;border-bottom:2px solid #d4ae5c;text-align:center}
+.gs-tb td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:center}.gs-tb td.k{font-weight:800;font-size:17px;direction:ltr;text-align:right}.gs-tb td.q{font-weight:800;font-size:19px}.gs-tb tr:nth-child(even) td{background:rgba(212,174,92,.06)}
+.gs-tb tfoot td{font-weight:800;border-bottom:0;padding-top:12px}.gs-tb .rq{color:#1d5a24}
+.gs-nt{margin-top:12px;padding:10px 14px;border-radius:12px;background:#fff8e6;border-inline-start:4px solid #d4ae5c;font-size:14.5px}
+.gs-tl{display:flex;gap:6px;margin:16px 0 4px;flex-wrap:wrap}.gs-tl div{flex:1;min-width:110px;border-radius:12px;padding:8px 10px;background:var(--soft,#f6f2e9);font-size:12.5px;color:var(--mut);border-top:4px solid var(--line)}
+.gs-tl div.on{color:var(--ink);border-top-color:#d4ae5c}.gs-tl div.no{border-top-color:#c4362b}.gs-tl b{display:block;font-size:14px}
+.gs-ac{display:flex;gap:8px;flex-wrap:wrap;padding:14px 22px 18px;border-top:1px solid var(--line);background:var(--soft,#f6f2e9);margin:12px -22px 0}
+.gs-ac .bt{flex:1;min-width:120px}
+.gf-card h4{cursor:pointer}
+@media (max-width:560px){.gs-mt{grid-template-columns:1fr 1fr}.gs-bd{padding:14px 14px 0}.gs-ac{margin:12px -14px 0;padding:12px 14px 16px}.gs-ac .bt{min-width:calc(50% - 4px)}.gs-hd{padding:14px}.gs-rt b{font-size:15px}.gs-tb{font-size:14px}.gs-tb td.k{font-size:15px}}
+@media (prefers-color-scheme:dark){.gs-nt{background:#2b2210}.gs-rt>div.to{background:#000}}
 .gf-ret{margin-top:8px;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8;background:#f3efe6;color:#5b4512}.gf-ret.w{background:#fff1d6;color:#8a5a00;font-weight:700}.gf-ret.ok{background:#e7f4ec;color:#1d5a24}.gf-ret.no{background:#f1f1f1;color:#666}
 .gf-rt{display:grid;gap:10px;margin-top:14px}.gf-rt button{font:inherit;font-weight:800;font-size:16px;border-radius:14px;padding:14px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-align:start}.gf-rt button small{display:block;font-weight:400;color:var(--mut);font-size:13px;margin-top:2px}.gf-rt button.y{border-color:#d4ae5c;background:#fff8e6}
 .gf-rr{display:grid;grid-template-columns:1fr 90px 100px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}.gf-rr input{text-align:center;padding:9px 6px}
@@ -131,14 +152,14 @@ function paintBranch(){
 // ---------- الكارت ----------
 function card(r,wh,setUi){// setUi = خانة مرجع السند (في قسم "بانتظار التسوية" بس، علشان ماتتكررش)
  const st=r.st||"pend",ap=r.ap||{};
- return `<div class="gf-card ${st}"><h4>${wh?`<bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi>`:""}<span class="gf-st ${st}">${STL[st]||st}</span><small class="m"><bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.dt||"")}</small></h4>
+ return `<div class="gf-card ${st}"><h4 data-gf="view" data-id="${E(r.id)}" title="فتح الهدية">${wh?`<bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi>`:""}<span class="gf-st ${st}">${STL[st]||st}</span><small class="m"><bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.dt||"")}</small></h4>
  <div class="m">👤 ${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?` · <bdi dir="ltr">${E(r.to.ph)}</bdi>`:""} · 🏷 ${E(r.why||"")}${r.note?` · ${E(r.note)}`:""}</div>
  <div class="gf-it">${(Array.isArray(r.rows)?r.rows:[]).map(x=>`<span><bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi> × <b>${N(x.q)}</b></span>`).join("")}</div>
- <div class="m">سجّلها: ${E(r.by&&r.by.n||"")} · ${hm(r.ts)} · ${N(r.pcs)} قطعة${st!=="pend"&&ap.n?` · ${st==="no"?"رفضها":"اعتمدها"}: ${E(ap.n)} ${hm(ap.at)}`:""}${st==="no"&&ap.note?`<br><b style="color:#c4362b">سبب الرفض: ${E(ap.note)}</b>`:""}</div>
+ <div class="m">سجّلها: <bdi>${E(r.by&&r.by.n||"")}</bdi> · ${hm(r.ts)} · ${N(r.pcs)} قطعة${st!=="pend"&&ap.n?` · ${st==="no"?"رفضها":"اعتمدها"}: ${E(ap.n)} ${hm(ap.at)}`:""}${st==="no"&&ap.note?`<br><b style="color:#c4362b">سبب الرفض: ${E(ap.note)}</b>`:""}</div>
  ${retHtml(r)}
  ${st==="set"&&r.sa?`<div class="gf-set">🧾 تمت التسوية${wh?` بواسطة ${E(r.sa.n||"")}`:""} · ${hm(r.sa.at)} · مرجع السند: <b dir="ltr">${E(r.sa.ref||"")}</b>${r.sa.net!=null&&N(r.sa.net)!==N(r.pcs)?` · الصافي المسوّى ${N(r.sa.net)} قطعة`:""}${wh?"":`<br><small>خصم المحاسب هذه الهدية من مخزون الفرع في النظام</small>`}</div>`:""}
  ${wh&&setUi&&canSettle()&&st==="ok"?`${waitRet(r)?'<div class="gf-ret w" style="margin-top:10px">⏳ انتظر رجوع العينة قبل التسوية، فالصافي قد يتغيّر</div>':""}${r.rb?`<div class="gf-ret ok" style="margin-top:10px">🧮 سوِّ الصافي فقط: <b>${net(r)} قطعة</b> (طلع ${N(r.pcs)} − رجع ${retQ(r)})</div>`:""}<div class="gf-ref"><input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="رقم / مرجع السند في النظام"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تمت التسوية</button></div>`:""}
- <div class="gf-b">${canRet(r)?`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">بدون مرفق</span>'}
+ <div class="gf-b"><button class="bt s p" data-gf="view" data-id="${E(r.id)}" type="button">📄 فتح الهدية</button>${canRet(r)?`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">بدون مرفق</span>'}
  ${wh&&canApprove()&&st==="pend"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${isOwner()?`<button class="bt s" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt s" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}</div></div>`;
 }
@@ -190,14 +211,14 @@ function closeM(){const m=g("gfm");if(m){m.className="gfm";m.innerHTML="";m.data
 const rowHtml=(x={})=>`<div class="gf-row"><input data-r="k" placeholder="الكود" dir="ltr" maxlength="40" value="${E(x.k||"")}"><input data-r="c" placeholder="اللون" maxlength="40" value="${E(x.c||"")}"><input data-r="z" placeholder="المقاس" maxlength="20" value="${E(x.z||"")}"><input data-r="q" placeholder="العدد" inputmode="numeric" value="${x.q?E(x.q):""}"><button type="button" data-gf="rmrow" title="احذف السطر">✕</button></div>`;
 function form(r){
  edit=r||null;img="";imgBusy=false;
- const wh=X.mode!=="branch",lsName=(()=>{try{return localStorage.getItem("gf_by")||""}catch(e){return ""}})();
+ const wh=X.mode!=="branch",autoName=wh?String(X.me.n||X.me.e||""):String(X.brn||X.code||"");
  openM(`<h3>${r?"✏️ تعديل":"🎁 تسجيل"} هدية / عينة</h3><div style="color:var(--mut);font-size:13.5px">${r?`<bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.brn||brName(r.br))}`:wh?"من المستودع — ستُرسل إلى مدير التسويق ليعتمدها":"من "+E(X.brn)+" — ستُرسل إلى مدير التسويق ليعتمدها"}</div>
  <label>الأصناف</label><div class="gf-rows" id="gfrows">${(r&&Array.isArray(r.rows)&&r.rows.length?r.rows:[{}]).map(rowHtml).join("")}</div>
  <button class="bt s" data-gf="addrow" type="button" style="margin-top:6px;width:auto">➕ صنف</button>
  <div class="gf-2"><div><label>اسم المستلم *</label><input id="gfn" maxlength="60" value="${E(r&&r.to&&r.to.n||"")}" placeholder="مثلاً: أ. محمد علي"></div>
  <div><label>جوال المستلم</label><input id="gfp" maxlength="20" inputmode="tel" dir="ltr" value="${E(r&&r.to&&r.to.ph||"")}" placeholder="05xxxxxxxx"></div></div>
  <div class="gf-2"><div><label>السبب *</label><select id="gfw">${WHY.map(w=>`<option ${r&&r.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div>
- <div><label>${wh?"اسمك":"اسمك (من يسجّل) *"}</label><input id="gfby" maxlength="60" value="${E(r&&r.by?r.by.n:wh?(X.me.n||""):lsName)}" ${wh||r?"disabled":""}></div></div>
+ <div><label>المسجِّل (تلقائي)</label><input id="gfby" dir="auto" maxlength="60" value="${E(r&&r.by?r.by.n:autoName)}" disabled title="يُكتب تلقائياً باسم الحساب الداخل"></div></div>
  <label>ملاحظة</label><textarea id="gfnote" rows="2" maxlength="300" placeholder="اختياري">${E(r&&r.note||"")}</textarea>
  <label>صورة السند (اختياري)</label><input type="file" id="gff1" accept="image/*" hidden><label class="gf-up" id="gfup" for="gff1"><span id="gfupt">📎 ${r?"صورة سند جديدة (اختياري)":"اضغط هنا لإضافة صورة السند (اختياري)"}</span><img id="gfupi" alt="" hidden></label>
  <div class="gf-act"><button class="bt p" data-gf="save" type="button">${r?"💾 حفظ التعديل":"✅ تسجيل"}</button><button class="bt" data-gf="${X.mode==="branch"&&!r?"bopen":"close"}" type="button">رجوع</button></div>`,"form");
@@ -230,7 +251,6 @@ async function save(){
   if(note)d.note=note;if(img)d.img=1;
   const b=writeBatch(X.db);b.set(ref,d);if(img)b.set(doc(X.db,"giftimg",ref.id),{img});
   await withTimeout(b.commit(),20000);
-  if(!wh)try{localStorage.setItem("gf_by",byN)}catch(e){}
   if(X.ping)X.ping([ref.id]);
   X.toast("سُجّلت ✅ وبانتظار اعتماد مدير التسويق");
   if(X.mode==="branch")openBranch();else closeM();
@@ -254,6 +274,39 @@ async function decide(id,ok,rt){
  try{await withTimeout(updateDoc(doc(X.db,"gifts",id),u),15000);closeM();if(X.ping)X.ping([id]);X.toast(ok?(u.rt?"اعتُمدت ✅ — العينة سترجع، وأُبلغ الفرع":"اعتُمدت ✅"):"رُفضت")}
  catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح (ربما اعتمدها شخص آخر)":FAIL_MSG[w])}
 }
+// ---------- ورقة الهدية: كل التفاصيل بشكل مرتب (زي ورقة تحميل النواقص) + الأزرار ----------
+function sheetHtml(r,print){
+ const st=r.st||"pend",ap=r.ap||{},rows=Array.isArray(r.rows)?r.rows:[],rl=r.rb&&Array.isArray(r.rb.lines)?r.rb.lines:null;
+ const step=(on,cls,t,s)=>`<div class="${on?cls||"on":""}"><b>${t}</b>${s||""}</div>`;
+ return `<div class="gs-rt"><div><small>من</small><b><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi></b></div><div class="ar">←</div><div class="to"><small>إلى (المستلم)</small><b>${E(r.to&&r.to.n||"")}</b>${r.to&&r.to.ph?`<small><bdi dir="ltr">${E(r.to.ph)}</bdi></small>`:""}</div></div>
+ <div class="gs-mt"><div><small>السبب</small><b>🏷 ${E(r.why||"")}</b></div><div><small>التاريخ</small><b><bdi dir="ltr">${E(r.dt||"")}</bdi> · ${new Date(N(r.ts)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</b></div><div><small>سجّلها</small><b><bdi>${E(r.by&&r.by.n||"")}</bdi></b></div><div><small>السند</small><b>${r.img?"📎 مرفق":"بدون مرفق"}</b></div></div>
+ <table class="gs-tb"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>العدد</th>${rl?"<th>رجع</th>":""}</tr></thead><tbody>
+ ${rows.map((x,i)=>`<tr><td>${i+1}</td><td class="k">${E(x.k||"")}</td><td><bdi dir="ltr">${E(x.c||"—")}</bdi></td><td><bdi dir="ltr">${E(x.z||"—")}</bdi></td><td class="q">${N(x.q)}</td>${rl?`<td class="q rq">${N(rl[i])}</td>`:""}</tr>`).join("")}</tbody>
+ <tfoot><tr><td colspan="4" style="text-align:start">الإجمالي: ${rows.length} صنف</td><td class="q">${N(r.pcs)}</td>${rl?`<td class="q rq">${retQ(r)}</td>`:""}</tr>${r.rb?`<tr><td colspan="${rl?6:5}" style="text-align:start;color:#1d5a24">الصافي بعد الرجوع: ${net(r)} قطعة</td></tr>`:""}</tfoot></table>
+ ${r.note?`<div class="gs-nt">📝 ${E(r.note)}</div>`:""}
+ ${st==="no"&&ap.note?`<div class="gs-nt" style="background:#fbe3e0;border-color:#c4362b">❌ سبب الرفض: ${E(ap.note)}</div>`:""}
+ ${print?"":`<div class="gs-tl">${step(true,"on","1. التسجيل",`<bdi>${E(r.by&&r.by.n||"")}</bdi><br>${hm(r.ts)}`)}${step(st!=="pend",st==="no"?"no":"on",st==="no"?"2. مرفوضة":"2. الاعتماد",ap.n?`${E(ap.n)}<br>${hm(ap.at)}`:"بانتظار مدير التسويق")}${r.rt===true?step(!!r.rb,"on","↩️ رجوع العينة",r.rb?`${N(r.rb.q)} قطعة<br>${hm(r.rb.at)}`:"لم ترجع بعد"):""}${step(st==="set","on","3. التسوية",r.sa?`مرجع <bdi dir="ltr">${E(r.sa.ref||"")}</bdi><br>${hm(r.sa.at)}`:"بانتظار المحاسب")}</div>`}`;
+}
+function viewGift(id){
+ const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r)return;
+ const st=r.st||"pend",wh=X.mode!=="branch";
+ openM(`<div class="gs"><div class="gs-hd"><img src="./icon-192.png" alt=""><div><b>${isSample(r)?"سند عينة":"سند هدية"}</b><small>${E(r.no)}</small></div><span class="gf-st ${st}">${STL[st]||st}</span></div>
+ <div class="gs-bd">${sheetHtml(r)}
+ <div class="gs-ac">${wh&&canApprove()&&st==="pend"?`<button class="bt g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
+ ${canRet(r)?`<button class="bt g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}
+ ${r.img?`<button class="bt" data-gf="img" data-id="${E(r.id)}" type="button">📎 صورة السند</button>`:""}
+ <button class="bt" data-gf="gprint" data-id="${E(r.id)}" type="button">🖨 طباعة</button>
+ <button class="bt" data-gf="${wh?"close":"bopen"}" type="button">رجوع</button></div></div></div>`,"view");
+}
+function printGift(id){
+ const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r)return;
+ printStmt(`<div class="st"><div class="ph"><h2>${isSample(r)?"سند عينة":"سند هدية"}</h2><div>${E(r.no)} · ${E((STL[r.st]||"").replace(/^\S+\s/,""))}</div></div>
+ <style>.gs-rt{display:flex;gap:8px;margin:4mm 0}.gs-rt>div{flex:1;border:1px solid #999;border-radius:6px;padding:2mm 3mm}.gs-rt .ar{flex:none;border:0;align-self:center;font-size:16pt}.gs-rt small{display:block;font-size:8pt;color:#555}.gs-rt b{font-size:12pt}
+ .gs-mt{display:grid;grid-template-columns:repeat(4,1fr);gap:2mm;margin-bottom:4mm}.gs-mt div{border:1px solid #ccc;border-radius:4px;padding:1.5mm 2mm}.gs-mt small{display:block;font-size:8pt;color:#555}
+ .gs-tb{width:100%;border-collapse:collapse}.gs-tb th,.gs-tb td{border:1px solid #999;padding:2mm;text-align:center}.gs-tb td.k{font-weight:700}.gs-nt{margin-top:3mm;border:1px solid #ccc;padding:2mm}</style>
+ ${sheetHtml(r,true)}
+ <div class="sg"><span>سجّلها: <bdi>${E(r.by&&r.by.n||"")}</bdi></span><span>اعتمدها: ${E(r.ap&&r.ap.n||"")}</span><span>المستلم</span></div></div>`);
+}
 // ---------- رجوع العينة (اللي طلّعها: الفرع أو المستودع) ----------
 function retForm(id){
  const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r||!canRet(r))return;
@@ -262,18 +315,17 @@ function retForm(id){
  <div style="margin-top:12px"><div class="gf-rr" style="font-size:13px;color:var(--mut);font-weight:700"><span>الصنف</span><span style="text-align:center">خرج</span><span style="text-align:center">رجع</span></div>
  ${rows.map((x,i)=>`<div class="gf-rr"><bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi><b style="text-align:center">${N(x.q)}</b><input data-rq="${i}" data-max="${N(x.q)}" inputmode="numeric" value="${N(x.q)}"></div>`).join("")}</div>
  <label>ملاحظة</label><textarea id="gfrn" rows="2" maxlength="200" placeholder="اختياري (مثلاً: رجعت بحالة جيدة)"></textarea>
- ${X.mode==="branch"?`<label>اسمك *</label><input id="gfrby" maxlength="60" value="${E((()=>{try{return localStorage.getItem("gf_by")||""}catch(e){return ""}})())}">`:""}
  <div class="gf-act"><button class="bt p" data-gf="retsave" data-id="${E(id)}" type="button">✅ تسجيل الرجوع</button><button class="bt" data-gf="${X.mode==="branch"?"bopen":"close"}" type="button">رجوع</button></div>`,"ret");
 }
 async function retSave(id){
  const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r||!canRet(r))return;
  const lines=[...document.querySelectorAll("[data-rq]")].map(el=>Math.max(0,Math.min(N(el.dataset.max),Math.round(N(toEn(el.value))))));
  const q=lines.reduce((a,b)=>a+b,0);if(!q){X.toast("اكتب عدد ما رجع (قطعة واحدة على الأقل)");return}
- const by=X.mode==="branch"?String((g("gfrby")||{}).value||"").trim().slice(0,60):String(X.me.n||X.me.e).slice(0,60);if(!by){X.toast("اكتب اسمك");return}
+ const by=String(X.mode==="branch"?(X.brn||X.code):(X.me.n||X.me.e)).slice(0,60);
  const note=String((g("gfrn")||{}).value||"").trim().slice(0,200);
  if(!confirm(`تسجيل رجوع ${q} من ${N(r.pcs)} قطعة؟ الصافي للتسوية سيكون ${N(r.pcs)-q} قطعة.`))return;
  const rb={e:X.me.e,n:by,at:Date.now(),q,lines};if(note)rb.note=note;
- try{await withTimeout(updateDoc(doc(X.db,"gifts",id),{rb}),15000);if(X.mode==="branch")try{localStorage.setItem("gf_by",by)}catch(e){}
+ try{await withTimeout(updateDoc(doc(X.db,"gifts",id),{rb}),15000);
   if(X.ping)X.ping([id]);X.toast("↩️ سُجّل رجوع العينة، وأُبلغ المحاسب");if(X.mode==="branch")openBranch();else{closeM();if(X.redraw)X.redraw()}}
  catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
 }
@@ -305,7 +357,7 @@ function printReport(){
  <div class="rt"><div><small>الفرع</small><b><bdi dir="ltr">${E(who)}</bdi></b></div><div><small>الفترة</small><b style="font-size:11pt">${E(F.from||"—")} ← ${E(F.to||today())}</b></div><div><small>الحالة</small><b style="font-size:11pt">${E(stl)}</b></div></div>
  ${Object.keys(per).length?`<table class="stt" style="margin-bottom:5mm"><thead><tr><th>الفرع</th><th>عدد المعتمد</th><th>قطع (صافي)</th></tr></thead><tbody>${Object.entries(per).map(([k,v])=>`<tr><td>${E(brName(k))}</td><td class="n">${v.n}</td><td class="n">${fmt(v.p)}</td></tr>`).join("")}</tbody></table>`:""}
  <table class="stt"><thead><tr><th>#</th><th>التاريخ</th><th>الفرع</th><th>الرقم</th><th>المستلم</th><th>السبب</th><th>الأصناف</th><th>قطع</th><th>رجع / الصافي</th><th>الحالة</th><th>سجّلها / اعتمدها</th><th>مرجع السند</th></tr></thead><tbody>
- ${rs.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.dt||"")}</td><td>${E(r.brn||brName(r.br))}</td><td>${E(r.no)}</td><td>${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?"<br>"+E(r.to.ph):""}</td><td>${E(r.why||"")}${r.note?"<br>"+E(r.note):""}</td><td>${E(itemsTxt(r))}</td><td class="n">${N(r.pcs)}</td><td class="n">${r.rb?retQ(r)+" / "+net(r):r.rt===true?"لم ترجع":"—"}</td><td>${E((STL[r.st]||"").replace(/^\S+\s/,""))}${r.st==="no"&&r.ap&&r.ap.note?"<br>"+E(r.ap.note):""}</td><td>${E(r.by&&r.by.n||"")}${r.ap&&r.ap.n?"<br>"+E(r.ap.n):""}</td><td>${r.sa?E(r.sa.ref||"")+"<br>"+E(r.sa.n||""):""}</td></tr>`).join("")||'<tr><td colspan="12" style="text-align:center">لا توجد هدايا</td></tr>'}</tbody></table>
+ ${rs.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.dt||"")}</td><td>${E(r.brn||brName(r.br))}</td><td>${E(r.no)}</td><td>${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?"<br>"+E(r.to.ph):""}</td><td>${E(r.why||"")}${r.note?"<br>"+E(r.note):""}</td><td>${E(itemsTxt(r))}</td><td class="n">${N(r.pcs)}</td><td class="n">${r.rb?retQ(r)+" / "+net(r):r.rt===true?"لم ترجع":"—"}</td><td>${E((STL[r.st]||"").replace(/^\S+\s/,""))}${r.st==="no"&&r.ap&&r.ap.note?"<br>"+E(r.ap.note):""}</td><td><bdi>${E(r.by&&r.by.n||"")}</bdi>${r.ap&&r.ap.n?"<br>"+E(r.ap.n):""}</td><td>${r.sa?E(r.sa.ref||"")+"<br>"+E(r.sa.n||""):""}</td></tr>`).join("")||'<tr><td colspan="12" style="text-align:center">لا توجد هدايا</td></tr>'}</tbody></table>
  <div class="tt"><span>العدد ${rs.length}</span><span>المعتمد ${ok.length}</span><span><b>قطع معتمدة (صافي) ${fmt(ok.reduce((s,r)=>s+net(r),0))}</b></span></div>
  <div class="sg"><span>المحاسب</span><span>مدير المستودع</span><span>المدير</span></div></div>`);
 }
@@ -329,6 +381,8 @@ async function click(e){
  if(a==="ok"||a==="no")return void decide(id,a==="ok");
  if(a==="okrt"||a==="oknort")return void decide(id,true,a==="okrt");
  if(a==="ret")return void retForm(id);
+ if(a==="view")return void viewGift(id);
+ if(a==="gprint")return void printGift(id);
  if(a==="retsave")return void retSave(id);
  if(a==="set")return void settle(id);
  if(a==="print")return void printReport();
