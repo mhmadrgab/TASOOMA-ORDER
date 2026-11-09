@@ -12,6 +12,21 @@ const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf
 const WHY=["هدية لعميل","تعويض عميل","عينة","تسويق / مؤثر","مناسبة / حدث","أخرى"];
 const STL={pend:"⏳ بانتظار الاعتماد",ok:"✅ معتمدة",set:"🧾 تمت التسوية",no:"❌ مرفوضة"};
 const isAp=r=>r.st==="ok"||r.st==="set";// المعتمدة (اتسوّت أو لسه)
+// العينات اللي بترجع (نوفمبر 2026): مدير التسويق وهو بيعتمد عينة بيحدد هترجع ولا لأ (rt).
+// اللي طلّعها يسجّل رجوعها: الفرع لهداياه، والمستودع لهدايا المستودع ← rb = {e,n,at,q:اللي رجع, lines:[لكل صنف], note?}
+// الصافي = اللي طلع − اللي رجع، والمحاسب بيسوّي الصافي بس (sa.net).
+const isSample=r=>r&&r.why==="عينة";
+const retQ=r=>r&&r.rb?N(r.rb.q):0;
+const net=r=>Math.max(0,N(r.pcs)-retQ(r));
+const waitRet=r=>!!r&&r.st==="ok"&&r.rt===true&&!r.rb;// لسه مارجعتش
+const canRet=r=>waitRet(r)&&!!X&&(X.mode==="branch"?r.br===X.code:(r.br==="WH"&&!X.noNew&&!X.view));
+function retHtml(r){
+ if(!isAp(r))return "";
+ if(r.rt===true&&!r.rb)return `<div class="gf-ret w">↩️ العينة يجب أن ترجع ${r.br==="WH"?"إلى المستودع":"إلى الفرع"} · لم ترجع بعد</div>`;
+ if(r.rb)return `<div class="gf-ret ok">↩️ رجع ${N(r.rb.q)} من ${N(r.pcs)} قطعة · ${hm(r.rb.at)}${r.rb.n?" · سجّلها: "+E(r.rb.n):""} · <b>الصافي ${net(r)} قطعة</b>${r.rb.note?"<br>"+E(r.rb.note):""}</div>`;
+ if(r.rt===false&&isSample(r))return `<div class="gf-ret no">العينة لا ترجع</div>`;
+ return "";
+}
 const ymOf=t=>new Date(N(t)).toLocaleDateString("en-CA").slice(0,7);
 const D=864e5,LIVE=90;// آخر 90 يوم بيتسمعوا لايف في المستودع، والأقدم بيتحمّل وقت التقرير
 let X=null,L=new Map(),LS=new Map(),PEND=new Map(),OLD=new Map(),MON=new Set(),un=[],bun=null,BL=[],img="",imgBusy=false,edit=null;
@@ -32,6 +47,10 @@ const CSS=`
 .gf-card h4{margin:0 0 4px;font-size:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}.gf-card .m{color:var(--mut);font-size:13.5px}
 .gf-st{border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700;background:#f6edd2;color:#6b5314}.gf-st.set{background:#dde9f7;color:#1c4f86}.gf-card.set{border-inline-start-color:#2a78d6}
 .gf-set{margin-top:8px;background:#eef4fb;color:#1c4f86;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8}.gf-set small{color:#4a6a90}
+.gf-ret{margin-top:8px;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8;background:#f3efe6;color:#5b4512}.gf-ret.w{background:#fff1d6;color:#8a5a00;font-weight:700}.gf-ret.ok{background:#e7f4ec;color:#1d5a24}.gf-ret.no{background:#f1f1f1;color:#666}
+.gf-rt{display:grid;gap:10px;margin-top:14px}.gf-rt button{font:inherit;font-weight:800;font-size:16px;border-radius:14px;padding:14px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-align:start}.gf-rt button small{display:block;font-weight:400;color:var(--mut);font-size:13px;margin-top:2px}.gf-rt button.y{border-color:#d4ae5c;background:#fff8e6}
+.gf-rr{display:grid;grid-template-columns:1fr 90px 100px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}.gf-rr input{text-align:center;padding:9px 6px}
+@media (prefers-color-scheme:dark){.gf-ret{background:#2a261d;color:#e8cf8a}.gf-ret.w{background:#3a2a08;color:#f6c770}.gf-ret.ok{background:#173a1b;color:#8fd39a}.gf-ret.no{background:#262626;color:#aaa}.gf-rt button.y{background:#3a3115}}
 .gf-ref{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}.gf-ref input{flex:1;min-width:180px}
 .gf-acc{background:#eef4fb;border:1px solid #9fc0e6;border-radius:16px;padding:12px 14px;margin-bottom:14px}
 @media (prefers-color-scheme:dark){.gf-st.set,.gf-set,.gf-acc{background:#14243a;color:#9cc4f0;border-color:#2a4a70}}.gf-st.ok{background:#d8efd9;color:#1d5a24}.gf-st.no{background:#f8d9d5;color:#8a2218}
@@ -97,8 +116,8 @@ function addBranchButton(){
  if(!bun)bun=onSnapshot(query(collection(X.db,"gifts"),where("br","==",X.code)),sn=>{BL=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>N(b.ts)-N(a.ts));paintBtn();if(g("gfm")&&g("gfm").dataset.v==="list")paintBranch()},e=>{});
 }
 function paintBtn(){
- const b=g("gfbtn");if(!b)return;const p=BL.filter(r=>r.st==="pend").length,no=BL.filter(r=>r.st==="no"&&N(r.ap&&r.ap.at)>Date.now()-7*D).length;
- b.innerHTML=`<span class="ic">🎁</span><span class="tx"><b>الهدايا والعينات</b><small>سجّل أي هدية أو عينة خرجت من الفرع لعميل</small>${p||no?`<span class="bd">${p?`<span>⏳ ${p} بانتظار الاعتماد</span>`:""}${no?`<span>❌ ${no} مرفوضة</span>`:""}</span>`:""}</span><span class="ar">➜</span>`;
+ const b=g("gfbtn");if(!b)return;const rw=BL.filter(waitRet).length,p=BL.filter(r=>r.st==="pend").length,no=BL.filter(r=>r.st==="no"&&N(r.ap&&r.ap.at)>Date.now()-7*D).length;
+ b.innerHTML=`<span class="ic">🎁</span><span class="tx"><b>الهدايا والعينات</b><small>سجّل أي هدية أو عينة خرجت من الفرع لعميل</small>${p||no||rw?`<span class="bd">${p?`<span>⏳ ${p} بانتظار الاعتماد</span>`:""}${no?`<span>❌ ${no} مرفوضة</span>`:""}${rw?`<span>↩️ ${rw} عينة لم ترجع</span>`:""}</span>`:""}</span><span class="ar">➜</span>`;
 }
 function openBranch(){paintBranch()}
 function paintBranch(){
@@ -115,10 +134,11 @@ function card(r,wh,setUi){// setUi = خانة مرجع السند (في قسم "
  return `<div class="gf-card ${st}"><h4>${wh?`<bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi>`:""}<span class="gf-st ${st}">${STL[st]||st}</span><small class="m"><bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.dt||"")}</small></h4>
  <div class="m">👤 ${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?` · <bdi dir="ltr">${E(r.to.ph)}</bdi>`:""} · 🏷 ${E(r.why||"")}${r.note?` · ${E(r.note)}`:""}</div>
  <div class="gf-it">${(Array.isArray(r.rows)?r.rows:[]).map(x=>`<span><bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi> × <b>${N(x.q)}</b></span>`).join("")}</div>
- <div class="m">سجّلها: ${E(r.by&&r.by.n||"")} · ${hm(r.ts)} · ${N(r.pcs)} قطعة${st!=="pend"&&ap.n?` · ${st==="ok"?"اعتمدها":"رفضها"}: ${E(ap.n)} ${hm(ap.at)}`:""}${st==="no"&&ap.note?`<br><b style="color:#c4362b">سبب الرفض: ${E(ap.note)}</b>`:""}</div>
- ${st==="set"&&r.sa?`<div class="gf-set">🧾 تمت التسوية${wh?` بواسطة ${E(r.sa.n||"")}`:""} · ${hm(r.sa.at)} · مرجع السند: <b dir="ltr">${E(r.sa.ref||"")}</b>${wh?"":`<br><small>خصم المحاسب هذه الهدية من مخزون الفرع في النظام</small>`}</div>`:""}
- ${wh&&setUi&&canSettle()&&st==="ok"?`<div class="gf-ref"><input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="رقم / مرجع السند في النظام"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تمت التسوية</button></div>`:""}
- <div class="gf-b">${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">بدون مرفق</span>'}
+ <div class="m">سجّلها: ${E(r.by&&r.by.n||"")} · ${hm(r.ts)} · ${N(r.pcs)} قطعة${st!=="pend"&&ap.n?` · ${st==="no"?"رفضها":"اعتمدها"}: ${E(ap.n)} ${hm(ap.at)}`:""}${st==="no"&&ap.note?`<br><b style="color:#c4362b">سبب الرفض: ${E(ap.note)}</b>`:""}</div>
+ ${retHtml(r)}
+ ${st==="set"&&r.sa?`<div class="gf-set">🧾 تمت التسوية${wh?` بواسطة ${E(r.sa.n||"")}`:""} · ${hm(r.sa.at)} · مرجع السند: <b dir="ltr">${E(r.sa.ref||"")}</b>${r.sa.net!=null&&N(r.sa.net)!==N(r.pcs)?` · الصافي المسوّى ${N(r.sa.net)} قطعة`:""}${wh?"":`<br><small>خصم المحاسب هذه الهدية من مخزون الفرع في النظام</small>`}</div>`:""}
+ ${wh&&setUi&&canSettle()&&st==="ok"?`${waitRet(r)?'<div class="gf-ret w" style="margin-top:10px">⏳ انتظر رجوع العينة قبل التسوية، فالصافي قد يتغيّر</div>':""}${r.rb?`<div class="gf-ret ok" style="margin-top:10px">🧮 سوِّ الصافي فقط: <b>${net(r)} قطعة</b> (طلع ${N(r.pcs)} − رجع ${retQ(r)})</div>`:""}<div class="gf-ref"><input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="رقم / مرجع السند في النظام"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تمت التسوية</button></div>`:""}
+ <div class="gf-b">${canRet(r)?`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">بدون مرفق</span>'}
  ${wh&&canApprove()&&st==="pend"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${isOwner()?`<button class="bt s" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt s" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}</div></div>`;
 }
@@ -132,17 +152,19 @@ export function giftsView(){
  if(!F.from){F.from=new Date(Date.now()-30*D).toLocaleDateString("en-CA");F.to=today()}
  const rs=filtered(),pend=canApprove()?[...PEND.values()].sort((a,b)=>N(a.ts)-N(b.ts)):[];
  const toSet=canSettle()?all().filter(r=>r.st==="ok").sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)):[];
- const ok=rs.filter(isAp),pcs=ok.reduce((s,r)=>s+N(r.pcs),0);
- const per={};ok.forEach(r=>{const k=r.br;(per[k]=per[k]||{n:0,p:0}).n++;per[k].p+=N(r.pcs)});
+ const ok=rs.filter(isAp),pcs=ok.reduce((s,r)=>s+net(r),0);
+ const per={};ok.forEach(r=>{const k=r.br;(per[k]=per[k]||{n:0,p:0}).n++;per[k].p+=net(r)});
+ const rets=all().filter(canRet).sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)),nWait=all().filter(waitRet).length;
  const brs=[...new Set(all().map(r=>r.br))].sort();
  return `<div class="fl" style="margin:0 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><h2 style="margin:0">🎁 الهدايا والعينات</h2>${!X.noNew&&!X.view?`<button class="bt g" data-gf="new" type="button" style="margin-inline-start:auto">➕ هدية / عينة من المستودع</button>`:""}</div>
  ${pend.length?`<div class="gf-pend"><h3 style="margin:0 0 8px">⏳ بانتظار اعتمادك (${pend.length})</h3>${pend.map(r=>card(r,true)).join("")}</div>`:""}
+ ${rets.length?`<div class="gf-pend" style="background:#fff8ec"><h3 style="margin:0 0 4px">↩️ عينات المستودع بانتظار الرجوع (${rets.length})</h3><p class="off" style="font-size:13px;margin:0 0 10px">لما العينة ترجع للمستودع اضغط "رجعت العينة" واكتب العدد، ويُحسب الصافي للمحاسب.</p>${rets.map(r=>card(r,true)).join("")}</div>`:""}
  ${toSet.length?`<div class="gf-acc"><h3 style="margin:0 0 4px">🧾 معتمدة بانتظار التسوية (${toSet.length})</h3><p class="off" style="font-size:13px;margin:0 0 10px">بعد خصم الهدية من مخزون الفرع في النظام، اكتب رقم أو مرجع السند واضغط "تمت التسوية"، فيصل الفرع إشعار بذلك.</p>${toSet.map(r=>card(r,true,true)).join("")}</div>`:""}
  <div class="gf-f"><div><small>من</small><input type="date" id="gff" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gft" value="${E(F.to)}"></div>
  <div><small>الفرع</small><select id="gfb"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
  <div><small>الحالة</small><select id="gfs"><option value="">الكل</option>${Object.entries(STL).filter(([k])=>!accOnly()||k==="ok"||k==="set").map(([k,v])=>`<option value="${k}" ${F.st===k?"selected":""}>${v}</option>`).join("")}</select></div>
  <button class="bt" data-gf="print" type="button">🖨 تقرير PDF</button><button class="bt" data-gf="csv" type="button">⬇️ إكسل</button></div>
- <div class="gf-sum"><span>🎁 <b>${rs.length}</b> في الفترة</span><span>✅ <b>${ok.length}</b> معتمدة · <b>${fmt(pcs)}</b> قطعة</span>${accOnly()?"":`<span>⏳ <b>${rs.filter(r=>r.st==="pend").length}</b> بانتظار</span>`}<span>🧾 <b>${rs.filter(r=>r.st==="set").length}</b> تمت تسويتها</span>${accOnly()?"":`<span>❌ <b>${rs.filter(r=>r.st==="no").length}</b> مرفوضة</span>`}</div>
+ <div class="gf-sum"><span>🎁 <b>${rs.length}</b> في الفترة</span><span>✅ <b>${ok.length}</b> معتمدة · <b>${fmt(pcs)}</b> قطعة صافي</span>${accOnly()?"":`<span>⏳ <b>${rs.filter(r=>r.st==="pend").length}</b> بانتظار</span>`}<span>🧾 <b>${rs.filter(r=>r.st==="set").length}</b> تمت تسويتها</span>${nWait?`<span>↩️ <b>${nWait}</b> عينة لم ترجع</span>`:""}${accOnly()?"":`<span>❌ <b>${rs.filter(r=>r.st==="no").length}</b> مرفوضة</span>`}</div>
  ${Object.keys(per).length>1?`<div class="pan" style="margin-bottom:12px"><h3 style="margin:0 0 8px">المعتمد لكل فرع</h3><div class="tw"><table><thead><tr><th>الفرع</th><th>عدد</th><th>قطع</th></tr></thead><tbody>${Object.entries(per).sort((a,b)=>b[1].p-a[1].p).map(([k,v])=>`<tr><td class="l"><bdi dir="ltr">${E(brName(k))}</bdi></td><td>${v.n}</td><td>${fmt(v.p)}</td></tr>`).join("")}</tbody></table></div></div>`:""}
  ${rs.length?rs.map(r=>card(r,true)).join(""):'<div class="pan off" style="text-align:center;padding:24px">لا توجد هدايا في هذه الفترة</div>'}`;
 }
@@ -215,21 +237,54 @@ async function save(){
  }catch(e){if(btn){btn.disabled=false;btn.textContent=edit?"💾 حفظ التعديل":"✅ تسجيل"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
 }
 // ---------- الاعتماد / الرفض ----------
-async function decide(id,ok){
+async function decide(id,ok,rt){
  const r=PEND.get(id)||L.get(id);if(!r||r.st!=="pend")return;
  let note="";if(!ok){note=(prompt(`سبب رفض هدية ${r.no}؟`)||"").trim().slice(0,300);if(!note){X.toast("يجب كتابة سبب الرفض");return}}
- else if(!confirm(`اعتماد هدية ${r.no} (${r.brn||brName(r.br)} · ${N(r.pcs)} قطعة)؟`))return;
+ else if(isSample(r)&&rt===undefined){// العينة: نسأل هترجع ولا لأ قبل الاعتماد
+  openM(`<h3>✅ اعتماد عينة <bdi dir="ltr">${E(r.no)}</bdi></h3><div style="color:var(--mut);font-size:14px"><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · ${N(r.pcs)} قطعة · ${E(itemsTxt(r))}</div>
+  <div style="font-weight:800;font-size:17px;margin-top:14px">هل هذه العينة سترجع؟</div>
+  <div class="gf-rt"><button class="y" data-gf="okrt" data-id="${E(id)}" type="button">↩️ اعتماد — العينة سترجع<small>تظهر "لم ترجع بعد" حتى ${r.br==="WH"?"يسجّل المستودع":"يسجّل الفرع"} رجوعها، ويسوّي المحاسب الصافي فقط</small></button>
+  <button data-gf="oknort" data-id="${E(id)}" type="button">✅ اعتماد — العينة لا ترجع<small>تُعامَل مثل الهدية وتُسوّى كاملة</small></button></div>
+  <div class="gf-act"><button class="bt" data-gf="close" type="button">إلغاء</button></div>`,"rt");
+  return;
+ }
+ else if(!isSample(r)&&!confirm(`اعتماد هدية ${r.no} (${r.brn||brName(r.br)} · ${N(r.pcs)} قطعة)؟`))return;
  const ap={e:X.me.e,n:String(X.me.n||X.me.e).slice(0,60),at:Date.now()};if(note)ap.note=note;
- try{await withTimeout(updateDoc(doc(X.db,"gifts",id),{st:ok?"ok":"no",ap}),15000);if(X.ping)X.ping([id]);X.toast(ok?"اعتُمدت ✅":"رُفضت")}
+ const u={st:ok?"ok":"no",ap};if(ok&&isSample(r))u.rt=rt===true;
+ try{await withTimeout(updateDoc(doc(X.db,"gifts",id),u),15000);closeM();if(X.ping)X.ping([id]);X.toast(ok?(u.rt?"اعتُمدت ✅ — العينة سترجع، وأُبلغ الفرع":"اعتُمدت ✅"):"رُفضت")}
  catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح (ربما اعتمدها شخص آخر)":FAIL_MSG[w])}
+}
+// ---------- رجوع العينة (اللي طلّعها: الفرع أو المستودع) ----------
+function retForm(id){
+ const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r||!canRet(r))return;
+ const rows=Array.isArray(r.rows)?r.rows:[];
+ openM(`<h3>↩️ رجوع العينة <bdi dir="ltr">${E(r.no)}</bdi></h3><div style="color:var(--mut);font-size:14px">اكتب عدد ما رجع من كل صنف (يمكن أن يكون أقل من الذي خرج)، وسيُحسب الصافي تلقائياً للمحاسب.</div>
+ <div style="margin-top:12px"><div class="gf-rr" style="font-size:13px;color:var(--mut);font-weight:700"><span>الصنف</span><span style="text-align:center">خرج</span><span style="text-align:center">رجع</span></div>
+ ${rows.map((x,i)=>`<div class="gf-rr"><bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi><b style="text-align:center">${N(x.q)}</b><input data-rq="${i}" data-max="${N(x.q)}" inputmode="numeric" value="${N(x.q)}"></div>`).join("")}</div>
+ <label>ملاحظة</label><textarea id="gfrn" rows="2" maxlength="200" placeholder="اختياري (مثلاً: رجعت بحالة جيدة)"></textarea>
+ ${X.mode==="branch"?`<label>اسمك *</label><input id="gfrby" maxlength="60" value="${E((()=>{try{return localStorage.getItem("gf_by")||""}catch(e){return ""}})())}">`:""}
+ <div class="gf-act"><button class="bt p" data-gf="retsave" data-id="${E(id)}" type="button">✅ تسجيل الرجوع</button><button class="bt" data-gf="${X.mode==="branch"?"bopen":"close"}" type="button">رجوع</button></div>`,"ret");
+}
+async function retSave(id){
+ const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r||!canRet(r))return;
+ const lines=[...document.querySelectorAll("[data-rq]")].map(el=>Math.max(0,Math.min(N(el.dataset.max),Math.round(N(toEn(el.value))))));
+ const q=lines.reduce((a,b)=>a+b,0);if(!q){X.toast("اكتب عدد ما رجع (قطعة واحدة على الأقل)");return}
+ const by=X.mode==="branch"?String((g("gfrby")||{}).value||"").trim().slice(0,60):String(X.me.n||X.me.e).slice(0,60);if(!by){X.toast("اكتب اسمك");return}
+ const note=String((g("gfrn")||{}).value||"").trim().slice(0,200);
+ if(!confirm(`تسجيل رجوع ${q} من ${N(r.pcs)} قطعة؟ الصافي للتسوية سيكون ${N(r.pcs)-q} قطعة.`))return;
+ const rb={e:X.me.e,n:by,at:Date.now(),q,lines};if(note)rb.note=note;
+ try{await withTimeout(updateDoc(doc(X.db,"gifts",id),{rb}),15000);if(X.mode==="branch")try{localStorage.setItem("gf_by",by)}catch(e){}
+  if(X.ping)X.ping([id]);X.toast("↩️ سُجّل رجوع العينة، وأُبلغ المحاسب");if(X.mode==="branch")openBranch();else{closeM();if(X.redraw)X.redraw()}}
+ catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
 }
 // ---------- التسوية (المحاسب) ----------
 async function settle(id){
  const r=all().find(x=>x.id===id);if(!r||r.st!=="ok")return;
  const inp=[...document.querySelectorAll("[data-gfref]")].find(x=>x.dataset.gfref===id),ref=String(inp&&inp.value||"").trim().slice(0,60);
  if(!ref){X.toast("اكتب رقم أو مرجع السند في النظام أولاً");if(inp)inp.focus();return}
- if(!confirm(`تسوية هدية ${r.no} (${r.brn||brName(r.br)} · ${N(r.pcs)} قطعة) بمرجع ${ref}؟\nسيصل الفرع إشعار بأنها خُصمت من مخزونه.`))return;
- const sa={e:X.me.e,n:String(X.me.n||X.me.e).slice(0,60),at:Date.now(),ref};
+ if(waitRet(r)&&!confirm(`العينة ${r.no} لم ترجع بعد. تسويتها الآن كاملة (${N(r.pcs)} قطعة)؟\n\nالأفضل الانتظار حتى ترجع وتسوية الصافي فقط.`))return;
+ if(!confirm(`تسوية ${r.no} (${r.brn||brName(r.br)} · الصافي ${net(r)} قطعة${r.rb?` بعد رجوع ${retQ(r)}`:""}) بمرجع ${ref}؟\nسيصل الفرع إشعار بأنها خُصمت من مخزونه.`))return;
+ const sa={e:X.me.e,n:String(X.me.n||X.me.e).slice(0,60),at:Date.now(),ref,net:net(r)};
  try{await withTimeout(updateDoc(doc(X.db,"gifts",id),{st:"set",sa,sm:ymOf(r.ts)}),15000);L.delete(id);OLD.set(id,{...r,st:"set",sa,sm:ymOf(r.ts)});if(X.ping)X.ping([id]);X.toast("🧾 تمت التسوية، وأُبلغ الفرع");if(X.redraw)X.redraw()}
  catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
 }
@@ -244,20 +299,20 @@ async function showImg(id){
 // ---------- التقارير ----------
 function reportRows(){return filtered()}
 function printReport(){
- const rs=reportRows(),ok=rs.filter(isAp),per={};ok.forEach(r=>{(per[r.br]=per[r.br]||{n:0,p:0}).n++;per[r.br].p+=N(r.pcs)});
+ const rs=reportRows(),ok=rs.filter(isAp),per={};ok.forEach(r=>{(per[r.br]=per[r.br]||{n:0,p:0}).n++;per[r.br].p+=net(r)});
  const who=F.br?brName(F.br):"كل الفروع والمستودع",stl=F.st?STL[F.st]:"كل الحالات";
  printStmt(`<div class="st"><div class="ph"><h2>تقرير الهدايا والعينات</h2><div>${E(today())}</div></div>
  <div class="rt"><div><small>الفرع</small><b><bdi dir="ltr">${E(who)}</bdi></b></div><div><small>الفترة</small><b style="font-size:11pt">${E(F.from||"—")} ← ${E(F.to||today())}</b></div><div><small>الحالة</small><b style="font-size:11pt">${E(stl)}</b></div></div>
- ${Object.keys(per).length?`<table class="stt" style="margin-bottom:5mm"><thead><tr><th>الفرع</th><th>عدد المعتمد</th><th>قطع</th></tr></thead><tbody>${Object.entries(per).map(([k,v])=>`<tr><td>${E(brName(k))}</td><td class="n">${v.n}</td><td class="n">${fmt(v.p)}</td></tr>`).join("")}</tbody></table>`:""}
- <table class="stt"><thead><tr><th>#</th><th>التاريخ</th><th>الفرع</th><th>الرقم</th><th>المستلم</th><th>السبب</th><th>الأصناف</th><th>قطع</th><th>الحالة</th><th>سجّلها / اعتمدها</th><th>مرجع السند</th></tr></thead><tbody>
- ${rs.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.dt||"")}</td><td>${E(r.brn||brName(r.br))}</td><td>${E(r.no)}</td><td>${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?"<br>"+E(r.to.ph):""}</td><td>${E(r.why||"")}${r.note?"<br>"+E(r.note):""}</td><td>${E(itemsTxt(r))}</td><td class="n">${N(r.pcs)}</td><td>${E((STL[r.st]||"").replace(/^\S+\s/,""))}${r.st==="no"&&r.ap&&r.ap.note?"<br>"+E(r.ap.note):""}</td><td>${E(r.by&&r.by.n||"")}${r.ap&&r.ap.n?"<br>"+E(r.ap.n):""}</td><td>${r.sa?E(r.sa.ref||"")+"<br>"+E(r.sa.n||""):""}</td></tr>`).join("")||'<tr><td colspan="11" style="text-align:center">لا توجد هدايا</td></tr>'}</tbody></table>
- <div class="tt"><span>العدد ${rs.length}</span><span>المعتمد ${ok.length}</span><span><b>قطع معتمدة ${fmt(ok.reduce((s,r)=>s+N(r.pcs),0))}</b></span></div>
+ ${Object.keys(per).length?`<table class="stt" style="margin-bottom:5mm"><thead><tr><th>الفرع</th><th>عدد المعتمد</th><th>قطع (صافي)</th></tr></thead><tbody>${Object.entries(per).map(([k,v])=>`<tr><td>${E(brName(k))}</td><td class="n">${v.n}</td><td class="n">${fmt(v.p)}</td></tr>`).join("")}</tbody></table>`:""}
+ <table class="stt"><thead><tr><th>#</th><th>التاريخ</th><th>الفرع</th><th>الرقم</th><th>المستلم</th><th>السبب</th><th>الأصناف</th><th>قطع</th><th>رجع / الصافي</th><th>الحالة</th><th>سجّلها / اعتمدها</th><th>مرجع السند</th></tr></thead><tbody>
+ ${rs.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.dt||"")}</td><td>${E(r.brn||brName(r.br))}</td><td>${E(r.no)}</td><td>${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?"<br>"+E(r.to.ph):""}</td><td>${E(r.why||"")}${r.note?"<br>"+E(r.note):""}</td><td>${E(itemsTxt(r))}</td><td class="n">${N(r.pcs)}</td><td class="n">${r.rb?retQ(r)+" / "+net(r):r.rt===true?"لم ترجع":"—"}</td><td>${E((STL[r.st]||"").replace(/^\S+\s/,""))}${r.st==="no"&&r.ap&&r.ap.note?"<br>"+E(r.ap.note):""}</td><td>${E(r.by&&r.by.n||"")}${r.ap&&r.ap.n?"<br>"+E(r.ap.n):""}</td><td>${r.sa?E(r.sa.ref||"")+"<br>"+E(r.sa.n||""):""}</td></tr>`).join("")||'<tr><td colspan="12" style="text-align:center">لا توجد هدايا</td></tr>'}</tbody></table>
+ <div class="tt"><span>العدد ${rs.length}</span><span>المعتمد ${ok.length}</span><span><b>قطع معتمدة (صافي) ${fmt(ok.reduce((s,r)=>s+net(r),0))}</b></span></div>
  <div class="sg"><span>المحاسب</span><span>مدير المستودع</span><span>المدير</span></div></div>`);
 }
 function csv(){
  const rs=reportRows(),q=v=>{const s=String(v==null?"":v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
- const head=["التاريخ","الوقت","الفرع","الرقم","المستلم","جوال المستلم","السبب","ملاحظة","الأصناف","عدد القطع","الحالة","سجّلها","اعتمدها/رفضها","وقت الاعتماد","سبب الرفض","فيه سند","مرجع السند في النظام","سوّاها","وقت التسوية"];
- const lines=rs.map(r=>[r.dt,new Date(N(r.ts)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),r.brn||brName(r.br),r.no,r.to&&r.to.n,r.to&&r.to.ph?`="${r.to.ph}"`:"",r.why,r.note,itemsTxt(r),N(r.pcs),(STL[r.st]||"").replace(/^\S+\s/,""),r.by&&r.by.n,r.ap&&r.ap.n,r.ap&&r.ap.at?new Date(N(r.ap.at)).toLocaleString("en-GB"):"",r.st==="no"&&r.ap?r.ap.note:"",r.img?"نعم":"لا",r.sa?r.sa.ref:"",r.sa?r.sa.n:"",r.sa&&r.sa.at?new Date(N(r.sa.at)).toLocaleString("en-GB"):""].map(q).join(","));
+ const head=["التاريخ","الوقت","الفرع","الرقم","المستلم","جوال المستلم","السبب","ملاحظة","الأصناف","عدد القطع","الحالة","سجّلها","اعتمدها/رفضها","وقت الاعتماد","سبب الرفض","فيه سند","مرجع السند في النظام","سوّاها","وقت التسوية","العينة ترجع؟","رجع","الصافي"];
+ const lines=rs.map(r=>[r.dt,new Date(N(r.ts)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),r.brn||brName(r.br),r.no,r.to&&r.to.n,r.to&&r.to.ph?`="${r.to.ph}"`:"",r.why,r.note,itemsTxt(r),N(r.pcs),(STL[r.st]||"").replace(/^\S+\s/,""),r.by&&r.by.n,r.ap&&r.ap.n,r.ap&&r.ap.at?new Date(N(r.ap.at)).toLocaleString("en-GB"):"",r.st==="no"&&r.ap?r.ap.note:"",r.img?"نعم":"لا",r.sa?r.sa.ref:"",r.sa?r.sa.n:"",r.sa&&r.sa.at?new Date(N(r.sa.at)).toLocaleString("en-GB"):"",r.rt===true?"نعم":r.rt===false?"لا":"",r.rb?retQ(r):"",isAp(r)?net(r):""].map(q).join(","));
  const blob=new Blob(["﻿"+[head.join(","),...lines].join("\r\n")],{type:"text/csv;charset=utf-8"});
  const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=`tasooma-gifts-${F.br||"all"}-${F.from}-${F.to}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);
 }
@@ -272,6 +327,9 @@ async function click(e){
  if(a==="save")return void save();
  if(a==="img")return void showImg(id);
  if(a==="ok"||a==="no")return void decide(id,a==="ok");
+ if(a==="okrt"||a==="oknort")return void decide(id,true,a==="okrt");
+ if(a==="ret")return void retForm(id);
+ if(a==="retsave")return void retSave(id);
  if(a==="set")return void settle(id);
  if(a==="print")return void printReport();
  if(a==="csv")return void csv();
