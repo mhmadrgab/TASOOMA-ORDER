@@ -296,11 +296,11 @@ function start(){
  // الدردشة الخاص مع الفروع (لكل اللي بيشتغل على الطلبات): كل شخص ليه محادثاته هو بس مع كل فرع، محدش غيره بيشوفها
  // كل اللي في المستودع (مش المتابع): يكلّم السائقين والموظفين، واللي معاه الطلبات أو مدير يكلّم الفروع أيضاً
  if(!vw&&!onlyGm()){
-  initBChat({db,party:"w-"+me,canBr:adm||can("req"),codes:BR,name:()=>ROLE.name||"",myLabel:()=>ROLE.name||me.split("@")[0],brn:c=>BR.find(b=>code(b)===c)||c,toast,beep,notify,ping:c=>ping(auth,[],[c]),visible:()=>tab==="chat",
+  initBChat({db,party:"w-"+me,canBr:adm||can("req"),canGroup:adm,owner:ROLE.owner===true,codes:BR,name:()=>ROLE.name||"",myLabel:()=>ROLE.name||me.split("@")[0],brn:c=>BR.find(b=>code(b)===c)||c,toast,beep,notify,ping:c=>ping(auth,[],[c]),visible:()=>tab==="chat",
    show:()=>{if(tab!=="chat"){tab="chat";draw()}},onBadge:()=>{const b=document.querySelector('[data-t="chat"]');if(b)b.innerHTML=chatLbl()}});
   // فتح من الإشعار: admin.html?chat=003 (فرع) أو ?chat=d-drv1 / w-إيميل
-  const qc=String(new URLSearchParams(location.search).get("chat")||"").toLowerCase();
-  if(qc&&(/^\d{3}$/.test(qc)||/^[bdw]-./.test(qc))){tab="chat";setTimeout(()=>/^\d{3}$/.test(qc)?openWh(qc):openPeer(qc),0);try{history.replaceState(null,"",location.pathname)}catch(e){}}
+  const qc=(q=>/^g_/.test(q)?q:q.toLowerCase())(String(new URLSearchParams(location.search).get("chat")||""));
+  if(qc&&(/^\d{3}$/.test(qc)||/^([bdw]-.|g_.)/.test(qc))){tab="chat";setTimeout(()=>/^\d{3}$/.test(qc)?openWh(qc):openPeer(qc),0);try{history.replaceState(null,"",location.pathname)}catch(e){}}
  }
  // الدردشة القديم كان مشترك بين الكل: بيتمسح مرة واحدة من جهاز المالك
  if(ROLE.owner)wipeOldChat(db);

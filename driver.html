@@ -257,7 +257,7 @@ async function check(u){
  // الدردشة الخاص: السائق يتواصل مع المستودع والفروع (زرار 💬 عائم + زرار فوق). كل محادثة بين طرفين بس
  initBChat({db,party:"d-"+me.id,codes:BRL,name:()=>me.name,myLabel:()=>me.name,brn:c=>BRL.find(b=>codeOf(b)===c)||c,toast,beep,notify,ping:c=>ping(auth,[],[c]),
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))}});
- {const qc=String(new URLSearchParams(location.search).get("chat")||"").toLowerCase();if(/^[bdw]-./.test(qc)){setTimeout(()=>openBr(qc),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}}
+ {const qc=(q=>/^g_/.test(q)?q:q.toLowerCase())(String(new URLSearchParams(location.search).get("chat")||""));if(/^([bdw]-.|g_.)/.test(qc)){setTimeout(()=>openBr(qc),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}}
  if(NAT){// جوه تطبيق TASOOMA: الإشعارات من التطبيق نفسه (رقمه بيتسجّل باسم السائق)
   const save=t=>{if(t&&me&&auth.currentUser)pushSave(db,{role:"driver",key:me.id,email:auth.currentUser.email},String(t)).catch(()=>{})};
   window.__natTok=save;try{save(NAT.pushToken())}catch(e){}

@@ -65,7 +65,10 @@ export const PUSH_URL="https://tasooma-push.tasooma.workers.dev";// سيرفر �
 // ids = طلبات اتغيّرت، chats = محادثات خاصة (dm: كود الفرع__إيميل الشخص) أُرسل فيها رسالة جديدة، trips = رحلات بدأت أو خلصت
 export async function ping(auth,ids,chats,trips,gifts){
   try{
-    const u0=a=>[...new Set((a||[]).filter(Boolean))];ids=u0(ids);chats=u0(chats);trips=u0(trips);gifts=u0(gifts);if(!PUSH_URL||!(ids.length||chats.length||trips.length||gifts.length))return;
+    const u0=a=>[...new Set((a||[]).filter(Boolean))];ids=u0(ids);chats=u0(chats);trips=u0(trips);gifts=u0(gifts);
+    // 👥 رسالة في جروب ("g_"+رقمه): ليها مسار لوحدها على دفعات (أعضاء كتير)
+    chats.filter(c=>/^g_/.test(c)).forEach(c=>multiPush(auth,"/grp",{gid:c.slice(2)}));chats=chats.filter(c=>!/^g_/.test(c));
+    if(!PUSH_URL||!(ids.length||chats.length||trips.length||gifts.length))return;
     const u=auth&&auth.currentUser;if(!u)return;
     const t=await u.getIdToken();
     // كل طلب / محادثة / رحلة في نداء لوحده: السيرفر المجاني بيسمح بـ 50 طلب خارجي بس في النداء الواحد،
@@ -76,9 +79,11 @@ export async function ping(auth,ids,chats,trips,gifts){
 }
 // إشعار تجربة: لأجهزتي أنا، أو (للمالك) لأجهزة شخص مجدداً. بيرجّع {n: عدد الأجهزة, dev:[{dv, ok, gone}]}
 // التعميم (ann.js): الإشعار لكل الفروع والمستودع على دفعات (part) علشان حد Cloudflare المجاني (50 طلب في النداء)
-export async function annPush(auth,id){
+export const annPush=(auth,id)=>multiPush(auth,"/ann",{id});
+// إشعار لناس كتير على دفعات: السيرفر بيرد {more:true} لو لسه فيه أجهزة
+async function multiPush(auth,path,body){
   try{const u=auth&&auth.currentUser;if(!u||!PUSH_URL)return;const t=await u.getIdToken();
-    for(let part=0;part<12;part++){const r=await fetch(PUSH_URL+"/ann",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({id,part})});
+    for(let part=0;part<12;part++){const r=await fetch(PUSH_URL+path,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({...body,part})});
       const j=await r.json().catch(()=>({}));if(!r.ok||!j.more)break}}catch(e){}
 }
 export async function pushTest(auth,to){

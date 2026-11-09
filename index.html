@@ -614,7 +614,7 @@ function enter(b){
  initBChat({db,party:"b-"+code(b),codes:BR,name:()=>String(st&&st.dr||"").trim(),myLabel:()=>b,brn:c=>BR.find(x=>code(x)===c)||(c===code(b)?b:c),toast,beep,notify,ping:c=>ping(auth,[],[c]),
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))},onBadge:setBadge});
  // فتح من الإشعار: index.html?chat=إيميل الشخص (بيفتح محادثته على طول بعد ما الأسماء تتحمّل)
- const qc=new URLSearchParams(location.search).get("chat");if(qc!==null){setTimeout(()=>openBr(qc.toLowerCase()),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}
+ const qc=new URLSearchParams(location.search).get("chat");if(qc!==null){setTimeout(()=>openBr((q=>/^g_/.test(q)?q:q.toLowerCase())(qc)),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}
 }
 // الرقم على أيقونة التطبيق: طلبات بانتظار تأكيد + رسايل جديدة
 function setBadge(){const all=Object.values(REQS);badge(all.filter(r=>r.st==="done").length+(XF||[]).filter(r=>(r.st==="new"||r.st==="prep")&&!+r.rdy).length+bcUnread())}
