@@ -332,7 +332,7 @@ function draw(){
 const itBtn=rid=>{const r=REQ.find(x=>x.id===rid);return r&&Array.isArray(r.rows)&&r.rows.length?`<button class="b it" data-it="${E(rid)}" type="button">📋 الأصناف</button>`:""};
 const wireIt=el=>el.querySelectorAll("[data-it]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();items(b.dataset.it)});
 function items(rid){
- const r=REQ.find(x=>x.id===rid);if(!r)return;const rows=(Array.isArray(r.rows)?r.rows:[]).filter(x=>x&&x.k);const by={};
+ const r=REQ.find(x=>x.id===rid);if(!r)return;const rows=(Array.isArray(r.rows)?r.rows:[]).filter(x=>x&&x.k&&!x.na);const by={};
  rows.forEach(x=>{(by[x.k]=by[x.k]||[]).push(x)});
  openM(`<h3>📋 أصناف <span style="direction:ltr;display:inline-block">${E(r.brn)}</span></h3><div class="mut"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</div>
  <div style="max-height:60vh;overflow:auto;margin:10px 0">${Object.entries(by).map(([k,xs])=>`<div class="itg"><b dir="ltr">${E(k)}</b>${xs.map(x=>`<div class="itr"><span>${E([x.c,x.z].filter(Boolean).join(" · ")||"—")}${x.n?`<small class="mut" style="display:block">${E(x.n)}</small>`:""}</span><b>${N(x.q)}</b></div>`).join("")}</div>`).join("")||'<div class="mut">لا توجد أصناف مسجّلة.</div>'}</div>

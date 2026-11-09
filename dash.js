@@ -155,7 +155,7 @@ export function dashView(R){
   // أكتر الفروع (بالقطع في الفترة) وأكتر الأكواد (الطلبات المفتوحة)
   const per={};C.forEach(r=>{const k=String(r.brn||"");per[k]=(per[k]||0)+N(r.pcs)});
   const topB=Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const opn={};RQ.filter(r=>r.st==="new"||r.st==="prep").forEach(r=>(Array.isArray(r.rows)?r.rows:[]).forEach(x=>{const k=String(x&&x.k||"");if(k)opn[k]=(opn[k]||0)+N(x&&x.q)}));
+  const opn={};RQ.filter(r=>r.st==="new"||r.st==="prep").forEach(r=>(Array.isArray(r.rows)?r.rows:[]).forEach(x=>{if(x&&x.na)return;const k=String(x&&x.k||"");if(k)opn[k]=(opn[k]||0)+N(x&&x.q)}));
   const topC=Object.entries(opn).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const tops=(L,id)=>{if(!L.length)return `<div class="dz-none">لا توجد بيانات في هذه الفترة</div>`;const m=L[0][1]||1,el=moved(id,JSON.stringify(L));
     return `<div class="dz-top${el>=0?" dz-grow2":""}">${L.map(([n,v])=>`<div class="dz-tr"><span title="${E(n)}">${E(n)}</span><div class="t"><i style="width:${Math.max(3,v/m*100)}%;${delay(el)}"></i></div><em>${fmt(v)}</em></div>`).join("")}</div>`};

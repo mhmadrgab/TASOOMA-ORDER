@@ -44,7 +44,7 @@ function stats(mo){
  const rs=X.R().filter(r=>hasBy(r)&&ym(r.prep.at)===mo),S={};
  const get=id=>S[id]||(S[id]={id,lines:0,pcs:0,reqs:0,days:new Set(),pl:[],ok:0,err:0,wait:0});
  rs.forEach(r=>{
-  const by=r.prep.by,sh=1/by.length,ln=Array.isArray(r.rows)?r.rows.length:N(r.codes),end=endOf(r),d=end-N(r.prep.at),v=verdict(r);
+  const by=r.prep.by,sh=1/by.length,ln=Array.isArray(r.rows)?r.rows.filter(x=>x&&!x.na).length:N(r.codes),end=endOf(r),d=end-N(r.prep.at),v=verdict(r);
   by.forEach(id=>{const s=get(id);s.lines+=ln*sh;s.pcs+=N(r.pcs)*sh;s.reqs+=sh;s.days.add(dk(r.prep.at));
    if(end&&d>0&&d<12*36e5&&ln)s.pl.push(d/ln);// الوقت لكل سطر، ونتجاهل اللي استنى أكتر من 12 ساعة
    if(v==="ok")s.ok++;else if(v==="err")s.err++;else if(v==="wait")s.wait++});

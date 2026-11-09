@@ -75,6 +75,12 @@ export async function ping(auth,ids,chats,trips,gifts){
   }catch(e){}
 }
 // إشعار تجربة: لأجهزتي أنا، أو (للمالك) لأجهزة شخص مجدداً. بيرجّع {n: عدد الأجهزة, dev:[{dv, ok, gone}]}
+// التعميم (ann.js): الإشعار لكل الفروع والمستودع على دفعات (part) علشان حد Cloudflare المجاني (50 طلب في النداء)
+export async function annPush(auth,id){
+  try{const u=auth&&auth.currentUser;if(!u||!PUSH_URL)return;const t=await u.getIdToken();
+    for(let part=0;part<12;part++){const r=await fetch(PUSH_URL+"/ann",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify({id,part})});
+      const j=await r.json().catch(()=>({}));if(!r.ok||!j.more)break}}catch(e){}
+}
 export async function pushTest(auth,to){
   const u=auth&&auth.currentUser;if(!u)throw new Error("login");
   const r=await withTimeout(fetch(PUSH_URL+"/test",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+await u.getIdToken()},body:JSON.stringify(to?{to}:{})}),20000);

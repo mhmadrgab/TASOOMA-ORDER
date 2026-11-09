@@ -119,6 +119,12 @@ table.g{border-spacing:0}
 .en th:nth-child(4),.en td:nth-child(4){width:14%}
 .en th:nth-child(6),.en td:nth-child(6){width:22%}
 .twx{overflow-x:auto}
+/* تعديلات المستودع على الطلب */
+.edsum{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px;font-size:13.5px;font-weight:700}.edsum span{border-radius:999px;padding:2px 10px;font-size:12.5px}
+.edsum .x{background:#fdecea;color:#8a2218}.edsum .a{background:#e7f4ec;color:#1d5a24}.edsum .c{background:#fff1d6;color:#8a5a00}
+.lna{text-decoration:line-through;text-decoration-color:#c4362b;text-decoration-thickness:2px;opacity:.7}.lna small{text-decoration:none;display:inline-block;color:#c4362b;font-weight:700}
+.lad{color:#1d5a24;font-weight:700}.loq{color:#c4362b}
+@media (prefers-color-scheme:dark){.edsum .x{background:#3a1715;color:#f1a5a0}.edsum .a{background:#173a1b;color:#8fd39a}.edsum .c{background:#3a2a08;color:#f6c770}.lad{color:#8fd39a}}
 @media (max-width:560px){
  .twx{overflow:visible}.en,.en tbody{display:block;min-width:0!important;width:100%}.en thead{display:none}
  .en tr{display:grid;grid-template-columns:20px repeat(6,minmax(0,1fr)) 46px;grid-template-areas:"n k k k c c c x" ". z z q q m m x";gap:6px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line)}
@@ -485,6 +491,7 @@ loadUI();
 import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,setDoc,updateDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {initBranch,stopBranch} from "./br-extra.js";
 import {initGifts,stopGifts} from "./gifts.js";
+import {initAnn,stopAnn} from "./ann.js";
 import {notify,beep,badge,autoPush} from "./notify.js";
 import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.js";
 const {app,db,auth}=makeFb("branch");
@@ -528,7 +535,11 @@ document.addEventListener("click",async e=>{
  try{await withTimeout(updateDoc(doc(db,"requests",r.id),rdy?{rdy:now,upd:now,...(r.st==="new"?{st:"prep"}:{})}:{st:"prep",upd:now}),15000);ping(auth,[r.id]);toast(rdy?"✅ تم، علم المستودع أنها جاهزة":"⏳ تم، علم المستودع أنك بدأت التجهيز")}
  catch(x){b.disabled=false;toast(x&&x.code==="permission-denied"?"غير مسموح. ربما غيّر المستودع التحويل.":"تعذر الحفظ، تأكد من الإنترنت وحاول مجدداً","er")}
 });
-const lines=rows=>{const m=new Map();(Array.isArray(rows)?rows:[]).forEach(r=>{const k=String(r&&r.k||"");if(!m.has(k))m.set(k,[]);m.get(k).push(r)});return [...m].map(([k,rs])=>`<div><b><bdi dir="ltr">${E(k)}</bdi></b> — ${rs.map(r=>`<bdi dir="ltr">${E(String(r.c||"-"))} ${E(String(r.z||""))} × ${+r.q||0}</bdi>`).join(" · ")}</div>`).join("")};
+// الأصناف عند الفرع: اللي المستودع علّمه "غير متوفر" مشطوب، واللي أضافه عليه ➕، والكمية اللي اتغيّرت "كانت X"
+const lines=rows=>{const A=Array.isArray(rows)?rows:[],m=new Map();A.forEach(r=>{const k=String(r&&r.k||"");if(!m.has(k))m.set(k,[]);m.get(k).push(r)});
+ const na=A.filter(r=>r&&r.na).length,ad=A.filter(r=>r&&r.add).length,ch=A.filter(r=>r&&!r.na&&r.oq!=null).length;
+ const sum=na||ad||ch?`<div class="edsum">✏️ تعديل المستودع:${na?` <span class="x">🚫 ${na} غير متوفر</span>`:""}${ad?` <span class="a">➕ ${ad} أضافه المستودع</span>`:""}${ch?` <span class="c">🔁 ${ch} تغيّرت كميته</span>`:""}</div>`:"";
+ return sum+[...m].map(([k,rs])=>`<div><b><bdi dir="ltr">${E(k)}</bdi></b> — ${rs.map(r=>r.na?`<span class="lna"><bdi dir="ltr">${E(String(r.c||"-"))} ${E(String(r.z||""))} × ${+r.q||0}</bdi> <small>غير متوفر</small></span>`:`<span class="${r.add?"lad":""}">${r.add?"➕ ":""}<bdi dir="ltr">${E(String(r.c||"-"))} ${E(String(r.z||""))} × ${+r.q||0}</bdi>${r.oq!=null?` <small class="loq">(كانت ${+r.oq||0})</small>`:""}</span>`).join(" · ")}</div>`).join("")};
 document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"&&d.dataset.id){d.open?opn.add(d.dataset.id):opn.delete(d.dataset.id)}},true);
 const code=b=>b.split("-")[0];
 const rcvInfo=r=>{const v=r.rcv;if(!v||typeof v!=="object")return "";const ls=Array.isArray(v.lines)?v.lines.filter(x=>x&&typeof x==="object"):[];return `<div class="rcn" style="margin-top:6px">${v.ok?"✅ استلمت الطلب كاملاً":"📝 ملاحظات الاستلام:"}${ls.map(x=>`<div><bdi dir="ltr">${E(x.k)} ${E(x.c||"")} ${E(x.z||"")}</bdi>: مطلوب ${+x.q||0} · استلمت ${+x.r||0}</div>`).join("")}${v.note?`<div>${E(v.note)}</div>`:""}</div>`};
@@ -595,6 +606,8 @@ function enter(b){
  st.br=b;st.ty="load";save();loadUI();g("mb").innerHTML=`<bdi dir="ltr">${E(b)}</bdi>`;hello(null);listen();
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
  // 🎁 الهدايا والعينات: زرار فوق جنب "تغيير الفرع"، والفرع يسجّل الهدية بالسند والمستودع بيعتمدها
+ // 📢 التعميمات من الإدارة (الفرع بيقرا بس). الزرار في شريط الفرع
+ initAnn({db,auth,toast,party:code(b),email:"",name:()=>b,canPost:false,mount:btn=>{const tl=document.querySelector("#me .tl");if(tl)tl.prepend(btn);else{const mx=g("mx");if(mx)mx.parentNode.insertBefore(btn,mx)}}});
  initGifts({db,toast,mode:"branch",code:code(b),brn:b,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:""},owner:()=>false,ping:ids=>ping(auth,[],[],[],ids)});
  // الدردشة الخاص مع المستودع (زرار عائم 💬 + زرار "تواصل مع المستودع" فوق + زرار على كل طلب): الفرع بيختار يكلّم مين،
  // وكل محادثة خاصة بين الفرع والشخص ده بس
@@ -616,7 +629,7 @@ function deepReq(id){
  if(q.get("gift")){let n=0;const iv=setInterval(()=>{n++;const b=document.querySelector('[data-gf="bopen"]');if(b){clearInterval(iv);b.click()}else if(n>40)clearInterval(iv)},500)}
  if(rq||q.get("gift"))try{history.replaceState(null,"",location.pathname)}catch(e){}}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
-function gateOn(){B=null;stopBranch();stopGifts();stopBChat();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBranch();stopGifts();stopAnn();stopBChat();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");

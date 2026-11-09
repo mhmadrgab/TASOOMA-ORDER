@@ -129,6 +129,9 @@ export function initGifts(ctx){
 }
 export function stopGifts(){un.forEach(f=>f());un=[];if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MON=new Set();closeM()}
 export const pendingCount=()=>PEND.size;
+// للتقرير الأسبوعي (short.js): الهدايا من تاريخ معيّن، والصافي
+export const giftsSince=t=>all().filter(r=>N(r.ts)>=t);
+export const giftNet=r=>net(r);
 // ---------- الفرع: زرار فوق + نافذة فيها هداياه ----------
 function addBranchButton(){
  if(g("gfbtn"))return;const me=g("me");if(!me)return;
@@ -159,7 +162,7 @@ function card(r,wh,setUi){// setUi = خانة مرجع السند (في قسم "
  ${retHtml(r)}
  ${st==="set"&&r.sa?`<div class="gf-set">🧾 تمت التسوية${wh?` بواسطة ${E(r.sa.n||"")}`:""} · ${hm(r.sa.at)} · مرجع السند: <b dir="ltr">${E(r.sa.ref||"")}</b>${r.sa.net!=null&&N(r.sa.net)!==N(r.pcs)?` · الصافي المسوّى ${N(r.sa.net)} قطعة`:""}${wh?"":`<br><small>خصم المحاسب هذه الهدية من مخزون الفرع في النظام</small>`}</div>`:""}
  ${wh&&setUi&&canSettle()&&st==="ok"?`${waitRet(r)?'<div class="gf-ret w" style="margin-top:10px">⏳ انتظر رجوع العينة قبل التسوية، فالصافي قد يتغيّر</div>':""}${r.rb?`<div class="gf-ret ok" style="margin-top:10px">🧮 سوِّ الصافي فقط: <b>${net(r)} قطعة</b> (طلع ${N(r.pcs)} − رجع ${retQ(r)})</div>`:""}<div class="gf-ref"><input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="رقم / مرجع السند في النظام"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تمت التسوية</button></div>`:""}
- <div class="gf-b"><button class="bt s p" data-gf="view" data-id="${E(r.id)}" type="button">📄 فتح الهدية</button>${canRet(r)?`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">بدون مرفق</span>'}
+ <div class="gf-b"><button class="bt s p" data-gf="view" data-id="${E(r.id)}" type="button">📄 ${wh?"فتح السند":"فتح الهدية"}</button>${canRet(r)?`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">بدون مرفق</span>'}
  ${wh&&canApprove()&&st==="pend"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${isOwner()?`<button class="bt s" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt s" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}</div></div>`;
 }
