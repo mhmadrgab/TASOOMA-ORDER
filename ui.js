@@ -87,4 +87,8 @@
  if(!minDone)setTimeout(()=>{minDone=true;hide()},Math.max(0,1700-performance.now()));
  window.uiReady=()=>{if(ready)return;ready=true;H.classList.remove("aw");hide()};
  if(!H.classList.contains("aw"))window.uiReady();// صفحات من غير تسجيل دخول
+ // الموبايل: الشريط اللي فوق بيختفي وإنت نازل ويرجع أول ما تطلع لفوق (مساحة أكبر للمحتوى)
+ let lastY=scrollY,tick=false;
+ addEventListener("scroll",()=>{if(tick)return;tick=true;requestAnimationFrame(()=>{tick=false;const y=scrollY,d=y-lastY;if(Math.abs(d)<8&&y>10)return;
+  const up=d>0&&y>180&&innerWidth<=760&&!!document.querySelector("#app>.hd>.hi");if(H.classList.contains("hd-up")!==up)H.classList.toggle("hd-up",up);lastY=y})},{passive:true});
 })();

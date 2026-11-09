@@ -119,6 +119,17 @@ table.g{border-spacing:0}
 .en th:nth-child(4),.en td:nth-child(4){width:14%}
 .en th:nth-child(6),.en td:nth-child(6){width:22%}
 .twx{overflow-x:auto}
+@media (max-width:560px){
+ .twx{overflow:visible}.en,.en tbody{display:block;min-width:0!important;width:100%}.en thead{display:none}
+ .en tr{display:grid;grid-template-columns:20px repeat(6,minmax(0,1fr)) 46px;grid-template-areas:"n k k k c c c x" ". z z q q m m x";gap:6px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line)}
+ .en tr:last-child{border-bottom:0}
+ .en td{display:block;width:auto!important;padding:0!important;border:0!important}
+ .en td:nth-child(1){grid-area:n;font-size:13px}.en td:nth-child(2){grid-area:k}.en td:nth-child(3){grid-area:c}.en td:nth-child(4){grid-area:z}.en td:nth-child(5){grid-area:q}.en td:nth-child(6){grid-area:m}
+ .en td.nx{display:none}.en td.xc{grid-area:x;display:flex;flex-direction:column;align-items:center;gap:4px;align-self:stretch;justify-content:center}
+ .en td input{width:100%;padding:11px 8px!important;font-size:15.5px!important}.en td.q input{font-size:18px!important}.en td:nth-child(4) input{text-align:center}
+ .en td input::placeholder{color:var(--mut);opacity:.75;font-weight:400;font-size:13.5px}
+ .en .fh{width:34px;height:30px;margin:0}.en .x{padding:0 8px;font-size:22px;line-height:1}
+}
 .en th:nth-child(8),.en td:nth-child(8){width:68px}
 .xc{white-space:nowrap}
 .fh{display:inline-flex;align-items:center;justify-content:center;width:28px;height:32px;border-radius:8px;background:var(--field);color:var(--mut);cursor:ns-resize;user-select:none;-webkit-user-select:none;touch-action:none;font-size:17px;vertical-align:middle;margin-inline-end:2px}
@@ -353,7 +364,7 @@ function pvT(){
  $("#pv").innerHTML=h?`<table class="g"><thead><tr><th>الكود</th><th>اللون</th><th>المقاس / الكمية</th><th>الإجمالي</th><th>ملاحظات</th><th></th></tr></thead><tbody>${h}</tbody></table>`:'<div class="tip" style="margin:0">اكتب الأصناف في الأعلى وستظهر هنا مجمّعة.</div>';
 }
 function draw(focus){
- $("#rs").innerHTML=st.rows.map((r,i)=>`<tr><td>${i+1}</td>${K.map((k,j)=>`<td class="${k==="q"?"q":""}${j<3||k==="n"?" c":""}"><input data-i="${i}" data-k="${k}" value="${E(r[k])}" ${k==="q"?'type="number" inputmode="numeric" min="0"':'type="text" autocomplete="off"'+(k==="c"?' list="dc"':k==="z"?' list="dz"':"")} ${k==="k"?'inputmode="numeric" placeholder="كود"':k==="n"?'placeholder="مثال: مستعجل"':k==="q"&&r.i?`placeholder="${E(r.i)}" title="${E(r.t||"")}"`:""} aria-label="${["الكود","اللون","المقاس","الكمية","ملاحظات"][j]}"></td>`).join("")}<td class="nx"><span class="bx"></span></td><td class="xc"><span class="fh" data-f="${i}" title="اسحب لتكرار الصف (الكود واللون والمقاس) دون الكمية">⇣</span><button class="x" data-d="${i}" type="button" aria-label="حذف السطر">×</button></td></tr>`).join("");
+ $("#rs").innerHTML=st.rows.map((r,i)=>`<tr><td>${i+1}</td>${K.map((k,j)=>`<td class="${k==="q"?"q":""}${j<3||k==="n"?" c":""}"><input data-i="${i}" data-k="${k}" value="${E(r[k])}" ${k==="q"?'type="number" inputmode="numeric" min="0"':'type="text" autocomplete="off"'+(k==="c"?' list="dc"':k==="z"?' list="dz"':"")} ${k==="k"?'inputmode="numeric" placeholder="كود"':k==="n"?'placeholder="ملاحظات"':k==="c"?'placeholder="اللون"':k==="z"?'placeholder="مقاس"':k==="q"?(r.i?`placeholder="${E(r.i)}" title="${E(r.t||"")}"`:'placeholder="الكمية"'):""} aria-label="${["الكود","اللون","المقاس","الكمية","ملاحظات"][j]}"></td>`).join("")}<td class="nx"><span class="bx"></span></td><td class="xc"><span class="fh" data-f="${i}" title="اسحب لتكرار الصف (الكود واللون والمقاس) دون الكمية">⇣</span><button class="x" data-d="${i}" type="button" aria-label="حذف السطر">×</button></td></tr>`).join("");
  totals();
  if(focus){const el=document.querySelector(`input[data-i="${focus[0]}"][data-k="${focus[1]}"]`);if(el)el.focus()}
 }

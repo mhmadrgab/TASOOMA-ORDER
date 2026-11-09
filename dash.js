@@ -132,7 +132,7 @@ export function dashView(R){
   // ⚠️ prep.at = وقت "بدء التجهيز" (مش خلصه): لا يوجد وقت مسجّل لـ "خلص التجهيز" في الطلبات العادية، فالمرحلة التانية = التجهيز + انتظار السائق.
   // الوسيط (النص الطلبات أسرع والنص أبطأ) بدل المتوسط: طلب واحد اتعمل بالليل واتجهّز الصبح مايبوّظش الرقم.
   const med=a=>{a=a.filter(x=>x>0&&x<14*D).sort((x,y)=>x-y);return a.length?(a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2):0};
-  const hm2=ms=>{const m=Math.max(1,Math.round(ms/6e4)),h=Math.floor(m/60);return h>=48?`${(ms/D).toFixed(1)} يوم`:h?`${h} س${m%60?` و${m%60} د`:""}`:`${m} دقيقة`};
+  const hm2=ms=>{const m=Math.max(1,Math.round(ms/6e4)),h=Math.floor(m/60);return h>=48?`${(ms/D).toFixed(1)} يوم`:h?`${h} س${m%60?` ${m%60} د`:""}`:`${m} دقيقة`};
   const pa=r=>N(r.prep&&r.prep.at),tPrep=med(C.map(r=>pa(r)-N(r.ts))),tWait=med(C.map(r=>pa(r)&&N(r.dep)?N(r.dep)-pa(r):0)),tRoad=med(C.map(r=>N(r.dep)&&dlvAt(r)?dlvAt(r)-N(r.dep):0));
   const stg=(icon,label,v,tip)=>v?`<span title="${E(tip)}">${icon} ${E(label)} <b>${E(hm2(v))}</b></span>`:"";
   const pc=(a,b)=>b?a/b*100:null,p1=pc(dl.length,C.length),p2=pc(rc.length,dl.length),p3=pc(ok.length,rc.length),p4=pc(fast,tt.length);

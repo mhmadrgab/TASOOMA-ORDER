@@ -6,10 +6,33 @@ html{overflow-x:hidden}
 .hi>*{min-width:0;max-width:100%}
 @media (max-width:760px){
  .hi{padding:10px 12px;row-gap:8px}
+}
+/* التبويبات: من الموبايل لحد الشاشات المتوسطة بتبقى سطر لوحدها بيتسحب (كانت بتطلع بره الشاشة على التابلت واللابتوب الصغير) */
+@media (max-width:1180px){
  .tabs{order:3;flex:1 0 100%;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);padding-inline:6px}
  .tabs::-webkit-scrollbar{display:none}
  .tabs button{flex:none;white-space:nowrap;padding:7px 14px}
+}
+/* الموبايل: شريط اللوحة كان بياكل نص الشاشة. بقى: الأدوات والخروج سطر واحد بيتسحب، والشريط كله بيختفي لما تنزل ويرجع لما تطلع (زي تطبيقات التواصل، ui.js) */
+@media (max-width:760px){
+ #app>.hd:has(>.hi){transition:transform .34s cubic-bezier(.2,.8,.2,1);will-change:transform}
+ html.hd-up #app>.hd:has(>.hi){transform:translateY(calc(-100% - 4px))}
+ #app>.hd .br small{display:none}#app>.hd .lg1{height:38px}#app>.hd .lg2{height:30px}#app>.hd h1{font-size:18px}
+ .hi>div:has(>.tools){flex:1 0 100%;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;gap:8px!important}
+ .hi>div:has(>.tools)::-webkit-scrollbar{display:none}
+ .hi .tools{flex-wrap:nowrap}.hi .tools>*,.hi .tabs-out{flex:none}
+ /* أزرار كارت الطلب: شبكة عمودين منتظمة بدل 3 سطور مكسّرة */
+ .rq .rf{display:grid;grid-template-columns:1fr 1fr;padding:12px}.rq .rf>*{width:100%;margin:0;text-align:center;justify-content:center;padding-inline:8px;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .rq .rf>span.off{grid-column:1/-1}
+ .rq .kp .bt.s{padding:4px 10px!important;min-height:30px}
+}
+/* صفحة الفرع على الموبايل: شريط "أنت مسجّل الدخول في فرع" كان مضغوط (الاسم بيتكسر على 3 سطور). بقى: اسم الفرع سطر كامل، والأزرار تحته */
+@media (max-width:560px){
+ #me{flex-wrap:wrap;row-gap:10px}
+ #me>div:first-child{flex:1 0 100%;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+ #me>div:first-child small{display:inline}#me>div:first-child b{direction:ltr;unicode-bidi:isolate}
+ #me .tl{flex:1;justify-content:flex-end}
 }
 /* الموبايل: أزرار الورقة اللي تحت بقت سطر واحد بيتسحب، وزرار الإرسال ثابت أوله، بدل ما تغطي نص الشاشة */
 @media (max-width:560px){
@@ -37,8 +60,10 @@ button:not(:disabled):active{transform:scale(.97)}
 
 /* الهيدر: خط ذهبي بيلمع */
 .sheet>.hd{position:relative}
-.hd::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:3px;pointer-events:none;
- background:linear-gradient(90deg,transparent,rgba(255,236,190,.95),transparent) no-repeat;background-size:35% 100%;animation:ui-sweep 7s ease-in-out infinite}
+/* (بالـ transform مش background-position: بيتحرك على كارت الشاشة من غير ما يعيد رسم الشريط كل فريم = أنعم على الموبايلات الضعيفة) */
+.hd{overflow-x:clip}
+.hd::after{content:"";position:absolute;left:0;width:35%;bottom:-3px;height:3px;pointer-events:none;will-change:transform;
+ background:linear-gradient(90deg,transparent,rgba(255,236,190,.95),transparent);animation:ui-sweep 7s ease-in-out infinite}
 
 /* طلب جديد: نبض هادي على الحالة */
 .rq.new .chp,.chp.new{animation:ui-glow 2.6s ease-in-out infinite}
@@ -163,7 +188,7 @@ body.ui-stage #gate,.lg,.gc{position:relative;z-index:1}
 @keyframes ui-pop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:none}}
 @keyframes ui-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @keyframes ui-drift{0%{transform:translate(0,0) rotate(0)}50%{transform:translate(3%,-2%) rotate(6deg)}100%{transform:translate(-3%,3%) rotate(-5deg)}}
-@keyframes ui-sweep{0%{background-position:-40% 0}60%,100%{background-position:140% 0}}
+@keyframes ui-sweep{0%{transform:translateX(-110%)}60%,100%{transform:translateX(300%)}}
 @keyframes ui-shine{0%{left:-60%}35%,100%{left:130%}}
 @keyframes ui-spin{to{transform:rotate(360deg)}}
 @keyframes ui-glow{0%,100%{box-shadow:0 0 0 0 rgba(212,174,92,.45)}60%{box-shadow:0 0 0 7px rgba(212,174,92,0)}}
