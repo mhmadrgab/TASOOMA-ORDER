@@ -33,6 +33,7 @@ const endOf=r=>N(r.dep)||N(r.dlv)||((r.st==="done"||r.st==="recv")?N(r.upd):0);
 // الدقة: الفرع استلم كامل = حسناً. استلم بملاحظات = المدير يراجع (خطأ تجهيز ولا لأ)
 function verdict(r){
  if(r.st!=="recv"||!r.rcv)return null;
+ if(r.qa&&r.qa.x===true)return null;// المالك حذف الملاحظة: مابتتحسبش على حد
  if(r.rcv.ok!==false)return "ok";
  if(r.qa&&typeof r.qa.fault==="boolean")return r.qa.fault?"err":"ok";
  return "wait";
@@ -71,11 +72,16 @@ export function view(){
  const top=rows[0],idle=W.filter(w=>w.active!==false&&!rows.some(s=>s.id===w.id));
  const wait=X.R().filter(r=>hasBy(r)&&verdict(r)==="wait").sort((a,b)=>N(b.rcv&&b.rcv.at)-N(a.rcv&&a.rcv.at));
  const stars=(RT[mo]&&RT[mo].stars)||{};
+ // اللي اتراجعت في الشهر ده (للمالك: يغيّر القرار أو يحذف)
+ const done=X.owner?X.R().filter(r=>hasBy(r)&&r.st==="recv"&&r.rcv&&r.rcv.ok===false&&r.qa&&typeof r.qa.fault==="boolean"&&r.qa.x!==true&&ym(r.prep.at)===mo).sort((a,b)=>N(b.qa.at)-N(a.qa.at)):[];
  return `<div class="fl"><h3 style="margin:0">👷 تقييم العمال</h3><select id="wmon" style="margin-inline-start:auto">${ms.map(m=>`<option ${m===mo?"selected":""}>${m}</option>`).join("")}</select><button class="bt" data-wk="rep" type="button">🖨 التقرير الشهري</button></div>
  ${top?`<div class="wtop"><div class="ic">🏆</div><div><small>عامل الشهر (${E(mo)})</small><b>${E(nm(top.id))}</b><small>${fmt(Math.round(top.lines))} سطر · ${fmt(Math.round(top.pcs))} قطعة</small></div><div class="sc2">${top.score}</div></div>`:""}
  ${wait.length?`<div class="pan" style="margin-bottom:14px"><h3>⚠️ ملاحظات استلام تحتاج إلى مراجعتك (${wait.length})</h3><p class="off" style="font-size:13px;margin:0 0 10px">استلم الفرع بملاحظات. حدّد هل هذا خطأ في التجهيز (يُحسب على العمال) أم لا (تلف في الطريق، نقص من المخزن...).</p>
   ${wait.map(r=>`<div class="wrv"><b>${E(r.brn)}</b> · <bdi dir="ltr">${E(r.no)}</bdi><div class="rn">👷 ${E(r.prep.by.map(nm).join("، "))}${(r.rcv.lines||[]).slice(0,6).map(x=>`<br><bdi dir="ltr">${E(x.k)} ${E(x.c||"")} ${E(x.z||"")}</bdi>: مطلوب ${N(x.q)} · استلم ${N(x.r)}`).join("")}${r.rcv.note?`<br>📝 ${E(r.rcv.note)}`:""}</div>
-  <div class="fl" style="margin:0"><button class="bt s" data-wk="fault" data-id="${E(r.id)}" type="button" style="color:#c4362b">خطأ تجهيز</button><button class="bt s" data-wk="nofault" data-id="${E(r.id)}" type="button">ليس خطأ العمال</button></div></div>`).join("")}</div>`:""}
+  <div class="fl" style="margin:0"><button class="bt s" data-wk="fault" data-id="${E(r.id)}" type="button" style="color:#c4362b">خطأ تجهيز</button><button class="bt s" data-wk="nofault" data-id="${E(r.id)}" type="button">ليس خطأ العمال</button>${X.owner?`<button class="bt s r" data-wk="qdel" data-id="${E(r.id)}" type="button" title="تُحذف الملاحظة من المراجعة ولا تُحسب على أحد">🗑 حذف</button>`:""}</div></div>`).join("")}</div>`:""}
+ ${X.owner&&done.length?`<details class="pan" style="margin-bottom:14px"><summary style="cursor:pointer;font-weight:700">🗂 ملاحظات استلام راجعتها (${done.length})</summary><p class="off" style="font-size:13px;margin:8px 0 10px">يمكنك تغيير القرار أو حذف الملاحظة نهائياً من التقييم.</p>
+  ${done.map(r=>`<div class="wrv" style="border-inline-start-color:${r.qa.fault?"#c4362b":"#2f8f3e"}"><b>${E(r.brn)}</b> · <bdi dir="ltr">${E(r.no)}</bdi> · ${r.qa.fault?'<span style="color:#c4362b;font-weight:700">خطأ تجهيز</span>':'<span style="color:#2f8f3e;font-weight:700">ليس خطأ العمال</span>'}<div class="rn">👷 ${E(r.prep.by.map(nm).join("، "))}${r.rcv.note?` · 📝 ${E(r.rcv.note)}`:""}</div>
+  <div class="fl" style="margin:0"><button class="bt s" data-wk="${r.qa.fault?"nofault":"fault"}" data-id="${E(r.id)}" type="button">↺ ${r.qa.fault?"ليس خطأ العمال":"خطأ تجهيز"}</button><button class="bt s r" data-wk="qdel" data-id="${E(r.id)}" type="button">🗑 حذف</button></div></div>`).join("")}</details>`:""}
  <div class="pan"><div class="tw"><table><thead><tr><th>#</th><th>العامل</th><th>الدرجة</th><th>سطور</th><th>قطع</th><th>طلبات</th><th>دقيقة / 10 سطور</th><th>الدقة</th><th>تقييمك</th><th>عن الشهر الماضي</th><th></th></tr></thead><tbody>
  ${rows.length?rows.map((s,i)=>{const d=s.id in pv?s.score-pv[s.id]:null;return `<tr><td>${i+1}</td><td><b>${E(nm(s.id))}</b><small class="off" style="display:block">${s.days.size} يوم عمل</small></td>
   <td><span class="wsc ${cls(s.score)}" title="إنتاجية ${Math.round(s.sc.p)}/40 · دقة ${Math.round(s.sc.a)}/30 · سرعة ${Math.round(s.sc.s)}/15 · تقييمك ${Math.round(s.sc.m)}/15">${s.score}</span>
@@ -145,6 +151,8 @@ async function click(e){
   else if(a==="ren"){const w=W.find(x=>x.id===id);const n=(prompt("الاسم الجديد:",w?w.name:"")||"").trim().slice(0,40);if(n)await setDoc(doc(X.db,"workers",id),{name:n},{merge:true})}
   else if(a==="tg"){const w=W.find(x=>x.id===id);if(w)await setDoc(doc(X.db,"workers",id),{active:w.active===false},{merge:true})}
   else if(a==="fault"||a==="nofault")await updateDoc(doc(X.db,"requests",id),{qa:{fault:a==="fault",at:Date.now()}});
+  else if(a==="qdel"){if(!X.owner){X.toast("هذه الصلاحية للمالك فقط");return}
+   if(confirm("حذف ملاحظة الاستلام هذه من مراجعة العمال؟\nلن تُحسب على أي عامل، ويبقى الطلب كما هو.")){await updateDoc(doc(X.db,"requests",id),{qa:{x:true,at:Date.now()}});X.toast("تم الحذف")}}
  }catch(x){X.toast("تعذر التنفيذ: "+(x&&x.code||x&&x.message))}
 }
 export function initWorkers(ctx){

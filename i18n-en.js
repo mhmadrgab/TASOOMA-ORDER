@@ -1438,5 +1438,16 @@ export default {
 "يوم":"day",
 "يوم عمل":"working day",
 "يوماً بيوم":"Day by day",
-"يوماً فقط، حتى تبقى اللوحة سريعة":"days only, to keep the panel fast"
+"يوماً فقط، حتى تبقى اللوحة سريعة":"days only, to keep the panel fast",
+"أمس":"Yesterday",
+"آخر رسالة":"Latest message",
+"كل محادثة خاصة بين طرفيها فقط":"Each chat is private between its two parties",
+"تُحذف الملاحظة من المراجعة ولا تُحسب على أحد":"The note is removed from review and counted against no one",
+"ملاحظات استلام راجعتها":"Receipt notes you reviewed",
+"يمكنك تغيير القرار أو حذف الملاحظة نهائياً من التقييم.":"You can change the decision or remove the note from the rating permanently.",
+"هذه الصلاحية للمالك فقط":"This permission is for the owner only",
+"لا توجد رسائل بعد.":"No messages yet.",
+"أكّد الفرع استلام هذا الطلب، وسيُحذف من سجلات الفرع وتقييم العمال أيضاً، ولا يمكن التراجع.":"The branch confirmed receiving this order. It will also be removed from the branch records and worker ratings, and this cannot be undone.",
+"حذف ملاحظة الاستلام هذه من مراجعة العمال؟":"Remove this receipt note from the workers review?",
+"لن تُحسب على أي عامل، ويبقى الطلب كما هو.":"It will not count against any worker, and the order stays as it is.",
 };
