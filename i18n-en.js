@@ -1450,4 +1450,11 @@ export default {
 "أكّد الفرع استلام هذا الطلب، وسيُحذف من سجلات الفرع وتقييم العمال أيضاً، ولا يمكن التراجع.":"The branch confirmed receiving this order. It will also be removed from the branch records and worker ratings, and this cannot be undone.",
 "حذف ملاحظة الاستلام هذه من مراجعة العمال؟":"Remove this receipt note from the workers review?",
 "لن تُحسب على أي عامل، ويبقى الطلب كما هو.":"It will not count against any worker, and the order stays as it is.",
+"اعتماد الهدايا":"Approve gifts",
+"سجّل أي هدية أو عينة خرجت من الفرع لعميل":"Record any gift or sample given out by the branch",
+"أي هدية أو عينة تخرج من الفرع يجب تسجيلها هنا (ويمكنك إرفاق صورة السند)، ويعتمدها مدير التسويق.":"Every gift or sample that leaves the branch must be recorded here (you can attach a photo of the voucher), and the marketing manager approves it.",
+"من المستودع — ستُرسل إلى مدير التسويق ليعتمدها":"From the warehouse — it will be sent to the marketing manager for approval",
+"— ستُرسل إلى مدير التسويق ليعتمدها":"— it will be sent to the marketing manager for approval",
+"سُجّلت ✅ وبانتظار اعتماد مدير التسويق":"Recorded ✅ and awaiting the marketing manager's approval",
+"يدخل ويرى مديول الهدايا والعينات فقط، ويعتمد هدايا الفروع والمستودع أو يرفضها. لو أردت أن يعتمد شخص آخر، فعّل له \"✅ اعتماد الهدايا\" في جدول المديرين أو المحاسبين.":"Signs in and sees only the gifts & samples module, and approves or rejects gifts from branches and the warehouse. To let someone else approve, enable \"✅ Approve gifts\" for them in the managers or accountants table.",
 };

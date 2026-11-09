@@ -1,4 +1,4 @@
-// 🎁 الهدايا والعينات: الفرع (أو المستودع) يسجّل هدية/عينة طلعت + سند يثبتها، والمديرين أو المستودع بيعتمدوها،
+// 🎁 الهدايا والعينات: الفرع (أو المستودع) يسجّل هدية/عينة طلعت + سند يثبتها، والاعتماد لمدير التسويق (p.gm) واللي معاه "اعتماد الهدايا" (p.ga) بس،
 // والمحاسب (صلاحية gift) بيشوف ويطلّع تقارير لكل فرع أو للمستودع (طباعة PDF وملف إكسل). التعديل والمسح لمالك النظام بس.
 // gifts/{id} = {br:"003"|"WH", brn, no, ts, dt, rows:[{k,c,z,q}], pcs, to:{n,ph?}, why, note?, img:1, by:{e,n}, st:"pend"|"ok"|"no", ap?:{e,n,at,note?}}
 // صورة السند لوحدها في giftimg/{id} = {img} (بتتحمّل بس لما حد يدوس 📎، علشان القايمة تفضل خفيفة).
@@ -14,7 +14,7 @@ let X=null,L=new Map(),PEND=new Map(),OLD=new Map(),un=[],bun=null,BL=[],img="",
 let F={from:"",to:"",br:"",st:""};
 const CSS=`
 .gfm{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.55);overflow:auto;padding:16px}.gfm.on{display:block}
-.gfk{max-width:620px;margin:3vh auto;background:var(--card);border-radius:18px;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.gfk{max-width:680px;margin:3vh auto;background:var(--card);border-radius:18px;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
 .gfk h3{margin:0 0 4px}.gfk label{display:block;color:var(--mut);font-size:13px;margin:12px 0 4px}.gfk input,.gfk select,.gfk textarea{width:100%}
 .gfk textarea{background:var(--field);border:1.5px solid transparent;border-radius:11px;padding:10px 12px;font:inherit;color:var(--ink)}
 .gf-rows{display:grid;gap:6px}.gf-row{display:grid;grid-template-columns:1.4fr 1fr .8fr .7fr auto;gap:6px;align-items:center}.gf-row input{padding:9px 8px;text-align:center}
@@ -32,7 +32,20 @@ const CSS=`
 .gf-f{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:0 0 12px}.gf-f>div{display:flex;flex-direction:column;gap:3px}.gf-f small{color:var(--mut);font-size:12px}
 .gf-sum{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}.gf-sum span{background:var(--card);border-radius:999px;padding:7px 14px;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .gf-pend{background:#fff7e6;border:1px solid #efc47c;border-radius:16px;padding:12px 14px;margin-bottom:14px}
-.gfbtn{font-size:13px}
+#gfbtn{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 14px;padding:14px 18px;border:0;border-radius:18px;cursor:pointer;font:inherit;text-align:start;color:#1b1b1b;
+ background:linear-gradient(120deg,#f7e3b0 0%,#e9c977 55%,#d4ae5c 100%);box-shadow:0 8px 22px rgba(168,131,47,.28);position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s;animation:ui-fade .35s ease both}
+#gfbtn:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(168,131,47,.35)}#gfbtn:active{transform:scale(.99)}
+#gfbtn::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-120%);animation:gf-shine 4.5s ease-in-out infinite}
+@keyframes gf-shine{0%,70%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+#gfbtn .ic{width:58px;height:58px;border-radius:16px;background:rgba(255,255,255,.55);display:grid;place-items:center;font-size:32px;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.6)}
+#gfbtn .tx{flex:1;min-width:0}#gfbtn .tx b{display:block;font-size:19px;font-weight:800}#gfbtn .tx small{display:block;font-size:13.5px;color:#4a3a14;margin-top:2px}
+#gfbtn .bd{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}#gfbtn .bd span{background:rgba(27,27,27,.85);color:#f3e7c8;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700}
+#gfbtn .ar{font-size:24px;font-weight:800;flex:none;opacity:.7}html[dir="rtl"] #gfbtn .ar{transform:scaleX(-1)}
+.gf-hero{display:flex;align-items:center;gap:14px;margin:-20px -22px 14px;padding:18px 22px;border-radius:18px 18px 0 0;background:linear-gradient(120deg,#2b2416,#1b1b1b);color:#f3e7c8}
+.gf-hero .ic{font-size:40px}.gf-hero h3{margin:0;font-size:21px;color:#fff}.gf-hero p{margin:3px 0 0;font-size:13.5px;color:#cdb67a;line-height:1.7}
+.gf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}.gf-stats div{background:var(--soft);border-radius:14px;padding:10px;text-align:center}.gf-stats b{display:block;font-size:22px}.gf-stats small{color:var(--mut);font-size:12.5px}
+.gf-new{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font:inherit;font-size:17px;font-weight:800;border:0;border-radius:14px;padding:15px;background:#1b1b1b;color:#fff;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+@media (prefers-color-scheme:dark){#gfbtn{color:#1b1b1b}}
 @media (prefers-color-scheme:dark){.gf-st{background:#3a3115;color:#e8cf8a}.gf-st.ok{background:#173a1b;color:#8fd39a}.gf-st.no{background:#40191a;color:#f1a5a0}.gf-up.ok{background:#173a1b;color:#8fd39a}.gf-pend{background:#2b2210;border-color:#6b5226}}
 #gfm .bt{font:inherit;font-weight:700;border-radius:12px;padding:10px 16px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}#gfm .bt.s{padding:6px 12px;font-size:13.5px}
 #gfm .bt.p{background:#1b1b1b;border-color:#1b1b1b;color:#fff}#gfm .bt.g{background:#d4ae5c;border-color:#d4ae5c;color:#1b1b1b}#gfm .bt.r{color:#c4362b;border-color:#c4362b}#gfm .bt:disabled{opacity:.6}
@@ -57,24 +70,26 @@ export function initGifts(ctx){
  }
  if(!window.__gfc){window.__gfc=1;document.addEventListener("click",click);document.addEventListener("change",change)}
 }
-export function stopGifts(){un.forEach(f=>f());un=[];if(bun){bun();bun=null}L=new Map();PEND=new Map();OLD=new Map();closeM()}
+export function stopGifts(){un.forEach(f=>f());un=[];if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();PEND=new Map();OLD=new Map();closeM()}
 export const pendingCount=()=>PEND.size;
 // ---------- الفرع: زرار فوق + نافذة فيها هداياه ----------
 function addBranchButton(){
- if(g("gfbtn"))return;const mx=g("mx");if(!mx)return;
- const b=document.createElement("button");b.id="gfbtn";b.type="button";b.className="gfbtn";b.textContent="🎁 هدايا وعينات";b.dataset.gf="bopen";
- mx.parentNode.insertBefore(b,mx);
+ if(g("gfbtn"))return;const me=g("me");if(!me)return;
+ const b=document.createElement("button");b.id="gfbtn";b.type="button";b.dataset.gf="bopen";
+ me.parentNode.insertBefore(b,me.nextSibling);paintBtn();
+ if(!bun)bun=onSnapshot(query(collection(X.db,"gifts"),where("br","==",X.code)),sn=>{BL=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>N(b.ts)-N(a.ts));paintBtn();if(g("gfm")&&g("gfm").dataset.v==="list")paintBranch()},e=>{});
 }
-function openBranch(){
- if(bun)bun();BL=[];
- bun=onSnapshot(query(collection(X.db,"gifts"),where("br","==",X.code)),sn=>{BL=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>N(b.ts)-N(a.ts));if(g("gfm")&&g("gfm").dataset.v==="list")paintBranch()},e=>X.toast("تعذر قراءة الهدايا. تواصل مع المستودع","er"));
- paintBranch();
+function paintBtn(){
+ const b=g("gfbtn");if(!b)return;const p=BL.filter(r=>r.st==="pend").length,no=BL.filter(r=>r.st==="no"&&N(r.ap&&r.ap.at)>Date.now()-7*D).length;
+ b.innerHTML=`<span class="ic">🎁</span><span class="tx"><b>الهدايا والعينات</b><small>سجّل أي هدية أو عينة خرجت من الفرع لعميل</small>${p||no?`<span class="bd">${p?`<span>⏳ ${p} بانتظار الاعتماد</span>`:""}${no?`<span>❌ ${no} مرفوضة</span>`:""}</span>`:""}</span><span class="ar">➜</span>`;
 }
+function openBranch(){paintBranch()}
 function paintBranch(){
- const pend=BL.filter(r=>r.st==="pend").length;
- openM(`<h3>🎁 الهدايا والعينات</h3><div class="m" style="color:var(--mut);font-size:14px;margin-bottom:10px">أي هدية أو عينة تخرج من الفرع يجب تسجيلها هنا (ويمكنك إرفاق صورة السند)، ويعتمدها المستودع.</div>
- <button class="b p" data-gf="new" type="button" style="width:100%">➕ تسجيل هدية / عينة جديدة</button>
- <div style="margin-top:14px">${BL.length?`${pend?`<div class="m" style="margin-bottom:6px">⏳ ${pend} بانتظار الاعتماد</div>`:""}${BL.slice(0,40).map(r=>card(r,false)).join("")}`:'<div class="m" style="text-align:center;padding:20px;color:var(--mut)">لا توجد هدايا مسجّلة بعد</div>'}</div>
+ const c=k=>BL.filter(r=>r.st===k).length;
+ openM(`<div class="gf-hero"><span class="ic">🎁</span><div><h3>الهدايا والعينات</h3><p>أي هدية أو عينة تخرج من الفرع يجب تسجيلها هنا (ويمكنك إرفاق صورة السند)، ويعتمدها مدير التسويق.</p></div></div>
+ <div class="gf-stats"><div><b>${c("pend")}</b><small>⏳ بانتظار الاعتماد</small></div><div><b>${c("ok")}</b><small>✅ معتمدة</small></div><div><b>${c("no")}</b><small>❌ مرفوضة</small></div></div>
+ <button class="gf-new" data-gf="new" type="button">➕ تسجيل هدية / عينة جديدة</button>
+ <div style="margin-top:14px">${BL.length?BL.slice(0,40).map(r=>card(r,false)).join(""):'<div class="m" style="text-align:center;padding:20px;color:var(--mut)">لا توجد هدايا مسجّلة بعد</div>'}</div>
  <div class="gf-act"><button class="b" data-gf="close" type="button">إغلاق</button></div>`,"list");
 }
 // ---------- الكارت ----------
@@ -100,7 +115,7 @@ export function giftsView(){
  const ok=rs.filter(r=>r.st==="ok"),pcs=ok.reduce((s,r)=>s+N(r.pcs),0);
  const per={};ok.forEach(r=>{const k=r.br;(per[k]=per[k]||{n:0,p:0}).n++;per[k].p+=N(r.pcs)});
  const brs=[...new Set(all().map(r=>r.br))].sort();
- return `<div class="fl" style="margin:0 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><h2 style="margin:0">🎁 الهدايا والعينات</h2>${canApprove()&&!X.noNew?`<button class="bt g" data-gf="new" type="button" style="margin-inline-start:auto">➕ هدية / عينة من المستودع</button>`:""}</div>
+ return `<div class="fl" style="margin:0 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><h2 style="margin:0">🎁 الهدايا والعينات</h2>${!X.noNew&&!X.view?`<button class="bt g" data-gf="new" type="button" style="margin-inline-start:auto">➕ هدية / عينة من المستودع</button>`:""}</div>
  ${pend.length?`<div class="gf-pend"><h3 style="margin:0 0 8px">⏳ بانتظار اعتمادك (${pend.length})</h3>${pend.map(r=>card(r,true)).join("")}</div>`:""}
  <div class="gf-f"><div><small>من</small><input type="date" id="gff" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gft" value="${E(F.to)}"></div>
  <div><small>الفرع</small><select id="gfb"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
@@ -120,13 +135,13 @@ async function ensureRange(){
 // ---------- النافذة ----------
 function box(){let m=g("gfm");if(!m){m=document.createElement("div");m.id="gfm";m.className="gfm";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}
 function openM(h,v){const m=box();m.innerHTML=`<div class="gfk">${h}</div>`;m.className="gfm on";m.dataset.v=v||""}
-function closeM(){const m=g("gfm");if(m){m.className="gfm";m.innerHTML="";m.dataset.v=""}img="";imgBusy=false;edit=null;if(bun&&!(g("gfm")&&g("gfm").dataset.v)){bun();bun=null}}
+function closeM(){const m=g("gfm");if(m){m.className="gfm";m.innerHTML="";m.dataset.v=""}img="";imgBusy=false;edit=null}
 // ---------- نموذج التسجيل ----------
 const rowHtml=(x={})=>`<div class="gf-row"><input data-r="k" placeholder="الكود" dir="ltr" maxlength="40" value="${E(x.k||"")}"><input data-r="c" placeholder="اللون" maxlength="40" value="${E(x.c||"")}"><input data-r="z" placeholder="المقاس" maxlength="20" value="${E(x.z||"")}"><input data-r="q" placeholder="العدد" inputmode="numeric" value="${x.q?E(x.q):""}"><button type="button" data-gf="rmrow" title="احذف السطر">✕</button></div>`;
 function form(r){
  edit=r||null;img="";imgBusy=false;
  const wh=X.mode!=="branch",lsName=(()=>{try{return localStorage.getItem("gf_by")||""}catch(e){return ""}})();
- openM(`<h3>${r?"✏️ تعديل":"🎁 تسجيل"} هدية / عينة</h3><div style="color:var(--mut);font-size:13.5px">${r?`<bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.brn||brName(r.br))}`:wh?"من المستودع (تُعتمد مباشرة)":"من "+E(X.brn)+" — سترسل إلى المستودع ليعتمدها"}</div>
+ openM(`<h3>${r?"✏️ تعديل":"🎁 تسجيل"} هدية / عينة</h3><div style="color:var(--mut);font-size:13.5px">${r?`<bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.brn||brName(r.br))}`:wh?"من المستودع — ستُرسل إلى مدير التسويق ليعتمدها":"من "+E(X.brn)+" — ستُرسل إلى مدير التسويق ليعتمدها"}</div>
  <label>الأصناف</label><div class="gf-rows" id="gfrows">${(r&&Array.isArray(r.rows)&&r.rows.length?r.rows:[{}]).map(rowHtml).join("")}</div>
  <button class="bt s" data-gf="addrow" type="button" style="margin-top:6px;width:auto">➕ صنف</button>
  <div class="gf-2"><div><label>اسم المستلم *</label><input id="gfn" maxlength="60" value="${E(r&&r.to&&r.to.n||"")}" placeholder="مثلاً: أ. محمد علي"></div>
@@ -161,13 +176,13 @@ async function save(){
   }
   const wh=X.mode!=="branch",ts=Date.now(),dd=new Date(ts),p=n=>String(n).padStart(2,"0"),br=wh?"WH":X.code;
   const ref=doc(collection(X.db,"gifts")),no=`G-${br}-${p(dd.getMonth()+1)}${p(dd.getDate())}-${p(dd.getHours())}${p(dd.getMinutes())}`;
-  const d={br,brn:wh?"المستودع":String(X.brn||br).slice(0,40),no,ts,dt:today(),rows,pcs,to,why,by:{e:X.me.e,n:byN},st:wh?"ok":"pend"};
-  if(note)d.note=note;if(img)d.img=1;if(wh)d.ap={e:X.me.e,n:byN,at:ts};
+  const d={br,brn:wh?"المستودع":String(X.brn||br).slice(0,40),no,ts,dt:today(),rows,pcs,to,why,by:{e:X.me.e,n:byN},st:"pend"};
+  if(note)d.note=note;if(img)d.img=1;
   const b=writeBatch(X.db);b.set(ref,d);if(img)b.set(doc(X.db,"giftimg",ref.id),{img});
   await withTimeout(b.commit(),20000);
   if(!wh)try{localStorage.setItem("gf_by",byN)}catch(e){}
   if(X.ping)X.ping([ref.id]);
-  X.toast(wh?"تم التسجيل ✅":"سُجّلت ✅ وبانتظار اعتماد المستودع");
+  X.toast("سُجّلت ✅ وبانتظار اعتماد مدير التسويق");
   if(X.mode==="branch")openBranch();else closeM();
  }catch(e){if(btn){btn.disabled=false;btn.textContent=edit?"💾 حفظ التعديل":"✅ تسجيل"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
 }

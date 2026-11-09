@@ -1,5 +1,5 @@
 // Ø®Ø¯Ù…Ø© Ø¨Ø³ÙŠØ·Ø©: Ø´Ø¨ÙƒØ© Ø£ÙˆÙ„Ø§Ù‹ØŒ ÙˆÙ„Ùˆ Ø§Ù„Ù†Øª Ù‚Ø·Ø¹ ØªÙØªØ­ Ø¢Ø®Ø± Ù†Ø³Ø®Ø© Ù…Ù† Ø§Ù„ØµÙØ­Ø©. Ù…ÙÙŠØ´ ØªØ®Ø²ÙŠÙ† Ù„Ø¨ÙŠØ§Ù†Ø§Øª Firebase.
-const V="tasooma-v69";
+const V="tasooma-v70";
 const SHELL=["./index.html","./admin.html","./ui.css","./ui.js","./i18n.js","./i18n-en.js","./workers.js","./bchat.js","./prof.js","./audit.js","./backup.js","./dash.js","./fb.js","./cust.js","./notify.js","./br-extra.js","./ad-extra.js","./fleet.js","./map.js","./zoom.js","./gifts.js","./staff.js","./driver.html","./manifest-driver.json","./icon-192.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
