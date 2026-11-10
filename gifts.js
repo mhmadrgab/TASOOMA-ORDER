@@ -77,7 +77,12 @@ const CSS=`
 @media (prefers-color-scheme:dark){.gf-st.set,.gf-set,.gf-acc{background:#14243a;color:#9cc4f0;border-color:#2a4a70}}.gf-st.ok{background:#d8efd9;color:#1d5a24}.gf-st.no{background:#f8d9d5;color:#8a2218}
 .gf-it{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.gf-it span{background:var(--soft);border-radius:9px;padding:3px 9px;font-size:13.5px}
 .gf-b{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.gf-b .bt,.gf-b button{width:auto}
-.gf-f{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:0 0 12px}.gf-f>div{display:flex;flex-direction:column;gap:3px}.gf-f small{color:var(--mut);font-size:12px}
+/* شريط الفلاتر (نوفمبر 2026): كان flex بيلف بشكل عشوائي (فلاتر فوق وتحت وفي النص). دلوقتي شبكة ثابتة: 4 فلاتر + الأزرار في سطر على الكمبيوتر، وعمودين على التابلت والموبايل والأزرار سطر كامل */
+.gf-f{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:end;margin:0 0 12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.gf-f>div{display:flex;flex-direction:column;gap:4px;min-width:0}.gf-f small{color:var(--mut);font-size:12px;font-weight:700}
+.gf-f input,.gf-f select{width:100%;height:44px;margin:0}
+.gf-f .gf-act{flex-direction:row;gap:8px}.gf-f .gf-act .bt{height:44px;white-space:nowrap;margin:0}
+@media (max-width:980px){.gf-f{grid-template-columns:repeat(2,minmax(0,1fr))}.gf-f .gf-act{grid-column:1/-1}.gf-f .gf-act .bt{flex:1}}
 .gf-sum{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}.gf-sum span{background:var(--card);border-radius:999px;padding:7px 14px;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .gf-pend{background:#fff7e6;border:1px solid #efc47c;border-radius:16px;padding:12px 14px;margin-bottom:14px}
 #gfbtn{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 14px;padding:14px 18px;border:0;border-radius:18px;cursor:pointer;font:inherit;text-align:start;color:#1b1b1b;
@@ -187,7 +192,7 @@ export function giftsView(){
  <div class="gf-f"><div><small>من</small><input type="date" id="gff" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gft" value="${E(F.to)}"></div>
  <div><small>الفرع</small><select id="gfb"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
  <div><small>الحالة</small><select id="gfs"><option value="">الكل</option>${Object.entries(STL).filter(([k])=>!accOnly()||k==="ok"||k==="set").map(([k,v])=>`<option value="${k}" ${F.st===k?"selected":""}>${v}</option>`).join("")}</select></div>
- <button class="bt" data-gf="print" type="button">🖨 تقرير PDF</button><button class="bt" data-gf="csv" type="button">⬇️ إكسل</button></div>
+ <div class="gf-act"><button class="bt" data-gf="print" type="button">🖨 تقرير PDF</button><button class="bt" data-gf="csv" type="button">⬇️ إكسل</button></div></div>
  <div class="gf-sum"><span>🎁 <b>${rs.length}</b> في الفترة</span><span>✅ <b>${ok.length}</b> معتمدة · <b>${fmt(pcs)}</b> قطعة صافي</span>${accOnly()?"":`<span>⏳ <b>${rs.filter(r=>r.st==="pend").length}</b> بانتظار</span>`}<span>🧾 <b>${rs.filter(r=>r.st==="set").length}</b> تمت تسويتها</span>${nWait?`<span>↩️ <b>${nWait}</b> عينة لم ترجع</span>`:""}${accOnly()?"":`<span>❌ <b>${rs.filter(r=>r.st==="no").length}</b> مرفوضة</span>`}</div>
  ${Object.keys(per).length>1?`<div class="pan" style="margin-bottom:12px"><h3 style="margin:0 0 8px">المعتمد لكل فرع</h3><div class="tw"><table><thead><tr><th>الفرع</th><th>عدد</th><th>قطع</th></tr></thead><tbody>${Object.entries(per).sort((a,b)=>b[1].p-a[1].p).map(([k,v])=>`<tr><td class="l"><bdi dir="ltr">${E(brName(k))}</bdi></td><td>${v.n}</td><td>${fmt(v.p)}</td></tr>`).join("")}</tbody></table></div></div>`:""}
  ${rs.length?rs.map(r=>card(r,true)).join(""):'<div class="pan off" style="text-align:center;padding:24px">لا توجد هدايا في هذه الفترة</div>'}`;

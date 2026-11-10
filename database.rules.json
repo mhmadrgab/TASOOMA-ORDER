@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "on": {
+      ".read": "auth != null",
+      "$p": {
+        "$dev": {
+          ".write": "auth != null && ($p === 'w-' + auth.token.email.toLowerCase().replace('.', ',') || $p === 'b-' + auth.token.email.replace('@tasooma.app', '') || $p === 'd-' + auth.token.email.replace('@tasooma.app', ''))",
+          ".validate": "newData.hasChildren(['on', 'ts']) && newData.child('on').isBoolean() && newData.child('ts').isNumber() && $dev.length <= 20"
+        }
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

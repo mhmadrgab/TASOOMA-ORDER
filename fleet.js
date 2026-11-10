@@ -107,9 +107,20 @@ const LM={host:null,map:null,L:null,mk:new Map(),fitKey:"",loading:false};
 let LVU=null,LVT=null;
 function liveListen(){
  if(LVU||!X)return;
- LVU=onSnapshot(collection(X.db,"live"),sn=>{LV={};sn.docs.forEach(d=>{LV[d.id]=d.data()});if(LM.map&&X&&X.tab()==="fl")paintLive()},()=>{});
- if(!LVT)LVT=setInterval(()=>{if((!X||X.tab()!=="fl")&&LVU){LVU();LVU=null;LV={}}},20000);
+ LVU=onSnapshot(collection(X.db,"live"),sn=>{LV={};sn.docs.forEach(d=>{LV[d.id]=d.data()});if(X&&X.tab()==="fl"){if(LM.map)paintLive();paintSig()}},()=>{});
+ // كل 20 ثانية: لو خرجنا من التبويب نقفل السماع، ولو لسه فيه نحدّث "متصل / انقطع الاتصال" (الوقت بيعدّي من غير أي تحديث)
+ if(!LVT)LVT=setInterval(()=>{if((!X||X.tab()!=="fl")&&LVU){LVU();LVU=null;LV={}}else if(X&&X.tab()==="fl"){paintSig();if(LM.map)paintLive()}},20000);
 }
+// 📵 انقطاع الاتصال (نوفمبر 2026، طلب محمد: "بدخل ألاقي العربية مكانها وأكلّم السواق يقول النت فصل").
+// آخر إشارة = الأحدث بين مكان الرحلة (trip.loc) واللايف (live/{السائق}، التطبيق بيبعت كل 20 ثانية، وواقف مرة في الدقيقة).
+// لو عدّى 6 دقايق من غير أي إشارة والرحلة شغّالة: النت فصل عند السواق أو التطبيق اتقفل، والعلامة على الخريطة = آخر مكان وصل.
+const SIGMS=6*6e4;
+const lastSig=t=>{const lv=LV[t.drv];return Math.max(N(t.loc&&t.loc.ts),lv&&lv.trip===t.id?N(lv.ts):0)};
+const sigOff=t=>t.st==="active"&&Date.now()-(lastSig(t)||N(t.start))>SIGMS;
+const sigPill=t=>sigOff(t)?`<span class="pill" style="background:#fdecea;color:#c0392b">📵 انقطع الاتصال ${ago(lastSig(t)||t.start)}</span>`:`<span class="pill" style="background:#e8f7ee;color:#1f7a44">🟢 متصل</span>`;
+function sigBanner(){return TR.filter(sigOff).map(t=>{const l=lastSig(t);return l?`<div class="al">📵 <b>${E(t.drvn)}</b>: لا تصل إشارة من جواله ${ago(l)} (آخر إشارة ${hm(l)}). غالباً انقطع الإنترنت عنده أو أُغلق التطبيق، والمكان على الخريطة هو آخر مكان وصل.</div>`
+  :`<div class="al">📵 <b>${E(t.drvn)}</b>: لم يصل أي موقع من جواله منذ بداية الرحلة (${hm(t.start)}). تأكد أن تطبيق التتبع يعمل والإنترنت متاح عنده.</div>`}).join("")}
+function paintSig(){const b=document.getElementById("flsig");if(b)b.innerHTML=sigBanner();document.querySelectorAll("[data-sig]").forEach(el=>{const t=TR.find(x=>x.id===el.dataset.sig);if(t)el.innerHTML=sigPill(t)})}
 function liveStop(){if(LVU){LVU();LVU=null}if(LVT){clearInterval(LVT);LVT=null}LV={}}
 function attachLive(){
  const slot=g("flmap-slot");if(!slot)return;liveListen();
@@ -145,9 +156,9 @@ function paintLive(){
   // المكان: الأحدث بين اللي على الرحلة (كل دقيقتان ونص) واللايف (live/{السائق}، كل ~20 ثانية)
   const lv=LV[t.drv],loc=lv&&lv.trip===t.id&&N(lv.ts)>N(t.loc&&t.loc.ts)&&okPt(lv)?{...lv,src:"bg"}:t.loc;
   if(!okPt(loc))return;
-  const old=Date.now()-N(loc.ts)>10*6e4,nx=rem[0],rr=RT[t.id]&&RT[t.id].r,nxs=rr&&rr.legs&&rr.legs[0];
-  const pop=`<b>🚚 ${E(t.drvn)}</b><br>${E(t.carn)}<br>سلّم ${done} من ${st.length}${nx?`<br>متجه إلى <b><bdi dir="ltr">${E(nx.fr&&!nx.pk?(nx.frn||nx.fr)+" (استلام)":nx.brn)}</bdi></b>${eta(nx)?` · متوقع ~${hm(eta(nx))}`:""}`:"<br>أنهى التوصيلات"}${nx&&nxs?`<br>🚦 مع الزحام حالياً: يصل خلال ~${Math.max(1,Math.round(nxs/60))} د${rr.delay>60?` (منهم ${Math.round(rr.delay/60)} د زحام)`:""}`:""}${lv&&lv.trip===t.id&&N(lv.spd)>0?`<br>🏎 ${N(lv.spd)} كم/س`:""}<br><span style="color:#6f6b64">آخر مكان: ${ago(loc.ts)} (${hm(loc.ts)})${loc.src==="bg"?" · من التطبيق":""}</span>`;
-  mark("d_"+t.id,loc,`<div class="tz-d${old?" old":""}"><b>🚚</b><span>${E(t.drvn)}</span></div>`,pop,null,1000,true);fit.push(loc);
+  const old=sigOff(t),nx=rem[0],rr=RT[t.id]&&RT[t.id].r,nxs=rr&&rr.legs&&rr.legs[0];
+  const pop=`<b>🚚 ${E(t.drvn)}</b><br>${E(t.carn)}<br>سلّم ${done} من ${st.length}${nx?`<br>متجه إلى <b><bdi dir="ltr">${E(nx.fr&&!nx.pk?(nx.frn||nx.fr)+" (استلام)":nx.brn)}</bdi></b>${eta(nx)?` · متوقع ~${hm(eta(nx))}`:""}`:"<br>أنهى التوصيلات"}${nx&&nxs?`<br>🚦 مع الزحام حالياً: يصل خلال ~${Math.max(1,Math.round(nxs/60))} د${rr.delay>60?` (منهم ${Math.round(rr.delay/60)} د زحام)`:""}`:""}${lv&&lv.trip===t.id&&N(lv.spd)>0?`<br>🏎 ${N(lv.spd)} كم/س`:""}<br><span style="color:#6f6b64">آخر مكان: ${ago(loc.ts)} (${hm(loc.ts)})${loc.src==="bg"?" · من التطبيق":""}</span>${old?`<br><b style="color:#c0392b">📵 انقطع الاتصال: غالباً النت فصل عند السائق</b>`:""}`;
+  mark("d_"+t.id,loc,`<div class="tz-d${old?" old":""}"><b>🚚</b><span>${old?"📵 ":""}${E(t.drvn)}</span></div>`,pop,null,1000,true);fit.push(loc);
   // الطريق اللي فاضل: من مكانه حالياً على الفروع اللي لا يزال ماسلّمهاش بالترتيب. خط متقطّع إلى ما المسار الحقيقي على الطريق يوصل (TomTom)
   const path=[loc,...rem.flatMap(s=>[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))])].filter(okPt);
   if(path.length>1){
@@ -250,10 +261,11 @@ export function view(){
  const dr=DRV.filter(d=>d.enabled);
  BK=new Set([...BK].filter(id=>openR.some(r=>r.id===id)));
  return `${A.length?A.map(a=>`<div class="${a.l}">${a.t}</div>`).join(""):""}
+ <div id="flsig">${sigBanner()}</div>
  <h3 class="sub" style="margin-top:4px">🚚 على الطريق حالياً</h3>
  ${act.length||okPt(geoPt("WH"))||Object.keys((GEOD&&GEOD.br)||{}).length?(setTimeout(attachLive,0),'<div id="flmap-slot"></div>'):""}
  ${act.length?act.map(t=>{const st=Array.isArray(t.stops)?t.stops:[],ol=odoLegs(t).leg;let p=N(t.start);const done=st.filter(s=>s.arr).length;
-  return `<div class="tr"><h4>${E(t.drvn)} — ${E(t.carn)} <span class="pill go">في رحلة</span></h4><div class="off" style="font-size:14px">بدأ ${hm(t.start)} · منذ ${dur(Date.now()-N(t.start))} · سلّم ${done} من ${st.length}${okPt(t.loc)?` · <a href="#" data-fl="tmap" data-id="${E(t.id)}">📍 مكانه (${ago(t.loc.ts)})</a>`:" · <span>لا يوجد موقع مسجّل بعد</span>"}</div>
+  return `<div class="tr"><h4>${E(t.drvn)} — ${E(t.carn)} <span class="pill go">في رحلة</span> <span data-sig="${E(t.id)}">${sigPill(t)}</span></h4><div class="off" style="font-size:14px">بدأ ${hm(t.start)} · منذ ${dur(Date.now()-N(t.start))} · سلّم ${done} من ${st.length}${okPt(t.loc)?` · <a href="#" data-fl="tmap" data-id="${E(t.id)}">📍 مكانه (${ago(t.loc.ts)})</a>`:" · <span>لا يوجد موقع مسجّل بعد</span>"}</div>
   <div class="st1">${(()=>{let prev="WH";return st.map(s=>{const c=bc(s.brn);if(s.arr){const l=N(s.arr)-p;p=N(s.arr);prev=c;return `<span class="ok">✔ ${E(s.brn)} ${hm(s.arr)} (${dur(l)}${ol[s.rid]!==undefined?" · "+fmt(ol[s.rid])+" كم":""})</span>`}
    // الوقت المتوقع الأحدث: اللي على الطلب (تطبيق السائق بيحدّثه وهو ماشي)، وإلا اللي على الرحلة
    const rq=X.R().find(r=>r.id===s.rid),eta=N(rq&&rq.eta)||N(s.eta);

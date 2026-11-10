@@ -10,6 +10,7 @@
 //   whdir/{email}       = {n, k, r}: أسماء اللي في المستودع وكنيتهم (المالك بس بيكتبها، staff.js). ava/{email} = صورهم
 //   كل شخص بيظهر باسمه وكنيته وصورته بس (من غير "مدير" أو "مالك النظام")
 import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,orderBy,limit,writeBatch,increment,deleteField,withTimeout,failReason,FAIL_MSG} from "./fb.js";
+import {initPres,stopPres,presOf,presTxt} from "./pres.js";// 🟢 متصل الآن / آخر ظهور
 const LEN=1000,MAXS=60,MAXB=470000,PAGE=40,SEP="__";// نفس الحدود اللي في firestore.rules
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const N=x=>Number.isFinite(+x)?+x:0;
@@ -30,6 +31,7 @@ const inWh=d=>d&&(d.r==="owner"||d.w===true);
 // كل شخص في قسم واحد بس: w = 🏭 المستودع (المالك + المختارين، عند الكل)، m = الإدارة، s = باقي الموظفين
 const kindOf=p=>{if(p[0]!=="w")return p[0];if(inWh(DIR[pv(p)]))return "w";return isM(p)?"m":"s"};
 // CUR = المحادثة المفتوحة (cid). CTX = "بخصوص طلب" لكل محادثة، PEND = طلب مستني الفرع يختار يكلّم مين عنه. AVA = الصور
+let PRT=0;
 let X=null,SUMS={},SO={},SN={},SG={},UNG=null,DIR={},DDIR={},AVA={},FILT="",CUR=null,GEN=0,UNM=null,UNS=null,UNS2=null,UND=null,UNA=null,UNDD=null,MSGS=[],LIM=PAGE,DRAFT={},CTX={},PEND=null,REC=null,PLAY={id:null,au:null},busy=false,marking=false,first=true,keepTop=null,ROOT=null,Q="";
 const AUD=new Map();let SCR={t:0,end:true,l:0};
 const STYLE=`
@@ -147,6 +149,8 @@ html[dir="rtl"] #bcsend svg{animation:none}
 .bcr{display:flex;gap:12px;align-items:center;width:100%;padding:9px 10px;border:0;border-radius:14px;background:none;text-align:start;font:inherit;color:var(--ink);cursor:pointer;transition:background .15s}
 .bcr:hover{background:var(--soft,#f6f2e9)}.bcr.on{background:#f6ecd2}
 .bcr .av{width:50px;height:50px}
+.avw{position:relative;flex:none;display:inline-flex}.bcon{position:absolute;bottom:1px;right:1px;width:14px;height:14px;border-radius:50%;background:#25d366;border:2.5px solid var(--card,#fff);box-shadow:0 0 0 1px rgba(0,0,0,.06)}
+.bcpr{color:#1f9d55;font-weight:700}
 .bcr .nm{flex:1;min-width:0}.bcr .nm b{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden}
 .bcr .nm b bdi{overflow:hidden;text-overflow:ellipsis}
 .bcr .nm b u{text-decoration:none;font-weight:600;font-size:11px;color:#8a6a22;background:#f6ecd2;border-radius:6px;padding:0 6px;flex:none}
@@ -323,7 +327,9 @@ function paintHead(){
     if(av)av.innerHTML=avHtml(CUR,n," sm");return}
   g("bct").innerHTML=`<bdi${p[0]==="b"?' dir="ltr"':""}>${E(n)}</bdi>`;
   const kind=p[0]==="d"?"سائق":p[0]==="b"?"فرع":"";
-  g("bcsub").innerHTML=`${k?E(k)+" · ":kind?E(kind)+" · ":""}${IC.lock} محادثة خاصة بينكما فقط`;
+  // 🟢 متصل الآن / آخر ظهور (لو مفيش معلومة: "محادثة خاصة" زي الأول)
+  const pr=presTxt(p),on=pr&&presOf(p).on;
+  g("bcsub").innerHTML=`${k?E(k)+" · ":kind?E(kind)+" · ":""}${pr?`<span class="${on?"bcpr":""}">${on?"🟢 ":""}${E(pr)}</span>`:`${IC.lock} محادثة خاصة بينكما فقط`}`;
   if(av)av.innerHTML=avHtml(p,n," sm");
 }
 function paintCtx(){const b=g("bcrq");if(!b)return;const c=CUR&&CTX[CUR];b.hidden=!c;if(c)b.innerHTML=`<span>📦 بخصوص طلب <bdi dir="ltr">${E(c.no)}</bdi></span><button data-bcrqx type="button" aria-label="أزل">✕</button>`}
@@ -635,7 +641,7 @@ function paintList(){
     // الجروب: اسم اللي كتب قبل الرسالة
     const gw=x.s&&x.s._g&&l&&!my&&l.n?`<b class="gwho">${E(String(l.n).split(" ")[0])}:</b> `:"";
     const pvw=l?`${my?tick(seen):""}${gw}${l.v?"🎤 ":""}<span data-notr>${E(l.v?String(l.t).replace(/^🎤\s*/,""):l.t)}</span>`:`<span>${E("ابدأ محادثة")}</span>`;
-    return `<button class="bcr${x.cid===CUR?" on":""}${x.u?" nw":""}" data-bcc="${E(x.p)}" type="button">${avHtml(x.p,x.n)}<span class="nm"><b><bdi${x.p[0]==="b"?' dir="ltr"':""}>${E(x.n)}</bdi>${x.role?`<u>${E(x.role)}</u>`:""}</b><small>${pvw}</small></span><span class="mt"><small>${l?when(l.ts):""}</small>${x.u?`<i>${x.u}</i>`:""}</span></button>`}).join("")
+    return `<button class="bcr${x.cid===CUR?" on":""}${x.u?" nw":""}" data-bcc="${E(x.p)}" type="button"><span class="avw">${avHtml(x.p,x.n)}${x.p[0]!=="g"&&presOf(x.p)&&presOf(x.p).on?'<i class="bcon" title="متصل الآن"></i>':""}</span><span class="nm"><b><bdi${x.p[0]==="b"?' dir="ltr"':""}>${E(x.n)}</bdi>${x.role?`<u>${E(x.role)}</u>`:""}</b><small>${pvw}</small></span><span class="mt"><small>${l?when(l.ts):""}</small>${x.u?`<i>${x.u}</i>`:""}</span></button>`}).join("")
     ||`<div class="bcnone"><b>🔎</b>${Q?"لا توجد نتائج بهذا الاسم":"لا يوجد أحد هنا بعد"}</div>`;
 }
 // الصفحة بتعيد رسم نفسها كتير، فالدردشة عنصر ثابت بنحطّه في مكانه كل مرة (الكتابة والتسجيل مايضيعوش)
@@ -711,6 +717,10 @@ export function initBChat(ctx){
   const fire=()=>{if(gotO&&gotN&&gotG)onSum()};
   // أسماء وكنيات وصور اللي في المستودع، وأسماء السائقين
   const again=()=>{paintList();paintHead();if(CUR)paintMsgs()};
+  // الحضور: لو أي حد فتح أو قفل، نحدّث القايمة والعنوان بس (مش الرسايل)
+  if(X.app)initPres(X.app,X.me,()=>{paintList();paintHead()});
+  // "آخر ظهور منذ X د" بيتغيّر مع الوقت
+  PRT=setInterval(()=>{if(CUR)paintHead()},60000);
   UND=onSnapshot(collection(X.db,"whdir"),sn=>{DIR={};sn.docs.forEach(d=>{DIR[d.id]=d.data()});again()},()=>{});
   UNA=onSnapshot(collection(X.db,"ava"),sn=>{AVA={};sn.docs.forEach(d=>{const p=d.data().ph;if(typeof p==="string"&&/^data:image\/jpeg;base64,/.test(p))AVA[d.id]=p});again()},()=>{});
   UNDD=onSnapshot(collection(X.db,"ddir"),sn=>{DDIR={};sn.docs.forEach(d=>{DDIR[d.id]=d.data()});again()},()=>{});
@@ -726,7 +736,7 @@ export function initBChat(ctx){
   }
 }
 export function stopBChat(){
-  if(!X)return;stopRec(true);stopPlay();[UNM,UNS,UNS2,UND,UNA,UNDD,UNG].forEach(f=>f&&f());UNM=UNS=UNS2=UND=UNA=UNDD=UNG=null;
+  if(!X)return;stopRec(true);stopPlay();stopPres();clearInterval(PRT);[UNM,UNS,UNS2,UND,UNA,UNDD,UNG].forEach(f=>f&&f());UNM=UNS=UNS2=UND=UNA=UNDD=UNG=null;
   CUR=null;GEN++;MSGS=[];SUMS={};SO={};SN={};SG={};DIR={};DDIR={};AVA={};DRAFT={};CTX={};PEND=null;AUD.clear();
   const m=g("bcm");if(m)m.remove();["bcfab","bcme"].forEach(id=>{const e=g(id);if(e)e.remove()});
   if(ROOT){ROOT.remove();ROOT=null}
