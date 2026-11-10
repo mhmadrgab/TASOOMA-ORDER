@@ -628,11 +628,24 @@ service cloud.firestore {
     // 📢 التعميمات (ann.js): المالك والمديرين بيبعتوا، والكل بيقرا (المستودع والفروع). rd = مين قرا (كل طرف بيكتب نفسه بس)
     match /ann/{id} {
       allow read: if isAdmin() || isStaff() || branchOn();
-      allow create: if isAdmin() && request.resource.data.keys().hasOnly(['t','by','n','ts'])
-        && request.resource.data.t is string && request.resource.data.t.size() > 0 && request.resource.data.t.size() <= 2000
+      // 📷 ممكن صورة (img:1 + w,h) والنص يبقى فاضي لو فيه صورة. الصورة نفسها في ann/{id}/img/{f|t}
+      // 🎨 bg:1 = خلفية تاسومة (نص قصير من غير صورة)
+      allow create: if isAdmin() && request.resource.data.keys().hasOnly(['t','by','n','ts','img','w','h','bg'])
+        && (!('bg' in request.resource.data) || (request.resource.data.bg == 1 && !('img' in request.resource.data) && request.resource.data.t.size() > 0 && request.resource.data.t.size() <= 300))
+        && request.resource.data.t is string && request.resource.data.t.size() <= 2000
+        && (request.resource.data.t.size() > 0 || request.resource.data.get('img', 0) == 1)
+        && (!('img' in request.resource.data) || (request.resource.data.img == 1 && request.resource.data.w is number && request.resource.data.h is number))
         && request.resource.data.by == request.auth.token.email.lower()
         && request.resource.data.n is string && request.resource.data.n.size() <= 60 && request.resource.data.ts is number;
       allow delete: if isOwner() || isAdmin();// المالك والمديرين يمسحوا التعميم
+      // f = الصورة الأصلية (لحد مليون حرف)، t = المصغّرة للقايمة
+      match /img/{k} {
+        allow read:   if isAdmin() || isStaff() || branchOn();
+        allow create: if isAdmin() && k in ['f','t'] && request.resource.data.keys().hasOnly(['i'])
+          && request.resource.data.i is string && request.resource.data.i.size() <= 1000000
+          && request.resource.data.i.matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+');
+        allow delete: if isOwner() || isAdmin();
+      }
       match /rd/{p} {
         allow read: if isAdmin() || isStaff() || branchOn();
         allow create: if request.resource.data.keys().hasOnly(['ts','n']) && request.resource.data.ts is number

@@ -32,10 +32,78 @@ const CSS=`
 .annpn{margin-top:14px;font-size:13px;color:var(--mut);font-weight:700}
 .annrd{margin-top:6px;font-size:12.5px;color:var(--mut);line-height:1.9}
 .anne{text-align:center;color:var(--mut);padding:30px 10px;line-height:2}
+.annc .pic{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.annpv{position:relative;margin-top:10px;border-radius:14px;overflow:hidden;background:#111;max-height:260px;display:flex;justify-content:center}
+.annpv img{max-width:100%;max-height:260px;display:block}.annpv button{position:absolute;top:8px;inset-inline-end:8px;width:34px;height:34px;padding:0;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:15px}
+.annpv small{position:absolute;bottom:6px;inset-inline-start:8px;background:rgba(0,0,0,.6);color:#fff;border-radius:8px;padding:2px 8px;font-size:11.5px}
+.annimg{display:block;width:100%;margin-top:10px;padding:0;border:0;border-radius:14px;overflow:hidden;cursor:zoom-in;background:#1b1b1b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='14' fill='none' stroke='%23d4ae5c' stroke-width='3' stroke-dasharray='60 30'/%3E%3C/svg%3E") center/42px no-repeat;max-height:70vh}
+.annimg img{width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .3s}.annimg img.ok{opacity:1}
+.annpb .annimg{margin:0 0 14px}
+#anniv{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.94);flex-direction:column}#anniv.on{display:flex}
+#anniv .t{display:flex;gap:10px;align-items:center;padding:12px 14px;color:#fff}#anniv .t b{flex:1;font-size:15px}
+#anniv .t a,#anniv .t button{font:inherit;font-weight:800;font-size:14px;border:0;border-radius:10px;padding:8px 14px;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;text-decoration:none}
+#anniv .v{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;padding:8px}#anniv .v img{max-width:100%;max-height:100%;object-fit:contain}
+#anniv .l{color:#cdb67a;text-align:center;padding:6px;font-size:13px}
+.annc .bgt[aria-pressed="true"]{background:linear-gradient(135deg,#d9b25f,#a8832f);color:#1b1b1b;border-color:transparent}
+.annc textarea.bg{min-height:190px;background:linear-gradient(140deg,#1b1b1b,#2b2416 55%,#1b1b1b);color:#fff;border:2px solid #d4ae5c;text-align:center;font-size:22px;font-weight:800;line-height:1.6;padding:28px 18px;resize:none}
+.annc textarea.bg::placeholder{color:#cdb67a;font-weight:600;font-size:16px}
+.annbg{position:relative;overflow:hidden;margin-top:10px;border-radius:16px;min-height:300px;padding:26px 22px 22px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:14px;text-align:center;color:#fff;
+  background:radial-gradient(circle at 18% 12%,rgba(212,174,92,.28),transparent 45%),radial-gradient(circle at 85% 90%,rgba(212,174,92,.2),transparent 50%),linear-gradient(140deg,#151515,#2b2416 55%,#151515);border:2px solid #d4ae5c;box-shadow:inset 0 0 0 6px rgba(212,174,92,.08)}
+.annbg .wm{position:absolute;inset:0;margin:auto;width:78%;max-width:340px;height:auto;fill:#d4ae5c;opacity:.08;pointer-events:none}
+.annbg .hd3{position:relative;display:flex;align-items:center;gap:8px;color:#d4ae5c;font-weight:800;letter-spacing:4px;font-size:13px;direction:ltr}.annbg .hd3 svg{width:30px;height:30px;fill:#d4ae5c}
+.annbg .bt{position:relative;white-space:pre-wrap;word-wrap:break-word;font-weight:800;line-height:1.55;text-shadow:0 2px 12px rgba(0,0,0,.5);max-width:100%}
+.annbg .bt.s1{font-size:34px}.annbg .bt.s2{font-size:27px}.annbg .bt.s3{font-size:21px}.annbg .bt.s4{font-size:17px;font-weight:700}
+.annbg .ft{position:relative;width:100%;display:flex;align-items:center;gap:10px;color:#cdb67a;font-size:12px}.annbg .ft::before,.annbg .ft::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,#d4ae5c,transparent)}
+.annpb .annbg{margin:0 0 6px}
+@media (max-width:480px){.annbg{min-height:260px}.annbg .bt.s1{font-size:28px}.annbg .bt.s2{font-size:23px}}
 @media (prefers-color-scheme:dark){.anni.nw{background:#2b2210}}
-@media print{#annb,#annm,#annp{display:none!important}}
+@media print{#annb,#annm,#annp,#anniv{display:none!important}}
 `;
 const me=()=>X&&X.party;
+// 📷 صورة التعميم (نوفمبر 2026، طلب محمد: إعلان أو تعميم بصورة بجودة عالية جداً). مفيش Storage، فالصورة في مستندين لوحدهم
+// علشان قايمة التعميمات تفضل خفيفة: ann/{id}/img/f = {i} الأصلية (لحد 2560 بكسل JPEG بأعلى جودة تدخل في 950 ألف حرف)،
+// و ann/{id}/img/t = {i} مصغّرة 720 بكسل للقايمة. على التعميم نفسه img:1, w, h بس. الفرع بيشوف الأصلية في النافذة، والضغط بيكبّرها
+// 🎨 خلفية تاسومة (نوفمبر 2026، زي بوست فيسبوك بخلفية): خلفية واحدة ثابتة بهوية المنصة ولوجو الديب، والكلام كبير في النص.
+// على التعميم bg:1 (نص بس من غير صورة). مفيش صورة بتترفع: الكارت بيترسم CSS + SVG، فمفيش أي حمل على Firebase
+let BG=false;
+const WOLF=`<path d="M139.5 87L142.5 88L175.5 130L129 212.5ZM370.5 87L373.5 87L374.5 94L384.5 211L383 213.5L336.5 130ZM197.5 135L314.5 135L314.5 138L249.5 219L250.5 273L259 275.5L262.5 270L262.5 221L269 214.5L305.5 306L290 344.5L267.5 334L281.5 318L282.5 307L268 292.5L262 289.5L247 290.5L230.5 305L230.5 318L244.5 334L225 343.5L222 343.5L219.5 340L206.5 305L242.5 217L247.5 199ZM327.5 141L330.5 143L352 184.5L320 171.5L297.5 179ZM183.5 142L188.5 145L215 179.5L192 171.5L160.5 184ZM192.5 185L233.5 201L232.5 209L211 261.5L201 257.5L175.5 240L154.5 202ZM315.5 186L327 187.5L357 200.5L357.5 203L335.5 242L303 262.5L299.5 259L278.5 202ZM192.5 203L199 202.5L205.5 213L212.5 230L209 237.5L202 236.5L173.5 217L173.5 212L177 208.5ZM312.5 203L326 204.5L335 208.5L339.5 215L334 221.5L320 230.5L308 237.5L304 237.5L300.5 235L299.5 230ZM144.5 213L150.5 219L164.5 244L164.5 248L128.5 308L126 308.5L125.5 247ZM365.5 213L368.5 213L386.5 246L386 308.5L347.5 248ZM174.5 256L205.5 275L194.5 302L194.5 311L214.5 358L249.5 387L249 425.5L165 374.5L127.5 333ZM334.5 257L340.5 259L384.5 334L345 376.5L263 425.5L262.5 387L299.5 356L318.5 309L307.5 274ZM254.5 343L281.5 355L257 375.5L231.5 356L232 353.5Z"/>`;
+const bgSize=t=>{const n=[...String(t||"")].length,l=String(t||"").split("\n").length;return n<=40&&l<=3?"s1":n<=110&&l<=5?"s2":n<=260?"s3":"s4"};
+const bgCard=a=>`<div class="annbg"><svg class="wm" viewBox="0 0 512 512" aria-hidden="true">${WOLF}</svg><div class="hd3"><svg viewBox="80 60 352 390" aria-hidden="true">${WOLF}</svg>TASOOMA</div><div class="bt ${bgSize(a.t)}" data-notr>${E(a.t)}</div><div class="ft">📢 ${E(a.n||"الإدارة")}</div></div>`;
+// جسم التعميم: خلفية تاسومة، أو صورة + نص، أو نص عادي
+const bodyOf=a=>a.bg&&a.t&&!a.img?bgCard(a):`${imgBox(a)}${a.t?`<div class="tx" data-notr>${E(a.t)}</div>`:""}`;
+let PIC=null;const IMG={};// PIC = الصورة المختارة قبل الإرسال، IMG = اللي اتحمّل {id:{t,f}}
+const loadEl=f=>new Promise((ok,no)=>{const u=URL.createObjectURL(f),i=new Image();i.onload=()=>ok({i,u});i.onerror=()=>{URL.revokeObjectURL(u);no(new Error("img"))};i.src=u});
+function jpg(im,max,q){const s=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight)),w=Math.max(1,Math.round(im.naturalWidth*s)),h=Math.max(1,Math.round(im.naturalHeight*s));
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,w,h);x.imageSmoothingQuality="high";x.drawImage(im,0,0,w,h);return {d:c.toDataURL("image/jpeg",q),w,h}}
+async function encode(file){
+  const {i,u}=await loadEl(file);
+  try{let best=null;
+    // أعلى مقاس وجودة تدخل في الحد: نبدأ 2560 بجودة 0.95 وننزل بالراحة
+    for(const mx of [2560,2048,1600,1280]){for(const q of [.95,.9,.85,.8,.74]){const r=jpg(i,mx,q);if(r.d.length<=950000){best=r;break}}if(best)break}
+    if(!best)throw new Error("big");
+    const t=jpg(i,720,.8);return {f:best.d,t:t.d,w:best.w,h:best.h};
+  }finally{URL.revokeObjectURL(u)}
+}
+async function getImg(id,k){
+  IMG[id]=IMG[id]||{};if(IMG[id][k])return IMG[id][k];
+  try{const s=await withTimeout(getDoc(doc(X.db,"ann",id,"img",k)),25000);const v=s.exists()&&s.data().i;if(typeof v==="string"&&/^data:image\/jpeg;base64,/.test(v))IMG[id][k]=v}catch(e){}
+  return IMG[id][k]||"";
+}
+// يحط الصورة في كل مكان ظاهرة فيه (القايمة أو نافذة الفرع)
+async function fillImg(id,k){const v=await getImg(id,k);document.querySelectorAll(`[data-annimg="${id}"] img`).forEach(el=>{if(v&&(!el.dataset.k||el.dataset.k==="t")){el.onload=()=>el.classList.add("ok");el.src=v;el.dataset.k=k;if(el.complete&&el.naturalWidth)el.classList.add("ok")}})}
+const imgBox=a=>a.img?`<button type="button" class="annimg" data-annimg="${E(a.id)}" aria-label="تكبير الصورة" style="aspect-ratio:${N(a.w)||4}/${N(a.h)||3}"><img alt=""></button>`:"";
+async function viewImg(id){
+  const a=A.find(x=>x.id===id)||{};let v=g("anniv");if(!v){v=document.createElement("div");v.id="anniv";document.body.appendChild(v);v.addEventListener("click",e=>{if(e.target===v||e.target.closest("[data-annivx]"))v.className=""})}
+  v.className="on";v.innerHTML=`<div class="t"><b>📢 ${E(a.n||"الإدارة")}</b><button type="button" data-annivx>✕ إغلاق</button></div><div class="v"><img alt="" src="${(IMG[id]&&(IMG[id].f||IMG[id].t))||""}"></div><div class="l">⏳ تحميل الجودة الكاملة...</div>`;
+  const f=await getImg(id,"f");if(!g("anniv")||v.className!=="on")return;
+  const im=v.querySelector(".v img"),l=v.querySelector(".l");
+  if(f){im.src=f;l.outerHTML="";v.querySelector(".t b").insertAdjacentHTML("afterend",`<a href="${f}" download="tasooma-ann-${E(id)}.jpg">⬇️ حفظ الصورة</a>`)}else l.textContent="تعذر تحميل الصورة";
+}
+async function pickImg(file){
+  if(!file||!/^image\//.test(file.type)){X.toast("اختر صورة");return}
+  const b=document.querySelector("[data-annpic]");if(b){b.disabled=true;b.textContent="⏳ تجهيز الصورة..."}
+  try{PIC=await encode(file);paint()}catch(e){X.toast(e&&e.message==="big"?"الصورة كبيرة جداً، جرّب صورة أخرى":"تعذر فتح الصورة، جرّب صورة أخرى");paint()}
+}
 const seen=()=>{try{return N(localStorage.getItem(LS))}catch(e){return 0}};
 const markSeen=()=>{const t=A.length?N(A[0].ts):0;try{localStorage.setItem(LS,String(Math.max(seen(),t)))}catch(e){}paintBtn()};
 const unread=()=>A.filter(a=>N(a.ts)>seen()&&a.by!==X.email).length;
@@ -82,7 +150,8 @@ function showPop(){
   if(!m){m=document.createElement("div");m.id="annp";document.body.appendChild(m)}
   const fresh=m.dataset.id!==a.id;m.dataset.id=a.id;m.className="on";
   m.innerHTML=`<div class="annk annpk${fresh?" pop":""}"><div class="annh"><span style="font-size:30px">📢</span><div><b>تعميم من الإدارة</b><small>${E(a.n||"الإدارة")} · ${when(a.ts)}</small></div><button type="button" data-annpx aria-label="إغلاق">✕</button></div>
-  <div class="annpb"><div class="tx" data-notr>${E(a.t)}</div>${Q.length>1?`<div class="annpn">يوجد ${Q.length-1} تعميم آخر بعد هذا</div>`:""}</div></div>`;
+  <div class="annpb">${bodyOf(a)}${Q.length>1?`<div class="annpn">يوجد ${Q.length-1} تعميم آخر بعد هذا</div>`:""}</div></div>`;
+  if(a.img)fillImg(a.id,"f");// الفرع بيشوف الصورة الأصلية على طول
 }
 async function dismissPop(){
   const a=Q.shift();if(!a||!X)return showPop();addDis(a.id);showPop();
@@ -91,7 +160,9 @@ async function dismissPop(){
 async function delAnn(id){
   if(!X||!X.canPost)return;
   if(!confirm("حذف هذا التعميم نهائياً؟ سيختفي من عند الجميع."))return;
-  try{await withTimeout(deleteDoc(doc(X.db,"ann",id)),20000);X.toast("🗑 حُذف التعميم")}
+  const a=A.find(x=>x.id===id);
+  try{if(a&&a.img)await Promise.all(["f","t"].map(k=>deleteDoc(doc(X.db,"ann",id,"img",k)).catch(()=>{})));
+    await withTimeout(deleteDoc(doc(X.db,"ann",id)),20000);X.toast("🗑 حُذف التعميم")}
   catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
 }
 
@@ -101,10 +172,14 @@ function open(){if(!X)return;const m=box();m.className="on";paint();markRead();m
 function paint(){
   const m=g("annm");if(!m||!X)return;const s=seen(),keep=g("annt")?g("annt").value:"";
   m.innerHTML=`<div class="annk"><div class="annh"><span style="font-size:30px">📢</span><div><b>التعميمات</b><small>رسائل الإدارة والمستودع لكل الفروع</small></div><button type="button" data-annx aria-label="إغلاق">✕</button></div>
-  ${X.canPost?`<div class="annc"><textarea id="annt" maxlength="2000" placeholder="اكتب تعميماً يصل إلى كل الفروع والمستودع..."></textarea><div class="row"><small>سيصل إشعار فوري لكل الفروع والمستودع</small><button type="button" data-anns>📢 إرسال للجميع</button></div></div>`:""}
-  <div class="annl">${A.length?A.map(a=>`<div class="anni${N(a.ts)>s&&a.by!==X.email?" nw":""}"><div class="hd2"><b>${E(a.n||"الإدارة")}</b><span>· ${when(a.ts)}</span></div><div class="tx" data-notr>${E(a.t)}</div>
+  ${X.canPost?`<div class="annc"><textarea id="annt" maxlength="${BG&&!PIC?300:2000}" class="${BG&&!PIC?"bg":""}" placeholder="${BG&&!PIC?"اكتب عرضاً أو تعميماً قصيراً يظهر كبيراً على خلفية تاسومة...":"اكتب تعميماً يصل إلى كل الفروع والمستودع... (أو أرسل صورة فقط)"}"></textarea>
+   ${PIC?`<div class="annpv"><img src="${PIC.t}" alt=""><button type="button" data-annrm aria-label="إزالة الصورة">✕</button><small>${PIC.w}×${PIC.h} · جودة عالية</small></div>`:""}
+   <input id="annf" type="file" accept="image/*" hidden>
+   <div class="row"><button type="button" class="pic" data-annpic>📷 ${PIC?"تغيير الصورة":"إضافة صورة"}</button>${PIC?"":`<button type="button" class="pic bgt" data-annbg aria-pressed="${BG}">🎨 خلفية تاسومة</button>`}<small>سيصل إشعار فوري لكل الفروع والمستودع</small><button type="button" data-anns>📢 إرسال للجميع</button></div></div>`:""}
+  <div class="annl">${A.length?A.map(a=>`<div class="anni${N(a.ts)>s&&a.by!==X.email?" nw":""}"><div class="hd2"><b>${E(a.n||"الإدارة")}</b><span>· ${when(a.ts)}</span></div>${bodyOf(a)}
    ${X.canPost?`<div class="rdrow"><span class="rd" data-annr="${E(a.id)}">👁 ${CNT[a.id]!=null?`قرأه ${CNT[a.id].n}`:"من قرأه؟"}</span><button type="button" class="anndel" data-anndel="${E(a.id)}">🗑 حذف</button></div>${CNT[a.id]&&CNT[a.id].open?`<div class="annrd">${CNT[a.id].names.map(E).join(" · ")||"لا أحد بعد"}</div>`:""}`:""}</div>`).join(""):`<div class="anne">📭<br>لا توجد تعميمات بعد</div>`}</div></div>`;
   const t=g("annt");if(t&&keep)t.value=keep;
+  A.forEach(a=>{if(a.img)fillImg(a.id,"t")});// المصغّرة بس في القايمة (الأصلية لما يضغط)
 }
 // "قرأتها": كل طرف بيسجّل مرة واحدة على آخر التعميمات اللي ظهرتله
 async function markRead(){
@@ -118,11 +193,16 @@ async function readers(id){
 }
 async function post(){
   if(busy||!X||!X.canPost)return;const t=String((g("annt")||{}).value||"").trim().slice(0,2000);
-  if(!t){X.toast("اكتب نص التعميم أولاً");return}
+  if(!t&&!PIC){X.toast("اكتب نص التعميم أو أضف صورة");return}
+  const bg=BG&&!PIC;if(bg&&[...t].length>300){X.toast("خلفية تاسومة للنص القصير (300 حرف كحد أقصى). اختصر النص أو ألغِ الخلفية");return}
   if(!confirm("إرسال هذا التعميم إلى كل الفروع والمستودع؟"))return;
-  busy=true;const b=document.querySelector("[data-anns]");if(b){b.disabled=true;b.textContent="⏳ جاري الإرسال..."}
-  try{const ref=await withTimeout(addDoc(collection(X.db,"ann"),{t,by:X.email,n:String(X.name()||"الإدارة").slice(0,60),ts:Date.now()}),20000);
-    g("annt").value="";X.toast("📢 أُرسل التعميم، وجاري إبلاغ الجميع");annPush(X.auth,ref.id)}
+  busy=true;const b=document.querySelector("[data-anns]");if(b){b.disabled=true;b.textContent=PIC?"⏳ جاري رفع الصورة...":"⏳ جاري الإرسال..."}
+  try{
+    // الصورة الأول (علشان لما التعميم يوصل للفروع تكون موجودة)، وبعدين التعميم نفسه
+    const id=Date.now().toString(36)+Math.random().toString(36).slice(2,10),p=PIC;
+    if(p){await withTimeout(setDoc(doc(X.db,"ann",id,"img","f"),{i:p.f}),90000);await withTimeout(setDoc(doc(X.db,"ann",id,"img","t"),{i:p.t}),30000);IMG[id]={f:p.f,t:p.t}}
+    await withTimeout(setDoc(doc(X.db,"ann",id),{t,by:X.email,n:String(X.name()||"الإدارة").slice(0,60),ts:Date.now(),...(p?{img:1,w:p.w,h:p.h}:{}),...(bg?{bg:1}:{})}),20000);
+    PIC=null;BG=false;g("annt").value="";X.toast("📢 أُرسل التعميم، وجاري إبلاغ الجميع");annPush(X.auth,id);paint()}
   catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
   busy=false;const b2=document.querySelector("[data-anns]");if(b2){b2.disabled=false;b2.textContent="📢 إرسال للجميع"}
 }
@@ -132,6 +212,11 @@ document.addEventListener("click",e=>{
   if(t.closest("[data-annx]"))return void close();
   if(t.closest("[data-anns]"))return void post();
   if(t.closest("[data-annpx]"))return void dismissPop();
+  if(t.closest("[data-annpic]"))return void (g("annf")&&g("annf").click());
+  if(t.closest("[data-annrm]")){PIC=null;return void paint()}
+  if(t.closest("[data-annbg]")){BG=!BG;paint();const ta=g("annt");if(ta)ta.focus();return}
+  const im=t.closest("[data-annimg]");if(im)return void viewImg(im.dataset.annimg);
   const dl=t.closest("[data-anndel]");if(dl)return void delAnn(dl.dataset.anndel);
   const r=t.closest("[data-annr]");if(r)return void readers(r.dataset.annr);
 });
+document.addEventListener("change",e=>{if(!X||e.target.id!=="annf")return;const f=e.target.files&&e.target.files[0];e.target.value="";if(f)pickImg(f)});
