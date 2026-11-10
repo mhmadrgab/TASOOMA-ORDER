@@ -8,6 +8,8 @@ const g=id=>document.getElementById(id);
 // gift = محاسب الهدايا: يشوف الهدايا والعينات ويطلّع تقاريرها بس (الاعتماد للي معاه "الطلبات" وللمديرين)
 const PERMS=[["req","الطلبات"],["cus","العهدة"],["fl","السيارات والسائقين"],["gift","🎁 الهدايا (مشاهدة وتقارير)"],["ga","✅ اعتماد الهدايا"]];
 // مدير التسويق: الهدايا والعينات فقط (يعتمدها ويرفضها). p.gm فقط من غير أي صلاحية تانية
+// 🔑 المدير اللي معاه p.pm (المالك بيحدده) يغيّر صلاحيات المحاسبين دي بس (القواعد كمان). "اعتماد الهدايا" للمالك بس
+const PM_KEYS=["req","cus","fl","gift"];
 const isMkt=s=>s.v!==true&&s.admin!==true&&!!(s.p&&s.p.gm===true&&!s.p.req&&!s.p.cus&&!s.p.fl&&!s.p.gift);
 // ga = "اعتماد الهدايا": المالك بيدّيها لأي مدير أو محاسب (غير مدير التسويق اللي بيعتمد أصلاً)
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
@@ -22,8 +24,9 @@ export function syncDir(){
  const me=ownerMe(),want={[X.me]:{n:String(me.n||OWNER_NAME).slice(0,60),k:String(me.k||"").slice(0,40),r:"owner"}};
  // كل الموظفين المفعّلين (ما عدا المتابع): r = admin/req بيكلّموا الفروع، و staff بيكلّموا السائقين والموظفين بس (نوفمبر 2026)
  // نوفمبر 2026 (طلب محمد): مدير التسويق (gm) وصاحب الشركة (v) بقوا في الشات، في قسم "الإدارة" مع المديرين، وظاهرين لكل الفروع
- S.forEach(s=>{const id=String(s.id).toLowerCase();if(id!==X.me&&s.enabled)want[id]={n:String(s.name||id.split("@")[0]).slice(0,60),k:String(s.k||"").slice(0,40),r:s.v===true?"v":s.admin===true?"admin":(s.p&&s.p.gm)?"gm":(s.p&&s.p.req)?"req":"staff"}});
- Object.entries(want).forEach(([id,v])=>{const o=WD[id];if(!o||o.n!==v.n||(o.k||"")!==v.k||o.r!==v.r)setDoc(doc(X.db,"whdir",id),v).catch(()=>{})});
+ // w = يظهر للفروع في قسم "المستودع" بالشات (المالك بيختاره من تبويب الموظفين، staff.cw). المالك ظاهر دايماً
+ S.forEach(s=>{const id=String(s.id).toLowerCase();if(id!==X.me&&s.enabled){want[id]={n:String(s.name||id.split("@")[0]).slice(0,60),k:String(s.k||"").slice(0,40),r:s.v===true?"v":s.admin===true?"admin":(s.p&&s.p.gm)?"gm":(s.p&&s.p.req)?"req":"staff"};if(s.cw===true)want[id].w=true}});
+ Object.entries(want).forEach(([id,v])=>{const o=WD[id];if(!o||o.n!==v.n||(o.k||"")!==v.k||o.r!==v.r||!!o.w!==!!v.w)setDoc(doc(X.db,"whdir",id),v).catch(()=>{})});
  Object.keys(WD).forEach(id=>{if(!want[id])deleteDoc(doc(X.db,"whdir",id)).catch(()=>{})});
 }
 export const staffName=id=>{const s=S.find(x=>x.id===id);return s?s.name||id:id};
@@ -44,6 +47,10 @@ export function view(){
  const who=s=>`<td><span style="display:inline-flex;align-items:center;gap:8px">${avatar(s.id,s.name,30)}<b>${E(s.name||"")}</b></span>${you(s.id)}</td>`;
  const kc=s=>`<td>${own?`<input data-sk="${E(s.id)}" value="${E(s.k||"")}" maxlength="40" placeholder="مثلاً: مسؤول الطلبات" style="min-width:150px">`:E(s.k||"—")}</td>`;
  const mo=ownerMe(),on=mo.n||OWNER_NAME;
+ // صلاحية المحاسب دي: المالك، أو مدير معاه 🔑 (مش لمدير التسويق، ومش "اعتماد الهدايا")
+ const canP=(s,k)=>own||(X.pm&&PM_KEYS.includes(k)&&!(s.p&&s.p.gm)&&s.id!==me);
+ // يظهر للفروع في "المستودع" بالدردشة (المالك بيختار)
+ const cwc=s=>`<td><input type="checkbox" data-scw="${E(s.id)}" ${s.cw===true?"checked":""} ${own?"":"disabled"}></td>`;
  // الإشعارات: الأجهزة المتسجّلة للشخص ده + زرار تجربة (المالك بس)
  const dvs=id=>{const L=DV[String(id).toLowerCase()]||[],m=L.filter(x=>x.dv==="m").length,pc=L.filter(x=>x.dv==="pc").length,o=L.length-m-pc;
   return L.length?[m?`📱 جوال${m>1?" ×"+m:""}`:"",pc?`💻 حاسوب${pc>1?" ×"+pc:""}`:"",o?`❔ جهاز${o>1?" ×"+o:""}`:""].filter(Boolean).join(" · "):`<span style="color:#c0392b">⚠️ لا يوجد جهاز</span>`};
@@ -55,10 +62,10 @@ export function view(){
  ${V.length?V.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,""):""}</tr>`).join(""):empty(own?7:4,"لا يوجد متابعون بعد. أضفه من الأعلى واختر \"👁 متابع\"")}</tbody></table></div></div>`:""}
  ${own||G.length?`<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 4px">📣 مديرو التسويق (${G.length})</h3><p class="off" style="margin:0 0 8px;font-size:13px">يدخل ويرى مديول الهدايا والعينات فقط، ويعتمد هدايا الفروع والمستودع أو يرفضها. لو أردت أن يعتمد شخص آخر، فعّل له "✅ اعتماد الهدايا" في جدول المديرين أو المحاسبين.</p><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
  ${G.length?G.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,""):""}</tr>`).join(""):empty(own?7:4,"لا يوجد مديرو تسويق بعد. أضفه من الأعلى واختر \"📣 مدير تسويق\"")}</tbody></table></div></div>`:""}
- <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🛡 المديرين (${M.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th><th>✅ اعتماد الهدايا</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
- ${M.length?M.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td><td><input type="checkbox" data-sp2="ga" data-id="${E(s.id)}" ${s.p&&s.p.ga===true?"checked":""} ${own?"":"disabled"}></td>${own?nc(s)+pwc(s)+acts(s,`<button class="bt s" data-sf="toacc" data-id="${E(s.id)}" type="button">تحويل لمحاسب</button> `):""}</tr>`).join(""):empty(own?8:5,"لا يوجد مديرون بعد")}</tbody></table></div></div>
- <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🧾 المحاسبين (${A.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${PERMS.map(p=>`<th>${p[1]}</th>`).join("")}${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
- ${A.length?A.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${PERMS.map(p=>`<td><input type="checkbox" data-sp2="${p[0]}" data-id="${E(s.id)}" ${s.p&&s.p[p[0]]===true?"checked":""} ${own?"":"disabled"}></td>`).join("")}${own?nc(s)+pwc(s)+acts(s,`<button class="bt s g" data-sf="toadm" data-id="${E(s.id)}" type="button">ترقية لمدير</button> `):""}</tr>`).join(""):empty(own?12:9,"لا يوجد محاسبون بعد")}</tbody></table></div></div>`;
+ <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🛡 المديرين (${M.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th><th>✅ اعتماد الهدايا</th><th title="يستطيع تعديل صلاحيات المحاسبين">🔑 صلاحيات المحاسبين</th><th title="يظهر للفروع في قسم المستودع بالدردشة">💬 المستودع بالدردشة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
+ ${M.length?M.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td><td><input type="checkbox" data-sp2="ga" data-id="${E(s.id)}" ${s.p&&s.p.ga===true?"checked":""} ${own?"":"disabled"}></td><td><input type="checkbox" data-sp2="pm" data-id="${E(s.id)}" ${s.p&&s.p.pm===true?"checked":""} ${own?"":"disabled"}></td>${cwc(s)}${own?nc(s)+pwc(s)+acts(s,`<button class="bt s" data-sf="toacc" data-id="${E(s.id)}" type="button">تحويل لمحاسب</button> `):""}</tr>`).join(""):empty(own?10:7,"لا يوجد مديرون بعد")}</tbody></table></div></div>
+ <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🧾 المحاسبين (${A.length})</h3>${!own&&X.pm?`<p class="off" style="margin:0 0 8px;font-size:13px">🔑 يمكنك تعديل صلاحيات المحاسبين (الطلبات، العهدة، السيارات، الهدايا). اعتماد الهدايا لمالك النظام فقط.</p>`:""}<div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${PERMS.map(p=>`<th>${p[1]}</th>`).join("")}<th title="يظهر للفروع في قسم المستودع بالدردشة">💬 المستودع بالدردشة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
+ ${A.length?A.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${PERMS.map(p=>`<td><input type="checkbox" data-sp2="${p[0]}" data-id="${E(s.id)}" ${s.p&&s.p[p[0]]===true?"checked":""} ${canP(s,p[0])?"":"disabled"}></td>`).join("")}${cwc(s)}${own?nc(s)+pwc(s)+acts(s,`<button class="bt s g" data-sf="toadm" data-id="${E(s.id)}" type="button">ترقية لمدير</button> `):""}</tr>`).join(""):empty(own?13:10,"لا يوجد محاسبون بعد")}</tbody></table></div></div>`;
 }
 async function add(){
  const e=f.e.trim().toLowerCase(),n=f.n.trim().slice(0,40);
@@ -121,7 +128,8 @@ export function initStaff(ctx){
    if(t.id==="sfr"){f.r=t.value;return}
    // الكنية: بتتحفظ أول ما تخلّص كتابة (وبتظهر للفروع في الدردشة لوحدها)
    if(t.dataset.sk&&X.owner){try{await updateDoc(doc(X.db,"staff",t.dataset.sk),{k:t.value.trim().slice(0,40)});X.toast("حُفظت الكنية")}catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message))}return}
-   if(!t.dataset.sp2||!X.owner)return;
+   if(t.dataset.scw&&X.owner){try{await updateDoc(doc(X.db,"staff",t.dataset.scw),{cw:t.checked});X.toast(t.checked?"💬 سيظهر للفروع في قسم المستودع":"لن يظهر للفروع في قسم المستودع")}catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message));X.redraw()}return}
+   if(!t.dataset.sp2||!(X.owner||(X.pm&&PM_KEYS.includes(t.dataset.sp2))))return;
    try{await updateDoc(doc(X.db,"staff",t.dataset.id),{["p."+t.dataset.sp2]:t.checked});X.toast("تم حفظ الصلاحية")}catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message));X.redraw()}});
  }
  un.push(onSnapshot(collection(X.db,"staff"),sn=>{S=sn.docs.map(d=>({id:d.id,...d.data()}));SL=true;syncDir();if(X.tab()==="stf"&&!busy)X.redraw()},()=>X.toast("تعذر قراءة الموظفين. حدّث القواعد (Rules)")));

@@ -23,7 +23,10 @@ const QALL=new Set([].concat(...Object.values(QUICK)));// الردود السر�
 const ROLE_O={v:0,admin:1,gm:1,owner:2,req:3};// ترتيب القايمة (مش بيظهر)
 // 🏛 قسم "الإدارة" (نوفمبر 2026، طلب محمد): المديرين + مدير التسويق + صاحب الشركة، ظاهرين لكل الفروع. فلتر "m" = w- اللي دوره إدارة
 const MGMT=["admin","gm","v"];
-const isM=p=>p[0]==="w"&&MGMT.includes((DIR[pv(p)]||{}).r);
+// w = المالك اختاره يظهر في "المستودع" (حتى لو مدير): بيتشال من الإدارة
+const isM=p=>{if(p[0]!=="w")return false;const d=DIR[pv(p)]||{};return MGMT.includes(d.r)&&d.w!==true};
+// عند الفرع والسواق: "المستودع" = المالك + اللي المالك اختارهم بس (طلب محمد)
+const inWh=d=>d&&(d.r==="owner"||d.w===true);
 const kindOf=p=>isM(p)?"m":p[0];
 // CUR = المحادثة المفتوحة (cid). CTX = "بخصوص طلب" لكل محادثة، PEND = طلب مستني الفرع يختار يكلّم مين عنه. AVA = الصور
 let X=null,SUMS={},SO={},SN={},SG={},UNG=null,DIR={},DDIR={},AVA={},FILT="",CUR=null,GEN=0,UNM=null,UNS=null,UNS2=null,UND=null,UNA=null,UNDD=null,MSGS=[],LIM=PAGE,DRAFT={},CTX={},PEND=null,REC=null,PLAY={id:null,au:null},busy=false,marking=false,first=true,keepTop=null,ROOT=null,Q="";
@@ -136,7 +139,7 @@ html[dir="rtl"] #bcsend svg{animation:none}
 .bcs{padding:10px 14px 8px;flex:none}
 .bcs input{width:100%;font:inherit;font-size:15px;border-radius:999px;border:0;background:var(--field,#f3f1ed);color:var(--ink);padding:10px 16px}
 .bcs input:focus{outline:0;box-shadow:0 0 0 2px rgba(212,174,92,.55)}
-.bcfl{display:flex;gap:6px;overflow-x:auto;margin-top:10px;scrollbar-width:none}.bcfl::-webkit-scrollbar{display:none}
+.bcfl{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}/* كل الأقسام ظاهرة (كانت سطر بيتسحب ومابيتسحبش على الكمبيوتر) */
 .bcfl button{font:inherit;font-size:13px;font-weight:700;white-space:nowrap;border-radius:999px;border:0;background:var(--field,#f3f1ed);color:var(--mut);padding:6px 14px;cursor:pointer;transition:background .15s,color .15s}
 .bcfl button.on{background:#1b1b1b;color:#e8cf8a}
 .bcli{overflow-y:auto;flex:1;padding:2px 6px 8px}
@@ -612,8 +615,8 @@ function people(){
   const out=[],seen=new Set(),add=p=>{if(p&&p!==X.me&&!seen.has(p)){seen.add(p);out.push(p)}};
   const brs=()=>(X.codes||[]).forEach(b=>add("b-"+String(b).split("-")[0]));
   if(T()==="w"){if(X.canBr)brs();Object.keys(DDIR).forEach(d=>add("d-"+d));Object.keys(DIR).forEach(e=>add("w-"+e))}
-  else if(T()==="b"){Object.entries(DIR).forEach(([e,d])=>{if(["owner","admin","req","gm","v"].includes(d&&d.r))add("w-"+e)});Object.keys(DDIR).forEach(d=>add("d-"+d));brs()}
-  else{Object.keys(DIR).forEach(e=>add("w-"+e));brs()}
+  else if(T()==="b"){Object.entries(DIR).forEach(([e,d])=>{if(inWh(d)||isM("w-"+e))add("w-"+e)});Object.keys(DDIR).forEach(d=>add("d-"+d));brs()}
+  else{Object.keys(DIR).forEach(e=>add("w-"+e));brs()}// السواق: كل المستودع زي ما هو (بيتنسّق مع مسؤولين السيارات)
   Object.values(SUMS).forEach(s=>add(s._peer));// محادثات مع ناس مابقوش في القايمة بتفضل ظاهرة
   return out;
 }

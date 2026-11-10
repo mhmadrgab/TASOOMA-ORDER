@@ -37,6 +37,15 @@ service cloud.firestore {
     match /staff/{email} {
       allow read:  if isAdmin() || (signedIn() && request.auth.token.email == email);
       allow write: if isOwner();
+      // 🔑 المدير اللي المالك اداله "إدارة صلاحيات المحاسبين" (p.pm): يغيّر صلاحيات المحاسبين بس
+      // (الطلبات/العهدة/السيارات/الهدايا) ومايلمسش مدير ولا متابع ولا مدير تسويق ولا نفسه ولا أي حقل تاني
+      allow update: if isAdmin() && perm('pm') && email != request.auth.token.email.lower()
+        && resource.data.get('admin', false) != true && resource.data.get('v', false) != true
+        && resource.data.get('p', {}).get('gm', false) != true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['p'])
+        && request.resource.data.p.diff(resource.data.get('p', {})).affectedKeys().hasOnly(['req','cus','fl','gift'])
+        && request.resource.data.p.get('req', false) is bool && request.resource.data.p.get('cus', false) is bool
+        && request.resource.data.p.get('fl', false) is bool && request.resource.data.p.get('gift', false) is bool;
     }
 
     // حالة الفرع (مفعّل/معطّل): الفرع يقرأ حالته بس، والمستودع يتحكم
@@ -344,7 +353,8 @@ service cloud.firestore {
     match /whdir/{em} {
       allow read:  if isAdmin() || isStaff() || branchOn() || drvOn();
       allow write: if isOwner()
-        && request.resource.data.keys().hasOnly(['n','k','r'])
+        && request.resource.data.keys().hasOnly(['n','k','r','w'])
+        && (!('w' in request.resource.data) || request.resource.data.w is bool)
         && request.resource.data.n is string && request.resource.data.n.size() <= 60
         && (!('k' in request.resource.data) || (request.resource.data.k is string && request.resource.data.k.size() <= 40))
         && request.resource.data.r in ['owner','admin','req','staff','gm','v'];// gm مدير التسويق، v صاحب الشركة (قسم الإدارة في الشات)
