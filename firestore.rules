@@ -423,7 +423,8 @@ service cloud.firestore {
     }
     match /dm/{cid} {
       function me() { return request.auth.token.email.lower(); }
-      function chatWh() { return isAdmin() || perm('req') || perm('gm') || isViewer(); }// الإدارة (مدير التسويق وصاحب الشركة) بتكلّم الفروع كمان
+      function chatWh() { return isAdmin() || perm('req') || perm('gm') || isViewer()
+        || (isStaff() && exists(/databases/$(database)/documents/whdir/$(me())) && get(/databases/$(database)/documents/whdir/$(me())).data.get('w', false) == true); }// اللي المالك اختاره في "المستودع"// الإدارة (مدير التسويق وصاحب الشركة) بتكلّم الفروع كمان
       // الطرفين من اسم المحادثة نفسه
       function whIn() { return chatWh() && cid.matches('^[0-9]{3}__.+$') && cid.split('__')[1] == me(); }
       function brIn() { return branchOn() && cid.matches('^[0-9]{3}__.+$') && cid.split('__')[0] == myCode(); }
@@ -440,7 +441,8 @@ service cloud.firestore {
         let d = request.resource.data;
         return d.br + '__' + d.wh == cid && brnOk(d) && whnOk(d) && lastOk(by)
           && ((by == 'br' && d.keys().hasOnly(['br','brn','wh','whn','last','lb','rb','nw']) && d.nw == 1 && d.lb is number && d.rb is number
-               && get(/databases/$(database)/documents/whdir/$(d.wh)).data.get('r', '') in ['owner','admin','req','gm','v'])
+               && (get(/databases/$(database)/documents/whdir/$(d.wh)).data.get('r', '') in ['owner','admin','req','gm','v']
+                   || get(/databases/$(database)/documents/whdir/$(d.wh)).data.get('w', false) == true))
            || (by == 'wh' && d.keys().hasOnly(['br','brn','wh','whn','last','lw','rw','nb']) && d.nb == 1 && d.lw is number && d.rw is number));
       }
       // رسالة جديدة (العدّاد بيزيد واحد بالظبط) أو "قريت" (العدّاد بيرجع صفر). الطرفين (br, wh) مايتغيّروش

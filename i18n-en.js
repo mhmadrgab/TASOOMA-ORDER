@@ -1551,6 +1551,7 @@ export default {
 "تعميم من الإدارة":"Announcement from management",
 "ضبط الصورة":"Adjust photo",
 "🏛 الإدارة":"🏛 Management",
+"🏭 المستودع":"🏭 Warehouse",
 "صلاحيات المحاسبين":"Accountant permissions",
 "يستطيع تعديل صلاحيات المحاسبين":"Can change accountant permissions",
 "المستودع بالدردشة":"Warehouse in chat",

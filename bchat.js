@@ -27,7 +27,8 @@ const MGMT=["admin","gm","v"];
 const isM=p=>{if(p[0]!=="w")return false;const d=DIR[pv(p)]||{};return MGMT.includes(d.r)&&d.w!==true};
 // عند الفرع والسواق: "المستودع" = المالك + اللي المالك اختارهم بس (طلب محمد)
 const inWh=d=>d&&(d.r==="owner"||d.w===true);
-const kindOf=p=>isM(p)?"m":p[0];
+// كل شخص في قسم واحد بس: w = 🏭 المستودع (المالك + المختارين، عند الكل)، m = الإدارة، s = باقي الموظفين
+const kindOf=p=>{if(p[0]!=="w")return p[0];if(inWh(DIR[pv(p)]))return "w";return isM(p)?"m":"s"};
 // CUR = المحادثة المفتوحة (cid). CTX = "بخصوص طلب" لكل محادثة، PEND = طلب مستني الفرع يختار يكلّم مين عنه. AVA = الصور
 let X=null,SUMS={},SO={},SN={},SG={},UNG=null,DIR={},DDIR={},AVA={},FILT="",CUR=null,GEN=0,UNM=null,UNS=null,UNS2=null,UND=null,UNA=null,UNDD=null,MSGS=[],LIM=PAGE,DRAFT={},CTX={},PEND=null,REC=null,PLAY={id:null,au:null},busy=false,marking=false,first=true,keepTop=null,ROOT=null,Q="";
 const AUD=new Map();let SCR={t:0,end:true,l:0};
@@ -259,7 +260,7 @@ export function unreadTotal(){if(!X)return 0;return Object.values(SUMS).reduce((
 // زرار "كلّم ... عن الطلب ده" على كارت الطلب (cls = شكل الزرار في الصفحة)
 export const rqBtn=(r,cls)=>X&&T()!=="d"?`<button class="${cls||"bcrqb"}" data-bcrq="${E(r.id)}" data-no="${E(r.no||"")}" data-br="${E(r.br||"")}" type="button" title="محادثة خاصة بخصوص هذا الطلب">💬 ${T()==="b"?"تواصل مع المستودع":"تواصل مع الفرع"}</button>`:"";
 const modal=()=>T()!=="w";// الفرع والسائق: نافذة. المستودع: تبويب
-const GRP={w:[["","الكل"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["b","الفروع"],["d","السائقين"],["w","الموظفين"]],b:[["","الكل"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["w","المستودع"],["d","السائقين"],["b","الفروع"]],d:[["","الكل"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["w","المستودع"],["b","الفروع"]]};
+const GRP={w:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["b","الفروع"],["d","السائقين"],["s","الموظفين"]],b:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["d","السائقين"],["b","الفروع"]],d:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["b","الفروع"],["s","الموظفين"]]};
 const IMG_IC=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
 // ---------- المحادثة نفسها (مشتركة بين اللوحة والفرع والسائق) ----------
 function convHtml(){
