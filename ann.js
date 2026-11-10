@@ -45,8 +45,12 @@ const CSS=`
 #anniv .v{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;padding:8px}#anniv .v img{max-width:100%;max-height:100%;object-fit:contain}
 #anniv .l{color:#cdb67a;text-align:center;padding:6px;font-size:13px}
 .annc .bgt[aria-pressed="true"]{background:linear-gradient(135deg,#d9b25f,#a8832f);color:#1b1b1b;border-color:transparent}
-.annc textarea.bg{min-height:190px;background:linear-gradient(140deg,#1b1b1b,#2b2416 55%,#1b1b1b);color:#fff;border:2px solid #d4ae5c;text-align:center;font-size:22px;font-weight:800;line-height:1.6;padding:28px 18px;resize:none}
-.annc textarea.bg::placeholder{color:#cdb67a;font-weight:600;font-size:16px}
+/* وانت بتكتب على خلفية تاسومة: خانة الكتابة جوه الكارت نفسه، فبتشوف البوست كامل زي ما هيوصل بالظبط */
+.annc .annbgc{margin-top:0;cursor:text}
+.annc .annbgc textarea{position:relative;width:100%;min-height:0;height:auto;margin:0;padding:4px 0;border:0;border-radius:0;background:transparent;color:#fff;text-align:center;font-family:inherit;font-weight:800;line-height:1.55;resize:none;overflow:hidden;text-shadow:0 2px 12px rgba(0,0,0,.5);box-shadow:none;outline:none}
+.annc .annbgc textarea:focus{box-shadow:none;outline:none}
+.annc .annbgc textarea::placeholder{color:#cdb67a;opacity:.85;font-weight:700;font-size:18px}
+.annbgc .cnt{position:absolute;bottom:8px;inset-inline-start:12px;color:#cdb67a;font-size:11px;opacity:.8}
 .annbg{position:relative;overflow:hidden;margin-top:10px;border-radius:16px;min-height:300px;padding:26px 22px 22px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:14px;text-align:center;color:#fff;
   background:radial-gradient(circle at 18% 12%,rgba(212,174,92,.28),transparent 45%),radial-gradient(circle at 85% 90%,rgba(212,174,92,.2),transparent 50%),linear-gradient(140deg,#151515,#2b2416 55%,#151515);border:2px solid #d4ae5c;box-shadow:inset 0 0 0 6px rgba(212,174,92,.08)}
 .annbg .wm{position:absolute;inset:0;margin:auto;width:78%;max-width:340px;height:auto;fill:#d4ae5c;opacity:.08;pointer-events:none}
@@ -69,6 +73,9 @@ let BG=false;
 const WOLF=`<path d="M139.5 87L142.5 88L175.5 130L129 212.5ZM370.5 87L373.5 87L374.5 94L384.5 211L383 213.5L336.5 130ZM197.5 135L314.5 135L314.5 138L249.5 219L250.5 273L259 275.5L262.5 270L262.5 221L269 214.5L305.5 306L290 344.5L267.5 334L281.5 318L282.5 307L268 292.5L262 289.5L247 290.5L230.5 305L230.5 318L244.5 334L225 343.5L222 343.5L219.5 340L206.5 305L242.5 217L247.5 199ZM327.5 141L330.5 143L352 184.5L320 171.5L297.5 179ZM183.5 142L188.5 145L215 179.5L192 171.5L160.5 184ZM192.5 185L233.5 201L232.5 209L211 261.5L201 257.5L175.5 240L154.5 202ZM315.5 186L327 187.5L357 200.5L357.5 203L335.5 242L303 262.5L299.5 259L278.5 202ZM192.5 203L199 202.5L205.5 213L212.5 230L209 237.5L202 236.5L173.5 217L173.5 212L177 208.5ZM312.5 203L326 204.5L335 208.5L339.5 215L334 221.5L320 230.5L308 237.5L304 237.5L300.5 235L299.5 230ZM144.5 213L150.5 219L164.5 244L164.5 248L128.5 308L126 308.5L125.5 247ZM365.5 213L368.5 213L386.5 246L386 308.5L347.5 248ZM174.5 256L205.5 275L194.5 302L194.5 311L214.5 358L249.5 387L249 425.5L165 374.5L127.5 333ZM334.5 257L340.5 259L384.5 334L345 376.5L263 425.5L262.5 387L299.5 356L318.5 309L307.5 274ZM254.5 343L281.5 355L257 375.5L231.5 356L232 353.5Z"/>`;
 const bgSize=t=>{const n=[...String(t||"")].length,l=String(t||"").split("\n").length;return n<=40&&l<=3?"s1":n<=110&&l<=5?"s2":n<=260?"s3":"s4"};
 const bgCard=a=>`<div class="annbg"><svg class="wm" viewBox="0 0 512 512" aria-hidden="true">${WOLF}</svg><div class="hd3"><svg viewBox="80 60 352 390" aria-hidden="true">${WOLF}</svg>TASOOMA</div><div class="bt ${bgSize(a.t)}" data-notr>${E(a.t)}</div><div class="ft">📢 ${E(a.n||"الإدارة")}</div></div>`;
+// خانة الكتابة على الخلفية: الخط بيكبر/يصغر زي البوست النهائي، والطول على قد الكلام، وعدّاد الحروف
+function fitBg(){const t=g("annt");if(!t||!t.closest(".annbgc"))return;t.className="bt "+bgSize(t.value);t.style.height="auto";t.style.height=t.scrollHeight+"px";
+  const c=g("annn");if(c){const n=[...t.value].length;c.textContent=n?`${n}/300`:""}}
 // جسم التعميم: خلفية تاسومة، أو صورة + نص، أو نص عادي
 const bodyOf=a=>a.bg&&a.t&&!a.img?bgCard(a):`${imgBox(a)}${a.t?`<div class="tx" data-notr>${E(a.t)}</div>`:""}`;
 let PIC=null;const IMG={};// PIC = الصورة المختارة قبل الإرسال، IMG = اللي اتحمّل {id:{t,f}}
@@ -170,15 +177,16 @@ function box(){let m=g("annm");if(!m){m=document.createElement("div");m.id="annm
 function close(){const m=g("annm");if(m)m.className="";markSeen()}
 function open(){if(!X)return;const m=box();m.className="on";paint();markRead();markSeen()}
 function paint(){
-  const m=g("annm");if(!m||!X)return;const s=seen(),keep=g("annt")?g("annt").value:"";
+  const m=g("annm");if(!m||!X)return;const s=seen(),keep=g("annt")?g("annt").value:"",foc=document.activeElement&&document.activeElement.id==="annt";
   m.innerHTML=`<div class="annk"><div class="annh"><span style="font-size:30px">📢</span><div><b>التعميمات</b><small>رسائل الإدارة والمستودع لكل الفروع</small></div><button type="button" data-annx aria-label="إغلاق">✕</button></div>
-  ${X.canPost?`<div class="annc"><textarea id="annt" maxlength="${BG&&!PIC?300:2000}" class="${BG&&!PIC?"bg":""}" placeholder="${BG&&!PIC?"اكتب عرضاً أو تعميماً قصيراً يظهر كبيراً على خلفية تاسومة...":"اكتب تعميماً يصل إلى كل الفروع والمستودع... (أو أرسل صورة فقط)"}"></textarea>
+  ${X.canPost?`<div class="annc">${BG&&!PIC?`<div class="annbg annbgc" data-annfocus><svg class="wm" viewBox="0 0 512 512" aria-hidden="true">${WOLF}</svg><div class="hd3"><svg viewBox="80 60 352 390" aria-hidden="true">${WOLF}</svg>TASOOMA</div><textarea id="annt" class="bt s1" rows="1" maxlength="300" placeholder="اكتب عرضاً أو تعميماً قصيراً..."></textarea><div class="ft">📢 ${E(X.name()||"الإدارة")}</div><span class="cnt" id="annn"></span></div>`
+   :`<textarea id="annt" maxlength="2000" placeholder="اكتب تعميماً يصل إلى كل الفروع والمستودع... (أو أرسل صورة فقط)"></textarea>`}
    ${PIC?`<div class="annpv"><img src="${PIC.t}" alt=""><button type="button" data-annrm aria-label="إزالة الصورة">✕</button><small>${PIC.w}×${PIC.h} · جودة عالية</small></div>`:""}
    <input id="annf" type="file" accept="image/*" hidden>
    <div class="row"><button type="button" class="pic" data-annpic>📷 ${PIC?"تغيير الصورة":"إضافة صورة"}</button>${PIC?"":`<button type="button" class="pic bgt" data-annbg aria-pressed="${BG}">🎨 خلفية تاسومة</button>`}<small>سيصل إشعار فوري لكل الفروع والمستودع</small><button type="button" data-anns>📢 إرسال للجميع</button></div></div>`:""}
   <div class="annl">${A.length?A.map(a=>`<div class="anni${N(a.ts)>s&&a.by!==X.email?" nw":""}"><div class="hd2"><b>${E(a.n||"الإدارة")}</b><span>· ${when(a.ts)}</span></div>${bodyOf(a)}
    ${X.canPost?`<div class="rdrow"><span class="rd" data-annr="${E(a.id)}">👁 ${CNT[a.id]!=null?`قرأه ${CNT[a.id].n}`:"من قرأه؟"}</span><button type="button" class="anndel" data-anndel="${E(a.id)}">🗑 حذف</button></div>${CNT[a.id]&&CNT[a.id].open?`<div class="annrd">${CNT[a.id].names.map(E).join(" · ")||"لا أحد بعد"}</div>`:""}`:""}</div>`).join(""):`<div class="anne">📭<br>لا توجد تعميمات بعد</div>`}</div></div>`;
-  const t=g("annt");if(t&&keep)t.value=keep;
+  const t=g("annt");if(t&&keep)t.value=keep;fitBg();if(t&&foc){t.focus();try{t.setSelectionRange(t.value.length,t.value.length)}catch(e){}}
   A.forEach(a=>{if(a.img)fillImg(a.id,"t")});// المصغّرة بس في القايمة (الأصلية لما يضغط)
 }
 // "قرأتها": كل طرف بيسجّل مرة واحدة على آخر التعميمات اللي ظهرتله
@@ -215,8 +223,10 @@ document.addEventListener("click",e=>{
   if(t.closest("[data-annpic]"))return void (g("annf")&&g("annf").click());
   if(t.closest("[data-annrm]")){PIC=null;return void paint()}
   if(t.closest("[data-annbg]")){BG=!BG;paint();const ta=g("annt");if(ta)ta.focus();return}
+  if(t.closest("[data-annfocus]")&&t.id!=="annt"){const ta=g("annt");if(ta)ta.focus();return}
   const im=t.closest("[data-annimg]");if(im)return void viewImg(im.dataset.annimg);
   const dl=t.closest("[data-anndel]");if(dl)return void delAnn(dl.dataset.anndel);
   const r=t.closest("[data-annr]");if(r)return void readers(r.dataset.annr);
 });
+document.addEventListener("input",e=>{if(X&&e.target.id==="annt")fitBg()});
 document.addEventListener("change",e=>{if(!X||e.target.id!=="annf")return;const f=e.target.files&&e.target.files[0];e.target.value="";if(f)pickImg(f)});

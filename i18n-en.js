@@ -1555,7 +1555,7 @@ export default {
 "اكتب تعميماً يصل إلى كل الفروع والمستودع... (أو أرسل صورة فقط)":"Write an announcement for all branches and the warehouse... (or send a photo only)",
 "إضافة صورة":"Add photo",
 "خلفية تاسومة":"TASOOMA background",
-"اكتب عرضاً أو تعميماً قصيراً يظهر كبيراً على خلفية تاسومة...":"Write an offer or a short announcement shown large on the TASOOMA background...",
+"اكتب عرضاً أو تعميماً قصيراً...":"Write an offer or a short announcement...",
 "خلفية تاسومة للنص القصير (300 حرف كحد أقصى). اختصر النص أو ألغِ الخلفية":"The TASOOMA background is for short text (300 characters max). Shorten the text or turn off the background",
 "تغيير الصورة":"Change photo",
 "إزالة الصورة":"Remove photo",
