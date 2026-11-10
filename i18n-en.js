@@ -1550,6 +1550,8 @@ export default {
 "تعذر تحميل من قرأ التعميم":"Could not load who read the announcement",
 "تعميم من الإدارة":"Announcement from management",
 "ضبط الصورة":"Adjust photo",
+"🏛 الإدارة":"🏛 Management",
+"الإدارة":"Management",
 "اسحب الصورة لتحريكها، وكبّرها حتى يملأ الوجه الدائرة":"Drag to move the photo, and zoom until the face fills the circle",
 "حفظ الصورة":"Save photo",
 "تكبير":"Zoom",

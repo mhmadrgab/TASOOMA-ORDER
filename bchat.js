@@ -20,7 +20,11 @@ const QUICK={b:["نحتاج بضاعة بشكل عاجل 🙏","أين طلبن�
 // المحادثات الجديدة (سواقين، موظفين مع بعض، فروع مع بعض): dm/{طرف1}__{طرف2} مترتبين = {ps:[الطرفين], nm:{طرف:اسمه}, last:{by:الطرف,...},
 //   l0/l1 آخر رسالة من الطرف 0/1، r0/r1 قرا إلى إمتى، n0/n1 لا يزال ماقراش كام}، والرسائل by = الطرف. ddir/{drv1} = {n} أسماء السائقين
 const QALL=new Set([].concat(...Object.values(QUICK)));// الردود السريعة تُترجم، أما ما يكتبه الناس فلا (data-notr)
-const ROLE_O={owner:0,admin:1,req:2};// ترتيب القايمة عند الفرع بس (مش بيظهر)
+const ROLE_O={v:0,admin:1,gm:1,owner:2,req:3};// ترتيب القايمة (مش بيظهر)
+// 🏛 قسم "الإدارة" (نوفمبر 2026، طلب محمد): المديرين + مدير التسويق + صاحب الشركة، ظاهرين لكل الفروع. فلتر "m" = w- اللي دوره إدارة
+const MGMT=["admin","gm","v"];
+const isM=p=>p[0]==="w"&&MGMT.includes((DIR[pv(p)]||{}).r);
+const kindOf=p=>isM(p)?"m":p[0];
 // CUR = المحادثة المفتوحة (cid). CTX = "بخصوص طلب" لكل محادثة، PEND = طلب مستني الفرع يختار يكلّم مين عنه. AVA = الصور
 let X=null,SUMS={},SO={},SN={},SG={},UNG=null,DIR={},DDIR={},AVA={},FILT="",CUR=null,GEN=0,UNM=null,UNS=null,UNS2=null,UND=null,UNA=null,UNDD=null,MSGS=[],LIM=PAGE,DRAFT={},CTX={},PEND=null,REC=null,PLAY={id:null,au:null},busy=false,marking=false,first=true,keepTop=null,ROOT=null,Q="";
 const AUD=new Map();let SCR={t:0,end:true,l:0};
@@ -252,7 +256,7 @@ export function unreadTotal(){if(!X)return 0;return Object.values(SUMS).reduce((
 // زرار "كلّم ... عن الطلب ده" على كارت الطلب (cls = شكل الزرار في الصفحة)
 export const rqBtn=(r,cls)=>X&&T()!=="d"?`<button class="${cls||"bcrqb"}" data-bcrq="${E(r.id)}" data-no="${E(r.no||"")}" data-br="${E(r.br||"")}" type="button" title="محادثة خاصة بخصوص هذا الطلب">💬 ${T()==="b"?"تواصل مع المستودع":"تواصل مع الفرع"}</button>`:"";
 const modal=()=>T()!=="w";// الفرع والسائق: نافذة. المستودع: تبويب
-const GRP={w:[["","الكل"],["g","👥 الجروبات"],["b","الفروع"],["d","السائقين"],["w","الموظفين"]],b:[["","الكل"],["g","👥 الجروبات"],["w","المستودع"],["d","السائقين"],["b","الفروع"]],d:[["","الكل"],["g","👥 الجروبات"],["w","المستودع"],["b","الفروع"]]};
+const GRP={w:[["","الكل"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["b","الفروع"],["d","السائقين"],["w","الموظفين"]],b:[["","الكل"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["w","المستودع"],["d","السائقين"],["b","الفروع"]],d:[["","الكل"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["w","المستودع"],["b","الفروع"]]};
 const IMG_IC=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
 // ---------- المحادثة نفسها (مشتركة بين اللوحة والفرع والسائق) ----------
 function convHtml(){
@@ -608,16 +612,16 @@ function people(){
   const out=[],seen=new Set(),add=p=>{if(p&&p!==X.me&&!seen.has(p)){seen.add(p);out.push(p)}};
   const brs=()=>(X.codes||[]).forEach(b=>add("b-"+String(b).split("-")[0]));
   if(T()==="w"){if(X.canBr)brs();Object.keys(DDIR).forEach(d=>add("d-"+d));Object.keys(DIR).forEach(e=>add("w-"+e))}
-  else if(T()==="b"){Object.entries(DIR).forEach(([e,d])=>{if(["owner","admin","req"].includes(d&&d.r))add("w-"+e)});Object.keys(DDIR).forEach(d=>add("d-"+d));brs()}
+  else if(T()==="b"){Object.entries(DIR).forEach(([e,d])=>{if(["owner","admin","req","gm","v"].includes(d&&d.r))add("w-"+e)});Object.keys(DDIR).forEach(d=>add("d-"+d));brs()}
   else{Object.keys(DIR).forEach(e=>add("w-"+e));brs()}
   Object.values(SUMS).forEach(s=>add(s._peer));// محادثات مع ناس مابقوش في القايمة بتفضل ظاهرة
   return out;
 }
 function paintList(){
   if(!ROOT)return;const box=ROOT.querySelector(".bcli");if(!box)return;
-  const rows=people().filter(p=>!FILT||p[0]===FILT).map(p=>{
+  const rows=people().filter(p=>!FILT||kindOf(p)===FILT).map(p=>{
     const cid=cidFor(p),s=SUMS[cid],n=pname(p,cid),t=p[0],d=t==="w"?DIR[pv(p)]:null;
-    const role=t==="g"?`${(s&&Array.isArray(s.ms)?s.ms.length:0)} عضو`:t==="w"?(d?d.k||"":"لم يعد في المستودع"):t==="d"?(DDIR[pv(p)]?"سائق":"لم يعد موجوداً"):"";
+    const role=t==="g"?`${(s&&Array.isArray(s.ms)?s.ms.length:0)} عضو`:t==="w"?(d?d.k||(isM(p)?"الإدارة":""):"لم يعد في المستودع"):t==="d"?(DDIR[pv(p)]?"سائق":"لم يعد موجوداً"):"";
     return {p,cid,s,u:unreadOf(s),n,img:ph(p),av:t==="b"?E(pv(p)):t==="d"?"🚚":E([...n][0]||"؟"),cls:t==="b"?"":" p",role,o:t==="g"?0:t==="w"?(d?ROLE_O[d.r]??3:9):t==="d"?4:5};
   }).filter(x=>!Q||x.n.toLowerCase().includes(Q)||x.p.toLowerCase().includes(Q))
     .sort((a,b)=>(b.u>0)-(a.u>0)||N(b.s&&b.s.last&&b.s.last.ts)-N(a.s&&a.s.last&&a.s.last.ts)||a.o-b.o||a.n.localeCompare(b.n));

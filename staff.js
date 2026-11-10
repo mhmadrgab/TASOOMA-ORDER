@@ -21,7 +21,8 @@ export function syncDir(){
  if(!X||!X.owner||!SL||!WD||!X.me||!meReady())return;
  const me=ownerMe(),want={[X.me]:{n:String(me.n||OWNER_NAME).slice(0,60),k:String(me.k||"").slice(0,40),r:"owner"}};
  // كل الموظفين المفعّلين (ما عدا المتابع): r = admin/req بيكلّموا الفروع، و staff بيكلّموا السائقين والموظفين بس (نوفمبر 2026)
- S.forEach(s=>{const id=String(s.id).toLowerCase();if(id!==X.me&&s.enabled&&s.v!==true&&!isMkt(s))want[id]={n:String(s.name||id.split("@")[0]).slice(0,60),k:String(s.k||"").slice(0,40),r:s.admin===true?"admin":(s.p&&s.p.req)?"req":"staff"}});
+ // نوفمبر 2026 (طلب محمد): مدير التسويق (gm) وصاحب الشركة (v) بقوا في الشات، في قسم "الإدارة" مع المديرين، وظاهرين لكل الفروع
+ S.forEach(s=>{const id=String(s.id).toLowerCase();if(id!==X.me&&s.enabled)want[id]={n:String(s.name||id.split("@")[0]).slice(0,60),k:String(s.k||"").slice(0,40),r:s.v===true?"v":s.admin===true?"admin":(s.p&&s.p.gm)?"gm":(s.p&&s.p.req)?"req":"staff"}});
  Object.entries(want).forEach(([id,v])=>{const o=WD[id];if(!o||o.n!==v.n||(o.k||"")!==v.k||o.r!==v.r)setDoc(doc(X.db,"whdir",id),v).catch(()=>{})});
  Object.keys(WD).forEach(id=>{if(!want[id])deleteDoc(doc(X.db,"whdir",id)).catch(()=>{})});
 }

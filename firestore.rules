@@ -347,7 +347,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['n','k','r'])
         && request.resource.data.n is string && request.resource.data.n.size() <= 60
         && (!('k' in request.resource.data) || (request.resource.data.k is string && request.resource.data.k.size() <= 40))
-        && request.resource.data.r in ['owner','admin','req','staff'];
+        && request.resource.data.r in ['owner','admin','req','staff','gm','v'];// gm مدير التسويق، v صاحب الشركة (قسم الإدارة في الشات)
       allow delete: if isOwner();
     }
     // الفروع اللي خارج الرياض: ship/main = {c:{كود الفرع: اسم شركة الشحن}}. المدير بيكتبها من تبويب الفروع، والباقي بيقرا
@@ -413,7 +413,7 @@ service cloud.firestore {
     }
     match /dm/{cid} {
       function me() { return request.auth.token.email.lower(); }
-      function chatWh() { return isAdmin() || perm('req'); }
+      function chatWh() { return isAdmin() || perm('req') || perm('gm') || isViewer(); }// الإدارة (مدير التسويق وصاحب الشركة) بتكلّم الفروع كمان
       // الطرفين من اسم المحادثة نفسه
       function whIn() { return chatWh() && cid.matches('^[0-9]{3}__.+$') && cid.split('__')[1] == me(); }
       function brIn() { return branchOn() && cid.matches('^[0-9]{3}__.+$') && cid.split('__')[0] == myCode(); }
@@ -430,7 +430,7 @@ service cloud.firestore {
         let d = request.resource.data;
         return d.br + '__' + d.wh == cid && brnOk(d) && whnOk(d) && lastOk(by)
           && ((by == 'br' && d.keys().hasOnly(['br','brn','wh','whn','last','lb','rb','nw']) && d.nw == 1 && d.lb is number && d.rb is number
-               && get(/databases/$(database)/documents/whdir/$(d.wh)).data.get('r', '') in ['owner','admin','req'])
+               && get(/databases/$(database)/documents/whdir/$(d.wh)).data.get('r', '') in ['owner','admin','req','gm','v'])
            || (by == 'wh' && d.keys().hasOnly(['br','brn','wh','whn','last','lw','rw','nb']) && d.nb == 1 && d.lw is number && d.rw is number));
       }
       // رسالة جديدة (العدّاد بيزيد واحد بالظبط) أو "قريت" (العدّاد بيرجع صفر). الطرفين (br, wh) مايتغيّروش
@@ -454,7 +454,7 @@ service cloud.firestore {
       // فرع مع المستودع بيفضل بالشكل القديم فوق ({كود}__{إيميل})، وسواق مع سواق ممنوع.
       // الملخّص: {ps:[الطرفين], nm:{طرف:اسمه}, last:{by:الطرف,n,t,ts,v}, l0/l1 = آخر رسالة من الطرف 0/1، r0/r1 = قرا لحد إمتى، n0/n1 = لسه ماقراش كام}
       function myP()  { return isBranch() ? 'b-' + myCode() : (isDriver() ? 'd-' + myDrv() : 'w-' + me()); }
-      function pOn()  { return isBranch() ? branchOn() : (isDriver() ? drvOn() : (isOwner() || (isStaff() && !isViewer()))); }
+      function pOn()  { return isBranch() ? branchOn() : (isDriver() ? drvOn() : (isOwner() || isStaff())); }// صاحب الشركة (المتابع) بقى في الشات
       function nps()  { return cid.split('__'); }
       function nNew() { return cid.matches('^[bdw]-.+__[bdw]-.+$') && nps().size() == 2 && nps()[0] < nps()[1]; }
       function nSide(){ return nps()[0] == myP() ? 0 : (nps()[1] == myP() ? 1 : -1); }
@@ -543,7 +543,7 @@ service cloud.firestore {
     match /grp/{gid} {
       function gMe()  { return request.auth.token.email.lower(); }
       function gP()   { return isBranch() ? 'b-' + myCode() : (isDriver() ? 'd-' + myDrv() : 'w-' + gMe()); }
-      function gOn()  { return isBranch() ? branchOn() : (isDriver() ? drvOn() : (isOwner() || (isStaff() && !isViewer()))); }
+      function gOn()  { return isBranch() ? branchOn() : (isDriver() ? drvOn() : (isOwner() || isStaff())); }
       function gK()   { return gP().replace('[^A-Za-z0-9]', '_'); }
       function lastG(l) {
         return l is map && l.keys().hasOnly(['by','n','t','ts','v']) && l.by == gP()
