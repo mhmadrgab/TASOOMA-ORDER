@@ -131,6 +131,8 @@ html.ui-offline::after{content:"⚠ النت فاصل — أول ما يرجع،
 
 /* ---------- شاشات الدخول ---------- */
 .ui-stage{background:#0b0b0b!important}
+/* التطبيق المثبّت: html.app ليه خلفية #1b1b1b، فخلفية شاشة الدخول كانت بتبان شريط على قد المحتوى بس (نوفمبر 2026) */
+html:has(body.ui-stage){background:#0b0b0b!important}
 .ui-stage::before,.ui-stage::after{content:"";position:fixed;pointer-events:none;z-index:0}
 .ui-stage::before{inset:-25%;
  background:radial-gradient(38% 34% at 72% 28%,rgba(212,174,92,.22),transparent 70%),
