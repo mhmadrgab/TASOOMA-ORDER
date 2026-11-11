@@ -1551,6 +1551,7 @@ export default {
 "تعميم من الإدارة":"Announcement from management",
 "ضبط الصورة":"Adjust photo",
 "🏛 الإدارة":"🏛 Management",
+"كل الهدايا في الفترة":"All gifts in the period",
 "هذا الطلب مع السائق في رحلة الآن. انتظر حتى يُسلَّم، أو أنهِ الرحلة من \"السيارات\" أولاً ثم احذفه":"This order is with a driver on a trip now. Wait until it is delivered, or end the trip from \"Vehicles\" first, then delete it",
 "🏭 المستودع":"🏭 Warehouse",
 "متصل الآن":"Online now",
