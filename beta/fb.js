@@ -1,3 +1,4 @@
+if(!/\/beta\//.test(location.pathname)){document.documentElement.innerHTML='<body style="font:18px Tahoma;padding:40px;direction:rtl;line-height:1.9">⚠️ ملف fb.js بتاع النسخة التجريبية اترفع مكان ملف المنصة الأصلي.<br>ارفع ملف fb.js الأصلي من فولدر «ارفع-على-GitHub» على GitHub، وبعدين اعمل Ctrl+F5.</body>';throw new Error("beta fb.js outside /beta/")}
 // fb.js — نسخة Supabase (النقل من Firebase، نوفمبر 2026). نفس اللي بيصدّره fb.js القديم بالظبط، فباقي الملفات ماتتغيّرش.
 // يوم النقل: الملف ده بياخد اسم fb.js. لحد كده بيتجرب في نسخة تجريبية منفصلة.
 // - البيانات والدخول: Supabase (sbcore.js + sb-config.js)

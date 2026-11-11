@@ -547,5 +547,5 @@ onAuthStateChanged(auth,async u=>{
  if(u&&u.email){const em=u.email.toLowerCase();window.__push=()=>pushRegister(app,db,{role:"staff",key:em,email:em});window.__pushTest=()=>pushTest(auth);autoPush()}else{window.__push=null;window.__pushTest=null}
 });
 </script>
-</body>
+<script>if(/\/beta\//.test(location.pathname))document.write('<div id="tz-beta" style="position:fixed;bottom:8px;left:8px;z-index:99999;background:#6a56c9;color:#fff;font:700 12px/1 Tahoma,sans-serif;padding:7px 12px;border-radius:999px;pointer-events:none;opacity:.92;box-shadow:0 6px 18px rgba(0,0,0,.25)">🧪 نسخة تجريبية — Supabase</div>')</script></body>
 </html>
