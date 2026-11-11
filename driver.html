@@ -215,7 +215,7 @@ async function onPos(pt){
   // (مابنلمسش stops هنا علشان مانتخانقش مع "وصلت وسلّمت" لو حصلوا في نفس اللحظة: الوقت بيتكتب على الطلب نفسه)
   b.update(doc(db,"trips",a.id),{loc:{...pt,ts:now}});
   pend.forEach(s=>{const r=REQ.find(x=>x.id===s.rid);if(!r||r.st!=="go")return;const e=et[s.rid];
-   if(e&&Math.abs(e-N(r.eta))>=2*6e4)b.update(doc(db,"requests",s.rid),{eta:e,upd:now});
+   if(e&&Math.abs(e-N(r.eta))>=3*6e4)b.update(doc(db,"requests",s.rid),{eta:e});// (من غير upd، وكل 3 دقايق فرق: توفير قراءات)
    const bp=GEO.br[codeOf(s.brn)],close=(e&&e-now<=10*6e4)||(bp&&km2(pt,bp)<1.5);
    if(close&&!shipOf(s)&&!(s.fr&&!s.pk)&&!(N(r.near)>N(r.dep)))near.push(s.rid)});
   await withTimeout(b.commit(),15000);

@@ -24,9 +24,10 @@ img.rc{max-width:100%;border-radius:10px}
 `;
 const cur=()=>calc(LA,SA);
 export function hdr(){if(!X)return;badge(X.newReqs())}
-function sync(){if(X.tab()==="cus")X.redraw();hdr()}
+function sync(){if(X.tab()==="cus"||X.tab()==="fl")X.redraw();hdr()}
 // ---------- التبويب ----------
 export function view(){
+ ledgerOn();
  const k=cur(),pr=SA.filter(s=>s.st==="approved").sort((a,b)=>N(b.ts)-N(a.ts));
  const bycat={};k.open.filter(e=>e.type==="exp").forEach(e=>bycat[e.cat]=(bycat[e.cat]||0)+N(e.amt));
  const cats=Object.entries(bycat).sort((a,b)=>b[1]-a[1]),mx=cats.length?cats[0][1]:1;
@@ -102,10 +103,16 @@ export function initExtra(ctx){
  X=ctx;stop();
  if(!g("ax-css")){const s=document.createElement("style");s.id="ax-css";s.textContent=CSS;document.head.appendChild(s);ensurePrintCss()}
  if(!window.__axc){window.__axc=1;document.addEventListener("click",click);document.addEventListener("change",e=>{if(e.target.id==="cfc"){fc=e.target.value;X.redraw()}})}
- un.push(onSnapshot(collection(X.db,"ledger"),sn=>{LA=sn.docs.map(d=>({id:d.id,...d.data()}));sync()},()=>X.toast("تعذر قراءة العهدة. تأكد من تحديث القواعد (Rules)")));
- un.push(onSnapshot(collection(X.db,"settlements"),sn=>{SA=sn.docs.map(d=>({id:d.id,...d.data()}));sync()},()=>{}));
  regSW();
 }
-export function stop(){un.forEach(f=>f());un=[];LA=[];SA=[];mode="";const m=g("cmx");if(m){m.className="cm";m.innerHTML=""}}
+// توفير القراءات (نوفمبر 2026): العهدة كلها (من أول يوم) بتتقري بس لما حد يفتح تبويب العهدة أو السيارات (مصاريف العربيات)،
+// مش مع كل دخول للوحة
+let LON=false;
+export function ledgerOn(){
+ if(!X||LON)return;LON=true;
+ un.push(onSnapshot(collection(X.db,"ledger"),sn=>{LA=sn.docs.map(d=>({id:d.id,...d.data()}));sync()},()=>X.toast("تعذر قراءة العهدة. تأكد من تحديث القواعد (Rules)")));
+ un.push(onSnapshot(collection(X.db,"settlements"),sn=>{SA=sn.docs.map(d=>({id:d.id,...d.data()}));sync()},()=>{}));
+}
+export function stop(){un.forEach(f=>f());un=[];LA=[];SA=[];mode="";LON=false;const m=g("cmx");if(m){m.className="cm";m.innerHTML=""}}
 export const ledger=()=>LA;
 export {hdr as adminHdr};

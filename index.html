@@ -558,13 +558,13 @@ function hello(all){
 }
 function listen(){
  if(unsub)unsub();prev=null;XF=null;
- // توفير القراءات: بدل كل طلبات الفرع من أول يوم، بنسمع لـ (o) الطلبات اللي لا يزال مفتوحة + (r) طلبات آخر 45 يوم
+ // توفير القراءات: بدل كل طلبات الفرع من أول يوم، بنسمع لـ (o) الطلبات اللي لا يزال مفتوحة + (r) طلبات آخر 30 يوم
  const c=code(B),M={o:new Map(),r:new Map()},got={o:false,r:false},uns=[];unsub=()=>uns.forEach(f=>f());
  const fail=e=>{if(e&&e.code==="permission-denied"){signOut(auth).then(()=>showErr("تم تعطيل هذا الحساب. تواصل مع المستودع."))}else toast("تعذر قراءة الطلبات، تأكد من الإنترنت","er")};
  const put=(k,sn)=>{M[k]=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));got[k]=true;if(got.o&&got.r)show()};
  uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c),where("st","in",["new","prep","go","done"])),sn=>put("o",sn),fail));
  // محتاج فهرس (br + ts) في Firebase؛ لو لا يزال ماتعملش بنرجع للطريقة القديمة علشان الصفحة ماتقفش
- uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c),where("ts",">=",Date.now()-45*864e5)),sn=>put("r",sn),e=>{
+ uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c),where("ts",">=",Date.now()-30*864e5)),sn=>put("r",sn),e=>{// (كانت 45 يوم، توفير قراءات نوفمبر 2026)
   if(e&&e.code==="failed-precondition")uns.push(onSnapshot(query(collection(db,"requests"),where("br","==",c)),sn=>put("r",sn),fail));else fail(e)}));
  // شركة الشحن الخاصة بالفرع ده (لو خارج الرياض)
  uns.push(onSnapshot(doc(db,"ship","main"),d=>{const s=d.exists()&&d.data().c&&typeof d.data().c==="object"&&d.data().c[c]||"";if(String(s)!==SHIP){SHIP=String(s);if(got.o&&got.r)show()}},()=>{}));

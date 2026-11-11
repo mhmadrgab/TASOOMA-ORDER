@@ -218,13 +218,21 @@ function deepReq(id){
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
 function stop(){stopGifts();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
-// (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 60 يوم. وزرار "الأقدم" بيحمّل الباقي عند الحاجة.
-const DAYS=60;let RQ={o:new Map(),r:new Map()},RQ1={o:true,r:true},seenReq=new Set(),ALLREQ=false,unOld=null;
+// (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
+// توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
+// اللي محتاج أقدم (تاريخ في الفلتر، شهر قديم في العمال) بيحمّل من التاريخ ده بس (ensureSince)، و"الأقدم" بيحمّل الكل.
+const DAYS=32;let RQ={o:new Map(),r:new Map()},RQ1={o:true,r:true},seenReq=new Set(),ALLREQ=false,unOld=null,SINCE=0;
 const cutoff=()=>Date.now()-DAYS*864e5;
 function listenReqs(){
  const err=()=>toast("تعذر قراءة الطلبات. تأكد من القواعد (Rules) في Firebase");
  unsubs.push(onSnapshot(query(collection(db,"requests"),where("st","in",["new","prep","go","done"])),sn=>onReqs("o",sn),err));
- unOld=onSnapshot(query(collection(db,"requests"),where("ts",">=",cutoff())),sn=>onReqs("r",sn),err);unsubs.push(()=>unOld&&unOld());
+ SINCE=cutoff();unOld=onSnapshot(query(collection(db,"requests"),where("ts",">=",SINCE)),sn=>onReqs("r",sn),err);unsubs.push(()=>unOld&&unOld());
+}
+// تحميل الطلبات من تاريخ معيّن (بدل كل الطلبات من أول يوم)
+function ensureSince(t){
+ if(ALLREQ||!Number.isFinite(t)||t>=SINCE)return;SINCE=t;if(unOld)unOld();RQ1.r=true;RQ.r=new Map();
+ unOld=onSnapshot(query(collection(db,"requests"),where("ts",">=",SINCE)),sn=>onReqs("r",sn),()=>toast("تعذر تحميل الطلبات الأقدم"));
+ toast("جاري تحميل الطلبات الأقدم...");
 }
 // زرار "الطلبات الأقدم": نبدّل سماع آخر 60 يوم بسماع كل الطلبات (للجلسة دي بس)
 function loadAllReqs(){
@@ -253,7 +261,7 @@ function onReqs(k,sn){
  adminHdr();first=false;if(tab!=="chat")draw();// تبويب الدردشة مش بيعرض الطلبات، فمش محتاج يترسم من جديد
 }
 document.addEventListener("click",e=>{if(e.target.closest("#oldreq"))loadAllReqs()});
-document.addEventListener("change",e=>{if((e.target.id==="fdf"||e.target.id==="fdt")&&e.target.value&&new Date(e.target.value).getTime()<cutoff())loadAllReqs()});
+document.addEventListener("change",e=>{if((e.target.id==="fdf"||e.target.id==="fdt")&&e.target.value)ensureSince(new Date(e.target.value+"T00:00:00").getTime())});
 document.addEventListener("click",e=>{if(e.target.closest("#fdx")){fdf="";fdt="";draw()}});
 // وصف قصير للحاجة اللي اتعدّلت (بيتكتب في السجل جنب اسم اللي عدّل)
 function logLabel(c,id,d){
@@ -300,7 +308,7 @@ function start(){
  if(adm||can("req")||vw)initShort({db,toast,R:()=>R,me:{e:me,get n(){return ROLE.name||me}},canBuy:adm||can("req"),owner:ROLE.owner===true,ownerEmail:ADMIN_EMAIL,redraw:draw});
  // 📢 التعميمات: الكل بيشوف، والمالك والمديرين بس بيبعتوا لكل الفروع والمستودع
  initAnn({db,auth,toast,party:me,email:me,name:()=>ROLE.name||me.split("@")[0],canPost:adm});
- if(adm||can("req")||vw)initWorkers({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,owner:ROLE.owner===true,view:vw,loadAll:loadAllReqs,ping:ids=>ping(auth,ids)});
+ if(adm||can("req")||vw)initWorkers({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,owner:ROLE.owner===true,view:vw,loadAll:loadAllReqs,loadSince:ensureSince,ping:ids=>ping(auth,ids)});
  // الدردشة الخاص مع الفروع (لكل اللي بيشتغل على الطلبات): كل شخص ليه محادثاته هو بس مع كل فرع، محدش غيره بيشوفها
  // كل اللي في المستودع (مش المتابع): يكلّم السائقين والموظفين، واللي معاه الطلبات أو مدير يكلّم الفروع أيضاً
  {// الشات لكل اللي في المستودع، ومعاهم الإدارة: مدير التسويق وصاحب الشركة (نوفمبر 2026)، وبيكلّموا الفروع كمان

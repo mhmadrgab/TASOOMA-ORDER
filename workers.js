@@ -160,7 +160,8 @@ export function initWorkers(ctx){
  if(!g("wk-css")){const s=document.createElement("style");s.id="wk-css";s.textContent=CSS;document.head.appendChild(s);ensurePrintCss()}
  if(!window.__wkc){window.__wkc=1;document.addEventListener("click",click);
   document.addEventListener("change",async e=>{const t=e.target;if(!X)return;
-   if(t.id==="wmon"){mon=t.value;const ms=months();if(ms.indexOf(mon)>1&&X.loadAll)X.loadAll();X.redraw()}// الشهور القديمة محتاجة الطلبات الأقدم
+   // الشهور القديمة محتاجة الطلبات الأقدم: بنحمّل من أول الشهر ده بس (مش كل الطلبات من أول يوم)
+   if(t.id==="wmon"){mon=t.value;if(X.loadSince)X.loadSince(new Date(mon+"-01T00:00:00").getTime());else{const ms=months();if(ms.indexOf(mon)>1&&X.loadAll)X.loadAll()}X.redraw()}
    if(t.dataset&&t.dataset.wst&&X.admin){try{await setDoc(doc(X.db,"wrate",mon),{stars:{[t.dataset.wst]:N(t.value)}},{merge:true})}catch(x){X.toast("تعذر حفظ التقييم: "+(x&&x.code||x&&x.message))}}})}
  const draw=()=>{const tb=X.tab();if(tb==="wk"||tb==="req")X.redraw()};
  un.push(onSnapshot(collection(X.db,"workers"),sn=>{W=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));

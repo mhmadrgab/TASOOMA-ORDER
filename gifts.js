@@ -28,7 +28,7 @@ function retHtml(r){
  return "";
 }
 const ymOf=t=>new Date(N(t)).toLocaleDateString("en-CA").slice(0,7);
-const D=864e5,LIVE=90;// آخر 90 يوم بيتسمعوا لايف في المستودع، والأقدم بيتحمّل وقت التقرير
+const D=864e5,LIVE=31;// آخر 31 يوم بيتسمعوا لايف في المستودع (كانت 90: توفير قراءات نوفمبر 2026)، والأقدم بيتحمّل وقت التقرير
 let X=null,L=new Map(),LS=new Map(),PEND=new Map(),OLD=new Map(),MON=new Set(),un=[],bun=null,BL=[],img="",imgBusy=false,edit=null;
 let F={from:"",to:"",br:"",st:""};
 const CSS=`
@@ -128,7 +128,11 @@ export function initGifts(ctx){
    un.push(onSnapshot(query(collection(X.db,"gifts"),where("st","==","ok")),sn=>{L=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},err));
    un.push(onSnapshot(query(collection(X.db,"gifts"),where("st","==","set"),where("sm","==",cm)),sn=>{LS=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},err));
   }
-  else un.push(onSnapshot(query(collection(X.db,"gifts"),where("ts",">=",Date.now()-LIVE*D)),sn=>{L=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},err));
+  else{
+   un.push(onSnapshot(query(collection(X.db,"gifts"),where("ts",">=",Date.now()-LIVE*D)),sn=>{L=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},err));
+   // المعتمد اللي لسه ماتسوّاش (والعينات اللي مستنية ترجع) مهما كان قديم، علشان مايختفيش لما الفترة اللايف بقت شهر
+   un.push(onSnapshot(query(collection(X.db,"gifts"),where("st","==","ok")),sn=>{LS=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},()=>{}));
+  }
  }
  if(!window.__gfc){window.__gfc=1;document.addEventListener("click",click);document.addEventListener("change",change)}
 }

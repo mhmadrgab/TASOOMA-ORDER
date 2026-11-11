@@ -2,7 +2,7 @@
 import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,getDocs,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut} from "./fb.js";
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep,pushOn} from "./notify.js";
-import {ledger} from "./ad-extra.js";
+import {ledger,ledgerOn} from "./ad-extra.js";
 import {leaflet,baseMap,pin,okPt,MAP_CSS,roadRoute,glide} from "./map.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
@@ -253,6 +253,7 @@ function alerts(){
 }
 // ---------- الواجهة ----------
 export function view(){
+ ledgerOn();// مصاريف العربيات من العهدة (بتتقري أول مرة يفتح السيارات بس)
  const R=X.R(),A=alerts(),act=TR.filter(t=>t.st==="active"),lg=legs(),pp=pairs();
  const openR=R.filter(r=>(r.st==="new"||r.st==="prep")).sort((a,b)=>N(a.ts)-N(b.ts));
  const days=[...new Set(TR.map(t=>dk(t.start)))].sort().reverse();if(fday==="__older"||!fday||!days.includes(fday))fday=days[0]||today();
