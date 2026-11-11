@@ -443,8 +443,10 @@ function podForm(rid){
    const rem=st.filter(x=>!x.arr),et=etas(rem,ts,codeOf(s.brn));// الباقي محسوب من الفرع اللي سُلِّم حالياً
    const stt=st.map(x=>et[x.rid]?{...x,eta:et[x.rid]}:x);
    const b=writeBatch(db),tu={stops:stt};if(loc)tu.loc={...loc,ts};
-   b.update(doc(db,"trips",a.id),tu);b.update(doc(db,"requests",rid),{st:"done",dlv:ts,upd:ts,pod});
-   rem.forEach(x=>{if(et[x.rid])b.update(doc(db,"requests",x.rid),{eta:et[x.rid]})});
+   // ⚠️ (نوفمبر 2026) طلب اتمسح من المستودع وهو في الرحلة: مانكتبش عليه (كان بيرفض التسليم كله والرحلة بتعلق). REQ = طلباتي الموجودة فعلاً
+   const has=x=>REQ.some(r=>r.id===x);
+   b.update(doc(db,"trips",a.id),tu);if(has(rid))b.update(doc(db,"requests",rid),{st:"done",dlv:ts,upd:ts,pod});
+   rem.forEach(x=>{if(et[x.rid]&&has(x.rid))b.update(doc(db,"requests",x.rid),{eta:et[x.rid]})});
    await withTimeout(b.commit(),15000);delete CT[rid];ctSave();ping(auth,[rid]);closeM();lsSet("drv_odo_"+a.car,String(od));
    // آخر فرع: نفكّره ينهي الرحلة لما يرجع (علشان رحلة قصيرة الرجوع يتحسب)
    toast(rem.length?"تم تسجيل التسليم ✅":"تم التسليم ✅ أنهيت كل التوصيلات. عند عودتك إلى المستودع اضغط 🏁 إنهاء الرحلة واكتب العداد");
@@ -478,7 +480,8 @@ function endForm(){
   g("e1").disabled=true;const ts=Date.now(),loc=await here();
   try{
    const b=writeBatch(db),u={st:"done",end:ts,odo1:o},n=g("en").value.trim().slice(0,300);if(n)u.note=n;if(loc)u.loc={...loc,ts};
-   b.update(doc(db,"trips",a.id),u);un2.forEach(s=>b.update(doc(db,"requests",s.rid),{st:"prep",upd:ts}));
+   // (الطلب اللي اتمسح من المستودع وهو في الرحلة بيتساب: من غيرها الرحلة مابتتقفلش خالص)
+   b.update(doc(db,"trips",a.id),u);un2.filter(s=>REQ.some(r=>r.id===s.rid)).forEach(s=>b.update(doc(db,"requests",s.rid),{st:"prep",upd:ts}));
    await withTimeout(b.commit(),15000);ping(auth,un2.map(s=>s.rid),[],[a.id]);lsSet("drv_odo_"+a.car,String(o));closeM();toast("تم إنهاء الرحلة. شكراً لجهدك 👏");
   }catch(e){g("e1").disabled=false;fail(e,"غير مسموح بإنهاء الرحلة.")}
  };

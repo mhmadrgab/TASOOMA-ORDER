@@ -476,7 +476,10 @@ document.addEventListener("click",async e=>{
  else if(t.dataset.a){const r=R.find(x=>x.id===t.dataset.id),a=t.dataset.a;if(!r)return;
   if(a==="print")printReq(r);
   else if(a==="edit")openEdit(r);
-  else if(a==="del"){if(r.st==="recv"&&!ROLE.owner){toast("أكّد الفرع استلام هذا الطلب ولا يمكن حذفه");return}if(ROLE.admin&&confirm(r.st==="recv"?`حذف طلب ${r.no} نهائياً؟\n\nأكّد الفرع استلام هذا الطلب، وسيُحذف من سجلات الفرع وتقييم العمال أيضاً، ولا يمكن التراجع.`:`حذف طلب ${r.no} نهائياً؟`))await deleteDoc(doc(db,"requests",r.id))}// الطلب اللي الفرع أكّد استلامه: المالك بس يمسحه (والقواعد كمان)
+  else if(a==="del"){
+   // (نوفمبر 2026) طلب مع سواق في رحلة: مسحه كان بيعلّق الرحلة (السواق مايقدرش يسلّم ولا يقفل). لازم الرحلة تخلص أو الطلب يرجع الأول
+   if(r.st==="go"){toast(`هذا الطلب مع السائق في رحلة الآن. انتظر حتى يُسلَّم، أو أنهِ الرحلة من "السيارات" أولاً ثم احذفه`);return}
+   if(r.st==="recv"&&!ROLE.owner){toast("أكّد الفرع استلام هذا الطلب ولا يمكن حذفه");return}if(ROLE.admin&&confirm(r.st==="recv"?`حذف طلب ${r.no} نهائياً؟\n\nأكّد الفرع استلام هذا الطلب، وسيُحذف من سجلات الفرع وتقييم العمال أيضاً، ولا يمكن التراجع.`:`حذف طلب ${r.no} نهائياً؟`))await deleteDoc(doc(db,"requests",r.id))}// الطلب اللي الفرع أكّد استلامه: المالك بس يمسحه (والقواعد كمان)
   else if(a==="wk"||(a==="prep"&&r.st==="new"&&hasWorkers()))pickWorkers(r);// نختار مين هيجهّز الطلب
    else if(a==="pdn"){if(r.st!=="prep"){toast("ابدأ التجهيز أولاً");return}await updateDoc(doc(db,"requests",r.id),{pdn:Date.now(),upd:Date.now()});ping(auth,[r.id]);toast("✅ تم التجهيز، وأُبلغ الفرع")}
     else if(["new","prep","done"].includes(a)){if(r.st==="recv"){toast("أكّد الفرع استلام هذا الطلب ولا يمكن تغييره");return}await updateDoc(doc(db,"requests",r.id),{st:a,upd:Date.now(),...(a==="new"||a==="prep"?{pdn:0}:{})});ping(auth,[r.id])}}

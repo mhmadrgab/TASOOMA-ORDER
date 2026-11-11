@@ -464,7 +464,8 @@ async function click(e){
    const lo=Math.max(N(t0.odo0),...(t0.stops||[]).map(s=>N(s.odo))),odo=N(toEn(o))||lo;if(odo<lo){X.toast("يجب أن يكون العداد "+fmt(lo)+" أو أكثر (آخر قراءة في الرحلة)");return}
    const b=writeBatch(X.db),ts=Date.now();
    b.update(doc(X.db,"trips",id),{st:"done",end:ts,odo1:odo,forced:true,note:"أنهاها المستودع"+(N(toEn(o))?"":" (العداد غير معروف)")});
-   left.forEach(s=>b.update(doc(X.db,"requests",s.rid),{st:"prep",upd:ts}));
+   // (نوفمبر 2026) طلب اتمسح وهو في الرحلة: مانكتبش عليه، وإلا الإنهاء كله بيترفض (permission-denied) والرحلة بتعلق
+   left.filter(s=>X.R().some(r=>r.id===s.rid)).forEach(s=>b.update(doc(X.db,"requests",s.rid),{st:"prep",upd:ts}));
    await b.commit();if(X.ping)X.ping(left.map(s=>s.rid),[id]);X.toast("تم إنهاء الرحلة");
   }
   else if(a==="drv"){const nm=(prompt("اسم السائق:","")||"").trim();if(!nm)return;const ph=(prompt("رقم جوال السائق (اختياري، مثلاً 0551234567):","")||"").trim();const c=await mkDriver(nm.slice(0,60),toEn(ph).slice(0,20));X.toast("تم إنشاء حساب "+c)}
