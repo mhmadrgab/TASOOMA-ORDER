@@ -55,8 +55,8 @@ const CSS=`
   background:radial-gradient(circle at 18% 12%,rgba(212,174,92,.28),transparent 45%),radial-gradient(circle at 85% 90%,rgba(212,174,92,.2),transparent 50%),linear-gradient(140deg,#151515,#2b2416 55%,#151515);border:2px solid #d4ae5c;box-shadow:inset 0 0 0 6px rgba(212,174,92,.08)}
 .annbg .wm{position:absolute;inset:0;margin:auto;width:78%;max-width:340px;height:auto;fill:#d4ae5c;opacity:.08;pointer-events:none}
 .annbg .hd3{position:relative;display:flex;align-items:center;gap:8px;color:#d4ae5c;font-weight:800;letter-spacing:4px;font-size:13px;direction:ltr}.annbg .hd3 svg{width:30px;height:30px;fill:#d4ae5c}
-.annbg .bt{position:relative;white-space:pre-wrap;word-wrap:break-word;font-weight:800;line-height:1.55;text-shadow:0 2px 12px rgba(0,0,0,.5);max-width:100%}
-.annbg .bt.s1{font-size:34px}.annbg .bt.s2{font-size:27px}.annbg .bt.s3{font-size:21px}.annbg .bt.s4{font-size:17px;font-weight:700}.annbg .bt.s5{font-size:15px;font-weight:600;line-height:1.75;text-align:start}
+.annbg .abt{position:relative;white-space:pre-wrap;word-wrap:break-word;font-weight:800;line-height:1.55;text-shadow:0 2px 12px rgba(0,0,0,.5);max-width:100%}
+.annbg .abt.s1{font-size:34px}.annbg .abt.s2{font-size:27px}.annbg .abt.s3{font-size:21px}.annbg .abt.s4{font-size:17px;font-weight:700}.annbg .abt.s5{font-size:15px;font-weight:600;line-height:1.75;text-align:start}
 .annvo{margin-top:12px}.annvo button{width:100%;font:inherit;font-weight:800;font-size:16px;border:0;border-radius:14px;padding:13px 16px;background:linear-gradient(135deg,#d9b25f,#a8832f);color:#1b1b1b;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(168,131,47,.35)}
 .annvo button:disabled{opacity:.7}.annvo small{opacity:.75;font-weight:700}.annvo audio{width:100%;height:46px}
 .annvop{display:flex;gap:8px;align-items:center;margin-top:10px;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:6px 10px}.annvop audio{flex:1;min-width:0;height:40px}
@@ -64,7 +64,7 @@ const CSS=`
 .annc .row{flex-wrap:wrap}.annc .rec{background:#c0392b!important;color:#fff!important;border-color:#c0392b!important;animation:ann-rec 1.2s ease-in-out infinite}.annc .rec small{opacity:.85}@keyframes ann-rec{50%{opacity:.75}}
 .annbg .ft{position:relative;width:100%;display:flex;align-items:center;gap:10px;color:#cdb67a;font-size:12px}.annbg .ft::before,.annbg .ft::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,#d4ae5c,transparent)}
 .annpb .annbg{margin:0 0 6px}
-@media (max-width:480px){.annbg{min-height:260px}.annbg .bt.s1{font-size:28px}.annbg .bt.s2{font-size:23px}}
+@media (max-width:480px){.annbg{min-height:260px}.annbg .abt.s1{font-size:28px}.annbg .abt.s2{font-size:23px}}
 @media (prefers-color-scheme:dark){.anni.nw{background:#2b2210}}
 @media print{#annb,#annm,#annp,#anniv{display:none!important}}
 `;
@@ -77,9 +77,9 @@ const me=()=>X&&X.party;
 // (نوفمبر 2026: الخلفية بقت الافتراضية من غير زرار. أي تعميم نص من غير صورة = على خلفية تاسومة، حتى القديم)
 const WOLF=`<path d="M139.5 87L142.5 88L175.5 130L129 212.5ZM370.5 87L373.5 87L374.5 94L384.5 211L383 213.5L336.5 130ZM197.5 135L314.5 135L314.5 138L249.5 219L250.5 273L259 275.5L262.5 270L262.5 221L269 214.5L305.5 306L290 344.5L267.5 334L281.5 318L282.5 307L268 292.5L262 289.5L247 290.5L230.5 305L230.5 318L244.5 334L225 343.5L222 343.5L219.5 340L206.5 305L242.5 217L247.5 199ZM327.5 141L330.5 143L352 184.5L320 171.5L297.5 179ZM183.5 142L188.5 145L215 179.5L192 171.5L160.5 184ZM192.5 185L233.5 201L232.5 209L211 261.5L201 257.5L175.5 240L154.5 202ZM315.5 186L327 187.5L357 200.5L357.5 203L335.5 242L303 262.5L299.5 259L278.5 202ZM192.5 203L199 202.5L205.5 213L212.5 230L209 237.5L202 236.5L173.5 217L173.5 212L177 208.5ZM312.5 203L326 204.5L335 208.5L339.5 215L334 221.5L320 230.5L308 237.5L304 237.5L300.5 235L299.5 230ZM144.5 213L150.5 219L164.5 244L164.5 248L128.5 308L126 308.5L125.5 247ZM365.5 213L368.5 213L386.5 246L386 308.5L347.5 248ZM174.5 256L205.5 275L194.5 302L194.5 311L214.5 358L249.5 387L249 425.5L165 374.5L127.5 333ZM334.5 257L340.5 259L384.5 334L345 376.5L263 425.5L262.5 387L299.5 356L318.5 309L307.5 274ZM254.5 343L281.5 355L257 375.5L231.5 356L232 353.5Z"/>`;
 const bgSize=t=>{const n=[...String(t||"")].length,l=String(t||"").split("\n").length;return n<=40&&l<=3?"s1":n<=110&&l<=5?"s2":n<=260?"s3":n<=500?"s4":"s5"};
-const bgCard=a=>`<div class="annbg"><svg class="wm" viewBox="0 0 512 512" aria-hidden="true">${WOLF}</svg><div class="hd3"><svg viewBox="80 60 352 390" aria-hidden="true">${WOLF}</svg>TASOOMA</div><div class="bt ${bgSize(a.t)}" data-notr>${E(a.t)}</div><div class="ft">📢 ${E(a.n||"الإدارة")}</div></div>`;
+const bgCard=a=>`<div class="annbg"><svg class="wm" viewBox="0 0 512 512" aria-hidden="true">${WOLF}</svg><div class="hd3"><svg viewBox="80 60 352 390" aria-hidden="true">${WOLF}</svg>TASOOMA</div><div class="abt ${bgSize(a.t)}" data-notr>${E(a.t)}</div><div class="ft">📢 ${E(a.n||"الإدارة")}</div></div>`;
 // خانة الكتابة على الخلفية: الخط بيكبر/يصغر زي البوست النهائي، والطول على قد الكلام، وعدّاد الحروف
-function fitBg(){const t=g("annt");if(!t||!t.closest(".annbgc"))return;t.className="bt "+bgSize(t.value);t.style.height="auto";t.style.height=t.scrollHeight+"px";
+function fitBg(){const t=g("annt");if(!t||!t.closest(".annbgc"))return;t.className="abt "+bgSize(t.value);t.style.height="auto";t.style.height=t.scrollHeight+"px";
   const c=g("annn");if(c){const n=[...t.value].length;c.textContent=n?`${n}/1000`:""}}
 // جسم التعميم: خلفية تاسومة، أو صورة + نص، أو نص عادي
 const bodyOf=a=>`${a.img?`${imgBox(a)}${a.t?`<div class="tx" data-notr>${E(a.t)}</div>`:""}`:a.t?bgCard(a):""}${voBox(a)}`;
@@ -214,7 +214,7 @@ function open(){if(!X)return;const m=box();m.className="on";paint();markRead();m
 function paint(){
   const m=g("annm");if(!m||!X)return;const s=seen(),keep=g("annt")?g("annt").value:"",foc=document.activeElement&&document.activeElement.id==="annt";
   m.innerHTML=`<div class="annk"><div class="annh"><span style="font-size:30px">📢</span><div><b>التعميمات</b><small>رسائل الإدارة والمستودع لكل الفروع</small></div><button type="button" data-annx aria-label="إغلاق">✕</button></div>
-  ${X.canPost?`<div class="annc">${!PIC?`<div class="annbg annbgc" data-annfocus><svg class="wm" viewBox="0 0 512 512" aria-hidden="true">${WOLF}</svg><div class="hd3"><svg viewBox="80 60 352 390" aria-hidden="true">${WOLF}</svg>TASOOMA</div><textarea id="annt" class="bt s1" rows="1" maxlength="1000" placeholder="اكتب التعميم أو العرض هنا..."></textarea><div class="ft">📢 ${E(X.name()||"الإدارة")}</div><span class="cnt" id="annn"></span></div>`
+  ${X.canPost?`<div class="annc">${!PIC?`<div class="annbg annbgc" data-annfocus><svg class="wm" viewBox="0 0 512 512" aria-hidden="true">${WOLF}</svg><div class="hd3"><svg viewBox="80 60 352 390" aria-hidden="true">${WOLF}</svg>TASOOMA</div><textarea id="annt" class="abt s1" rows="1" maxlength="1000" placeholder="اكتب التعميم أو العرض هنا..."></textarea><div class="ft">📢 ${E(X.name()||"الإدارة")}</div><span class="cnt" id="annn"></span></div>`
    :`<textarea id="annt" maxlength="2000" placeholder="اكتب كلاماً مع الصورة (اختياري)..."></textarea>`}
    ${PIC?`<div class="annpv"><img src="${PIC.t}" alt=""><button type="button" data-annrm aria-label="إزالة الصورة">✕</button><small>${PIC.w}×${PIC.h} · جودة عالية</small></div>`:""}
    ${VO?`<div class="annvop"><span>🎤</span><audio controls src="${VO.a}"></audio><button type="button" data-annvrm aria-label="حذف التسجيل">✕</button></div>`:""}
