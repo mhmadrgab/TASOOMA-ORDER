@@ -31,6 +31,8 @@ service cloud.firestore {
         && staffDoc().enabled == true;
     }
     function perm(k)      { return isStaff() && staffDoc().p.get(k, false) == true; }
+    // 🛡 رقم المستند اللي بيعمله فرع/سواق/محاسب: حروف وأرقام بس (الرقم بيتحط في الصفحات، فمايبقاش فيه رموز HTML)
+    function idOk(i)      { return i.matches('^[A-Za-z0-9_-]{1,64}$'); }
     // "متابع" (صاحب الشركة): staff/{email}.v = true. بيقرا كل حاجة (من غير كلمات السر والشات الخاص) ومايقدرش يكتب أي حاجة
     function isViewer()   { return isStaff() && staffDoc().get('v', false) == true; }
 
@@ -94,7 +96,7 @@ service cloud.firestore {
                     || perm('req') || perm('fl') || isViewer()
                     || (branchOn() && resource.data.tr.fr == myCode())
                     || (drvOn() && resource.data.asg.drv == myDrv());
-      allow create: if isAdmin() || (branchOn() && validNew()) || (perm('req') && validWh());
+      allow create: if isAdmin() || (idOk(id) && ((branchOn() && validNew()) || (perm('req') && validWh())));
       // إثبات التسليم من السائق: اسم المستلم + توقيع + صورة (اختياري)
       function validPod() {
         let p = request.resource.data.pod;
@@ -202,10 +204,10 @@ service cloud.firestore {
       // المحاسب (gift) بيشوف المعتمد بس (ok = مستني تسوية، set = اتسوّى)، مش اللي لسه بانتظار الاعتماد أو المرفوض
       allow read: if approver() || recorder() || isViewer() || (branchOn() && resource.data.br == myCode())
                   || (perm('gift') && resource.data.st in ['ok','set']);
-      allow create: if (branchOn() && giftOk(request.resource.data) && request.resource.data.br == myCode()
+      allow create: if idOk(id) && ((branchOn() && giftOk(request.resource.data) && request.resource.data.br == myCode()
                         && request.resource.data.st == 'pend' && !('ap' in request.resource.data))
                     || (recorder() && giftOk(request.resource.data) && request.resource.data.br == 'WH'
-                        && request.resource.data.st == 'pend' && !('ap' in request.resource.data));
+                        && request.resource.data.st == 'pend' && !('ap' in request.resource.data)));
       allow update: if isOwner()
         || (approver() && resource.data.st == 'pend' && request.resource.data.st in ['ok','no']
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st','ap','rt'])
@@ -282,7 +284,8 @@ service cloud.firestore {
     }
     // مواقع الفروع ومتوسط زمن الوصول (المستودع يحسبها، والسائق يقرأها)
     match /geo/{id} {
-      allow read:  if isAdmin() || perm('fl') || isViewer() || drvOn();
+      // (الفرع بيقراها مرة لما يفتح خريطة "تابع السائق"، علشان يعرف مكانه هو على الخريطة)
+      allow read:  if isAdmin() || perm('fl') || isViewer() || drvOn() || branchOn();
       // كتابة واحدة بالكتير كل 10 دقايق، حتى لو صفحة قديمة فاتحة فيها خطأ بيكرر الكتابة (ده اللي خلّص الحصة اليومية)
       // (شرط الوقت الأول، علشان الطلب المرفوض مايعملش قراءة لصلاحيات المحاسب ويستهلك من الحصة)
       allow write: if request.resource.data.upd is number
@@ -307,7 +310,7 @@ service cloud.firestore {
           && d.car is string && d.car.size() <= 40;
       }
       allow read:   if isAdmin() || perm('fl') || isViewer() || (drvOn() && resource.data.drv == myDrv());
-      allow create: if isAdmin() || (drvOn() && validTrip());
+      allow create: if isAdmin() || (drvOn() && idOk(id) && validTrip());
       allow update: if isAdmin()
         // المحاسب (perm fl) يقدر يقفل رحلة السائق نسي يقفلها
         || (perm('fl') && resource.data.st == 'active'
@@ -335,7 +338,7 @@ service cloud.firestore {
           && d.dt is string && d.dt.size() <= 12 && d.car is string && d.car.size() <= 40;
       }
       allow read:   if isAdmin() || perm('fl') || isViewer() || (drvOn() && resource.data.drv == myDrv());
-      allow create: if isAdmin() || perm('fl') || (drvOn() && validFuel());
+      allow create: if isAdmin() || (idOk(id) && (perm('fl') || (drvOn() && validFuel())));
       allow update, delete: if isAdmin();
     }
 
@@ -367,8 +370,11 @@ service cloud.firestore {
       allow write: if isAdmin() && id == 'main' && request.resource.data.keys().hasOnly(['c']) && request.resource.data.c is map && request.resource.data.c.size() <= 60;
     }
     // مكان السواق اللايف (live/{drv1} = {lat,lng,ts,trip,spd?}): السيرفر بس بيكتبه (من تطبيق التتبع)، واللوحة بتقراه للخريطة
+    // 📍 الفرع (نوفمبر 2026، "تابع السائق"): بيقرا مكان السواق اللي جايله هو بس (b = أكواد الفروع اللي لسه مستنياه، السيرفر بيكتبها).
+    // مستند مش موجود (السواق لسه مابعتش مكان): مسموح علشان الصفحة تعرف تقول "لسه مفيش موقع" (مفيش بيانات تتقري)
     match /live/{id} {
-      allow read:  if isAdmin() || perm('fl') || isViewer();
+      allow read:  if isAdmin() || perm('fl') || isViewer()
+        || (branchOn() && (resource == null || (resource.data.get('b', []) is list && myCode() in resource.data.get('b', []))));
       allow write: if false;
     }
     // أسماء السواقين للشات (ddir/{drv1} = {n}): المستودع بيكتبها لوحده من تبويب السيارات (fleet.js)، والكل بيقراها

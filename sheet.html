@@ -5,6 +5,7 @@
 <script src="./i18n.js"></script>
 <script>/* الورقة اليدوية بتفتح جوه لوحة المستودع بس (بعد تسجيل الدخول). لو حد فتح الرابط لوحده: مايشوفش حاجة ويروح لصفحة الدخول */if(window.top===window){document.documentElement.style.display="none";location.replace("./admin.html")}</script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<script>/* منع فتح المنصة داخل إطار في موقع آخر (Clickjacking). الإطار من نفس الموقع مسموح */(function(){var ok=true;try{ok=window.top===window.self||window.top.location.origin===location.origin}catch(e){ok=false}if(!ok){document.documentElement.style.display="none";try{window.top.location=window.self.location.href}catch(e){}}})()</script>
 <meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

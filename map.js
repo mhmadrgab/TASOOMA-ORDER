@@ -46,14 +46,16 @@ export async function roadRoute(pts,maxAgeMin=10){
   const r=await fetch(`https://api.tomtom.com/routing/1/calculateRoute/${key}/json?key=${TT}&traffic=true&routeType=fastest&travelMode=car`);
   if(!r.ok)return null;const j=await r.json(),rt=j&&j.routes&&j.routes[0];if(!rt)return null;
   const out={path:rt.legs.flatMap(l=>l.points.map(p=>[p.latitude,p.longitude])),sec:rt.summary.travelTimeInSeconds,m:rt.summary.lengthInMeters,delay:rt.summary.trafficDelayInSeconds||0,legs:rt.legs.map(l=>l.summary.travelTimeInSeconds)};
+  // cuts = رقم آخر نقطة في path لكل مشوار (علشان إعادة الرحلة تعرف كل مشوار بيخلص فين)
+  {let n=0;out.cuts=rt.legs.map(l=>(n+=l.points.length)-1)}
   RC.set(key,{at:Date.now(),r:out});if(RC.size>80)RC.delete(RC.keys().next().value);return out;
  }catch(e){return null}
 }
 // حركة ناعمة للعلامة من مكانها لمكان جديد (بدل ما تنط)
-export function glide(mk,to,ms=1500){
+export function glide(mk,to,ms=1500,onStep){
  const a=mk.getLatLng(),b={lat:+to.lat,lng:+to.lng};if(!a||(Math.abs(a.lat-b.lat)<1e-6&&Math.abs(a.lng-b.lng)<1e-6))return;
  if(mk._gl)cancelAnimationFrame(mk._gl);const t0=performance.now();
- const step=t=>{const k=Math.min(1,(t-t0)/ms),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;mk.setLatLng([a.lat+(b.lat-a.lat)*e,a.lng+(b.lng-a.lng)*e]);if(k<1)mk._gl=requestAnimationFrame(step);else mk._gl=0};
+ const step=t=>{const k=Math.min(1,Math.max(0,(t-t0)/ms)),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2,p={lat:a.lat+(b.lat-a.lat)*e,lng:a.lng+(b.lng-a.lng)*e};mk.setLatLng([p.lat,p.lng]);if(onStep)onStep(p,k);if(k<1)mk._gl=requestAnimationFrame(step);else mk._gl=0};
  mk._gl=requestAnimationFrame(step);
 }
 // ── العربية ماشية على الشارع (نوفمبر 2026، طلب محمد: "كأني فاتح خرائط جوجل") ──
@@ -110,6 +112,41 @@ export function glideAlong(mk,P,d0,d1,ms,onStep){
 }
 // اتجاه بين نقطتين (لما مفيش مسار)
 export const bearing=(a,b)=>(Math.atan2((+b.lng-+a.lng)*Math.cos(+a.lat*RAD),+b.lat-+a.lat)/RAD+360)%360;
+// سهم اتجاه العربية (.tz-hd جوه العلامة): بيلف حسب اتجاه الشارع اللي ماشية فيه
+export function setHd(m,brg){m._brg=brg;const el=m.getElement&&m.getElement(),h=el&&el.querySelector(".tz-hd");if(!h)return;if(brg==null||!Number.isFinite(brg)){h.style.display="none";return}h.style.display="block";h.style.transform=`rotate(${brg}deg)`}
+// يحرّك علامة العربية لإشارة جديدة (loc = {lat,lng,ts}) على المسار P (من prepPath، أو null لو لسه مفيش مسار).
+// مشترك بين خريطة السيارات (fleet.js) وخريطة متابعة الفرع (track.js). o = {old: الإشارة قديمة (النت فاصل)، ms، onMove(نقطة,k)}
+// - الإشارة قريبة من المسار (أقل من 60 متر): تتلزق عليه وتمشي على شكل الشارع بسرعة ثابتة لحد الإشارة الجاية
+// - المسار اتحسب من جديد والعلامة لسه ورا: تكمّل على القديم لحد أول الجديد (من غير ما تنط)
+// - قفزة كبيرة (أكتر من 4 كم، النت كان فاصل) أو رجوع كتير: تتنقل على طول
+// - بعيدة عن المسار: حركة مستقيمة عادية. m._off = بُعدها عن المسار بالمتر (اللي بينادي بيقرر يحسب مسار جديد)
+const SNAP_M=60;
+export function driveTo(m,loc,P,o={}){
+ const lk=(+loc.lat).toFixed(6)+","+(+loc.lng).toFixed(6)+","+(+loc.ts||0),first=m._lk==null,mv=o.onMove||(()=>{}),ms=o.ms||17000;
+ if(m._lk===lk)return;// نفس الإشارة (إعادة رسم بس): العربية تكمّل حركتها
+ const pr=P&&!o.old?projectOn(P,loc,m._P===P?m._d:null):null,on=!!(pr&&pr.off<SNAP_M);
+ m._lk=lk;m._off=pr?pr.off:null;
+ const jump=()=>{if(m._gl){cancelAnimationFrame(m._gl);m._gl=0}m._P=P;m._d=pr.d;m.setLatLng([pr.lat,pr.lng]);const b=pointAt(P,pr.d).brg;setHd(m,b);mv({lat:pr.lat,lng:pr.lng,brg:b},1)};
+ if(first){if(on)jump();return}
+ if(on){
+  let cur=m._P===P&&m._d!=null?m._d:null,W=P,to=pr.d;// W = المسار اللي هتمشي عليه، to = هتقف فين عليه
+  if(cur==null){const c=projectOn(P,m.getLatLng(),null);cur=c&&c.off<SNAP_M?c.d:null}
+  if(cur==null&&m._P&&m._d!=null){
+   const s=projectOn(m._P,{lat:P.p[0][0],lng:P.p[0][1]},m._d);
+   if(s&&s.off<SNAP_M&&s.d>=m._d-60&&s.d-m._d<4000){
+    const B=prepPath(slicePath(m._P,m._d,Math.max(m._d+1,s.d)).concat(P.p.slice(1))),q=B&&projectOn(B,loc,0);
+    if(q&&q.off<SNAP_M){W=B;W.of=P;cur=0;to=q.d}
+   }
+  }
+  if(cur==null||to<cur-60||to-cur>4000){jump();return}
+  m._P=W;
+  if(to<=cur)return;// رجوع بسيط (دقة الـ GPS): تفضل مكانها
+  glideAlong(m,W,cur,to,ms,(pt,k)=>{setHd(m,pt.brg);mv(pt,k)});
+  return;
+ }
+ const a=m.getLatLng();if(a&&!o.old&&(Math.abs(a.lat-loc.lat)>1e-5||Math.abs(a.lng-loc.lng)>1e-5))setHd(m,bearing(a,loc));
+ m._P=null;m._d=null;glide(m,loc,1500,mv);
+}
 // علامة HTML (من غير صور): مركزها على النقطة بالظبط
 export const pin=(L,html)=>L.divIcon({className:"tz-pin",html:`<div class="tz-in">${html}</div>`,iconSize:[0,0],iconAnchor:[0,0],popupAnchor:[0,-18],tooltipAnchor:[0,-16]});
 export const okPt=p=>!!(p&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lng)&&!(+p.lat===0&&+p.lng===0));
