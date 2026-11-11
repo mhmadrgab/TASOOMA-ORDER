@@ -56,6 +56,60 @@ export function glide(mk,to,ms=1500){
  const step=t=>{const k=Math.min(1,(t-t0)/ms),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;mk.setLatLng([a.lat+(b.lat-a.lat)*e,a.lng+(b.lng-a.lng)*e]);if(k<1)mk._gl=requestAnimationFrame(step);else mk._gl=0};
  mk._gl=requestAnimationFrame(step);
 }
+// ── العربية ماشية على الشارع (نوفمبر 2026، طلب محمد: "كأني فاتح خرائط جوجل") ──
+// بدل ما العلامة تقطع خط مستقيم فوق المباني بين كل إشارة والتانية، بنلزقها على المسار الحقيقي اللي TomTom حسبه (roadRoute)
+// ونمشّيها على شكل الشارع نفسه (الملفات والدورانات) بسرعة ثابتة لحد الإشارة الجاية. من غير أي طلبات زيادة لـ TomTom.
+const RAD=Math.PI/180;
+const mDist=(a,b)=>{const x=(b[1]-a[1])*RAD*Math.cos((a[0]+b[0])/2*RAD),y=(b[0]-a[0])*RAD;return Math.sqrt(x*x+y*y)*6371e3};
+// المسار + المسافة التراكمية لكل نقطة (بالمتر)
+export function prepPath(path){
+ if(!Array.isArray(path)||path.length<2)return null;
+ const c=[0];for(let i=1;i<path.length;i++)c.push(c[i-1]+mDist(path[i-1],path[i]));
+ return {p:path,c,len:c[c.length-1]};
+}
+// أقرب نقطة على المسار لنقطة معيّنة: d = المسافة من أول المسار، off = بُعدها عن الطريق بالمتر
+// (hint = آخر مكان كان فيه، علشان لو الطريق راجع على نفسه مانختارش الناحية الغلط)
+export function projectOn(P,pt,hint){
+ if(!P||!okPt(pt))return null;
+ const q=[+pt.lat,+pt.lng],k=Math.cos(q[0]*RAD);let best=null;
+ for(let i=1;i<P.p.length;i++){
+  const a=P.p[i-1],b=P.p[i],ax=(a[1]-q[1])*k,ay=a[0]-q[0],bx=(b[1]-q[1])*k,by=b[0]-q[0],dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;
+  let t=L2?-(ax*dx+ay*dy)/L2:0;t=t<0?0:t>1?1:t;
+  const s=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],off=mDist(s,q),d=P.c[i-1]+(P.c[i]-P.c[i-1])*t;
+  // لو فيه أكتر من مكان قريب بنفس الدرجة، الأقرب لآخر مكان كان فيه (وماترجعش لورا)
+  const pen=hint!=null&&d<hint-30?(hint-d):0;
+  if(!best||off+pen<best.score)best={d,off,lat:s[0],lng:s[1],score:off+pen};
+ }
+ return best;
+}
+// النقطة اللي على بُعد d متر من أول المسار + اتجاه الطريق عندها (بالدرجات، 0 = الشمال)
+export function pointAt(P,d){
+ d=Math.max(0,Math.min(P.len,d));let lo=1,hi=P.c.length-1;
+ while(lo<hi){const m=(lo+hi)>>1;if(P.c[m]<d)lo=m+1;else hi=m}
+ const a=P.p[lo-1],b=P.p[lo],seg=P.c[lo]-P.c[lo-1],t=seg?(d-P.c[lo-1])/seg:0;
+ const brg=(Math.atan2((b[1]-a[1])*Math.cos(a[0]*RAD),b[0]-a[0])/RAD+360)%360;
+ return {lat:a[0]+(b[0]-a[0])*t,lng:a[1]+(b[1]-a[1])*t,brg};
+}
+// المسار من d لآخره (علشان الخط يبدأ من العربية زي جوجل)
+export function pathFrom(P,d){
+ const s=pointAt(P,d),out=[[s.lat,s.lng]];
+ for(let i=0;i<P.p.length;i++)if(P.c[i]>d)out.push(P.p[i]);
+ return out;
+}
+// جزء من المسار بين d0 و d1
+export function slicePath(P,d0,d1){
+ const a=pointAt(P,d0),b=pointAt(P,d1),out=[[a.lat,a.lng]];
+ for(let i=0;i<P.p.length;i++)if(P.c[i]>d0&&P.c[i]<d1)out.push(P.p[i]);
+ out.push([b.lat,b.lng]);return out;
+}
+// يمشّي العلامة على المسار من d0 لـ d1 في ms (سرعة ثابتة، زي العربية الحقيقية). onStep(نقطة) مع كل خطوة
+export function glideAlong(mk,P,d0,d1,ms,onStep){
+ if(mk._gl)cancelAnimationFrame(mk._gl);const t0=performance.now();mk._d=d0;
+ const step=t=>{const k=Math.min(1,Math.max(0,(t-t0)/ms)),pt=pointAt(P,d0+(d1-d0)*k);mk._d=d0+(d1-d0)*k;mk.setLatLng([pt.lat,pt.lng]);if(onStep)onStep(pt,k);if(k<1)mk._gl=requestAnimationFrame(step);else mk._gl=0};
+ mk._gl=requestAnimationFrame(step);
+}
+// اتجاه بين نقطتين (لما مفيش مسار)
+export const bearing=(a,b)=>(Math.atan2((+b.lng-+a.lng)*Math.cos(+a.lat*RAD),+b.lat-+a.lat)/RAD+360)%360;
 // علامة HTML (من غير صور): مركزها على النقطة بالظبط
 export const pin=(L,html)=>L.divIcon({className:"tz-pin",html:`<div class="tz-in">${html}</div>`,iconSize:[0,0],iconAnchor:[0,0],popupAnchor:[0,-18],tooltipAnchor:[0,-16]});
 export const okPt=p=>!!(p&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lng)&&!(+p.lat===0&&+p.lng===0));
@@ -70,6 +124,10 @@ export const MAP_CSS=`
 .tz-in{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:2px;font:600 12px/1.2 "IBM Plex Sans Arabic",Tahoma,sans-serif}
 .tz-d b{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#6a56c9;color:#fff;font-size:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 .tz-d.old b{background:#8d8a85}
+.tz-d b{position:relative}
+.tz-hd{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none;display:none}
+.tz-hd::before{content:"";position:absolute;left:-7px;top:-29px;border:7px solid transparent;border-top:0;border-bottom:10px solid #6a56c9;filter:drop-shadow(0 0 1.5px #fff)}
+.tz-d.old .tz-hd{display:none!important}
 .tz-d span,.tz-s span{background:rgba(27,27,27,.85);color:#fff;border-radius:8px;padding:2px 7px}
 .tz-w{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:#1b1b1b;border:2px solid #d4ae5c;font-size:17px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .tz-b{background:#fff;color:#1b1b1b;border:2px solid #a8832f;border-radius:999px;padding:1px 7px;font-size:11.5px;box-shadow:0 1px 4px rgba(0,0,0,.25)}

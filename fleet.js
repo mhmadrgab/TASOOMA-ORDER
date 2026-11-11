@@ -3,7 +3,7 @@ import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,quer
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep,pushOn} from "./notify.js";
 import {ledger,ledgerOn} from "./ad-extra.js";
-import {leaflet,baseMap,pin,okPt,MAP_CSS,roadRoute,glide} from "./map.js";
+import {leaflet,baseMap,pin,okPt,MAP_CSS,roadRoute,glide,prepPath,projectOn,pointAt,pathFrom,slicePath,glideAlong,bearing} from "./map.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const dk=t=>new Date(N(t)).toLocaleDateString("en-CA"),hm=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
@@ -135,8 +135,52 @@ function attachLive(){
 function mark(key,pt,html,pop,tip,z,smooth){
  const L=LM.L;let m=LM.mk.get(key);
  if(!m){m=L.marker([+pt.lat,+pt.lng],{icon:pin(L,html),zIndexOffset:z||0,keyboard:false});m._h=html;if(pop)m.bindPopup(pop);if(tip)m.bindTooltip(tip,{direction:"top"});m.addTo(LM.map);LM.mk.set(key,m)}
- else{if(smooth)glide(m,pt);else m.setLatLng([+pt.lat,+pt.lng]);if(m._h!==html){m.setIcon(pin(L,html));m._h=html}if(pop){if(m.getPopup())m.setPopupContent(pop);else m.bindPopup(pop)}}
+ else{if(smooth==="keep"){}else if(smooth)glide(m,pt);else m.setLatLng([+pt.lat,+pt.lng]);if(m._h!==html){m.setIcon(pin(L,html));m._h=html;setHd(m,m._brg)}if(pop){if(m.getPopup())m.setPopupContent(pop);else m.bindPopup(pop)}}
  m._seen=1;return m;
+}
+// سهم اتجاه العربية (زي جوجل): بيلف حسب اتجاه الشارع اللي ماشية فيه
+function setHd(m,brg){m._brg=brg;const el=m.getElement&&m.getElement(),h=el&&el.querySelector(".tz-hd");if(!h)return;if(brg==null||!Number.isFinite(brg)){h.style.display="none";return}h.style.display="block";h.style.transform=`rotate(${brg}deg)`}
+// العربية ماشية على الشارع: بنلزق الإشارة على المسار الحقيقي (RT) ونمشّيها عليه لحد الإشارة الجاية (~20 ثانية)
+// بسرعة ثابتة، فالحركة مستمرة وعلى شكل الطريق بدل ما تقطع خط مستقيم. لو بعيد عن المسار (غيّر الطريق) بنتحرك عادي ونحسب مسار جديد.
+const SNAP_M=60,MOVE_MS=17000;
+function routeP(t){const rr=RT[t.id]&&RT[t.id].r;if(!rr||!rr.path||rr.path.length<2)return null;return rr._P||(rr._P=prepPath(rr.path))}
+function moveCar(t,loc,html,pop,old){
+ const key="d_"+t.id,had=LM.mk.has(key),m=mark(key,loc,html,pop,null,1000,"keep");
+ const lk=(+loc.lat).toFixed(6)+","+(+loc.lng).toFixed(6)+","+N(loc.ts),P=routeP(t);
+ if(had&&m._lk===lk)return m;// نفس الإشارة (إعادة رسم بس): العربية تكمّل حركتها
+ const pr=P&&!old?projectOn(P,loc,m._P===P?m._d:null):null,onRoad=!!(pr&&pr.off<SNAP_M);
+ m._lk=lk;m._off=pr?pr.off:null;
+ if(!had){if(onRoad){m.setLatLng([pr.lat,pr.lng]);m._P=P;m._d=pr.d;setHd(m,pointAt(P,pr.d).brg)}return m}
+ if(onRoad){
+  let cur=m._P===P&&m._d!=null?m._d:null;
+  let W=P,to=pr.d;// W = المسار اللي هيمشي عليه، to = هيوقف فين عليه
+  if(cur==null){const c=projectOn(P,m.getLatLng(),null);cur=c&&c.off<SNAP_M?c.d:null}
+  // المسار اتحسب من جديد من مكان العربية الحقيقي، والعلامة لسه ماوصلتلوش (لسه بتتحرك على القديم):
+  // نكمّل على القديم لحد أول الجديد وبعدين على الجديد، بدل ما تنط
+  if(cur==null&&m._P&&m._d!=null){
+   const s=projectOn(m._P,{lat:P.p[0][0],lng:P.p[0][1]},m._d);
+   if(s&&s.off<SNAP_M&&s.d>=m._d-60&&s.d-m._d<4000){
+    const B=prepPath(slicePath(m._P,m._d,Math.max(m._d+1,s.d)).concat(P.p.slice(1))),q=B&&projectOn(B,loc,0);
+    if(q&&q.off<SNAP_M){W=B;W.of=P;cur=0;to=q.d}
+   }
+  }
+  // أول مرة على المسار ده، أو رجع لورا كتير، أو قفز مسافة كبيرة (النت كان فاصل): ننقله على طول
+  if(cur==null||to<cur-60||to-cur>4000){if(m._gl){cancelAnimationFrame(m._gl);m._gl=0}m._P=P;m._d=pr.d;m.setLatLng([pr.lat,pr.lng]);setHd(m,pointAt(P,pr.d).brg);trimLine(t,m);return m}
+  m._P=W;
+  if(to<=cur)return m;// رجوع بسيط (دقة الـ GPS): نفضل مكاننا
+  let lt=0;
+  glideAlong(m,W,cur,to,MOVE_MS,(pt,k)=>{setHd(m,pt.brg);const n=performance.now();if(n-lt>400||k>=1){lt=n;trimLine(t,m)}});
+  return m;
+ }
+ // مش على المسار (لسه مفيش مسار، أو غيّر الطريق): حركة عادية والسهم بيشاور على اتجاهه
+ const a=m.getLatLng();if(a&&!old&&(Math.abs(a.lat-loc.lat)>1e-5||Math.abs(a.lng-loc.lng)>1e-5))setHd(m,bearing(a,loc));
+ m._P=null;m._d=null;glide(m,loc);
+ return m;
+}
+// الخط اللي فاضل يبدأ من العربية نفسها (اللي اتمشى بيختفي، زي جوجل)
+function trimLine(t,m){
+ const l=LM.mk.get("p_"+t.id),P=routeP(t);if(!l||!P||!m._P||(m._P!==P&&m._P.of!==P)||m._d==null)return;
+ l.setLatLngs(pathFrom(m._P,m._d));
 }
 function line(key,pts,opt){
  const L=LM.L;let l=LM.mk.get(key);const ll=pts.map(p=>[+p.lat,+p.lng]);
@@ -158,17 +202,21 @@ function paintLive(){
   if(!okPt(loc))return;
   const old=sigOff(t),nx=rem[0],rr=RT[t.id]&&RT[t.id].r,nxs=rr&&rr.legs&&rr.legs[0];
   const pop=`<b>🚚 ${E(t.drvn)}</b><br>${E(t.carn)}<br>سلّم ${done} من ${st.length}${nx?`<br>متجه إلى <b><bdi dir="ltr">${E(nx.fr&&!nx.pk?(nx.frn||nx.fr)+" (استلام)":nx.brn)}</bdi></b>${eta(nx)?` · متوقع ~${hm(eta(nx))}`:""}`:"<br>أنهى التوصيلات"}${nx&&nxs?`<br>🚦 مع الزحام حالياً: يصل خلال ~${Math.max(1,Math.round(nxs/60))} د${rr.delay>60?` (منهم ${Math.round(rr.delay/60)} د زحام)`:""}`:""}${lv&&lv.trip===t.id&&N(lv.spd)>0?`<br>🏎 ${N(lv.spd)} كم/س`:""}<br><span style="color:#6f6b64">آخر مكان: ${ago(loc.ts)} (${hm(loc.ts)})${loc.src==="bg"?" · من التطبيق":""}</span>${old?`<br><b style="color:#c0392b">📵 انقطع الاتصال: غالباً النت فصل عند السائق</b>`:""}`;
-  mark("d_"+t.id,loc,`<div class="tz-d${old?" old":""}"><b>🚚</b><span>${old?"📵 ":""}${E(t.drvn)}</span></div>`,pop,null,1000,true);fit.push(loc);
+  const car=moveCar(t,loc,`<div class="tz-d${old?" old":""}"><b>🚚<i class="tz-hd"></i></b><span>${old?"📵 ":""}${E(t.drvn)}</span></div>`,pop,old);fit.push(loc);
   // الطريق اللي فاضل: من مكانه حالياً على الفروع اللي لا يزال ماسلّمهاش بالترتيب. خط متقطّع إلى ما المسار الحقيقي على الطريق يوصل (TomTom)
   const path=[loc,...rem.flatMap(s=>[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))])].filter(okPt);
   if(path.length>1){
    const c=cols[i%cols.length],rd=rr&&rr.path&&rr.path.length>1;
-   line("p_"+t.id,rd?rr.path.map(([a,b])=>({lat:a,lng:b})):path,rd?{color:c,weight:5,opacity:.8}:{color:c,weight:4,opacity:.75,dashArray:"8 8"});
+   // المسار الحقيقي بيبدأ من العربية نفسها (trimLine)، ولسه مفيش مسار: خط متقطّع مستقيم
+   const P=rd?routeP(t):null;
+   line("p_"+t.id,rd?(P&&car._P&&(car._P===P||car._P.of===P)&&car._d!=null?pathFrom(car._P,car._d):rr.path).map(([a,b])=>({lat:a,lng:b})):path,rd?{color:c,weight:5,opacity:.8}:{color:c,weight:4,opacity:.75,dashArray:"8 8"});
    const lp=LM.mk.get("p_"+t.id);if(lp)lp.setStyle(rd?{dashArray:null,weight:5,opacity:.8}:{dashArray:"8 8",weight:4,opacity:.75});
    path.slice(1,2).forEach(p=>fit.push(p));
    // نحسب المسار مجدداً بس لو اتحرك أكتر من 2 كيلو أو عدّى 10 دقائق أو الفروع اتغيّرت (الحد المجاني 2,500 في اليوم لكل الأجهزة)
+   // أو السواق خرج عن المسار (أخد طريق تاني) أكتر من 80 متر، مرة كل دقيقة ونص بالكتير
    const sig=path.slice(1).map(p=>(+p.lat).toFixed(4)+","+(+p.lng).toFixed(4)).join("|"),o=RT[t.id];
-   if(!o||o.busy!==true&&(o.sig!==sig||Date.now()-o.at>10*6e4||km2r(o.from,loc)>2)){
+   const offR=!old&&rd&&car._off!=null&&car._off>80;
+   if(!o||o.busy!==true&&(o.sig!==sig||Date.now()-o.at>10*6e4||km2r(o.from,loc)>2||offR&&Date.now()-o.at>90e3)){
     RT[t.id]={...(o||{}),busy:true,sig,from:loc,at:Date.now()};
     roadRoute(path,10).then(r=>{RT[t.id]={r:r||(o&&o.sig===sig?o.r:null),sig,from:loc,at:Date.now(),busy:false};if(r)paintLive()});
    }
