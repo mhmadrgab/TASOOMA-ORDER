@@ -1831,4 +1831,11 @@ export default {
 "عند":"with",
 "جديدة":"New",
 "مسح الفلاتر":"Clear filters",
+"سوّيتها في الفترة":"Settled in the period",
+"قطعة · اضغط لعرضها":"pieces · tap to view",
+"تسوية كاملة":"Full settlement",
+"العينة لم ترجع بعد: الأفضل الانتظار":"Sample not returned yet: better to wait",
+"العينة لم ترجع بعد: الأفضل الانتظار وتسوية الصافي":"Sample not returned yet: better to wait and settle the net",
+"مستخدم قبل كده في هدية":"was already used on gift",
+"متأكد إنه نفس المرجع؟":"Are you sure it is the same reference?",
 };

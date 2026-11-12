@@ -151,6 +151,8 @@ const CSS=`
 .g4-bar i{height:10px;border-radius:6px;background:var(--soft);overflow:hidden}.g4-bar u{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#d4ae5c,#e8cf8a);transform-origin:right;animation:g4-grow .7s cubic-bezier(.2,.8,.2,1) both}
 .g4-bar em{font-style:normal;font-weight:800}
 @keyframes g4-grow{from{transform:scaleX(0)}to{transform:none}}
+.gs-set{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;padding:10px;border-radius:14px;background:#eef4fb;margin-bottom:4px}.gs-set input{flex:1;min-width:160px;margin:0}.gs-set .bt{flex:none!important;min-width:0!important}
+@media (prefers-color-scheme:dark){.gs-set{background:#14243a}}
 /* ===== الكروت التفاعلية + لوحة الشغل + الفلاتر الجديدة ===== */
 .g4-k{position:relative;overflow:hidden}.g4-k .tx{flex:1;min-width:0}.g4-k em{display:block;font-style:normal;font-size:11.5px;color:var(--mut);margin-top:2px;opacity:0;transform:translateY(4px);transition:all .2s}
 .g4-k:hover em,.g4-k.on em,.g4-k.mine em{opacity:1;transform:none}
@@ -348,7 +350,7 @@ const dayKey=t=>new Date(N(t)).toDateString();
 function dayLbl(t){const d=new Date(N(t)),n=new Date(),y=new Date(Date.now()-864e5);if(d.toDateString()===n.toDateString())return "اليوم";if(d.toDateString()===y.toDateString())return "أمس";
  return d.toLocaleDateString("ar-EG-u-nu-latn",{weekday:"long",day:"numeric",month:"long"})}
 const ST4={pend:["⏳","بانتظار الاعتماد","w"],ok:["✅","معتمدة","ok"],set:["🧾","تمت التسوية","b"],no:["❌","مرفوضة","r"]};
-const stTag=r=>{const s=ST4[r.st]||ST4.pend;return `<span class="g4-st ${s[2]}">${s[0]} ${s[1]}</span>${r.rt===true&&!r.rb&&isAp(r)?'<span class="g4-st w">↩️ لم ترجع</span>':""}${r.rb?`<span class="g4-st ok">↩️ صافي ${net(r)}</span>`:""}`};
+const stTag=r=>{const s=accOnly()&&r.st==="ok"?["⏳","بانتظار التسوية","w"]:(ST4[r.st]||ST4.pend);return `<span class="g4-st ${s[2]}">${s[0]} ${s[1]}</span>${r.rt===true&&!r.rb&&isAp(r)?'<span class="g4-st w">↩️ لم ترجع</span>':""}${r.rb?`<span class="g4-st ok">↩️ صافي ${net(r)}</span>`:""}`};
 // سطر في القايمة
 const line=(r,i)=>`<div class="g4-ln" data-gf="view" data-id="${E(r.id)}" data-s="${E(sText(r))}" ${sOk(r)?"":"hidden"} style="--i:${Math.min(i,12)}">
  ${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${tShort(r.ts)}</small><small class="g4-it">${short(r)}</small></div>
@@ -356,7 +358,7 @@ const line=(r,i)=>`<div class="g4-ln" data-gf="view" data-id="${E(r.id)}" data-s
 // كارت "مطلوب منك"
 function todoCard(r,k,i){
  const act=k==="ap"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">رفض</button>`
-  :k==="set"?`<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)}</button>`
+  :k==="set"?`<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند"><button class="bt s ${waitRet(r)?"":"g"}" data-gf="set" data-id="${E(r.id)}" type="button" ${waitRet(r)?'title="العينة لم ترجع بعد: الأفضل الانتظار وتسوية الصافي"':""}>✔ ${waitRet(r)?"تسوية كاملة":"تسوية"} ${net(r)}</button>`
   :`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`;
  const tag=k==="ap"?'<span class="g4-st w">⏳ اعتماد</span>':k==="set"?`<span class="g4-st b">🧾 تسوية</span>${waitRet(r)?'<span class="g4-st w">↩️ لم ترجع بعد</span>':""}`:'<span class="g4-st w">↩️ عينة يجب أن ترجع</span>';
  return `<div class="g4-td" data-gf="view" data-id="${E(r.id)}" style="--i:${i}">${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${r.rb?net(r):N(r.pcs)} قطعة</small><div class="g4-tags">${tag}</div></div><div class="g4-act" data-gf="noop">${act}</div></div>`;
@@ -369,7 +371,7 @@ const isToday=t=>N(t)&&new Date(N(t)).toDateString()===new Date().toDateString()
 const meE=()=>String(X&&X.me&&X.me.e||"").toLowerCase();
 const WKD={
  ap:{ic:"⏳",t:"بانتظار الاعتماد",hint:"الأقدم أولاً. اعتمد أو ارفض من هنا، أو اضغط على الهدية لترى السند كاملاً.",who:"مدير التسويق",can:()=>canApprove(),list:()=>all().filter(r=>r.st==="pend").sort((a,b)=>N(a.ts)-N(b.ts)),done:()=>all().filter(r=>r.ap&&String(r.ap.e||"").toLowerCase()===meE()&&isToday(r.ap.at)).length,c:"w"},
- set:{ic:"🧾",t:"بانتظار التسوية",hint:"بعد خصم الهدية من مخزون الفرع في النظام: اكتب مرجع السند واضغط تسوية. العينة التي رجعت تُسوّى بالصافي فقط.",who:"المحاسب",can:()=>canSettle(),list:()=>all().filter(r=>r.st==="ok").sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)),done:()=>all().filter(r=>r.sa&&String(r.sa.e||"").toLowerCase()===meE()&&isToday(r.sa.at)).length,c:"b"},
+ set:{ic:"🧾",t:"بانتظار التسوية",hint:"بعد خصم الهدية من مخزون الفرع في النظام: اكتب مرجع السند واضغط تسوية. العينة التي رجعت تُسوّى بالصافي فقط.",who:"المحاسب",can:()=>canSettle(),list:()=>all().filter(r=>r.st==="ok").sort((a,b)=>(waitRet(a)-waitRet(b))||(N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at))),done:()=>all().filter(r=>r.sa&&String(r.sa.e||"").toLowerCase()===meE()&&isToday(r.sa.at)).length,c:"b"},
  ret:{ic:"↩️",t:"عينات لم ترجع",hint:"عينات معتمدة يجب أن ترجع. اللي طلّعها يسجّل رجوعها (الفرع لعيناته، والمستودع لعينات المستودع).",who:"الفرع أو المستودع",can:()=>!X.noNew&&!X.view,list:()=>all().filter(waitRet).sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)),done:()=>all().filter(r=>r.rb&&String(r.rb.e||"").toLowerCase()===meE()&&isToday(r.rb.at)).length,c:"o"}
 };
 // سطر في لوحة الشغل: الإجراء لو ليك، وإلا مين المسؤول
@@ -377,7 +379,7 @@ function wkRow(r,k,i){
  const mine=k==="ret"?canRet(r):WKD[k].can();
  const act=!mine?`<span class="g4-st">⏳ عند ${k==="ret"?(r.br==="WH"?"المستودع":"الفرع"):WKD[k].who}</span>`
   :k==="ap"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">رفض</button>`
-  :k==="set"?`<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)}</button>`
+  :k==="set"?`<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند"><button class="bt s ${waitRet(r)?"":"g"}" data-gf="set" data-id="${E(r.id)}" type="button" ${waitRet(r)?'title="العينة لم ترجع بعد: الأفضل الانتظار وتسوية الصافي"':""}>✔ ${waitRet(r)?"تسوية كاملة":"تسوية"} ${net(r)}</button>`
   :`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`;
  const age=Math.max(0,Math.floor((Date.now()-N(k==="ap"?r.ts:(r.ap&&r.ap.at)||r.ts))/864e5));
  const tags=`${age>=3?`<span class="g4-st r">⏰ منذ ${age} يوم</span>`:age>=1?`<span class="g4-st">منذ ${age} يوم</span>`:`<span class="g4-st ok">جديدة</span>`}${k==="set"&&waitRet(r)?'<span class="g4-st w">↩️ لم ترجع بعد</span>':""}${k==="set"&&r.rb?`<span class="g4-st ok">صافي ${net(r)} من ${N(r.pcs)}</span>`:""}`;
@@ -414,14 +416,14 @@ export function giftsView(){
  const card=(k,ic,v,l,c,sub)=>{const mine=k!=="sum"&&mineN[k]>0;return `<button type="button" class="g4-k ${c}${WK===k?" on":""}${mine?" mine":""}" data-gf="wk" data-id="${k}" aria-expanded="${WK===k}">
   <span class="ic">${ic}</span><span class="tx"><b data-count="${N(String(v).replace(/,/g,""))}">${v}</b><small>${l}</small>${sub?`<em>${sub}</em>`:""}</span>${mine?`<span class="g4-me"><i></i>لك</span>`:""}<span class="g4-car">${WK===k?"▲":"▼"}</span></button>`};
  const pers=[["m0","هذا الشهر"],["m1","الشهر الماضي"],["m3","آخر 3 شهور"],["c","فترة أخرى"]];
- const chips=[["","الكل"],["pend","⏳ بانتظار"],["ok","✅ معتمدة"],["set","🧾 مسوّاة"],["no","❌ مرفوضة"]].filter(([s])=>!accOnly()||s===""||s==="ok"||s==="set");
+ const chips=accOnly()?[["","الكل"],["ok","⏳ بانتظار التسوية"],["set","🧾 مسوّاة"]]:[["","الكل"],["pend","⏳ بانتظار"],["ok","✅ معتمدة"],["set","🧾 مسوّاة"],["no","❌ مرفوضة"]];
  const brOpts=`<option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}`;
  const nF=(F.br?1:0)+(F.why?1:0)+(PER==="c"?1:0);
  let lastD="",i=0;const list=vis.slice(0,SHOWN).map(r=>{const k=dayKey(r.ts),h=k!==lastD?`<div class="g4-day">${E(dayLbl(r.ts))}</div>`:"";lastD=k;return h+line(r,i++)}).join("");
  const out=`<div class="g4 ${ANIM?"anim":""}">
  <div class="g4-hd"><div><h2>🎁 الهدايا والعينات</h2><div class="g4-per">${pers.map(([p,l])=>`<button type="button" class="${PER===p?"on":""}" data-gf="per" data-id="${p}">${l}</button>`).join("")}</div></div>
  <div class="g4-hb">${!X.noNew&&!X.view?`<button class="bt p g4-new" data-gf="new" type="button">＋ هدية / عينة</button>`:""}<button class="bt g4-ib" data-gf="print" type="button" title="تقرير PDF">🖨<span>PDF</span></button><button class="bt g4-ib" data-gf="csv" type="button" title="ملف إكسل">⬇️<span>إكسل</span></button></div></div>
- <div class="g4-ks">${card("sum","🎁",fmt(pcs),"قطعة معتمدة","g",`${ok.length} هدية في الفترة`)}${accOnly()?"":card("ap","⏳",cnt.ap,"بانتظار الاعتماد",cnt.ap?"w":"",cnt.ap?"اضغط للاعتماد":"")}${card("set","🧾",cnt.set,"بانتظار التسوية",cnt.set?"b":"",cnt.set?"اضغط للتسوية":"")}${accOnly()?"":card("ret","↩️",cnt.ret,"عينات لم ترجع",cnt.ret?"o":"",cnt.ret?"اضغط للمتابعة":"")}</div>
+ <div class="g4-ks">${card("sum","🎁",fmt(pcs),"قطعة معتمدة","g",`${ok.length} هدية في الفترة`)}${accOnly()?"":card("ap","⏳",cnt.ap,"بانتظار الاعتماد",cnt.ap?"w":"",cnt.ap?"اضغط للاعتماد":"")}${card("set","🧾",cnt.set,"بانتظار التسوية",cnt.set?"b":"",cnt.set?"اضغط للتسوية":"")}${accOnly()?`<button type="button" class="g4-k${F.st==="set"?" on":""}" data-gf="kst" data-id="set"><span class="ic">✔️</span><span class="tx"><b data-count="${inP.filter(r=>r.st==="set").length}">${inP.filter(r=>r.st==="set").length}</b><small>سوّيتها في الفترة</small><em>${fmt(inP.filter(r=>r.st==="set").reduce((a,r)=>a+N(r.sa&&r.sa.net!=null?r.sa.net:net(r)),0))} قطعة · اضغط لعرضها</em></span></button>`:""}${accOnly()?"":card("ret","↩️",cnt.ret,"عينات لم ترجع",cnt.ret?"o":"",cnt.ret?"اضغط للمتابعة":"")}</div>
  ${workPanel(per,pw,ok,pcs)}
  <div class="g4-box"><div class="g4-bar1"><div class="g4-search"><span>🔍</span><input type="search" id="gx-q" value="${E(F.q||"")}" placeholder="ابحث برقم الهدية أو المستلم أو الجوال أو الكود..."></div><button type="button" class="g4-fbtn ${FOPEN?"on":""}" data-gf="fopen">⚙️ فلاتر${nF?` <span class="g4-fn">${nF}</span>`:""}</button></div>
  <div class="g4-chips">${chips.map(([s,l])=>`<button type="button" class="${(F.st||"")===s?"on":""}" data-gf="kst" data-id="${s}">${l}</button>`).join("")}</div>
@@ -544,6 +546,7 @@ function viewGift(id){
  <div class="gs-bd">${sheetHtml(r)}
  <div class="gs-ac">${wh&&canApprove()&&st==="pend"?`<button class="bt g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${canRet(r)?`<button class="bt g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}
+ ${wh&&canSettle()&&st==="ok"?`<div class="gs-set">${waitRet(r)?'<span class="g4-st w">↩️ العينة لم ترجع بعد: الأفضل الانتظار</span>':""}<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند في النظام"><button class="bt g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)} قطعة</button></div>`:""}
  ${r.img?`<button class="bt" data-gf="img" data-id="${E(r.id)}" type="button">📎 صورة السند</button>`:""}
  <button class="bt" data-gf="gprint" data-id="${E(r.id)}" type="button">🖨 طباعة</button>
  ${wh&&isOwner()?`<button class="bt" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt r" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}
@@ -581,14 +584,17 @@ async function retSave(id){
  catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
 }
 // ---------- التسوية (المحاسب) ----------
-async function settle(id){
+async function settle(id,el){
  const r=all().find(x=>x.id===id);if(!r||r.st!=="ok")return;
- const inp=[...document.querySelectorAll("[data-gfref]")].find(x=>x.dataset.gfref===id),ref=String(inp&&inp.value||"").trim().slice(0,60);
+ const near=el&&(el.matches&&el.matches("[data-gfref]")?el:el.parentElement&&el.parentElement.querySelector(`[data-gfref="${globalThis.CSS.escape(id)}"]`));
+ const inp=near||[...document.querySelectorAll("[data-gfref]")].find(x=>x.dataset.gfref===id&&x.value.trim())||[...document.querySelectorAll("[data-gfref]")].find(x=>x.dataset.gfref===id),ref=String(inp&&inp.value||"").trim().slice(0,60);
  if(!ref){X.toast("اكتب رقم أو مرجع السند في النظام أولاً");if(inp)inp.focus();return}
+ const dup=all().find(x=>x.id!==id&&x.sa&&String(x.sa.ref||"").trim().toLowerCase()===ref.toLowerCase());
+ if(dup&&!confirm(`⚠️ المرجع ${ref} مستخدم قبل كده في هدية ${dup.no} (${dup.brn||brName(dup.br)}).\n\nمتأكد إنه نفس المرجع؟`))return;
  if(waitRet(r)&&!confirm(`العينة ${r.no} لم ترجع بعد. تسويتها الآن كاملة (${N(r.pcs)} قطعة)؟\n\nالأفضل الانتظار حتى ترجع وتسوية الصافي فقط.`))return;
  if(!confirm(`تسوية ${r.no} (${r.brn||brName(r.br)} · الصافي ${net(r)} قطعة${r.rb?` بعد رجوع ${retQ(r)}`:""}) بمرجع ${ref}؟\nسيصل الفرع إشعار بأنها خُصمت من مخزونه.`))return;
  const sa={e:X.me.e,n:String(X.me.n||X.me.e).slice(0,60),at:Date.now(),ref,net:net(r)};
- try{await withTimeout(updateDoc(doc(X.db,"gifts",id),{st:"set",sa,sm:ymOf(r.ts)}),15000);L.delete(id);OLD.set(id,{...r,st:"set",sa,sm:ymOf(r.ts)});if(X.ping)X.ping([id]);X.toast("🧾 تمت التسوية، وأُبلغ الفرع");if(X.redraw)X.redraw()}
+ try{await withTimeout(updateDoc(doc(X.db,"gifts",id),{st:"set",sa,sm:ymOf(r.ts)}),15000);L.delete(id);OLD.set(id,{...r,st:"set",sa,sm:ymOf(r.ts)});if(X.ping)X.ping([id]);X.toast("🧾 تمت التسوية، وأُبلغ الفرع");{const m=g("gfm");if(m&&m.dataset.v==="view")closeM()}if(X.redraw)X.redraw()}
  catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
 }
 // ---------- السند ----------
@@ -645,7 +651,7 @@ async function click(e){
  if(a==="view")return void viewGift(id);
  if(a==="gprint")return void printGift(id);
  if(a==="retsave")return void retSave(id);
- if(a==="set")return void settle(id);
+ if(a==="set")return void settle(id,t);
  if(a==="print")return void printReport();
  if(a==="csv")return void csv();
  if(a==="edit"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(r)form(r);return}
@@ -660,6 +666,8 @@ function change(e){
  ensureRange().then(()=>X.redraw());
 }
 // البحث بيخفي ويظهر السطور على طول (من غير إعادة رسم، علشان الكتابة ماتتقطعش)
+// Enter في خانة مرجع السند = تسوية (أسرع للمحاسب)
+document.addEventListener("keydown",e=>{const t=e.target;if(e.key!=="Enter"||!t||!t.dataset||!t.dataset.gfref||!X)return;e.preventDefault();settle(t.dataset.gfref,t)});
 function input(e){
  if(!X||!e.target||e.target.id!=="gx-q")return;F.q=e.target.value.trim();const q=F.q.toLowerCase();
  document.querySelectorAll(".gx-ln[data-s],.gx-tr[data-s],.g4-ln[data-s]").forEach(el=>{el.hidden=!!q&&!el.dataset.s.includes(q)});
