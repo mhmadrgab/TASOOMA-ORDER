@@ -1702,4 +1702,11 @@ export default {
 "السرعة حالياً":"Current speed",
 "آخر تحديث للموقع:":"Last location update:",
 "(لم يُسجَّل مكان فرعك على الخريطة بعد)":"(your branch location is not on the map yet)",
+"بعد إنشاء كل الحسابات: من Supabase افتح Authentication ثم Sign In / Providers، وأوقف \"Allow new users to sign up\" ثم Save، حتى لا يسجّل أحد حساباً جديداً.":"After creating all accounts: in Supabase open Authentication → Sign In / Providers, turn off \"Allow new users to sign up\" and Save, so nobody can register a new account.",
+"افتح التسجيل في Supabase دقيقة":"Open sign-up in Supabase for a minute",
+"للأمان، Supabase يمنع":"For security, Supabase blocks",
+"اضغط الزر الموجود بالأسفل وسيفتح لك إعدادات Supabase":"Press the button below to open the Supabase settings",
+"شغّل ":"Turn on ",
+"بعد الانتهاء: أوقفه واضغط ":"When done: turn it off and press ",
+"فتح إعدادات Supabase":"Open Supabase settings",
 };

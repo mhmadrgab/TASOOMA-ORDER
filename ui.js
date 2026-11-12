@@ -65,12 +65,12 @@
   const set=(s,v)=>document.querySelectorAll(s).forEach(e=>{if(e.textContent!==v)e.textContent=v});
   set("[data-greet]",g);set("[data-gic]",ic);set("[data-clock]",t);set("[data-date]",dt);set("[data-hijri]",hj)},15000);
  let helloShown=false;
- // ---------- إنشاء حساب والتسجيل مقفول في Firebase ----------
- // Firebase بيرفض أي حساب جديد طول ما "Enable create (sign-up)" مقفول. بدل رسالة إنجليزي، نافذة بالخطوات.
+ // ---------- إنشاء حساب والتسجيل مقفول (Supabase من 12 نوفمبر 2026) ----------
+ // Supabase بيرفض أي حساب جديد طول ما "Allow new users to sign up" مقفول. بدل رسالة إنجليزي، نافذة بالخطوات.
  window.uiSignupOff=what=>{let m=document.getElementById("uim");if(!m){m=document.createElement("div");m.id="uim";m.addEventListener("click",e=>{if(e.target===m||e.target.closest("[data-uix]"))m.className=""});document.body.appendChild(m)}
-  m.innerHTML=`<div class="uik"><div class="uii">🔐</div><h3>افتح التسجيل في Firebase دقيقة</h3><p>للأمان، Firebase يمنع إنشاء أي حساب جديد ما دام التسجيل مغلقاً. لإضافة ${esc(what||"الحساب")}:</p>
-  <ol><li>اضغط الزر الموجود بالأسفل وسيفتح لك إعدادات Firebase</li><li>من <b>User actions</b> حدّد <b>Enable create (sign-up)</b> واضغط <b>Save</b></li><li>ارجع إلى هنا واضغط الإضافة مجدداً</li><li>بعد الانتهاء: أزل العلامة واضغط <b>Save</b> مجدداً</li></ol>
-  <div class="uib"><a class="bt p" href="https://console.firebase.google.com/project/tasooma-ad4fe/authentication/settings" target="_blank" rel="noopener noreferrer">فتح إعدادات Firebase</a><button class="bt" data-uix type="button">حسناً</button></div></div>`;
+  m.innerHTML=`<div class="uik"><div class="uii">🔐</div><h3>افتح التسجيل في Supabase دقيقة</h3><p>للأمان، Supabase يمنع إنشاء أي حساب جديد ما دام التسجيل مغلقاً. لإضافة ${esc(what||"الحساب")}:</p>
+  <ol><li>اضغط الزر الموجود بالأسفل وسيفتح لك إعدادات Supabase</li><li>شغّل <b>Allow new users to sign up</b> واضغط <b>Save</b></li><li>ارجع إلى هنا واضغط الإضافة مجدداً</li><li>بعد الانتهاء: أوقفه واضغط <b>Save</b> مجدداً</li></ol>
+  <div class="uib"><a class="bt p" href="https://supabase.com/dashboard/project/kycuhijnrzoqggonrsbx/auth/providers" target="_blank" rel="noopener noreferrer">فتح إعدادات Supabase</a><button class="bt" data-uix type="button">حسناً</button></div></div>`;
   m.className="on"};
  // أي خطأ تسجيل: لو السبب إن التسجيل مقفول نعرض الخطوات ونرجّع true
  window.uiAuthErr=(x,what)=>{if(x&&x.code==="auth/admin-restricted-operation"){window.uiSignupOff(what);return true}return false};
