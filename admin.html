@@ -299,7 +299,7 @@ function start(){
   // المحاسب (gift) من غير تسجيل ولا اعتماد: بيشوف المعتمد بس ويسوّيه بمرجع السند في السيستم. المديرين كمان يقدروا يسوّوا
   acc:!adm&&!vw&&can("gift")&&!can("req")&&ROLE.p.gm!==true&&ROLE.p.ga!==true,settler:!vw&&(adm||can("gift")),noNew:!(adm||can("req")),view:vw,owner:()=>ROLE.owner===true,branches:BR,redraw:draw,tab:()=>tab,
   ping:ids=>ping(auth,[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="gift"]');if(b)b.innerHTML=giftLbl()}});
- if(adm||can("fl")||vw)initFleet({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
+ if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
  if(adm)initStaff({db,toast,tab:()=>tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
