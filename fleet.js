@@ -320,7 +320,10 @@ function alerts(){
   [["insExp","التأمين"],["licExp","رخصة السيارة"]].forEach(([f,n])=>{if(c[f]){const d=Math.ceil((new Date(c[f]).getTime()-now)/864e5);if(d<0)A.push({l:"al",t:`📄 ${E(c.name)}: ${n} منتهي من ${-d} يوم`});else if(d<=30)A.push({l:"al w",t:`📄 ${E(c.name)}: ${n} ينتهي بعد ${d} يوم`})}});
  });
  TR.filter(t=>t.st==="active").forEach(t=>{if(now-N(t.start)>10*36e5)A.push({l:"al",t:`⏱ رحلة ${E(t.drvn)} مفتوحة منذ ${dur(now-N(t.start))}`})});
- const byC={};TR.filter(t=>t.st==="done").sort((a,b)=>N(a.start)-N(b.start)).forEach(t=>{const p=byC[t.car];if(p!==undefined&&N(t.odo0)<p-1)A.push({l:"al w",t:`🔢 ${E(t.drvn)}: عداد بداية رحلة (${fmt(t.odo0)}) أقل من آخر قراءة (${fmt(p)}) — راجع`});byC[t.car]=Math.max(byC[t.car]||0,N(t.odo1))});
+ // (12 نوفمبر 2026) المقارنة بآخر رحلة قبلها بس (مش بأكبر قراءة اتكتبت في أي وقت): قراءة غلط واحدة قديمة كانت بتطلّع تنبيه على كل رحلة بعدها.
+ // وتنبيه واحد بس لكل عربية (الأحدث). الرحلات الخارجية (car:"ext") مالهاش عداد
+ const byC={},odoA={};TR.filter(t=>t.st==="done"&&t.car!=="ext").sort((a,b)=>N(a.start)-N(b.start)).forEach(t=>{const p=byC[t.car];if(p!==undefined&&N(t.odo0)<p-1)odoA[t.car]={l:"al w",t:`🔢 ${E(t.drvn)}: عداد بداية رحلة (${fmt(t.odo0)}) أقل من نهاية الرحلة اللي قبلها (${fmt(p)}) — راجع`};else if(odoA[t.car]&&N(t.odo0)>=p-1)delete odoA[t.car];byC[t.car]=N(t.odo1)});
+ Object.values(odoA).forEach(a=>A.push(a));
  // رحلة قصيرة بالعداد أطول بكتير من العادي لنفس "من فين لفين" (آخر يومين): ممكن لفّة زيادة أو خطأ في العداد
  const op=odoPairs(),nm=brNames(),lb=c=>c==="WH"?"المستودع":(nm[c]||c);
  TR.filter(t=>now-N(t.start)<2*864e5).forEach(t=>{const {leg,from}=odoLegs(t);(t.stops||[]).forEach(s=>{const k=leg[s.rid];if(k===undefined)return;const av=op[from[s.rid]+">"+bc(s.brn)];
