@@ -151,6 +151,40 @@ const CSS=`
 .g4-bar i{height:10px;border-radius:6px;background:var(--soft);overflow:hidden}.g4-bar u{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#d4ae5c,#e8cf8a);transform-origin:right;animation:g4-grow .7s cubic-bezier(.2,.8,.2,1) both}
 .g4-bar em{font-style:normal;font-weight:800}
 @keyframes g4-grow{from{transform:scaleX(0)}to{transform:none}}
+/* ===== الكروت التفاعلية + لوحة الشغل + الفلاتر الجديدة ===== */
+.g4-k{position:relative;overflow:hidden}.g4-k .tx{flex:1;min-width:0}.g4-k em{display:block;font-style:normal;font-size:11.5px;color:var(--mut);margin-top:2px;opacity:0;transform:translateY(4px);transition:all .2s}
+.g4-k:hover em,.g4-k.on em,.g4-k.mine em{opacity:1;transform:none}
+.g4-k .g4-car{position:absolute;bottom:6px;left:12px;font-size:10px;color:var(--mut);opacity:.6}
+.g4-k.on{border-color:#d4ae5c;box-shadow:0 10px 26px rgba(168,131,47,.18);transform:translateY(-2px)}
+.g4-k.on::after{content:"";position:absolute;inset:auto 0 0 0;height:4px;background:linear-gradient(90deg,#d4ae5c,#e8cf8a)}
+.g4-me{position:absolute;top:10px;left:12px;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:#c4362b}
+.g4-me i{width:8px;height:8px;border-radius:50%;background:#c4362b;box-shadow:0 0 0 0 rgba(196,54,43,.5);animation:g4-ping 1.6s infinite}
+@keyframes g4-ping{0%{box-shadow:0 0 0 0 rgba(196,54,43,.55)}70%{box-shadow:0 0 0 8px rgba(196,54,43,0)}100%{box-shadow:0 0 0 0 rgba(196,54,43,0)}}
+.g4-work{background:var(--card);border-radius:var(--g4r);padding:16px;margin:-4px 0 14px;box-shadow:0 10px 28px rgba(0,0,0,.08);border-top:4px solid #d4ae5c;animation:g4-open .32s cubic-bezier(.2,.8,.2,1) both;scroll-margin-top:90px}
+.g4-work.w{border-top-color:#e0a42a}.g4-work.b{border-top-color:#2a78d6}.g4-work.o{border-top-color:#d9772f}.g4-work.sum{border-top-color:#2f8f3e}
+@keyframes g4-open{from{opacity:0;transform:translateY(-8px) scale(.99)}to{opacity:1;transform:none}}
+.g4-wh{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}.g4-wh .ic{font-size:26px;width:46px;height:46px;border-radius:14px;background:var(--soft);display:grid;place-items:center;flex:none}
+.g4-wh h3{margin:0;font-size:18px;display:flex;gap:8px;align-items:center}.g4-wh small{display:block;color:var(--mut);font-size:13px;line-height:1.7;margin-top:2px}.g4-wh>div{flex:1}
+.g4-x{border:0;background:var(--soft);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:14px;color:var(--mut);flex:none;transition:background .2s}.g4-x:hover{background:#efe6cf}
+.g4-prog{margin:4px 0 8px;background:var(--soft);border-radius:14px;padding:10px 12px}.g4-prog>div{display:flex;justify-content:space-between;font-size:13px;color:var(--mut);margin-bottom:6px}.g4-prog b{color:var(--ink)}
+.g4-prog i{display:block;height:8px;border-radius:6px;background:rgba(0,0,0,.06);overflow:hidden}.g4-prog u{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#2f8f3e,#6cc27a);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.g4-work .g4-td{animation:ui-up .35s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*30ms)}
+.g4-empty.sm{padding:18px}.g4-empty.sm span{font-size:30px}
+/* الفلاتر: أقراص بأيقونة، من غير عناوين فوق (كانت بتنزل وتبان مكسورة) */
+.g4-fbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 4px;animation:ui-up .25s ease both}
+.g4-fc{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 6px 0 12px;margin:0;border-radius:999px;background:var(--soft);border:1.5px solid transparent;transition:all .2s;color:var(--ink);max-width:100%}
+.g4-fc.on{background:#fff8e6;border-color:#d4ae5c}.g4-fc .fi{font-size:15px}
+.g4-fc select,.g4-fc input{border:0!important;background:none!important;box-shadow:none!important;height:38px!important;padding:0 4px!important;margin:0!important;font:inherit;font-size:14px;font-weight:700;color:var(--ink);outline:none;width:auto;min-width:0;line-height:38px;-webkit-appearance:none;appearance:none;cursor:pointer}
+.g4-fc select{padding-inline-end:18px!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8478'/%3E%3C/svg%3E") no-repeat left 4px center!important}
+.g4-fc input[type=date]{width:130px}.g4-fc .fa{color:var(--mut);font-weight:800}
+.g4-fc .fx{border:0;background:rgba(0,0,0,.08);width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:11px;color:var(--ink)}
+.g4-fclr{border:0;background:none;color:#c4362b;font:inherit;font-weight:700;cursor:pointer;padding:0 6px}
+.g4-fn{background:#d4ae5c;color:#1b1b1b;border-radius:999px;font-size:12px;padding:0 7px}
+.g4-new{box-shadow:0 6px 16px rgba(0,0,0,.18);transition:transform .15s}.g4-new:hover{transform:translateY(-1px)}
+.g4-ib{display:inline-flex;align-items:center;gap:6px}.g4-ib span{font-size:13px}
+@media (max-width:600px){.g4-ib span{display:none}.g4-fc{flex:1 1 100%}.g4-fc select{flex:1}.g4-fc input[type=date]{flex:1;width:auto}.g4-me{top:6px;left:8px}.g4-k em{display:none}}
+@media (prefers-color-scheme:dark){.g4-fc.on{background:#2b2210}.g4-x:hover{background:#3a3115}.g4-prog i{background:rgba(255,255,255,.08)}}
+
 /* الحركة: أول ما التبويب يفتح بس (الكروت والسطور بتطلع ورا بعض) */
 .g4.anim .g4-k{animation:ui-up .45s cubic-bezier(.2,.8,.2,1) both}.g4.anim .g4-k:nth-child(2){animation-delay:.05s}.g4.anim .g4-k:nth-child(3){animation-delay:.1s}.g4.anim .g4-k:nth-child(4){animation-delay:.15s}
 .g4.anim .g4-ln,.g4.anim .g4-td{animation:ui-up .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*35ms + .12s)}
@@ -240,7 +274,7 @@ export function initGifts(ctx){
  }
  if(!window.__gfc){window.__gfc=1;document.addEventListener("click",click);document.addEventListener("change",change);document.addEventListener("input",input)}
 }
-export function stopGifts(){un.forEach(f=>f());un=[];VT="";VTu=false;ANIM=true;SHOWN=30;if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MON=new Set();closeM()}
+export function stopGifts(){un.forEach(f=>f());un=[];VT="";VTu=false;ANIM=true;SHOWN=30;WK=null;WKu=false;if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MON=new Set();closeM()}
 export const pendingCount=()=>PEND.size;
 // للتقرير الأسبوعي (short.js): الهدايا من تاريخ معيّن، والصافي
 export const giftsSince=t=>all().filter(r=>N(r.ts)>=t);
@@ -327,37 +361,74 @@ function todoCard(r,k,i){
  const tag=k==="ap"?'<span class="g4-st w">⏳ اعتماد</span>':k==="set"?`<span class="g4-st b">🧾 تسوية</span>${waitRet(r)?'<span class="g4-st w">↩️ لم ترجع بعد</span>':""}`:'<span class="g4-st w">↩️ عينة يجب أن ترجع</span>';
  return `<div class="g4-td" data-gf="view" data-id="${E(r.id)}" style="--i:${i}">${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${r.rb?net(r):N(r.pcs)} قطعة</small><div class="g4-tags">${tag}</div></div><div class="g4-act" data-gf="noop">${act}</div></div>`;
 }
+// ---------- الكروت التفاعلية (12 نوفمبر 2026، طلب محمد: "خلي البطاقات تفاعلية تساعد المديرين والمحاسبين") ----------
+// كل كارت بيفتح تحته "لوحة شغل": الحاجات دي بالظبط، والإجراء جنب كل واحدة، ومعاها "أنجزت النهارده" وشريط تقدّم.
+// الكارت اللي عليه شغل ليك انت بيبقى عليه نقطة بتنبض و"لك". وأول ما تفتح الهدايا بتتفتح لوحدها أول لوحة فيها شغل ليك.
+let WK=null,WKu=false;// اللوحة المفتوحة، وهل المستخدم اختارها بنفسه
+const isToday=t=>N(t)&&new Date(N(t)).toDateString()===new Date().toDateString();
+const meE=()=>String(X&&X.me&&X.me.e||"").toLowerCase();
+const WKD={
+ ap:{ic:"⏳",t:"بانتظار الاعتماد",hint:"الأقدم أولاً. اعتمد أو ارفض من هنا، أو اضغط على الهدية لترى السند كاملاً.",who:"مدير التسويق",can:()=>canApprove(),list:()=>all().filter(r=>r.st==="pend").sort((a,b)=>N(a.ts)-N(b.ts)),done:()=>all().filter(r=>r.ap&&String(r.ap.e||"").toLowerCase()===meE()&&isToday(r.ap.at)).length,c:"w"},
+ set:{ic:"🧾",t:"بانتظار التسوية",hint:"بعد خصم الهدية من مخزون الفرع في النظام: اكتب مرجع السند واضغط تسوية. العينة التي رجعت تُسوّى بالصافي فقط.",who:"المحاسب",can:()=>canSettle(),list:()=>all().filter(r=>r.st==="ok").sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)),done:()=>all().filter(r=>r.sa&&String(r.sa.e||"").toLowerCase()===meE()&&isToday(r.sa.at)).length,c:"b"},
+ ret:{ic:"↩️",t:"عينات لم ترجع",hint:"عينات معتمدة يجب أن ترجع. اللي طلّعها يسجّل رجوعها (الفرع لعيناته، والمستودع لعينات المستودع).",who:"الفرع أو المستودع",can:()=>!X.noNew&&!X.view,list:()=>all().filter(waitRet).sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)),done:()=>all().filter(r=>r.rb&&String(r.rb.e||"").toLowerCase()===meE()&&isToday(r.rb.at)).length,c:"o"}
+};
+// سطر في لوحة الشغل: الإجراء لو ليك، وإلا مين المسؤول
+function wkRow(r,k,i){
+ const mine=k==="ret"?canRet(r):WKD[k].can();
+ const act=!mine?`<span class="g4-st">⏳ عند ${k==="ret"?(r.br==="WH"?"المستودع":"الفرع"):WKD[k].who}</span>`
+  :k==="ap"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">رفض</button>`
+  :k==="set"?`<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)}</button>`
+  :`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`;
+ const age=Math.max(0,Math.floor((Date.now()-N(k==="ap"?r.ts:(r.ap&&r.ap.at)||r.ts))/864e5));
+ const tags=`${age>=3?`<span class="g4-st r">⏰ منذ ${age} يوم</span>`:age>=1?`<span class="g4-st">منذ ${age} يوم</span>`:`<span class="g4-st ok">جديدة</span>`}${k==="set"&&waitRet(r)?'<span class="g4-st w">↩️ لم ترجع بعد</span>':""}${k==="set"&&r.rb?`<span class="g4-st ok">صافي ${net(r)} من ${N(r.pcs)}</span>`:""}`;
+ return `<div class="g4-td" data-gf="view" data-id="${E(r.id)}" style="--i:${Math.min(i,10)}">${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${r.rb?net(r):N(r.pcs)} قطعة</small><small class="g4-it">${short(r)}</small><div class="g4-tags">${tags}</div></div><div class="g4-act" data-gf="noop">${act}</div></div>`;
+}
+function workPanel(per,pw,ok,pcs){
+ if(!WK)return "";
+ if(WK==="sum"){
+  const top=Object.entries(per).sort((a,b)=>b[1].p-a[1].p)[0];
+  return `<div class="g4-work sum" id="g4w"><div class="g4-wh"><span class="ic">🎁</span><div><h3>المعتمد في الفترة</h3><small>${fmt(pcs)} قطعة صافي في ${ok.length} هدية${top?` · الأعلى: <bdi dir="ltr">${E(brName(top[0]))}</bdi>`:""}</small></div><button type="button" class="g4-x" data-gf="wk" data-id="" aria-label="إغلاق">✕</button></div>
+  <div class="g4-sum"><div><h4>حسب البند</h4>${bars(pw,w=>w)}</div><div><h4>حسب الفرع</h4>${bars(per,brName)}</div></div></div>`;
+ }
+ const d=WKD[WK],L=d.list().filter(brWhy),dn=d.done(),tot=dn+L.length,pc=tot?Math.round(dn/tot*100):0;
+ return `<div class="g4-work ${d.c}" id="g4w"><div class="g4-wh"><span class="ic">${d.ic}</span><div><h3>${d.t} <span class="g4-n">${L.length}</span></h3><small>${d.hint}</small></div><button type="button" class="g4-x" data-gf="wk" data-id="" aria-label="إغلاق">✕</button></div>
+ ${(d.can()||WK==="ret")&&tot?`<div class="g4-prog"><div><span>أنجزت اليوم <b>${dn}</b>${L.length?` · باقي <b>${L.length}</b>`:""}</span><span>${L.length?pc+"%":"👏 خلصت كله"}</span></div><i><u style="width:${pc}%"></u></i></div>`:""}
+ ${L.length?L.map((r,i)=>wkRow(r,WK,i)).join(""):`<div class="g4-empty sm"><span>👌</span>لا يوجد شيء هنا الآن</div>`}</div>`;
+}
 const bars=(o,lbl)=>{const e=Object.entries(o).sort((a,b)=>b[1].p-a[1].p),mx=e.length?Math.max(1,e[0][1].p):1;
  return e.length?e.map(([k,v])=>`<div class="g4-bar"><span><bdi dir="ltr">${E(lbl(k))}</bdi></span><i><u style="width:${Math.max(3,v.p/mx*100)}%"></u></i><em>${fmt(v.p)}</em></div>`).join(""):'<div class="off">لا توجد هدايا معتمدة في الفترة</div>'};
+// الفلاتر بشكل "أقراص" (من غير عناوين فوق): أيقونة + القيمة، والمتفعّل بيتلوّن وجنبه ✕ يمسحه
+function fChip(id,ic,on,inner,clr){return `<label class="g4-fc ${on?"on":""}"><span class="fi">${ic}</span>${inner}${on&&clr?`<button type="button" class="fx" data-gf="fclr" data-id="${clr}" aria-label="مسح">✕</button>`:""}</label>`}
 export function giftsView(){
  if(!X)return "";
  if(!F.from)setPer("m0");
- const Qs=queues(),rs=filtered(),vis=rs.filter(sOk);
+ const rs=filtered(),vis=rs.filter(sOk);
  const inP=all().filter(r=>{const a=new Date(F.from+"T00:00:00").getTime(),b=new Date(F.to+"T23:59:59").getTime();return N(r.ts)>=a&&N(r.ts)<=b&&brWhy(r)});
  const ok=inP.filter(isAp),pcs=ok.reduce((s,r)=>s+net(r),0);
- const nAp=all().filter(r=>r.st==="pend").length,nSet=all().filter(r=>r.st==="ok").length,nRet=all().filter(waitRet).length;
- const todo=[...(Qs.ap||[]).map(r=>[r,"ap"]),...(Qs.set||[]).map(r=>[r,"set"]),...(Qs.ret||[]).map(r=>[r,"ret"])].filter(([r])=>brWhy(r));
  const per={},pw={};ok.forEach(r=>{(per[r.br]=per[r.br]||{n:0,p:0}).n++;per[r.br].p+=net(r);const w=WHY.includes(r.why)?r.why:"أخرى";(pw[w]=pw[w]||{n:0,p:0}).n++;pw[w].p+=net(r)});
+ const cnt={ap:WKD.ap.list().length,set:WKD.set.list().length,ret:WKD.ret.list().length};
+ const mineN={ap:canApprove()?cnt.ap:0,set:canSettle()?cnt.set:0,ret:all().filter(r=>canRet(r)).length};
+ // أول مرة: نفتح أول لوحة فيها شغل ليك
+ if(!WKu&&!WK){WK=["ap","set","ret"].find(k=>mineN[k]>0)||null}// (ولو خلّصت كله تفضل مفتوحة وتقول "خلصت كله")
  const brs=[...new Set(all().map(r=>r.br))].sort();
- const kpi=(ic,v,l,st,c)=>`<button type="button" class="g4-k ${c}${F.st===st?" on":""}" data-gf="kst" data-id="${st}"><span class="ic">${ic}</span><span><b data-count="${N(String(v).replace(/,/g,""))}">${v}</b><small>${l}</small></span></button>`;
+ const card=(k,ic,v,l,c,sub)=>{const mine=k!=="sum"&&mineN[k]>0;return `<button type="button" class="g4-k ${c}${WK===k?" on":""}${mine?" mine":""}" data-gf="wk" data-id="${k}" aria-expanded="${WK===k}">
+  <span class="ic">${ic}</span><span class="tx"><b data-count="${N(String(v).replace(/,/g,""))}">${v}</b><small>${l}</small>${sub?`<em>${sub}</em>`:""}</span>${mine?`<span class="g4-me"><i></i>لك</span>`:""}<span class="g4-car">${WK===k?"▲":"▼"}</span></button>`};
  const pers=[["m0","هذا الشهر"],["m1","الشهر الماضي"],["m3","آخر 3 شهور"],["c","فترة أخرى"]];
  const chips=[["","الكل"],["pend","⏳ بانتظار"],["ok","✅ معتمدة"],["set","🧾 مسوّاة"],["no","❌ مرفوضة"]].filter(([s])=>!accOnly()||s===""||s==="ok"||s==="set");
- // القايمة مقسومة بالأيام، وأول SHOWN بس
+ const brOpts=`<option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}`;
+ const nF=(F.br?1:0)+(F.why?1:0)+(PER==="c"?1:0);
  let lastD="",i=0;const list=vis.slice(0,SHOWN).map(r=>{const k=dayKey(r.ts),h=k!==lastD?`<div class="g4-day">${E(dayLbl(r.ts))}</div>`:"";lastD=k;return h+line(r,i++)}).join("");
  const out=`<div class="g4 ${ANIM?"anim":""}">
  <div class="g4-hd"><div><h2>🎁 الهدايا والعينات</h2><div class="g4-per">${pers.map(([p,l])=>`<button type="button" class="${PER===p?"on":""}" data-gf="per" data-id="${p}">${l}</button>`).join("")}</div></div>
- <div class="g4-hb">${!X.noNew&&!X.view?`<button class="bt p" data-gf="new" type="button">＋ هدية / عينة</button>`:""}<button class="bt" data-gf="print" type="button" title="تقرير PDF">🖨</button><button class="bt" data-gf="csv" type="button" title="ملف إكسل">⬇️</button></div></div>
- <div class="g4-ks">${kpi("🎁",fmt(pcs),`قطعة معتمدة · ${ok.length} هدية`,"ok","g")}${accOnly()?"":kpi("⏳",nAp,"بانتظار الاعتماد","pend",nAp?"w":"")}${kpi("🧾",nSet,"بانتظار التسوية","ok",nSet?"b":"")}${accOnly()?"":kpi("↩️",nRet,"عينات لم ترجع","ret",nRet?"o":"")}</div>
- ${todo.length?`<div class="g4-box g4-todo"><div class="g4-bh"><h3>📥 مطلوب منك <span class="g4-n">${todo.length}</span></h3>${todo.length>4?`<button type="button" class="g4-lnk" data-gf="todoall">${TODOALL?"عرض أقل":"عرض الكل"}</button>`:""}</div>${(TODOALL?todo:todo.slice(0,4)).map(([r,k],j)=>todoCard(r,k,j)).join("")}</div>`:""}
- <div class="g4-box"><div class="g4-bar1"><div class="g4-search"><span>🔍</span><input type="search" id="gx-q" value="${E(F.q||"")}" placeholder="ابحث برقم الهدية أو المستلم أو الجوال أو الكود..."></div><button type="button" class="g4-fbtn ${FOPEN||F.br||F.why?"on":""}" data-gf="fopen">⚙️ فلاتر${F.br||F.why?" •":""}</button></div>
+ <div class="g4-hb">${!X.noNew&&!X.view?`<button class="bt p g4-new" data-gf="new" type="button">＋ هدية / عينة</button>`:""}<button class="bt g4-ib" data-gf="print" type="button" title="تقرير PDF">🖨<span>PDF</span></button><button class="bt g4-ib" data-gf="csv" type="button" title="ملف إكسل">⬇️<span>إكسل</span></button></div></div>
+ <div class="g4-ks">${card("sum","🎁",fmt(pcs),"قطعة معتمدة","g",`${ok.length} هدية في الفترة`)}${accOnly()?"":card("ap","⏳",cnt.ap,"بانتظار الاعتماد",cnt.ap?"w":"",cnt.ap?"اضغط للاعتماد":"")}${card("set","🧾",cnt.set,"بانتظار التسوية",cnt.set?"b":"",cnt.set?"اضغط للتسوية":"")}${accOnly()?"":card("ret","↩️",cnt.ret,"عينات لم ترجع",cnt.ret?"o":"",cnt.ret?"اضغط للمتابعة":"")}</div>
+ ${workPanel(per,pw,ok,pcs)}
+ <div class="g4-box"><div class="g4-bar1"><div class="g4-search"><span>🔍</span><input type="search" id="gx-q" value="${E(F.q||"")}" placeholder="ابحث برقم الهدية أو المستلم أو الجوال أو الكود..."></div><button type="button" class="g4-fbtn ${FOPEN?"on":""}" data-gf="fopen">⚙️ فلاتر${nF?` <span class="g4-fn">${nF}</span>`:""}</button></div>
  <div class="g4-chips">${chips.map(([s,l])=>`<button type="button" class="${(F.st||"")===s?"on":""}" data-gf="kst" data-id="${s}">${l}</button>`).join("")}</div>
- ${FOPEN||PER==="c"?`<div class="g4-adv"><label><small>الفرع</small><select id="gx-br"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></label>
- <label><small>البند</small><select id="gx-why"><option value="">كل البنود</option>${WHY.map(w=>`<option ${F.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></label>
- <label><small>من</small><input type="date" id="gx-from" value="${E(F.from)}"></label><label><small>إلى</small><input type="date" id="gx-to" value="${E(F.to)}"></label></div>`:""}
+ ${FOPEN||PER==="c"?`<div class="g4-fbar">${fChip("gx-br","🏬",!!F.br,`<select id="gx-br" aria-label="الفرع">${brOpts}</select>`,"br")}${fChip("gx-why","🏷",!!F.why,`<select id="gx-why" aria-label="البند"><option value="">كل البنود</option>${WHY.map(w=>`<option ${F.why===w?"selected":""}>${E(w)}</option>`).join("")}</select>`,"why")}
+ ${fChip("gx-from","📅",PER==="c",`<input type="date" id="gx-from" value="${E(F.from)}" aria-label="من"><span class="fa">←</span><input type="date" id="gx-to" value="${E(F.to)}" aria-label="إلى">`,"per")}${nF?`<button type="button" class="g4-fclr" data-gf="fclr" data-id="all">مسح الفلاتر</button>`:""}</div>`:""}
  <div class="g4-cnt">${vis.length} هدية${F.st||F.br||F.why||F.q?" (مفلترة)":""}</div>
- ${vis.length?`<div class="g4-list">${list}</div>${vis.length>SHOWN?`<button type="button" class="g4-more" data-gf="more">عرض المزيد (${vis.length-SHOWN})</button>`:""}`:`<div class="g4-empty"><span>🎁</span>${F.st||F.q||F.br||F.why?"لا توجد هدايا بهذه الفلاتر":"لا توجد هدايا في هذه الفترة"}</div>`}</div>
- <div class="g4-box"><button type="button" class="g4-sumh" data-gf="sumopen">📊 الملخص: المعتمد لكل بند ولكل فرع <span>${SUMOPEN?"▲":"▼"}</span></button>
- ${SUMOPEN?`<div class="g4-sum"><div><h4>حسب البند</h4>${bars(pw,w=>w)}</div><div><h4>حسب الفرع</h4>${bars(per,brName)}</div></div>`:""}</div></div>`;
+ ${vis.length?`<div class="g4-list">${list}</div>${vis.length>SHOWN?`<button type="button" class="g4-more" data-gf="more">عرض المزيد (${vis.length-SHOWN})</button>`:""}`:`<div class="g4-empty"><span>🎁</span>${F.st||F.q||F.br||F.why?"لا توجد هدايا بهذه الفلاتر":"لا توجد هدايا في هذه الفترة"}</div>`}</div></div>`;
  if(ANIM)setTimeout(countUp,30);
  ANIM=false;
  return out;
@@ -555,6 +626,8 @@ async function click(e){
  if(a==="vt"){VT=id;VTu=true;if(X.redraw)X.redraw();return}
  if(a==="per"){if(id==="c"){PER="c";FOPEN=true}else setPer(id);SHOWN=30;ensureRange().then(()=>X.redraw());return}
  if(a==="kst"){F.st=F.st===id?"":id;SHOWN=30;X.redraw();return}
+ if(a==="wk"){WK=WK===id||!id?null:id;WKu=true;X.redraw();if(WK)setTimeout(()=>{const w=g("g4w");if(w&&w.getBoundingClientRect().top>innerHeight*.75)w.scrollIntoView({behavior:"smooth",block:"start"})},40);return}
+ if(a==="fclr"){if(id==="br"||id==="all")F.br="";if(id==="why"||id==="all")F.why="";if(id==="per"||id==="all"){setPer("m0")}SHOWN=30;ensureRange().then(()=>X.redraw());return}
  if(a==="fopen"){FOPEN=!FOPEN;X.redraw();return}
  if(a==="todoall"){TODOALL=!TODOALL;X.redraw();return}
  if(a==="more"){SHOWN+=50;X.redraw();return}
