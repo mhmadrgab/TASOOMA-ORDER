@@ -134,6 +134,7 @@ const CSS=`
 .g4-act{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;cursor:default}.g4-act .bt{width:auto;margin:0}.g4-act input{width:150px;height:34px;padding:5px 10px;margin:0}
 .g4-clip{border:0;background:var(--soft);border-radius:10px;width:34px;height:34px;cursor:pointer;flex:none}
 .g4-bar1{display:flex;gap:8px;align-items:center}
+.g4-bar1>.g4-search{min-width:0}.g4-search input{min-width:0;width:100%}.g4-bar1>.g4-fbtn{flex:none}
 .g4-search{flex:1;display:flex;align-items:center;gap:8px;background:var(--field,#f3f1ed);border-radius:14px;padding:0 12px;border:1.5px solid transparent;transition:border-color .2s}.g4-search:focus-within{border-color:#d4ae5c}
 .g4-search input{border:0;background:none;height:46px;flex:1;margin:0;padding:0;outline:none;box-shadow:none}
 .g4-fbtn{font:inherit;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;height:46px;padding:0 14px;cursor:pointer;white-space:nowrap}.g4-fbtn.on{border-color:#d4ae5c;background:#fff8e6}
@@ -151,6 +152,10 @@ const CSS=`
 .g4-bar i{height:10px;border-radius:6px;background:var(--soft);overflow:hidden}.g4-bar u{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#d4ae5c,#e8cf8a);transform-origin:right;animation:g4-grow .7s cubic-bezier(.2,.8,.2,1) both}
 .g4-bar em{font-style:normal;font-weight:800}
 @keyframes g4-grow{from{transform:scaleX(0)}to{transform:none}}
+.g4-rp{white-space:normal;max-width:100%}
+.gs-rep{background:#fdecea;color:#8a2218;border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:13.5px;line-height:1.8}.gs-rep b{display:block;font-size:14.5px}
+@media (prefers-color-scheme:dark){.g4-rp{white-space:normal;max-width:100%}
+.gs-rep{background:#40191a;color:#f1a5a0}}
 .gs-set{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;padding:10px;border-radius:14px;background:#eef4fb;margin-bottom:4px}.gs-set input{flex:1;min-width:160px;margin:0}.gs-set .bt{flex:none!important;min-width:0!important}
 @media (prefers-color-scheme:dark){.gs-set{background:#14243a}}
 /* ===== الكروت التفاعلية + لوحة الشغل + الفلاتر الجديدة ===== */
@@ -345,12 +350,23 @@ function queues(){
 }
 const short=r=>{const R=Array.isArray(r.rows)?r.rows:[];return R.slice(0,2).map(x=>`<bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi> × ${N(x.q)}`).join("، ")+(R.length>2?` <span style="font-weight:800">+${R.length-2}</span>`:"")};
 const tShort=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+// 🔁 (12 نوفمبر 2026) المستلم المتكرر: نفس رقم الجوال (آخر 9 أرقام) أخد هدايا تانية في 30 يوم (من أي فرع، غير المرفوض).
+// ولو مفيش جوال: نفس الاسم بالظبط في نفس الفرع. بيظهر لمدير التسويق وهو بيعتمد، وفي السجل والسند.
+const phK=p=>{const d=toEn(String(p||"")).replace(/\D/g,"");return d.length>=8?d.slice(-9):""};
+const nmK=n=>String(n||"").replace(/\s+/g," ").trim().toLowerCase();
+function repOf(r){
+ if(!r||!r.to)return null;const k=phK(r.to.ph),nk=nmK(r.to.n),t=N(r.ts),W=30*864e5;
+ if(!k&&!nk)return null;
+ const L=all().filter(x=>x.id!==r.id&&x.st!=="no"&&Math.abs(N(x.ts)-t)<=W&&x.to&&(k?phK(x.to.ph)===k:(x.br===r.br&&!phK(x.to.ph)&&nmK(x.to.n)===nk)));
+ return L.length?{n:L.length,p:L.reduce((a,x)=>a+net(x),0),by:k?"ph":"nm",brs:[...new Set(L.map(x=>x.brn||brName(x.br)))]}:null;
+}
+const repTag=r=>{const x=repOf(r);return x?`<span class="g4-st r g4-rp" title="${E((x.by==="ph"?"الجوال نفسه":"الاسم نفسه")+" استلم "+(x.n===1?"هدية أخرى":x.n===2?"هديتين أخريين":x.n+" هدايا أخرى")+" خلال 30 يوماً"+(x.p?" ("+x.p+" قطعة)":"")+" · "+x.brs.join("، "))}">🔁 ${x.by==="ph"?"الجوال":"الاسم"} مكرّر ×${x.n+1} في 30 يوماً</span>`:""};
 const av=r=>r.br==="WH"?`<span class="g4-av wh">🏭</span>`:`<span class="g4-av">${E(String(r.br||"").slice(0,3))}</span>`;
 const dayKey=t=>new Date(N(t)).toDateString();
 function dayLbl(t){const d=new Date(N(t)),n=new Date(),y=new Date(Date.now()-864e5);if(d.toDateString()===n.toDateString())return "اليوم";if(d.toDateString()===y.toDateString())return "أمس";
  return d.toLocaleDateString("ar-EG-u-nu-latn",{weekday:"long",day:"numeric",month:"long"})}
 const ST4={pend:["⏳","بانتظار الاعتماد","w"],ok:["✅","معتمدة","ok"],set:["🧾","تمت التسوية","b"],no:["❌","مرفوضة","r"]};
-const stTag=r=>{const s=accOnly()&&r.st==="ok"?["⏳","بانتظار التسوية","w"]:(ST4[r.st]||ST4.pend);return `<span class="g4-st ${s[2]}">${s[0]} ${s[1]}</span>${r.rt===true&&!r.rb&&isAp(r)?'<span class="g4-st w">↩️ لم ترجع</span>':""}${r.rb?`<span class="g4-st ok">↩️ صافي ${net(r)}</span>`:""}`};
+const stTag=r=>{const s=accOnly()&&r.st==="ok"?["⏳","بانتظار التسوية","w"]:(ST4[r.st]||ST4.pend);return `<span class="g4-st ${s[2]}">${s[0]} ${s[1]}</span>${r.st==="pend"&&X.mode!=="branch"?repTag(r):""}${r.rt===true&&!r.rb&&isAp(r)?'<span class="g4-st w">↩️ لم ترجع</span>':""}${r.rb?`<span class="g4-st ok">↩️ صافي ${net(r)}</span>`:""}`};
 // سطر في القايمة
 const line=(r,i)=>`<div class="g4-ln" data-gf="view" data-id="${E(r.id)}" data-s="${E(sText(r))}" ${sOk(r)?"":"hidden"} style="--i:${Math.min(i,12)}">
  ${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${tShort(r.ts)}</small><small class="g4-it">${short(r)}</small></div>
@@ -382,7 +398,7 @@ function wkRow(r,k,i){
   :k==="set"?`<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند"><button class="bt s ${waitRet(r)?"":"g"}" data-gf="set" data-id="${E(r.id)}" type="button" ${waitRet(r)?'title="العينة لم ترجع بعد: الأفضل الانتظار وتسوية الصافي"':""}>✔ ${waitRet(r)?"تسوية كاملة":"تسوية"} ${net(r)}</button>`
   :`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`;
  const age=Math.max(0,Math.floor((Date.now()-N(k==="ap"?r.ts:(r.ap&&r.ap.at)||r.ts))/864e5));
- const tags=`${age>=3?`<span class="g4-st r">⏰ منذ ${age} يوم</span>`:age>=1?`<span class="g4-st">منذ ${age} يوم</span>`:`<span class="g4-st ok">جديدة</span>`}${k==="set"&&waitRet(r)?'<span class="g4-st w">↩️ لم ترجع بعد</span>':""}${k==="set"&&r.rb?`<span class="g4-st ok">صافي ${net(r)} من ${N(r.pcs)}</span>`:""}`;
+ const tags=`${k==="ap"?repTag(r):""}${age>=3?`<span class="g4-st r">⏰ منذ ${age} يوم</span>`:age>=1?`<span class="g4-st">منذ ${age} يوم</span>`:`<span class="g4-st ok">جديدة</span>`}${k==="set"&&waitRet(r)?'<span class="g4-st w">↩️ لم ترجع بعد</span>':""}${k==="set"&&r.rb?`<span class="g4-st ok">صافي ${net(r)} من ${N(r.pcs)}</span>`:""}`;
  return `<div class="g4-td" data-gf="view" data-id="${E(r.id)}" style="--i:${Math.min(i,10)}">${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${r.rb?net(r):N(r.pcs)} قطعة</small><small class="g4-it">${short(r)}</small><div class="g4-tags">${tags}</div></div><div class="g4-act" data-gf="noop">${act}</div></div>`;
 }
 function workPanel(per,pw,ok,pcs){
@@ -543,7 +559,8 @@ function viewGift(id){
  const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r)return;
  const st=r.st||"pend",wh=X.mode!=="branch";
  openM(`<div class="gs"><div class="gs-hd"><img src="./icon-192.png" alt=""><div><b>${isSample(r)?"سند عينة":"سند هدية"}</b><small>${E(r.no)}</small></div><span class="gf-st ${st}">${STL[st]||st}</span></div>
- <div class="gs-bd">${sheetHtml(r)}
+ <div class="gs-bd">${(()=>{const x=wh?repOf(r):null;if(!x)return "";const L=all().filter(y=>y.id!==r.id&&y.st!=="no"&&Math.abs(N(y.ts)-N(r.ts))<=30*864e5&&y.to&&(x.by==="ph"?phK(y.to.ph)===phK(r.to.ph):(y.br===r.br&&nmK(y.to.n)===nmK(r.to.n)))).sort((a,b)=>N(b.ts)-N(a.ts)).slice(0,5);
+  return `<div class="gs-rep">🔁 <b>${x.by==="ph"?"رقم الجوال نفسه":"اسم المستلم نفسه"} استلم ${x.n===1?"هدية أخرى":x.n===2?"هديتين أخريين":x.n+" هدايا أخرى"} خلال 30 يوماً</b>${L.map(y=>`<div>${E(y.dt||"")} · <bdi dir="ltr">${E(y.brn||brName(y.br))}</bdi> · ${E(y.why||"")} · ${net(y)} قطعة · ${E((STL[y.st]||"").replace(/^\S+\s/,""))}</div>`).join("")}</div>`})()}${sheetHtml(r)}
  <div class="gs-ac">${wh&&canApprove()&&st==="pend"?`<button class="bt g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${canRet(r)?`<button class="bt g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}
  ${wh&&canSettle()&&st==="ok"?`<div class="gs-set">${waitRet(r)?'<span class="g4-st w">↩️ العينة لم ترجع بعد: الأفضل الانتظار</span>':""}<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند في النظام"><button class="bt g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)} قطعة</button></div>`:""}

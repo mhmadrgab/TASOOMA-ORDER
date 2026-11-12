@@ -75,6 +75,23 @@ function pairs(list=TR){const m={};list.filter(t=>t.st==="done").forEach(t=>{let
 // المسافة بخط مستقيم × 1.3 (تقريب للطريق الفعلي)
 const kmBetween=(a,b)=>{if(!a||!b||!Number.isFinite(+a.lat)||!Number.isFinite(+b.lat))return null;const R=6371,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lng-a.lng),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))*1.3};
 const geoPt=c=>c==="WH"?(GEOD&&GEOD.wh)||null:(GEOD&&GEOD.br&&GEOD.br[c])||null;
+// 📍 (12 نوفمبر 2026) تسليم من مكان بعيد عن الفرع: لما السواق يدوس "سلّمت" المنصة بتسجّل مكانه (s.lat/s.lng).
+// لو أبعد من FAR_KM عن مكان الفرع المعروف (geo/main)، بنعلّم التسليم ده (ممكن تسليم وهمي، أو الـ GPS كان ضعيف).
+// مكان الفرع هنا = الوسيط (median) لأماكن **باقي** التسليمات لنفس الفرع (من غير التسليم اللي بنفحصه)، مش متوسط geo/main:
+// المتوسط بيتشد ناحية التسليم البعيد نفسه فيخبّيه. ومحتاج على الأقل 3 تسليمات تانية علشان يبقى موثوق، وإلا مابنحكمش.
+const FAR_KM=0.4;let FARC=null;
+const brPts=()=>{if(FARC&&FARC.tr===TR)return FARC.m;const m={};
+ TR.forEach(t=>(Array.isArray(t.stops)?t.stops:[]).forEach(x=>{if(x&&N(x.arr)&&Number.isFinite(+x.lat)&&Number.isFinite(+x.lng)&&(+x.lat||+x.lng))(m[bc(x.brn)]=m[bc(x.brn)]||[]).push({t:t.id,r:x.rid,lat:+x.lat,lng:+x.lng})}));
+ FARC={tr:TR,m};return m};
+const med=a=>{const b=a.slice().sort((x,y)=>x-y),h=b.length>>1;return b.length%2?b[h]:(b[h-1]+b[h])/2};
+function farOf(s,tid){
+ if(!s||!N(s.arr))return null;
+ const o=(brPts()[bc(s.brn)]||[]).filter(x=>!(x.r===s.rid&&(!tid||x.t===tid)));if(o.length<3)return null;
+ if(!Number.isFinite(+s.lat)||!Number.isFinite(+s.lng)||(!+s.lat&&!+s.lng))return {none:true};
+ const p={lat:med(o.map(x=>x.lat)),lng:med(o.map(x=>x.lng))},k=km2r(p,{lat:+s.lat,lng:+s.lng});return k>FAR_KM?{km:k}:null;
+}
+const farTxt=k=>k<1?Math.round(k*1000)+" متر":(Math.round(k*10)/10)+" كم";
+const farTag=(s,tid)=>{const x=farOf(s,tid);return !x?"":x.none?' <span class="pill" style="background:#f1efe9;color:#6f6b64" title="لم يسجّل جوال السائق موقع التسليم">📍 بدون موقع</span>':` <span class="pill" style="background:#fdecea;color:#c0392b" title="موقع التسليم بعيد عن موقع الفرع المعروف">⚠️ سُلِّم على بعد ${farTxt(x.km)} من الفرع</span>`};
 // الوقت المتوقع لرحلة قصيرة: من رحلات قبل كده لنفس المشوار، ولو أول مرة نقدّره من المسافة (35 كم/س + 5 دقائق تسليم)
 function legMs(prev,code,pp){if(pp[prev+">"+code])return pp[prev+">"+code]*6e4;const k=kmBetween(geoPt(prev),geoPt(code));if(k!==null)return (k/35*60+5)*6e4;const a=geoPt(code);return a&&a.avg?a.avg*6e4:null}
 // المكان اللي السائق أنهى فيه الرحلة: تطبيق السائق يسجّل loc بنفس وقت الإنهاء (end) بالظبط.
@@ -330,7 +347,10 @@ function alerts(){
   // نقارن بباقي المرات (من غير الرحلة قصيرة ده نفسه)، ومحتاجين 3 مرات على الأقل علشان المتوسط يبقى له معنى
   const on=av?av.n-(t.st==="done"?1:0):0,oa=on>0?(av.km*av.n-(t.st==="done"?k:0))/on:0;
   if(on>=3&&k>Math.max(oa*2,oa+10))A.push({l:"al w",t:`🛣 ${E(t.drvn)}: رحلة قصيرة <bdi dir="ltr">${E(lb(from[s.rid]))} → ${E(lb(bc(s.brn)))}</bdi> طلع ${fmt(k)} كم بالعداد، والمعتاد ~${fmt(Math.round(oa))} كم — راجع`})})});
- return A.slice(-12);
+ // 📍 تسليمات بعيدة عن الفرع في آخر 7 أيام (أحدث 5)
+ const far=[];TR.filter(t=>now-N(t.start)<7*864e5).forEach(t=>(t.stops||[]).forEach(st=>{const x=farOf(st,t.id);if(x&&x.km)far.push({t,st,k:x.km})}));
+ far.sort((a,b)=>N(b.st.arr)-N(a.st.arr)).slice(0,5).forEach(({t,st,k})=>A.push({l:"al w",t:`📍 ${E(t.drvn)} سجّل تسليم <bdi dir="ltr">${E(st.brn)}</bdi> وهو على بعد <b>${farTxt(k)}</b> من موقع الفرع (${dk(st.arr)} ${hm(st.arr)}) — تحقّق مع الفرع من الاستلام فعلاً <a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(st.lat)}" data-lng="${N(st.lng)}" data-t="${E("موقع التسليم: "+st.brn)}" data-s="${E(t.drvn+" · "+hm(st.arr))}">📍 المكان</a>`}));
+ return A.slice(-14);
 }
 // ---------- الواجهة ----------
 export function view(){
@@ -348,7 +368,7 @@ export function view(){
  ${act.length||okPt(geoPt("WH"))||Object.keys((GEOD&&GEOD.br)||{}).length?(setTimeout(attachLive,0),'<div id="flmap-slot"></div>'):""}
  ${act.length?act.map(t=>{const st=Array.isArray(t.stops)?t.stops:[],ol=odoLegs(t).leg;let p=N(t.start);const done=st.filter(s=>s.arr).length;
   return `<div class="tr"><h4>${E(t.drvn)} — ${E(t.carn)} <span class="pill go">في رحلة</span>${t.ext?` <span class="pill" style="background:#efe7fb;color:#5b3fb0">${t.ext.t==="ship"?"🚚 شركة شحن":"🚐 خارجي"}${N(t.ext.cost)?" · "+fmt(t.ext.cost):""}</span>`:""} <span data-sig="${E(t.id)}">${sigPill(t)}</span></h4><div class="off" style="font-size:14px">بدأ ${hm(t.start)} · منذ ${dur(Date.now()-N(t.start))} · سلّم ${done} من ${st.length}${okPt(t.loc)?` · <a href="#" data-fl="tmap" data-id="${E(t.id)}">📍 مكانه (${ago(t.loc.ts)})</a>`:" · <span>لا يوجد موقع مسجّل بعد</span>"}</div>
-  <div class="st1">${(()=>{let prev="WH";return st.map(s=>{const c=bc(s.brn);if(s.arr){const l=N(s.arr)-p;p=N(s.arr);prev=c;return `<span class="ok">✔ ${E(s.brn)} ${hm(s.arr)} (${dur(l)}${ol[s.rid]!==undefined?" · "+fmt(ol[s.rid])+" كم":""})</span>`}
+  <div class="st1">${(()=>{let prev="WH";return st.map(s=>{const c=bc(s.brn);if(s.arr){const l=N(s.arr)-p;p=N(s.arr);prev=c;return `<span class="ok">✔ ${E(s.brn)} ${hm(s.arr)} (${dur(l)}${ol[s.rid]!==undefined?" · "+fmt(ol[s.rid])+" كم":""})${farTag(s,t.id)}</span>`}
    // الوقت المتوقع الأحدث: اللي على الطلب (تطبيق السائق بيحدّثه وهو ماشي)، وإلا اللي على الرحلة
    const rq=X.R().find(r=>r.id===s.rid),eta=N(rq&&rq.eta)||N(s.eta);
    const a=legMs(prev,c,pp);if(a&&!eta)p+=a;prev=c;return `<span>⏳ ${E(s.brn)}${eta?` · متوقع ~${hm(eta)}`:a?` · متوقع ~${hm(p)}`:""}${rq&&N(rq.near)>N(rq.dep)?" · 🔔 قرب":""}</span>`}).join("")})()}</div>
@@ -493,7 +513,7 @@ function tripDetail(id){
  const {leg:okm,back:obk}=odoLegs(t);// كيلومترات بالعداد (لو السائق كتبه عند كل تسليم)
  const fu=FU.filter(f=>f.drv===t.drv&&f.car===t.car&&N(f.ts)>=N(t.start)&&(!t.end||N(f.ts)<=N(t.end)+36e5));
  openM(`<h3>${E(t.drvn)} — ${E(t.carn)}</h3>${t.ext?`<div class="gn">${t.ext.t==="ship"?"🚚 شركة شحن: "+E(t.ext.co||""):"🚐 عربية خارجية"}${t.ext.plate?" · لوحة "+E(t.ext.plate):""}${t.ext.ph?` · <bdi dir="ltr">${E(t.ext.ph)}</bdi>`:""}${N(t.ext.cost)?" · التكلفة "+fmt(t.ext.cost):""}${t.ext.by?" · أنشأها "+E(t.ext.by.n||t.ext.by.e||""):""}</div>`:""}<div class="off">${dk(t.start)} · ${hm(t.start)} ← ${t.end?hm(t.end):"شغّال"}${t.ext?"":` · عداد ${fmt(t.odo0)}`}${t.st==="done"?` ← ${fmt(t.odo1)} (${fmt(N(t.odo1)-N(t.odo0))} كم)`:""}</div>
- <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);const k=kmLeg(s);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${N(s.ct)>0?" · 📦 "+N(s.ct)+" كرتون":""}${s.rcvr?" · استلم: "+E(s.rcvr):""}${s.fr?` · 🔄 أُخذ من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" "+hm(s.pk):""}`:""}</small>${podHtml(s.rid)}</div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}${okm[s.rid]!==undefined?` · <b>${fmt(okm[s.rid])} كم</b> 🔢`:k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${s.lat?`<a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(s.lat)}" data-lng="${N(s.lng)}" data-t="${E(s.brn)}" data-s="${E("سُلِّم "+hm(s.arr))}">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}
+ <div style="margin:12px 0">${st.map(s=>{const l=s.arr?N(s.arr)-N(p):0;if(s.arr)p=N(s.arr);const k=kmLeg(s);return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${E(s.brn)}</b><small class="off" style="display:block"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة${N(s.ct)>0?" · 📦 "+N(s.ct)+" كرتون":""}${s.rcvr?" · استلم: "+E(s.rcvr):""}${farTag(s,t.id)}${s.fr?` · 🔄 أُخذ من <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>${s.pk?" "+hm(s.pk):""}`:""}</small>${podHtml(s.rid)}</div><div style="text-align:left">${s.arr?`✔ ${hm(s.arr)}<small class="off" style="display:block">${dur(l)}${okm[s.rid]!==undefined?` · <b>${fmt(okm[s.rid])} كم</b> 🔢`:k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${s.lat?`<a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(s.lat)}" data-lng="${N(s.lng)}" data-t="${E(s.brn)}" data-s="${E("سُلِّم "+hm(s.arr))}">📍</a>`:""}`:'<span class="off">لم يصل</span>'}</div></div>`}).join("")||'<div class="off">لا توجد توصيلات</div>'}
  ${t.st==="done"?(()=>{const k=e?kmTo(e):null,l=N(t.end)-lastArr;return `<div class="le" style="display:flex;justify-content:space-between;gap:8px;padding:8px 0"><div><b>🏁 إنهاء الرحلة</b><small class="off" style="display:block">${e?"المكان الذي أنهى فيه السائق الرحلة":t.forced?"أُغلقت من المستودع (لا يوجد موقع)":"لم يسجّل الجوال موقع الإنهاء"}</small></div><div style="text-align:left">${hm(t.end)}<small class="off" style="display:block">${l>0?dur(l):""}${obk!==null?` · <b>${fmt(obk)} كم</b> 🔢`:k!==null?` · ~${k.toFixed(1)} كم`:""}</small>${e?`<a href="#" data-fl="pmap" data-id="${E(t.id)}" data-lat="${N(e.lat)}" data-lng="${N(e.lng)}" data-t="إنهاء الرحلة" data-s="${E(hm(t.end))}">📍</a>`:""}</div></div>`})():""}</div>
  ${t.note?`<div class="gn">${t.forced?"⏹ ":"ملاحظة السائق: "}${E(t.note)}</div>`:""}${fu.length?`<div class="off">⛽ بنزين في الرحلة: ${fu.map(f=>fmt(f.liters)+" لتر / "+fmt(f.cost)).join(" · ")}</div>`:""}
  <div class="off" style="font-size:12.5px">🔢 = كيلومترات بالضبط من العداد الذي كتبه السائق عند التسليم. ~ = تقريبي من أماكن التسليم (رحلات قبل أن يصبح العداد مطلوباً عند كل فرع). الإجمالي من العداد في الأعلى.</div>
