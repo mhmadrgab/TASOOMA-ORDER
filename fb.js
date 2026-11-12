@@ -2,7 +2,9 @@
 // يوم النقل: الملف ده بياخد اسم fb.js. لحد كده بيتجرب في نسخة تجريبية منفصلة.
 // - البيانات والدخول: Supabase (sbcore.js + sb-config.js)
 // - إشعارات الموبايل: لسه Firebase Cloud Messaging (مجاني ومالوش حد)، فمشروع Firebase بيفضل للإشعارات بس
-import {createClient} from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
+// المكتبة من نفس الموقع (sb-lib.js، ملف واحد) بدل jsdelivr (8 طلبات ورا بعض، وكانت بتعلّق الصفحة على النت الضعيف)
+import "./sb-lib.js";
+const {createClient} = self.supabase;
 import {SB_URL, SB_KEY} from "./sb-config.js";
 import * as S from "./sbcore.js";
 const {collection, doc, getDoc, getDocs, onSnapshot, query, where, orderBy, limit, increment, arrayUnion, deleteField,

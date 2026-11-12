@@ -92,3 +92,17 @@
  addEventListener("scroll",()=>{if(tick)return;tick=true;requestAnimationFrame(()=>{tick=false;const y=scrollY,d=y-lastY;if(Math.abs(d)<8&&y>10)return;
   const up=d>0&&y>180&&innerWidth<=760&&!!document.querySelector("#app>.hd>.hi");if(H.classList.contains("hd-up")!==up)H.classList.toggle("hd-up",up);lastY=y})},{passive:true});
 })();
+
+// ⏰ ساعة الجهاز (12 نوفمبر 2026): لو ساعة الكمبيوتر/الموبايل غلط، تسجيل الدخول في Supabase بيبان "شغال" عند الجهاز وهو منتهي
+// عند السيرفر، فالبيانات كلها بتطلع فاضية من غير أي سبب واضح (حصل عند محمد: الساعة متأخرة 9 ساعات). بنقارن بوقت السيرفر ونقول بوضوح.
+(function(){
+ const chk=()=>fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(r=>{
+  const sv=Date.parse(r.headers.get("date")||"");if(!sv)return;const sk=Date.now()-sv,ab=Math.abs(sk);
+  let b=document.getElementById("tz-clock");if(ab<5*6e4){if(b)b.remove();return}
+  const tm=Math.round(ab/6e4),h=Math.floor(tm/60),m=tm%60,amt=h?`${h} ساعة${m?" و"+m+" دقيقة":""}`:`${m} دقيقة`;
+  if(!b){b=document.createElement("div");b.id="tz-clock";b.setAttribute("role","alert");b.style.cssText="position:fixed;inset:auto 12px 12px 12px;z-index:99998;background:#c4362b;color:#fff;border-radius:14px;padding:12px 16px;font:700 14.5px/1.7 'IBM Plex Sans Arabic',Tahoma,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3);direction:rtl;text-align:right";document.body.appendChild(b)}
+  b.innerHTML=`⏰ ساعة جهازك غير مضبوطة (${sk<0?"متأخرة":"متقدمة"} ${amt})، ولهذا قد لا تظهر البيانات.<br><span style="font-weight:400">من إعدادات الجهاز: شغّل "ضبط الوقت تلقائياً" واختر منطقة الرياض، ثم أعد فتح المنصة.</span>`;
+ }).catch(()=>{});
+ if(document.readyState==="loading")addEventListener("DOMContentLoaded",()=>setTimeout(chk,1500));else setTimeout(chk,1500);
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)chk()});
+})();

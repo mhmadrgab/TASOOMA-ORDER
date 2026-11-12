@@ -147,16 +147,16 @@ let SEQ = 0;
 export function onSnapshot(target, next, onErr) {
   const db = target.db, c = db.c, isDoc = target.type === "doc";
   const q = isDoc ? null : (target.type === "query" ? target : query(target));
-  let alive = true, loaded = false, cur = [], curDoc, pend = [], timer = null, ch = null, refetching = false;
+  let alive = true, loaded = false, cur = [], curDoc, pend = [], timer = null, ch = null, refetching = false, again = false;
   const fail = e => { if (alive && onErr) try { onErr(mapErr(e)) } catch (x) {} };
   const emit = list => { const prev = cur; cur = list; if (alive) try { next(new QuerySnap(q, list, changes(prev, list))) } catch (x) { console.error(x) } };
   const emitDoc = data => { if (!alive) return; const s = new DocSnap(target, data); if (loaded && eq(curDoc, data)) return; curDoc = data; try { next(s) } catch (x) { console.error(x) } };
   async function load() {
-    if (refetching) return; refetching = true;
+    if (refetching) { again = true; return } refetching = true;
     try {
       if (isDoc) { const s = await getDoc(target); loaded = true; emitDoc(s._d) }
       else { const docs = await runQ(q); loaded = true; const b = pend; pend = []; let list = docs; for (const ev of b) list = apply(list, ev); emit(sortDocs(q, list)) }
-    } catch (e) { fail(e) } finally { refetching = false }
+    } catch (e) { fail(e) } finally { refetching = false; if (again && alive) { again = false; load() } }
   }
   function apply(list, ev) {
     const path = (ev.new && ev.new.path) || (ev.old && ev.old.path);
@@ -177,8 +177,11 @@ export function onSnapshot(target, next, onErr) {
   try {
     ch = c.channel("l" + (++SEQ) + "_" + Math.random().toString(36).slice(2, 7))
       .on("postgres_changes", {event: "*", schema: "public", table: "docs", filter}, onEv)
-      .subscribe(st => { if (!alive) return; if (st === "SUBSCRIBED") load(); else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") { if (!loaded) load() } });
-  } catch (e) { load() }
+      // ⚡ (12 نوفمبر 2026) القراءة بتبدأ على طول، مش بعد ما خط اللايف يفتح: على بعض الشبكات الخط بياخد ثواني أو مابيفتحش،
+      // والصفحة كانت بتفضل فاضية لحد 10 ثواني ("المنصة معلّقة"). لما الخط يفتح بنقرا مرة كمان (علشان أي تغيير حصل في النص)
+      .subscribe(st => { if (!alive) return; if (st === "SUBSCRIBED") { if (loaded) load() } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") { if (!loaded) load() } });
+  } catch (e) {}
+  load();
   return () => { alive = false; clearTimeout(timer); try { if (ch) c.removeChannel(ch) } catch (e) {} };
 }
 

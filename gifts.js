@@ -104,6 +104,63 @@ const CSS=`
 #gfm .bt{font:inherit;font-weight:700;border-radius:12px;padding:10px 16px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}#gfm .bt.s{padding:6px 12px;font-size:13.5px}
 #gfm .bt.p{background:#1b1b1b;border-color:#1b1b1b;color:#fff}#gfm .bt.g{background:#d4ae5c;border-color:#d4ae5c;color:#1b1b1b}#gfm .bt.r{color:#c4362b;border-color:#c4362b}#gfm .bt:disabled{opacity:.6}
 @media print{.gfm{display:none!important}}
+/* ===== التصميم الرابع: ابسط وأجمل ===== */
+.g4{--g4r:18px}
+.g4-hd{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 14px}.g4-hd h2{margin:0 0 8px;font-size:22px}
+.g4-per{display:flex;gap:6px;flex-wrap:wrap}.g4-per button{font:inherit;font-size:13.5px;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--mut);border-radius:999px;padding:6px 14px;cursor:pointer;transition:all .2s}
+.g4-per button.on{background:#1b1b1b;border-color:#1b1b1b;color:#fff}
+.g4-hb{display:flex;gap:8px;margin-inline-start:auto}.g4-hb .bt{width:auto;margin:0}
+.g4-ks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 14px}
+.g4-k{display:flex;align-items:center;gap:12px;text-align:start;font:inherit;color:var(--ink);background:var(--card);border:1.5px solid transparent;border-radius:var(--g4r);padding:14px 16px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.06);transition:transform .18s,box-shadow .18s,border-color .18s}
+.g4-k:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.08)}.g4-k.on{border-color:#d4ae5c}
+.g4-k .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:var(--soft);flex:none}
+.g4-k b{display:block;font-size:26px;line-height:1.15}.g4-k small{display:block;color:var(--mut);font-size:12.5px}
+.g4-k.g .ic{background:#e7f4ec}.g4-k.w .ic{background:#fff1d6}.g4-k.b .ic{background:#e3eefb}.g4-k.o .ic{background:#fdeee0}
+.g4-k.w b{color:#a46a00}.g4-k.b b{color:#1c4f86}.g4-k.o b{color:#b4541c}
+.g4-box{background:var(--card);border-radius:var(--g4r);padding:16px;margin:0 0 14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.g4-todo{background:linear-gradient(180deg,#fffaf0,var(--card) 70%);border:1.5px solid #efd9a3}
+.g4-bh{display:flex;align-items:center;gap:8px;margin:0 0 6px}.g4-bh h3{margin:0;font-size:17px;display:flex;gap:8px;align-items:center}
+.g4-n{background:#c4362b;color:#fff;border-radius:999px;font-size:12.5px;padding:1px 9px}.g4-lnk{margin-inline-start:auto;border:0;background:none;color:var(--acc,#a8832f);font:inherit;font-weight:700;cursor:pointer}
+.g4-td,.g4-ln{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:14px;cursor:pointer;position:relative;transition:background .15s}
+.g4-td:hover,.g4-ln:hover{background:rgba(212,174,92,.08)}.g4-td+.g4-td{border-top:1px solid var(--line)}
+.g4-av{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;flex:none;font-weight:800;font-size:14px;background:#1b1b1b;color:#e8cf8a;letter-spacing:.5px}.g4-av.wh{background:var(--soft);font-size:20px}
+.g4-mid{flex:1;min-width:0}.g4-mid b{display:block;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.g4-mid small{display:block;color:var(--mut);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.g4-it{opacity:.85}
+.g4-why{color:var(--ink);font-weight:700}
+.g4-end{text-align:end;flex:none}.g4-end>b{font-size:20px;display:block;line-height:1.1}.g4-end>b small{font-size:12px;color:var(--mut);font-weight:400}
+.g4-tags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;margin-top:4px}.g4-mid .g4-tags{justify-content:flex-start}
+.g4-st{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--soft);color:var(--mut)}
+.g4-st.w{background:#fff1d6;color:#8a5a00}.g4-st.ok{background:#e7f4ec;color:#1d5a24}.g4-st.b{background:#e3eefb;color:#1c4f86}.g4-st.r{background:#fbe3e0;color:#9b2a1f}
+.g4-act{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;cursor:default}.g4-act .bt{width:auto;margin:0}.g4-act input{width:150px;height:34px;padding:5px 10px;margin:0}
+.g4-clip{border:0;background:var(--soft);border-radius:10px;width:34px;height:34px;cursor:pointer;flex:none}
+.g4-bar1{display:flex;gap:8px;align-items:center}
+.g4-search{flex:1;display:flex;align-items:center;gap:8px;background:var(--field,#f3f1ed);border-radius:14px;padding:0 12px;border:1.5px solid transparent;transition:border-color .2s}.g4-search:focus-within{border-color:#d4ae5c}
+.g4-search input{border:0;background:none;height:46px;flex:1;margin:0;padding:0;outline:none;box-shadow:none}
+.g4-fbtn{font:inherit;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;height:46px;padding:0 14px;cursor:pointer;white-space:nowrap}.g4-fbtn.on{border-color:#d4ae5c;background:#fff8e6}
+.g4-chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}.g4-chips button{font:inherit;font-size:13.5px;border:0;background:var(--soft);color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer;transition:all .2s}.g4-chips button.on{background:#d4ae5c;color:#1b1b1b;font-weight:700}
+.g4-adv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:10px 0 4px;padding:12px;background:var(--soft);border-radius:14px;animation:ui-up .25s ease both}
+.g4-adv label{display:flex;flex-direction:column;gap:4px;margin:0}.g4-adv small{color:var(--mut);font-size:12px;font-weight:700}.g4-adv select,.g4-adv input{width:100%;height:42px;margin:0}
+.g4-cnt{color:var(--mut);font-size:13px;font-weight:700;margin:10px 4px 4px}
+.g4-day{font-size:13px;font-weight:800;color:var(--mut);margin:14px 6px 4px;display:flex;align-items:center;gap:10px}.g4-day::after{content:"";flex:1;height:1px;background:var(--line)}
+.g4-list .g4-ln+.g4-ln{border-top:1px solid var(--line)}
+.g4-more{display:block;width:100%;margin-top:10px;font:inherit;font-weight:700;border:1.5px dashed var(--line);background:none;color:var(--ink);border-radius:14px;padding:12px;cursor:pointer}
+.g4-empty{text-align:center;color:var(--mut);padding:34px 10px;font-size:15px}.g4-empty span{display:block;font-size:44px;margin-bottom:6px;animation:ui-float 3s ease-in-out infinite}
+.g4-sumh{width:100%;display:flex;justify-content:space-between;align-items:center;font:inherit;font-weight:800;font-size:15.5px;border:0;background:none;color:var(--ink);cursor:pointer;padding:2px}
+.g4-sum{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px;animation:ui-up .25s ease both}.g4-sum h4{margin:0 0 8px;color:var(--mut);font-size:13.5px}
+.g4-bar{display:grid;grid-template-columns:minmax(80px,140px) 1fr auto;gap:10px;align-items:center;margin:8px 0;font-size:14px}.g4-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.g4-bar i{height:10px;border-radius:6px;background:var(--soft);overflow:hidden}.g4-bar u{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#d4ae5c,#e8cf8a);transform-origin:right;animation:g4-grow .7s cubic-bezier(.2,.8,.2,1) both}
+.g4-bar em{font-style:normal;font-weight:800}
+@keyframes g4-grow{from{transform:scaleX(0)}to{transform:none}}
+/* الحركة: أول ما التبويب يفتح بس (الكروت والسطور بتطلع ورا بعض) */
+.g4.anim .g4-k{animation:ui-up .45s cubic-bezier(.2,.8,.2,1) both}.g4.anim .g4-k:nth-child(2){animation-delay:.05s}.g4.anim .g4-k:nth-child(3){animation-delay:.1s}.g4.anim .g4-k:nth-child(4){animation-delay:.15s}
+.g4.anim .g4-ln,.g4.anim .g4-td{animation:ui-up .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*35ms + .12s)}
+@media (max-width:900px){.g4-ks{grid-template-columns:repeat(2,minmax(0,1fr))}.g4-adv{grid-template-columns:repeat(2,minmax(0,1fr))}.g4-sum{grid-template-columns:1fr}}
+@media (max-width:600px){.g4-hd h2{font-size:19px}.g4-k{padding:12px}.g4-k .ic{width:38px;height:38px;font-size:18px;border-radius:12px}.g4-k b{font-size:21px}
+ .g4-td{flex-wrap:wrap}.g4-act{width:100%;justify-content:flex-start}.g4-act input{flex:1;min-width:120px}.g4-av{width:38px;height:38px;font-size:12.5px}.g4-it{display:none!important}}
+@media (prefers-color-scheme:dark){.g4-todo{background:linear-gradient(180deg,#2a2210,var(--card) 70%);border-color:#5a4520}.g4-fbtn.on{background:#2b2210}
+ .g4-st.w{background:#3a2a08;color:#f6c770}.g4-st.ok{background:#173a1b;color:#8fd39a}.g4-st.b{background:#14243a;color:#9cc4f0}.g4-st.r{background:#40191a;color:#f1a5a0}
+ .g4-k.g .ic{background:#173a1b}.g4-k.w .ic{background:#3a2a08}.g4-k.b .ic{background:#14243a}.g4-k.o .ic{background:#3a2210}.g4-k.w b{color:#f6c770}.g4-k.b b{color:#9cc4f0}.g4-k.o b{color:#f0a070}.g4-per button.on{background:#d4ae5c;border-color:#d4ae5c;color:#1b1b1b}}
+
 /* ===== التصميم التالت (على نفس ستايل العهدة) ===== */
 .gx-bal{gap:22px}.gx-bal>div.w b{color:#f6c770}
 .row2 .bar em{white-space:nowrap}.row2 .bar span{min-width:90px}.gx-todo{margin-bottom:16px;border:1.5px solid #e9c977}.gx-todo h3{display:flex;align-items:center;gap:8px}
@@ -183,7 +240,7 @@ export function initGifts(ctx){
  }
  if(!window.__gfc){window.__gfc=1;document.addEventListener("click",click);document.addEventListener("change",change);document.addEventListener("input",input)}
 }
-export function stopGifts(){un.forEach(f=>f());un=[];VT="";VTu=false;if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MON=new Set();closeM()}
+export function stopGifts(){un.forEach(f=>f());un=[];VT="";VTu=false;ANIM=true;SHOWN=30;if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MON=new Set();closeM()}
 export const pendingCount=()=>PEND.size;
 // للتقرير الأسبوعي (short.js): الهدايا من تاريخ معيّن، والصافي
 export const giftsSince=t=>all().filter(r=>N(r.ts)>=t);
@@ -222,22 +279,27 @@ function card(r,wh,setUi){// setUi = خانة مرجع السند (في قسم "
  ${wh&&canApprove()&&st==="pend"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${isOwner()?`<button class="bt s" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt s" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}</div></div>`;
 }
-// ---------- تبويب المستودع (التصميم التالت، 12 نوفمبر 2026: "عايزه أحسن مديول، العهدة أحلى منه ومرتّبة") ----------
-// نفس لغة تبويب العهدة اللي محمد بيحبها: كارت أسود فوق بالأرقام المهمة ← أزرار ← "مطلوب منك" ← لوحتين بالأعمدة ← جدول واحد نضيف.
-//   1) الكارت الأسود: صافي القطع المعتمدة في الفترة + عدد الهدايا + اللي مستني (اعتماد / تسوية / عينات)
-//   2) 📌 مطلوب منك: جدول واحد فيه كل اللي مستني إجراء منك انت بس (اعتماد، تسوية، رجوع عينة)، والإجراء في نفس السطر
-//   3) المعتمد لكل فرع ولكل بند (أعمدة زي "المصروفات حسب البند" في العهدة)
-//   4) سجل الهدايا: جدول واحد بالفلاتر فوقه، والضغط على السطر يفتح السند كامل
-// البند (نوع الهدية): "أخرى" بتشمل أي سبب مش من القايمة
+// ---------- تبويب المستودع (التصميم الرابع، 12 نوفمبر 2026: "ابسط وأجمل، ولسه هتكتر") ----------
+// الفكرة: صفحة هادية تتقري في ثانية، وتفضل مرتبة لما الهدايا تبقى بالمئات:
+//   1) 4 كروت أرقام بس (بتتحرك وهي بتعد، والضغط عليها بيفلتر)
+//   2) 📥 مطلوب منك: كروت صغيرة بالإجراء (أول 4، والباقي بزرار)، وبتختفي خالص لو مفيش حاجة
+//   3) القايمة: بحث + أزرار حالة، والفلاتر التانية مقفولة تحت "فلاتر". متقسمة بالأيام (اليوم، أمس...) و30 سطر وبعدين "عرض المزيد"
+//   4) الملخص (لكل بند ولكل فرع) مقفول تحت زرار، علشان مايزحمش الصفحة
 const whyOk=r=>!F.why||(F.why==="أخرى"?(r.why==="أخرى"||!WHY.includes(r.why)):r.why===F.why);
 const brWhy=r=>(!F.br||r.br===F.br)&&whyOk(r);
-// البحث: رقم الهدية، المستلم وجواله، الكود، اللي سجّلها
 const sText=r=>[r.no,r.brn,r.to&&r.to.n,r.to&&r.to.ph,r.why,r.note,r.by&&r.by.n,...(Array.isArray(r.rows)?r.rows.map(x=>[x.k,x.c,x.z].join(" ")):[])].filter(Boolean).join(" ").toLowerCase();
 const sOk=r=>!F.q||sText(r).includes(F.q.toLowerCase());
-let VT="",VTu=false;// (من التصميم اللي قبله، مابقاش مستخدم)
+let VT="",VTu=false,PER="m0",SHOWN=30,FOPEN=false,SUMOPEN=false,TODOALL=false,ANIM=true;
+const ymd=d=>d.toLocaleDateString("en-CA");
+function setPer(p){
+ PER=p;const n=new Date(),y=n.getFullYear(),m=n.getMonth();
+ if(p==="m0"){F.from=ymd(new Date(y,m,1));F.to=today()}
+ else if(p==="m1"){F.from=ymd(new Date(y,m-1,1));F.to=ymd(new Date(y,m,0))}
+ else if(p==="m3"){F.from=ymd(new Date(y,m-2,1));F.to=today()}
+}
 function filtered(){
  const a=F.from?new Date(F.from+"T00:00:00").getTime():0,b=F.to?new Date(F.to+"T23:59:59").getTime():Infinity;
- return all().filter(r=>N(r.ts)>=a&&N(r.ts)<=b&&brWhy(r)&&(!F.st||r.st===F.st)).sort((x,y)=>N(y.ts)-N(x.ts));
+ return all().filter(r=>N(r.ts)>=a&&N(r.ts)<=b&&brWhy(r)&&(!F.st||(F.st==="ret"?waitRet(r):r.st===F.st))).sort((x,y)=>N(y.ts)-N(x.ts));
 }
 function queues(){
  return {
@@ -245,48 +307,66 @@ function queues(){
   set:canSettle()?all().filter(r=>r.st==="ok").sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)):null,
   ret:!X.noNew&&!X.view?all().filter(r=>canRet(r)).sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)):null};
 }
-const short=r=>{const R=Array.isArray(r.rows)?r.rows:[];return R.slice(0,2).map(x=>`<bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi> × ${N(x.q)}`).join("، ")+(R.length>2?` <span class="gx-more">+${R.length-2}</span>`:"")};
-const dShort=t=>new Date(N(t)).toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit"});
+const short=r=>{const R=Array.isArray(r.rows)?r.rows:[];return R.slice(0,2).map(x=>`<bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi> × ${N(x.q)}`).join("، ")+(R.length>2?` <span style="font-weight:800">+${R.length-2}</span>`:"")};
 const tShort=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-// المطلوب في سطر "مطلوب منك"
-function todoAct(r,k){
- if(k==="ap")return `<span class="gx-need">⏳ اعتماد</span><button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`;
- if(k==="set")return `<span class="gx-need b">🧾 تسوية ${net(r)} قطعة${r.rb?" (صافي)":""}</span>${waitRet(r)?'<span class="gx-warn">↩️ لم ترجع بعد</span>':""}<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند في النظام"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تمت التسوية</button>`;
- return `<span class="gx-need w">↩️ عينة يجب أن ترجع</span><button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`;
+const av=r=>r.br==="WH"?`<span class="g4-av wh">🏭</span>`:`<span class="g4-av">${E(String(r.br||"").slice(0,3))}</span>`;
+const dayKey=t=>new Date(N(t)).toDateString();
+function dayLbl(t){const d=new Date(N(t)),n=new Date(),y=new Date(Date.now()-864e5);if(d.toDateString()===n.toDateString())return "اليوم";if(d.toDateString()===y.toDateString())return "أمس";
+ return d.toLocaleDateString("ar-EG-u-nu-latn",{weekday:"long",day:"numeric",month:"long"})}
+const ST4={pend:["⏳","بانتظار الاعتماد","w"],ok:["✅","معتمدة","ok"],set:["🧾","تمت التسوية","b"],no:["❌","مرفوضة","r"]};
+const stTag=r=>{const s=ST4[r.st]||ST4.pend;return `<span class="g4-st ${s[2]}">${s[0]} ${s[1]}</span>${r.rt===true&&!r.rb&&isAp(r)?'<span class="g4-st w">↩️ لم ترجع</span>':""}${r.rb?`<span class="g4-st ok">↩️ صافي ${net(r)}</span>`:""}`};
+// سطر في القايمة
+const line=(r,i)=>`<div class="g4-ln" data-gf="view" data-id="${E(r.id)}" data-s="${E(sText(r))}" ${sOk(r)?"":"hidden"} style="--i:${Math.min(i,12)}">
+ ${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${tShort(r.ts)}</small><small class="g4-it">${short(r)}</small></div>
+ <div class="g4-end"><b>${r.rb?net(r):N(r.pcs)}<small> قطعة</small></b><div class="g4-tags">${stTag(r)}</div></div>${r.img?`<button class="g4-clip" data-gf="img" data-id="${E(r.id)}" type="button" title="صورة السند">📎</button>`:""}</div>`;
+// كارت "مطلوب منك"
+function todoCard(r,k,i){
+ const act=k==="ap"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">رفض</button>`
+  :k==="set"?`<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)}</button>`
+  :`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`;
+ const tag=k==="ap"?'<span class="g4-st w">⏳ اعتماد</span>':k==="set"?`<span class="g4-st b">🧾 تسوية</span>${waitRet(r)?'<span class="g4-st w">↩️ لم ترجع بعد</span>':""}`:'<span class="g4-st w">↩️ عينة يجب أن ترجع</span>';
+ return `<div class="g4-td" data-gf="view" data-id="${E(r.id)}" style="--i:${i}">${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${r.rb?net(r):N(r.pcs)} قطعة</small><div class="g4-tags">${tag}</div></div><div class="g4-act" data-gf="noop">${act}</div></div>`;
 }
-const row=(r,act,it=true)=>`<tr class="gx-tr" data-gf="view" data-id="${E(r.id)}" data-s="${E(sText(r))}" ${sOk(r)?"":"hidden"}>
- <td><b>${dShort(r.ts)}</b><small>${tShort(r.ts)}</small></td>
- <td class="l"><b><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi></b><small><bdi dir="ltr">${E(r.no)}</bdi></small></td>
- <td class="l"><b>${E(r.to&&r.to.n||"")}</b>${r.to&&r.to.ph?`<small><bdi dir="ltr">${E(r.to.ph)}</bdi></small>`:""}</td>
- <td><span class="gx-why">${E(r.why||"")}</span></td>
-${it?` <td class="l gx-it">${short(r)}</td>`:""}
- <td class="gx-q"><b>${r.rb?net(r):N(r.pcs)}</b>${r.rb?`<small>من ${N(r.pcs)}</small>`:""}</td>
- <td class="gx-act" data-gf="noop">${act}${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button" title="صورة السند">📎</button>`:""}</td></tr>`;
-const stCell=r=>{const st=r.st||"pend";return `<span class="gf-st ${st}">${STL[st]||st}</span>${r.rt===true&&!r.rb&&isAp(r)?'<span class="gx-warn">↩️ لم ترجع</span>':""}${r.rb?`<span class="gx-ok">↩️ رجع ${retQ(r)}</span>`:""}`};
 const bars=(o,lbl)=>{const e=Object.entries(o).sort((a,b)=>b[1].p-a[1].p),mx=e.length?Math.max(1,e[0][1].p):1;
- return e.length?e.map(([k,v])=>`<div class="bar"><span style="direction:rtl"><bdi dir="ltr">${E(lbl(k))}</bdi></span><i style="width:${Math.max(4,v.p/mx*55)}%"></i><em>${fmt(v.p)} <small class="off">(${v.n})</small></em></div>`).join(""):'<div class="off">لا توجد هدايا معتمدة في الفترة</div>'};
+ return e.length?e.map(([k,v])=>`<div class="g4-bar"><span><bdi dir="ltr">${E(lbl(k))}</bdi></span><i><u style="width:${Math.max(3,v.p/mx*100)}%"></u></i><em>${fmt(v.p)}</em></div>`).join(""):'<div class="off">لا توجد هدايا معتمدة في الفترة</div>'};
 export function giftsView(){
  if(!X)return "";
- if(!F.from){F.from=new Date(Date.now()-30*D).toLocaleDateString("en-CA");F.to=today()}
- const Qs=queues(),rs=filtered(),ok=rs.filter(isAp),pcs=ok.reduce((s,r)=>s+net(r),0);
+ if(!F.from)setPer("m0");
+ const Qs=queues(),rs=filtered(),vis=rs.filter(sOk);
+ const inP=all().filter(r=>{const a=new Date(F.from+"T00:00:00").getTime(),b=new Date(F.to+"T23:59:59").getTime();return N(r.ts)>=a&&N(r.ts)<=b&&brWhy(r)});
+ const ok=inP.filter(isAp),pcs=ok.reduce((s,r)=>s+net(r),0);
  const nAp=all().filter(r=>r.st==="pend").length,nSet=all().filter(r=>r.st==="ok").length,nRet=all().filter(waitRet).length;
  const todo=[...(Qs.ap||[]).map(r=>[r,"ap"]),...(Qs.set||[]).map(r=>[r,"set"]),...(Qs.ret||[]).map(r=>[r,"ret"])].filter(([r])=>brWhy(r));
- const hasTodo=Qs.ap||Qs.set||Qs.ret;
  const per={},pw={};ok.forEach(r=>{(per[r.br]=per[r.br]||{n:0,p:0}).n++;per[r.br].p+=net(r);const w=WHY.includes(r.why)?r.why:"أخرى";(pw[w]=pw[w]||{n:0,p:0}).n++;pw[w].p+=net(r)});
  const brs=[...new Set(all().map(r=>r.br))].sort();
- const k=(l,v,c)=>`<div${c?` class="${c}"`:""}><small>${l}</small><b style="font-size:22px">${v}</b></div>`;
- return `<div class="bal gx-bal"><div><small>صافي القطع المعتمدة في الفترة</small><b>${fmt(pcs)}</b></div>${k("هدايا في الفترة",rs.length)}${accOnly()?"":k("⏳ بانتظار الاعتماد",nAp,nAp?"w":"")}${k("🧾 بانتظار التسوية",nSet,nSet?"w":"")}${accOnly()?"":k("↩️ عينات لم ترجع",nRet,nRet?"w":"")}</div>
- <div class="fl">${!X.noNew&&!X.view?`<button class="bt p" data-gf="new" type="button">🎁 تسجيل هدية / عينة من المستودع</button>`:""}<button class="bt" data-gf="print" type="button">🖨 تقرير PDF</button><button class="bt" data-gf="csv" type="button">⬇️ ملف إكسل</button></div>
- ${hasTodo?`<div class="pan gx-todo"><h3>📌 مطلوب منك${todo.length?` <span class="gx-n">${todo.length}</span>`:""}</h3>${todo.length?`<div class="tw"><table><thead><tr><th>التاريخ</th><th>الفرع / الرقم</th><th>المستلم</th><th>البند</th><th>قطع</th><th>المطلوب</th></tr></thead><tbody>${todo.map(([r,kd])=>row(r,todoAct(r,kd),false)).join("")}</tbody></table></div>`:'<div class="gx-done">👌 لا يوجد شيء بانتظارك الآن</div>'}</div>`:""}
- <div class="row2"><div class="pan"><h3>المعتمد حسب البند <small class="off">(قطع صافي)</small></h3>${bars(pw,w=>w)}</div><div class="pan"><h3>المعتمد حسب الفرع <small class="off">(قطع صافي)</small></h3>${bars(per,brName)}</div></div>
- <div class="pan"><div class="fl" style="margin:0 0 10px"><h3 style="margin:0">📋 سجل الهدايا</h3><span class="off" style="margin-inline-start:auto">${rs.length} في الفترة</span></div>
- <div class="gx-f"><div class="gx-q"><small>بحث</small><input type="search" id="gx-q" value="${E(F.q||"")}" placeholder="رقم، مستلم، جوال، كود..."></div>
- <div><small>من</small><input type="date" id="gx-from" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gx-to" value="${E(F.to)}"></div>
- <div><small>الفرع</small><select id="gx-br"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
- <div><small>الحالة</small><select id="gx-st"><option value="">كل الحالات</option>${Object.entries(STL).filter(([s])=>!accOnly()||s==="ok"||s==="set").map(([s,v])=>`<option value="${s}" ${F.st===s?"selected":""}>${v}</option>`).join("")}</select></div>
- <div><small>البند</small><select id="gx-why"><option value="">كل البنود</option>${WHY.map(w=>`<option ${F.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div></div>
- <div class="tw"><table><thead><tr><th>التاريخ</th><th>الفرع / الرقم</th><th>المستلم</th><th>البند</th><th class="gx-ith">الأصناف</th><th>قطع</th><th>الحالة</th></tr></thead><tbody>${rs.length?rs.map(r=>row(r,stCell(r))).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:26px">لا توجد هدايا في هذه الفترة</td></tr>'}</tbody></table></div>
- <p class="off" style="font-size:13px;margin:8px 0 0">اضغط على أي سطر لفتح سند الهدية كاملاً (الأصناف، المستلم، الاعتماد، التسوية) وطباعته.</p></div>`;
+ const kpi=(ic,v,l,st,c)=>`<button type="button" class="g4-k ${c}${F.st===st?" on":""}" data-gf="kst" data-id="${st}"><span class="ic">${ic}</span><span><b data-count="${N(String(v).replace(/,/g,""))}">${v}</b><small>${l}</small></span></button>`;
+ const pers=[["m0","هذا الشهر"],["m1","الشهر الماضي"],["m3","آخر 3 شهور"],["c","فترة أخرى"]];
+ const chips=[["","الكل"],["pend","⏳ بانتظار"],["ok","✅ معتمدة"],["set","🧾 مسوّاة"],["no","❌ مرفوضة"]].filter(([s])=>!accOnly()||s===""||s==="ok"||s==="set");
+ // القايمة مقسومة بالأيام، وأول SHOWN بس
+ let lastD="",i=0;const list=vis.slice(0,SHOWN).map(r=>{const k=dayKey(r.ts),h=k!==lastD?`<div class="g4-day">${E(dayLbl(r.ts))}</div>`:"";lastD=k;return h+line(r,i++)}).join("");
+ const out=`<div class="g4 ${ANIM?"anim":""}">
+ <div class="g4-hd"><div><h2>🎁 الهدايا والعينات</h2><div class="g4-per">${pers.map(([p,l])=>`<button type="button" class="${PER===p?"on":""}" data-gf="per" data-id="${p}">${l}</button>`).join("")}</div></div>
+ <div class="g4-hb">${!X.noNew&&!X.view?`<button class="bt p" data-gf="new" type="button">＋ هدية / عينة</button>`:""}<button class="bt" data-gf="print" type="button" title="تقرير PDF">🖨</button><button class="bt" data-gf="csv" type="button" title="ملف إكسل">⬇️</button></div></div>
+ <div class="g4-ks">${kpi("🎁",fmt(pcs),`قطعة معتمدة · ${ok.length} هدية`,"ok","g")}${accOnly()?"":kpi("⏳",nAp,"بانتظار الاعتماد","pend",nAp?"w":"")}${kpi("🧾",nSet,"بانتظار التسوية","ok",nSet?"b":"")}${accOnly()?"":kpi("↩️",nRet,"عينات لم ترجع","ret",nRet?"o":"")}</div>
+ ${todo.length?`<div class="g4-box g4-todo"><div class="g4-bh"><h3>📥 مطلوب منك <span class="g4-n">${todo.length}</span></h3>${todo.length>4?`<button type="button" class="g4-lnk" data-gf="todoall">${TODOALL?"عرض أقل":"عرض الكل"}</button>`:""}</div>${(TODOALL?todo:todo.slice(0,4)).map(([r,k],j)=>todoCard(r,k,j)).join("")}</div>`:""}
+ <div class="g4-box"><div class="g4-bar1"><div class="g4-search"><span>🔍</span><input type="search" id="gx-q" value="${E(F.q||"")}" placeholder="ابحث برقم الهدية أو المستلم أو الجوال أو الكود..."></div><button type="button" class="g4-fbtn ${FOPEN||F.br||F.why?"on":""}" data-gf="fopen">⚙️ فلاتر${F.br||F.why?" •":""}</button></div>
+ <div class="g4-chips">${chips.map(([s,l])=>`<button type="button" class="${(F.st||"")===s?"on":""}" data-gf="kst" data-id="${s}">${l}</button>`).join("")}</div>
+ ${FOPEN||PER==="c"?`<div class="g4-adv"><label><small>الفرع</small><select id="gx-br"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></label>
+ <label><small>البند</small><select id="gx-why"><option value="">كل البنود</option>${WHY.map(w=>`<option ${F.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></label>
+ <label><small>من</small><input type="date" id="gx-from" value="${E(F.from)}"></label><label><small>إلى</small><input type="date" id="gx-to" value="${E(F.to)}"></label></div>`:""}
+ <div class="g4-cnt">${vis.length} هدية${F.st||F.br||F.why||F.q?" (مفلترة)":""}</div>
+ ${vis.length?`<div class="g4-list">${list}</div>${vis.length>SHOWN?`<button type="button" class="g4-more" data-gf="more">عرض المزيد (${vis.length-SHOWN})</button>`:""}`:`<div class="g4-empty"><span>🎁</span>${F.st||F.q||F.br||F.why?"لا توجد هدايا بهذه الفلاتر":"لا توجد هدايا في هذه الفترة"}</div>`}</div>
+ <div class="g4-box"><button type="button" class="g4-sumh" data-gf="sumopen">📊 الملخص: المعتمد لكل بند ولكل فرع <span>${SUMOPEN?"▲":"▼"}</span></button>
+ ${SUMOPEN?`<div class="g4-sum"><div><h4>حسب البند</h4>${bars(pw,w=>w)}</div><div><h4>حسب الفرع</h4>${bars(per,brName)}</div></div>`:""}</div></div>`;
+ if(ANIM)setTimeout(countUp,30);
+ ANIM=false;
+ return out;
+}
+// الأرقام بتعد لحد قيمتها أول مرة بس (مش مع كل تحديث، علشان ماتبقاش مزعجة)
+function countUp(){
+ if(matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+ document.querySelectorAll(".g4-k b[data-count]").forEach(b=>{const to=N(b.dataset.count);if(to<2)return;const t0=performance.now(),d=700;
+  const st=t=>{const k=Math.min(1,(t-t0)/d),e=1-Math.pow(1-k,3);b.textContent=fmt(Math.round(to*e));if(k<1)requestAnimationFrame(st)};requestAnimationFrame(st)});
 }
 // لو الفترة أقدم من اللي بيتسمع لايف: نحمّلها مرة واحدة
 async function ensureRange(){
@@ -473,6 +553,12 @@ async function click(e){
  const t=e.target.closest("[data-gf]");if(!t||!X)return;const a=t.dataset.gf,id=t.dataset.id;
  if(a==="noop")return;
  if(a==="vt"){VT=id;VTu=true;if(X.redraw)X.redraw();return}
+ if(a==="per"){if(id==="c"){PER="c";FOPEN=true}else setPer(id);SHOWN=30;ensureRange().then(()=>X.redraw());return}
+ if(a==="kst"){F.st=F.st===id?"":id;SHOWN=30;X.redraw();return}
+ if(a==="fopen"){FOPEN=!FOPEN;X.redraw();return}
+ if(a==="todoall"){TODOALL=!TODOALL;X.redraw();return}
+ if(a==="more"){SHOWN+=50;X.redraw();return}
+ if(a==="sumopen"){SUMOPEN=!SUMOPEN;X.redraw();return}
  if(a==="bopen")return void openBranch();
  if(a==="close")return void closeM();
  if(a==="new")return void form(null);
@@ -496,12 +582,14 @@ async function click(e){
 }
 function change(e){
  const id=e.target&&e.target.id;if(!X||!["gx-from","gx-to","gx-br","gx-st","gx-why"].includes(id))return;
- const v=e.target.value;if(id==="gx-from")F.from=v;if(id==="gx-to")F.to=v;if(id==="gx-br")F.br=v;if(id==="gx-st")F.st=v;if(id==="gx-why")F.why=v;
+ const v=e.target.value;SHOWN=30;if(id==="gx-from"||id==="gx-to")PER="c";if(id==="gx-from")F.from=v;if(id==="gx-to")F.to=v;if(id==="gx-br")F.br=v;if(id==="gx-st")F.st=v;if(id==="gx-why")F.why=v;
  if(F.from&&F.to&&F.from>F.to)[F.from,F.to]=[F.to,F.from];
  ensureRange().then(()=>X.redraw());
 }
 // البحث بيخفي ويظهر السطور على طول (من غير إعادة رسم، علشان الكتابة ماتتقطعش)
 function input(e){
  if(!X||!e.target||e.target.id!=="gx-q")return;F.q=e.target.value.trim();const q=F.q.toLowerCase();
- document.querySelectorAll(".gx-ln[data-s],.gx-tr[data-s]").forEach(el=>{el.hidden=!!q&&!el.dataset.s.includes(q)});
+ document.querySelectorAll(".gx-ln[data-s],.gx-tr[data-s],.g4-ln[data-s]").forEach(el=>{el.hidden=!!q&&!el.dataset.s.includes(q)});
+ document.querySelectorAll(".g4-day").forEach(d=>{let n=d.nextElementSibling,any=false;while(n&&!n.classList.contains("g4-day")){if(!n.hidden)any=true;n=n.nextElementSibling}d.hidden=!any});
+ const c=document.querySelector(".g4-cnt");if(c)c.textContent=document.querySelectorAll(".g4-ln:not([hidden])").length+" هدية"+(q?" (مفلترة)":"");
 }
