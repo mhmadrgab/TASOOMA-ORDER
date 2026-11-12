@@ -104,6 +104,21 @@ const CSS=`
 #gfm .bt{font:inherit;font-weight:700;border-radius:12px;padding:10px 16px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}#gfm .bt.s{padding:6px 12px;font-size:13.5px}
 #gfm .bt.p{background:#1b1b1b;border-color:#1b1b1b;color:#fff}#gfm .bt.g{background:#d4ae5c;border-color:#d4ae5c;color:#1b1b1b}#gfm .bt.r{color:#c4362b;border-color:#c4362b}#gfm .bt:disabled{opacity:.6}
 @media print{.gfm{display:none!important}}
+/* ===== التصميم التالت (على نفس ستايل العهدة) ===== */
+.gx-bal{gap:22px}.gx-bal>div.w b{color:#f6c770}
+.row2 .bar em{white-space:nowrap}.row2 .bar span{min-width:90px}.gx-todo{margin-bottom:16px;border:1.5px solid #e9c977}.gx-todo h3{display:flex;align-items:center;gap:8px}
+.gx-n{background:#c4362b;color:#fff;border-radius:999px;font-size:13px;padding:1px 9px}
+.gx-done{text-align:center;color:var(--mut);padding:14px;font-size:15px}
+.pan .gx-f{background:none;border:0;padding:0;grid-template-columns:1.6fr repeat(5,minmax(0,1fr))}
+tr.gx-tr{cursor:pointer}tr.gx-tr:hover td{background:rgba(212,174,92,.08)}
+tr.gx-tr td{vertical-align:middle}tr.gx-tr td b{display:block;font-size:14.5px}tr.gx-tr td small{display:block;color:var(--mut);font-size:12.5px}
+td.gx-it{font-size:13.5px;max-width:260px}td.gx-q{text-align:center}td.gx-q b{font-size:18px}
+td.gx-act{cursor:default}td.gx-act>*{vertical-align:middle;margin:2px}td.gx-it span,td.gx-it bdi{white-space:nowrap}td.gx-act input{width:170px;height:34px;padding:5px 9px;display:inline-block}
+.gx-need{display:inline-block;background:#f6edd2;color:#6b5314;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700}.gx-need.b{background:#dde9f7;color:#1c4f86}.gx-need.w{background:#fff1d6;color:#8a5a00}
+@media (max-width:1100px){th.gx-ith,td.gx-it{display:none}.pan .gx-f{grid-template-columns:repeat(2,minmax(0,1fr))}.pan .gx-f .gx-q{grid-column:1/-1}}
+@media (max-width:760px){.row2{grid-template-columns:1fr}.gx-bal{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gx-bal>div:first-child{grid-column:1/-1}.gx-bal small{display:block}.gx-bal b{display:block}td.gx-act input{width:140px}}
+@media (prefers-color-scheme:dark){.gx-need{background:#3a3115;color:#e8cf8a}.gx-need.b{background:#14243a;color:#9cc4f0}.gx-need.w{background:#3a2a08;color:#f6c770}.gx-todo{border-color:#6b5226}}
+
 /* ===== تبويب المستودع الجديد (أقسام + سطور مضغوطة) ===== */
 .gx-hd{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px}.gx-hd h2{margin:0}.gx-hd small{color:var(--mut);font-size:13px}.gx-hd>.bt{margin-inline-start:auto;width:auto}
 .gx-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;border-bottom:2px solid var(--line);padding-bottom:0}
@@ -207,19 +222,19 @@ function card(r,wh,setUi){// setUi = خانة مرجع السند (في قسم "
  ${wh&&canApprove()&&st==="pend"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${isOwner()?`<button class="bt s" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt s" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}</div></div>`;
 }
-// ---------- تبويب المستودع (إعادة هيكلة 12 نوفمبر 2026، شكوى المديرين: "ملخبط، وحاجات بتتكرر") ----------
-// قبل: كل حاجة في صفحة واحدة طويلة، ونفس الهدية بتظهر مرتين وتلاتة (بانتظار اعتمادك + بانتظار التسوية + كل الهدايا)، وكروت كبيرة.
-// دلوقتي: أقسام (تبويبات) — كل هدية في قسم واحد بس حسب المطلوب فيها، وكل واحد بيشوف الأقسام اللي تخصّه:
-//   ⏳ بانتظار الاعتماد (مدير التسويق / اعتماد الهدايا) · 🧾 بانتظار التسوية (المحاسب والمديرين) · ↩️ عينات لم ترجع (المستودع)
-//   📋 السجل (كل الهدايا بفلاتر) · 📊 الملخّص (لكل فرع ولكل بند + PDF وإكسل)
-// القايمة بقت سطور مضغوطة (الضغط على السطر يفتح سند الهدية كامل)، والإجراء (اعتماد/تسوية/رجوع) في نفس السطر.
+// ---------- تبويب المستودع (التصميم التالت، 12 نوفمبر 2026: "عايزه أحسن مديول، العهدة أحلى منه ومرتّبة") ----------
+// نفس لغة تبويب العهدة اللي محمد بيحبها: كارت أسود فوق بالأرقام المهمة ← أزرار ← "مطلوب منك" ← لوحتين بالأعمدة ← جدول واحد نضيف.
+//   1) الكارت الأسود: صافي القطع المعتمدة في الفترة + عدد الهدايا + اللي مستني (اعتماد / تسوية / عينات)
+//   2) 📌 مطلوب منك: جدول واحد فيه كل اللي مستني إجراء منك انت بس (اعتماد، تسوية، رجوع عينة)، والإجراء في نفس السطر
+//   3) المعتمد لكل فرع ولكل بند (أعمدة زي "المصروفات حسب البند" في العهدة)
+//   4) سجل الهدايا: جدول واحد بالفلاتر فوقه، والضغط على السطر يفتح السند كامل
 // البند (نوع الهدية): "أخرى" بتشمل أي سبب مش من القايمة
 const whyOk=r=>!F.why||(F.why==="أخرى"?(r.why==="أخرى"||!WHY.includes(r.why)):r.why===F.why);
 const brWhy=r=>(!F.br||r.br===F.br)&&whyOk(r);
 // البحث: رقم الهدية، المستلم وجواله، الكود، اللي سجّلها
 const sText=r=>[r.no,r.brn,r.to&&r.to.n,r.to&&r.to.ph,r.why,r.note,r.by&&r.by.n,...(Array.isArray(r.rows)?r.rows.map(x=>[x.k,x.c,x.z].join(" ")):[])].filter(Boolean).join(" ").toLowerCase();
 const sOk=r=>!F.q||sText(r).includes(F.q.toLowerCase());
-let VT="",VTu=false;// القسم المفتوح، وهل المستخدم اختاره بنفسه
+let VT="",VTu=false;// (من التصميم اللي قبله، مابقاش مستخدم)
 function filtered(){
  const a=F.from?new Date(F.from+"T00:00:00").getTime():0,b=F.to?new Date(F.to+"T23:59:59").getTime():Infinity;
  return all().filter(r=>N(r.ts)>=a&&N(r.ts)<=b&&brWhy(r)&&(!F.st||r.st===F.st)).sort((x,y)=>N(y.ts)-N(x.ts));
@@ -230,56 +245,48 @@ function queues(){
   set:canSettle()?all().filter(r=>r.st==="ok").sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)):null,
   ret:!X.noNew&&!X.view?all().filter(r=>canRet(r)).sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)):null};
 }
-const short=r=>{const R=Array.isArray(r.rows)?r.rows:[];return R.slice(0,2).map(x=>`<bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi>×${N(x.q)}`).join(" · ")+(R.length>2?` <span class="gx-more">+${R.length-2}</span>`:"")};
-// سطر واحد للهدية. kind = القسم (علشان الإجراء المناسب يظهر في السطر)
-function line(r,kind){
- const st=r.st||"pend",t=new Date(N(r.ts));
- const acts=kind==="ap"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`
-  :kind==="set"?`${waitRet(r)?'<span class="gx-warn">↩️ لم ترجع بعد</span>':""}<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند في النظام"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)}</button>`
-  :kind==="ret"?`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`
-  :`<span class="gf-st ${st}">${STL[st]||st}</span>${r.rt===true&&!r.rb&&isAp(r)?'<span class="gx-warn">↩️ لم ترجع</span>':""}${r.rb?`<span class="gx-ok">↩️ صافي ${net(r)}</span>`:""}`;
- return `<div class="gx-ln ${kind==="all"?"st-"+st:""}" data-gf="view" data-id="${E(r.id)}" data-s="${E(sText(r))}" ${sOk(r)?"":"hidden"}>
- <div class="gx-c1"><b>${t.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit"})}</b><small>${t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</small></div>
- <div class="gx-c2"><b><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi></b><small><bdi dir="ltr">${E(r.no)}</bdi></small></div>
- <div class="gx-c3"><b>👤 ${E(r.to&&r.to.n||"")}</b><small><span class="gx-why">${E(r.why||"")}</span> ${short(r)}</small></div>
- <div class="gx-c4"><b>${kind==="set"&&r.rb?net(r):N(r.pcs)}</b><small>${kind==="set"&&r.rb?"صافي":"قطعة"}</small></div>
- <div class="gx-c5" data-gf="noop">${acts}${r.img?`<button class="bt s gx-ic" data-gf="img" data-id="${E(r.id)}" type="button" title="صورة السند">📎</button>`:""}</div></div>`;
+const short=r=>{const R=Array.isArray(r.rows)?r.rows:[];return R.slice(0,2).map(x=>`<bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi> × ${N(x.q)}`).join("، ")+(R.length>2?` <span class="gx-more">+${R.length-2}</span>`:"")};
+const dShort=t=>new Date(N(t)).toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit"});
+const tShort=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+// المطلوب في سطر "مطلوب منك"
+function todoAct(r,k){
+ if(k==="ap")return `<span class="gx-need">⏳ اعتماد</span><button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`;
+ if(k==="set")return `<span class="gx-need b">🧾 تسوية ${net(r)} قطعة${r.rb?" (صافي)":""}</span>${waitRet(r)?'<span class="gx-warn">↩️ لم ترجع بعد</span>':""}<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند في النظام"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تمت التسوية</button>`;
+ return `<span class="gx-need w">↩️ عينة يجب أن ترجع</span><button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`;
 }
-const empty=t=>`<div class="gx-empty">${t}</div>`;
+const row=(r,act,it=true)=>`<tr class="gx-tr" data-gf="view" data-id="${E(r.id)}" data-s="${E(sText(r))}" ${sOk(r)?"":"hidden"}>
+ <td><b>${dShort(r.ts)}</b><small>${tShort(r.ts)}</small></td>
+ <td class="l"><b><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi></b><small><bdi dir="ltr">${E(r.no)}</bdi></small></td>
+ <td class="l"><b>${E(r.to&&r.to.n||"")}</b>${r.to&&r.to.ph?`<small><bdi dir="ltr">${E(r.to.ph)}</bdi></small>`:""}</td>
+ <td><span class="gx-why">${E(r.why||"")}</span></td>
+${it?` <td class="l gx-it">${short(r)}</td>`:""}
+ <td class="gx-q"><b>${r.rb?net(r):N(r.pcs)}</b>${r.rb?`<small>من ${N(r.pcs)}</small>`:""}</td>
+ <td class="gx-act" data-gf="noop">${act}${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button" title="صورة السند">📎</button>`:""}</td></tr>`;
+const stCell=r=>{const st=r.st||"pend";return `<span class="gf-st ${st}">${STL[st]||st}</span>${r.rt===true&&!r.rb&&isAp(r)?'<span class="gx-warn">↩️ لم ترجع</span>':""}${r.rb?`<span class="gx-ok">↩️ رجع ${retQ(r)}</span>`:""}`};
+const bars=(o,lbl)=>{const e=Object.entries(o).sort((a,b)=>b[1].p-a[1].p),mx=e.length?Math.max(1,e[0][1].p):1;
+ return e.length?e.map(([k,v])=>`<div class="bar"><span style="direction:rtl"><bdi dir="ltr">${E(lbl(k))}</bdi></span><i style="width:${Math.max(4,v.p/mx*55)}%"></i><em>${fmt(v.p)} <small class="off">(${v.n})</small></em></div>`).join(""):'<div class="off">لا توجد هدايا معتمدة في الفترة</div>'};
 export function giftsView(){
  if(!X)return "";
  if(!F.from){F.from=new Date(Date.now()-30*D).toLocaleDateString("en-CA");F.to=today()}
- const Qs=queues(),fq=a=>(a||[]).filter(brWhy);
- const TABS=[["ap","⏳ بانتظار الاعتماد",Qs.ap],["set","🧾 بانتظار التسوية",Qs.set],["ret","↩️ عينات لم ترجع",Qs.ret],["all","📋 السجل",[]],["sum","📊 الملخّص",[]]].filter(t=>t[2]!==null);
- // لحد ما المستخدم يختار قسم بنفسه: بنفتح أول قسم فيه شغل (البيانات بتوصل بعد أول رسمة، فبنعيد الاختيار)
- if(!VTu||!TABS.some(t=>t[0]===VT))VT=(TABS.find(t=>t[2]&&t[2].length&&t[0]!=="all"&&t[0]!=="sum")||["all"])[0];
- const q=VT==="ap"||VT==="set"||VT==="ret",rs=q?fq(Qs[VT]):filtered();
+ const Qs=queues(),rs=filtered(),ok=rs.filter(isAp),pcs=ok.reduce((s,r)=>s+net(r),0);
+ const nAp=all().filter(r=>r.st==="pend").length,nSet=all().filter(r=>r.st==="ok").length,nRet=all().filter(waitRet).length;
+ const todo=[...(Qs.ap||[]).map(r=>[r,"ap"]),...(Qs.set||[]).map(r=>[r,"set"]),...(Qs.ret||[]).map(r=>[r,"ret"])].filter(([r])=>brWhy(r));
+ const hasTodo=Qs.ap||Qs.set||Qs.ret;
+ const per={},pw={};ok.forEach(r=>{(per[r.br]=per[r.br]||{n:0,p:0}).n++;per[r.br].p+=net(r);const w=WHY.includes(r.why)?r.why:"أخرى";(pw[w]=pw[w]||{n:0,p:0}).n++;pw[w].p+=net(r)});
  const brs=[...new Set(all().map(r=>r.br))].sort();
- const head=`<div class="gx-hd"><div><h2>🎁 الهدايا والعينات</h2><small>${accOnly()?"المعتمد بانتظار التسوية والمسوّى":"تسجيل ← اعتماد مدير التسويق ← (رجوع العينة) ← تسوية المحاسب"}</small></div>${!X.noNew&&!X.view?`<button class="bt g" data-gf="new" type="button">➕ هدية / عينة من المستودع</button>`:""}</div>`;
- const tabs=`<div class="gx-tabs" role="tablist">${TABS.map(([k,l,a])=>`<button type="button" role="tab" aria-selected="${VT===k}" class="${VT===k?"on":""}" data-gf="vt" data-id="${k}">${l}${a&&a.length&&k!=="all"&&k!=="sum"?` <i>${a.length}</i>`:""}</button>`).join("")}</div>`;
- const brSel=`<div><small>الفرع</small><select id="gx-br"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>`;
- const whySel=`<div><small>البند</small><select id="gx-why"><option value="">كل البنود</option>${WHY.map(w=>`<option ${F.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div>`;
- const dates=`<div><small>من</small><input type="date" id="gx-from" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gx-to" value="${E(F.to)}"></div>`;
- const stSel=`<div><small>الحالة</small><select id="gx-st"><option value="">كل الحالات</option>${Object.entries(STL).filter(([k])=>!accOnly()||k==="ok"||k==="set").map(([k,v])=>`<option value="${k}" ${F.st===k?"selected":""}>${v}</option>`).join("")}</select></div>`;
- const search=`<div class="gx-q"><small>بحث</small><input type="search" id="gx-q" value="${E(F.q||"")}" placeholder="رقم، مستلم، جوال، كود..."></div>`;
- const outB=`<div class="gx-out"><button class="bt" data-gf="print" type="button">🖨 PDF</button><button class="bt" data-gf="csv" type="button">⬇️ إكسل</button></div>`;
- const filters=`<div class="gx-f ${q?"q":""}">${search}${brSel}${whySel}${q?"":dates+stSel+outB}</div>`;
- let body="";
- if(q){
-  const hint={ap:"الأقدم أولاً. اضغط على أي سطر لترى السند كاملاً قبل الاعتماد.",set:"بعد خصم الهدية من مخزون الفرع في النظام، اكتب مرجع السند واضغط تسوية (للعينة التي رجعت تُسوّى الصافي فقط).",ret:"عينات المستودع المعتمدة التي يجب أن ترجع. عند رجوعها اضغط \"رجعت العينة\" واكتب العدد."}[VT];
-  body=`<p class="gx-hint">${hint}</p>${rs.length?`<div class="gx-list">${rs.map(r=>line(r,VT)).join("")}</div>`:empty(VT==="ap"?"👌 لا توجد هدايا بانتظار الاعتماد":VT==="set"?"👌 لا توجد هدايا بانتظار التسوية":"👌 كل العينات رجعت")}`;
- }else if(VT==="all"){
-  body=`<div class="gx-cnt">${rs.length} هدية في الفترة</div>${rs.length?`<div class="gx-list">${rs.map(r=>line(r,"all")).join("")}</div>`:empty("لا توجد هدايا في هذه الفترة")}`;
- }else{
-  const ok=rs.filter(isAp),pcs=ok.reduce((s,r)=>s+net(r),0),per={},pw={};
-  rs.forEach(r=>{const o=per[r.br]=per[r.br]||{n:0,ok:0,p:0,pend:0,no:0};o.n++;if(isAp(r)){o.ok++;o.p+=net(r)}if(r.st==="pend")o.pend++;if(r.st==="no")o.no++});
-  ok.forEach(r=>{const k=WHY.includes(r.why)?r.why:"أخرى",o=pw[k]=pw[k]||{n:0,p:0};o.n++;o.p+=net(r)});
-  const k=(v,l,c)=>`<div class="gx-k ${c||""}"><b>${v}</b><small>${l}</small></div>`;
-  body=`<div class="gx-kp">${k(rs.length,"هدية في الفترة")}${k(ok.length,"معتمدة","ok")}${k(fmt(pcs),"قطعة صافي (معتمد)","ok")}${accOnly()?"":k(rs.filter(r=>r.st==="pend").length,"بانتظار الاعتماد","w")}${k(rs.filter(r=>r.st==="set").length,"تمت تسويتها","b")}${accOnly()?"":k(rs.filter(r=>r.st==="no").length,"مرفوضة","r")}</div>
-  <div class="gx-2"><div class="pan"><h3>لكل فرع</h3>${Object.keys(per).length?`<div class="tw"><table><thead><tr><th>الفرع</th><th>العدد</th><th>معتمد</th><th>قطع صافي</th>${accOnly()?"":"<th>بانتظار</th><th>مرفوض</th>"}</tr></thead><tbody>${Object.entries(per).sort((a,b)=>b[1].p-a[1].p).map(([c,v])=>`<tr><td class="l"><bdi dir="ltr">${E(brName(c))}</bdi></td><td>${v.n}</td><td>${v.ok}</td><td><b>${fmt(v.p)}</b></td>${accOnly()?"":`<td>${v.pend||"—"}</td><td>${v.no||"—"}</td>`}</tr>`).join("")}</tbody></table></div>`:empty("لا توجد بيانات")}</div>
-  <div class="pan"><h3>لكل بند (المعتمد)</h3>${Object.keys(pw).length?`<div class="tw"><table><thead><tr><th>البند</th><th>العدد</th><th>قطع صافي</th></tr></thead><tbody>${Object.entries(pw).sort((a,b)=>b[1].p-a[1].p).map(([w,v])=>`<tr><td class="l">${E(w)}</td><td>${v.n}</td><td><b>${fmt(v.p)}</b></td></tr>`).join("")}</tbody></table></div>`:empty("لا توجد بيانات")}</div></div>`;
- }
- return `${head}${tabs}${filters}${body}`;
+ const k=(l,v,c)=>`<div${c?` class="${c}"`:""}><small>${l}</small><b style="font-size:22px">${v}</b></div>`;
+ return `<div class="bal gx-bal"><div><small>صافي القطع المعتمدة في الفترة</small><b>${fmt(pcs)}</b></div>${k("هدايا في الفترة",rs.length)}${accOnly()?"":k("⏳ بانتظار الاعتماد",nAp,nAp?"w":"")}${k("🧾 بانتظار التسوية",nSet,nSet?"w":"")}${accOnly()?"":k("↩️ عينات لم ترجع",nRet,nRet?"w":"")}</div>
+ <div class="fl">${!X.noNew&&!X.view?`<button class="bt p" data-gf="new" type="button">🎁 تسجيل هدية / عينة من المستودع</button>`:""}<button class="bt" data-gf="print" type="button">🖨 تقرير PDF</button><button class="bt" data-gf="csv" type="button">⬇️ ملف إكسل</button></div>
+ ${hasTodo?`<div class="pan gx-todo"><h3>📌 مطلوب منك${todo.length?` <span class="gx-n">${todo.length}</span>`:""}</h3>${todo.length?`<div class="tw"><table><thead><tr><th>التاريخ</th><th>الفرع / الرقم</th><th>المستلم</th><th>البند</th><th>قطع</th><th>المطلوب</th></tr></thead><tbody>${todo.map(([r,kd])=>row(r,todoAct(r,kd),false)).join("")}</tbody></table></div>`:'<div class="gx-done">👌 لا يوجد شيء بانتظارك الآن</div>'}</div>`:""}
+ <div class="row2"><div class="pan"><h3>المعتمد حسب البند <small class="off">(قطع صافي)</small></h3>${bars(pw,w=>w)}</div><div class="pan"><h3>المعتمد حسب الفرع <small class="off">(قطع صافي)</small></h3>${bars(per,brName)}</div></div>
+ <div class="pan"><div class="fl" style="margin:0 0 10px"><h3 style="margin:0">📋 سجل الهدايا</h3><span class="off" style="margin-inline-start:auto">${rs.length} في الفترة</span></div>
+ <div class="gx-f"><div class="gx-q"><small>بحث</small><input type="search" id="gx-q" value="${E(F.q||"")}" placeholder="رقم، مستلم، جوال، كود..."></div>
+ <div><small>من</small><input type="date" id="gx-from" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gx-to" value="${E(F.to)}"></div>
+ <div><small>الفرع</small><select id="gx-br"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
+ <div><small>الحالة</small><select id="gx-st"><option value="">كل الحالات</option>${Object.entries(STL).filter(([s])=>!accOnly()||s==="ok"||s==="set").map(([s,v])=>`<option value="${s}" ${F.st===s?"selected":""}>${v}</option>`).join("")}</select></div>
+ <div><small>البند</small><select id="gx-why"><option value="">كل البنود</option>${WHY.map(w=>`<option ${F.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div></div>
+ <div class="tw"><table><thead><tr><th>التاريخ</th><th>الفرع / الرقم</th><th>المستلم</th><th>البند</th><th class="gx-ith">الأصناف</th><th>قطع</th><th>الحالة</th></tr></thead><tbody>${rs.length?rs.map(r=>row(r,stCell(r))).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:26px">لا توجد هدايا في هذه الفترة</td></tr>'}</tbody></table></div>
+ <p class="off" style="font-size:13px;margin:8px 0 0">اضغط على أي سطر لفتح سند الهدية كاملاً (الأصناف، المستلم، الاعتماد، التسوية) وطباعته.</p></div>`;
 }
 // لو الفترة أقدم من اللي بيتسمع لايف: نحمّلها مرة واحدة
 async function ensureRange(){
@@ -496,5 +503,5 @@ function change(e){
 // البحث بيخفي ويظهر السطور على طول (من غير إعادة رسم، علشان الكتابة ماتتقطعش)
 function input(e){
  if(!X||!e.target||e.target.id!=="gx-q")return;F.q=e.target.value.trim();const q=F.q.toLowerCase();
- document.querySelectorAll(".gx-ln[data-s]").forEach(el=>{el.hidden=!!q&&!el.dataset.s.includes(q)});
+ document.querySelectorAll(".gx-ln[data-s],.gx-tr[data-s]").forEach(el=>{el.hidden=!!q&&!el.dataset.s.includes(q)});
 }
