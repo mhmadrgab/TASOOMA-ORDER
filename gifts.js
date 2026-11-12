@@ -30,7 +30,7 @@ function retHtml(r){
 const ymOf=t=>new Date(N(t)).toLocaleDateString("en-CA").slice(0,7);
 const D=864e5,LIVE=31;// آخر 31 يوم بيتسمعوا لايف في المستودع (كانت 90: توفير قراءات نوفمبر 2026)، والأقدم بيتحمّل وقت التقرير
 let X=null,L=new Map(),LS=new Map(),PEND=new Map(),OLD=new Map(),MON=new Set(),un=[],bun=null,BL=[],img="",imgBusy=false,edit=null;
-let F={from:"",to:"",br:"",st:"",why:""};
+let F={from:"",to:"",br:"",st:"",why:"",q:""};
 const CSS=`
 .gfm{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.55);overflow:auto;padding:16px}.gfm.on{display:block}
 .gfk{max-width:680px;margin:3vh auto;background:var(--card);border-radius:18px;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
@@ -104,6 +104,37 @@ const CSS=`
 #gfm .bt{font:inherit;font-weight:700;border-radius:12px;padding:10px 16px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}#gfm .bt.s{padding:6px 12px;font-size:13.5px}
 #gfm .bt.p{background:#1b1b1b;border-color:#1b1b1b;color:#fff}#gfm .bt.g{background:#d4ae5c;border-color:#d4ae5c;color:#1b1b1b}#gfm .bt.r{color:#c4362b;border-color:#c4362b}#gfm .bt:disabled{opacity:.6}
 @media print{.gfm{display:none!important}}
+/* ===== تبويب المستودع الجديد (أقسام + سطور مضغوطة) ===== */
+.gx-hd{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px}.gx-hd h2{margin:0}.gx-hd small{color:var(--mut);font-size:13px}.gx-hd>.bt{margin-inline-start:auto;width:auto}
+.gx-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;border-bottom:2px solid var(--line);padding-bottom:0}
+.gx-tabs button{font:inherit;font-weight:700;font-size:14.5px;border:0;background:none;color:var(--mut);padding:10px 14px;border-radius:12px 12px 0 0;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+.gx-tabs button.on{color:var(--ink);border-bottom-color:#d4ae5c;background:var(--card)}
+.gx-tabs button i{font-style:normal;background:#c4362b;color:#fff;border-radius:999px;padding:0 8px;font-size:12px;margin-inline-start:4px}
+.gx-f{display:grid;grid-template-columns:1.4fr repeat(5,minmax(0,1fr)) auto;gap:10px;align-items:end;margin:0 0 12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.gx-f.q{grid-template-columns:2fr 1fr 1fr}
+.gx-f>div{display:flex;flex-direction:column;gap:4px;min-width:0}.gx-f small{color:var(--mut);font-size:12px;font-weight:700}
+.gx-f input,.gx-f select{width:100%;height:42px;margin:0}
+.gx-f .gx-out{flex-direction:row;gap:8px}.gx-f .gx-out .bt{height:42px;white-space:nowrap;margin:0;width:auto}
+@media (max-width:1100px){.gx-f{grid-template-columns:repeat(2,minmax(0,1fr))}.gx-f .gx-q,.gx-f .gx-out{grid-column:1/-1}.gx-f .gx-out .bt{flex:1}.gx-f.q{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.gx-hint{color:var(--mut);font-size:13.5px;margin:0 0 10px}.gx-cnt{color:var(--mut);font-size:13.5px;margin:0 0 8px;font-weight:700}
+.gx-list{background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.gx-ln{display:grid;grid-template-columns:70px minmax(120px,1.1fr) minmax(160px,2fr) 70px minmax(200px,auto);gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;border-inline-start:5px solid #d4ae5c}
+.gx-ln:last-child{border-bottom:0}.gx-ln:hover{background:rgba(212,174,92,.07)}
+.gx-ln.st-ok{border-inline-start-color:#2f8f3e}.gx-ln.st-set{border-inline-start-color:#2a78d6}.gx-ln.st-no{border-inline-start-color:#c4362b}
+.gx-ln b{display:block;font-size:14.5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gx-ln small{display:block;color:var(--mut);font-size:12.5px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-c4{text-align:center}.gx-c4 b{font-size:19px}
+.gx-c5{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end;cursor:default}.gx-c5 .bt{width:auto;margin:0}.gx-c5 input{width:170px;height:36px;margin:0;padding:6px 10px}
+.gx-why{display:inline-block;background:var(--soft);border-radius:7px;padding:0 7px;font-weight:700;color:var(--ink)}.gx-more{font-weight:700}
+.gx-warn{background:#fff1d6;color:#8a5a00;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700}.gx-ok{background:#e7f4ec;color:#1d5a24;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700}
+.gx-ic{padding:6px 9px!important}
+.gx-empty{background:var(--card);border-radius:16px;padding:28px;text-align:center;color:var(--mut);font-size:15px}
+.gx-kp{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:0 0 12px}.gx-k{background:var(--card);border-radius:14px;padding:12px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.06);border-top:4px solid var(--line)}
+.gx-k b{display:block;font-size:24px}.gx-k small{color:var(--mut);font-size:12.5px}.gx-k.ok{border-top-color:#2f8f3e}.gx-k.w{border-top-color:#d4ae5c}.gx-k.b{border-top-color:#2a78d6}.gx-k.r{border-top-color:#c4362b}
+.gx-2{display:grid;grid-template-columns:1.4fr 1fr;gap:12px}.gx-2 .pan h3{margin:0 0 8px}
+@media (max-width:900px){.gx-kp{grid-template-columns:repeat(3,minmax(0,1fr))}.gx-2{grid-template-columns:1fr}}
+@media (max-width:760px){.gx-ln{grid-template-columns:56px 1fr 56px;gap:4px 10px}.gx-c3{grid-column:2/4}.gx-c2{grid-column:2}.gx-c1{grid-row:1/3}.gx-c5{grid-column:1/-1;justify-content:flex-start}.gx-c5 input{flex:1;min-width:140px}.gx-tabs button{padding:8px 10px;font-size:13.5px}}
+@media (prefers-color-scheme:dark){.gx-warn{background:#3a2a08;color:#f6c770}.gx-ok{background:#173a1b;color:#8fd39a}}
+
 `;
 const all=()=>{const m=new Map([...OLD,...L,...LS,...PEND]);return [...m.values()]};
 const hm=t=>new Date(N(t)).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
@@ -135,9 +166,9 @@ export function initGifts(ctx){
    un.push(onSnapshot(query(collection(X.db,"gifts"),where("st","==","ok")),sn=>{LS=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},()=>{}));
   }
  }
- if(!window.__gfc){window.__gfc=1;document.addEventListener("click",click);document.addEventListener("change",change)}
+ if(!window.__gfc){window.__gfc=1;document.addEventListener("click",click);document.addEventListener("change",change);document.addEventListener("input",input)}
 }
-export function stopGifts(){un.forEach(f=>f());un=[];if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MON=new Set();closeM()}
+export function stopGifts(){un.forEach(f=>f());un=[];VT="";VTu=false;if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MON=new Set();closeM()}
 export const pendingCount=()=>PEND.size;
 // للتقرير الأسبوعي (short.js): الهدايا من تاريخ معيّن، والصافي
 export const giftsSince=t=>all().filter(r=>N(r.ts)>=t);
@@ -176,37 +207,79 @@ function card(r,wh,setUi){// setUi = خانة مرجع السند (في قسم "
  ${wh&&canApprove()&&st==="pend"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${isOwner()?`<button class="bt s" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt s" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}</div></div>`;
 }
-// ---------- تبويب المستودع ----------
-// البند (نوفمبر 2026، طلب محمد): نوع الهدية. "أخرى" بتشمل أي سبب مش من القايمة
+// ---------- تبويب المستودع (إعادة هيكلة 12 نوفمبر 2026، شكوى المديرين: "ملخبط، وحاجات بتتكرر") ----------
+// قبل: كل حاجة في صفحة واحدة طويلة، ونفس الهدية بتظهر مرتين وتلاتة (بانتظار اعتمادك + بانتظار التسوية + كل الهدايا)، وكروت كبيرة.
+// دلوقتي: أقسام (تبويبات) — كل هدية في قسم واحد بس حسب المطلوب فيها، وكل واحد بيشوف الأقسام اللي تخصّه:
+//   ⏳ بانتظار الاعتماد (مدير التسويق / اعتماد الهدايا) · 🧾 بانتظار التسوية (المحاسب والمديرين) · ↩️ عينات لم ترجع (المستودع)
+//   📋 السجل (كل الهدايا بفلاتر) · 📊 الملخّص (لكل فرع ولكل بند + PDF وإكسل)
+// القايمة بقت سطور مضغوطة (الضغط على السطر يفتح سند الهدية كامل)، والإجراء (اعتماد/تسوية/رجوع) في نفس السطر.
+// البند (نوع الهدية): "أخرى" بتشمل أي سبب مش من القايمة
 const whyOk=r=>!F.why||(F.why==="أخرى"?(r.why==="أخرى"||!WHY.includes(r.why)):r.why===F.why);
-// الفرع والبند بيتطبّقوا كمان على "بانتظار اعتمادك" و"بانتظار التسوية" و"العينات" (المدير يضيّق الطابور بسرعة)
 const brWhy=r=>(!F.br||r.br===F.br)&&whyOk(r);
+// البحث: رقم الهدية، المستلم وجواله، الكود، اللي سجّلها
+const sText=r=>[r.no,r.brn,r.to&&r.to.n,r.to&&r.to.ph,r.why,r.note,r.by&&r.by.n,...(Array.isArray(r.rows)?r.rows.map(x=>[x.k,x.c,x.z].join(" ")):[])].filter(Boolean).join(" ").toLowerCase();
+const sOk=r=>!F.q||sText(r).includes(F.q.toLowerCase());
+let VT="",VTu=false;// القسم المفتوح، وهل المستخدم اختاره بنفسه
 function filtered(){
  const a=F.from?new Date(F.from+"T00:00:00").getTime():0,b=F.to?new Date(F.to+"T23:59:59").getTime():Infinity;
  return all().filter(r=>N(r.ts)>=a&&N(r.ts)<=b&&brWhy(r)&&(!F.st||r.st===F.st)).sort((x,y)=>N(y.ts)-N(x.ts));
 }
+function queues(){
+ return {
+  ap:canApprove()?[...PEND.values()].sort((a,b)=>N(a.ts)-N(b.ts)):null,
+  set:canSettle()?all().filter(r=>r.st==="ok").sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)):null,
+  ret:!X.noNew&&!X.view?all().filter(r=>canRet(r)).sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)):null};
+}
+const short=r=>{const R=Array.isArray(r.rows)?r.rows:[];return R.slice(0,2).map(x=>`<bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi>×${N(x.q)}`).join(" · ")+(R.length>2?` <span class="gx-more">+${R.length-2}</span>`:"")};
+// سطر واحد للهدية. kind = القسم (علشان الإجراء المناسب يظهر في السطر)
+function line(r,kind){
+ const st=r.st||"pend",t=new Date(N(r.ts));
+ const acts=kind==="ap"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`
+  :kind==="set"?`${waitRet(r)?'<span class="gx-warn">↩️ لم ترجع بعد</span>':""}<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند في النظام"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)}</button>`
+  :kind==="ret"?`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`
+  :`<span class="gf-st ${st}">${STL[st]||st}</span>${r.rt===true&&!r.rb&&isAp(r)?'<span class="gx-warn">↩️ لم ترجع</span>':""}${r.rb?`<span class="gx-ok">↩️ صافي ${net(r)}</span>`:""}`;
+ return `<div class="gx-ln ${kind==="all"?"st-"+st:""}" data-gf="view" data-id="${E(r.id)}" data-s="${E(sText(r))}" ${sOk(r)?"":"hidden"}>
+ <div class="gx-c1"><b>${t.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit"})}</b><small>${t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</small></div>
+ <div class="gx-c2"><b><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi></b><small><bdi dir="ltr">${E(r.no)}</bdi></small></div>
+ <div class="gx-c3"><b>👤 ${E(r.to&&r.to.n||"")}</b><small><span class="gx-why">${E(r.why||"")}</span> ${short(r)}</small></div>
+ <div class="gx-c4"><b>${kind==="set"&&r.rb?net(r):N(r.pcs)}</b><small>${kind==="set"&&r.rb?"صافي":"قطعة"}</small></div>
+ <div class="gx-c5" data-gf="noop">${acts}${r.img?`<button class="bt s gx-ic" data-gf="img" data-id="${E(r.id)}" type="button" title="صورة السند">📎</button>`:""}</div></div>`;
+}
+const empty=t=>`<div class="gx-empty">${t}</div>`;
 export function giftsView(){
  if(!X)return "";
  if(!F.from){F.from=new Date(Date.now()-30*D).toLocaleDateString("en-CA");F.to=today()}
- const rs=filtered(),pend=canApprove()?[...PEND.values()].filter(brWhy).sort((a,b)=>N(a.ts)-N(b.ts)):[];
- const toSet=canSettle()?all().filter(r=>r.st==="ok"&&brWhy(r)).sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)):[];
- const ok=rs.filter(isAp),pcs=ok.reduce((s,r)=>s+net(r),0);
- const per={};ok.forEach(r=>{const k=r.br;(per[k]=per[k]||{n:0,p:0}).n++;per[k].p+=net(r)});
- const rets=all().filter(r=>canRet(r)&&brWhy(r)).sort((a,b)=>N(a.ap&&a.ap.at)-N(b.ap&&b.ap.at)),nWait=all().filter(waitRet).length;
+ const Qs=queues(),fq=a=>(a||[]).filter(brWhy);
+ const TABS=[["ap","⏳ بانتظار الاعتماد",Qs.ap],["set","🧾 بانتظار التسوية",Qs.set],["ret","↩️ عينات لم ترجع",Qs.ret],["all","📋 السجل",[]],["sum","📊 الملخّص",[]]].filter(t=>t[2]!==null);
+ // لحد ما المستخدم يختار قسم بنفسه: بنفتح أول قسم فيه شغل (البيانات بتوصل بعد أول رسمة، فبنعيد الاختيار)
+ if(!VTu||!TABS.some(t=>t[0]===VT))VT=(TABS.find(t=>t[2]&&t[2].length&&t[0]!=="all"&&t[0]!=="sum")||["all"])[0];
+ const q=VT==="ap"||VT==="set"||VT==="ret",rs=q?fq(Qs[VT]):filtered();
  const brs=[...new Set(all().map(r=>r.br))].sort();
- return `<div class="fl" style="margin:0 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><h2 style="margin:0">🎁 الهدايا والعينات</h2>${!X.noNew&&!X.view?`<button class="bt g" data-gf="new" type="button" style="margin-inline-start:auto">➕ هدية / عينة من المستودع</button>`:""}</div>
- <div class="gf-f"><div><small>من</small><input type="date" id="gff" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gft" value="${E(F.to)}"></div>
- <div><small>الفرع</small><select id="gfb"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
- <div><small>الحالة</small><select id="gfs"><option value="">الكل</option>${Object.entries(STL).filter(([k])=>!accOnly()||k==="ok"||k==="set").map(([k,v])=>`<option value="${k}" ${F.st===k?"selected":""}>${v}</option>`).join("")}</select></div>
- <div><small>البند</small><select id="gfw"><option value="">كل البنود</option>${WHY.map(w=>`<option ${F.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div>
- <div class="gf-act"><button class="bt" data-gf="print" type="button">🖨 تقرير PDF</button><button class="bt" data-gf="csv" type="button">⬇️ إكسل</button></div></div>
- <div class="gf-sum"><span>🎁 <b>${rs.length}</b> في الفترة</span><span>✅ <b>${ok.length}</b> معتمدة · <b>${fmt(pcs)}</b> قطعة صافي</span>${accOnly()?"":`<span>⏳ <b>${rs.filter(r=>r.st==="pend").length}</b> بانتظار</span>`}<span>🧾 <b>${rs.filter(r=>r.st==="set").length}</b> تمت تسويتها</span>${nWait?`<span>↩️ <b>${nWait}</b> عينة لم ترجع</span>`:""}${accOnly()?"":`<span>❌ <b>${rs.filter(r=>r.st==="no").length}</b> مرفوضة</span>`}</div>
- ${pend.length?`<div class="gf-pend"><h3 style="margin:0 0 8px">⏳ بانتظار اعتمادك (${pend.length})</h3>${pend.map(r=>card(r,true)).join("")}</div>`:""}
- ${rets.length?`<div class="gf-pend" style="background:#fff8ec"><h3 style="margin:0 0 4px">↩️ عينات المستودع بانتظار الرجوع (${rets.length})</h3><p class="off" style="font-size:13px;margin:0 0 10px">لما العينة ترجع للمستودع اضغط "رجعت العينة" واكتب العدد، ويُحسب الصافي للمحاسب.</p>${rets.map(r=>card(r,true)).join("")}</div>`:""}
- ${toSet.length?`<div class="gf-acc"><h3 style="margin:0 0 4px">🧾 معتمدة بانتظار التسوية (${toSet.length})</h3><p class="off" style="font-size:13px;margin:0 0 10px">بعد خصم الهدية من مخزون الفرع في النظام، اكتب رقم أو مرجع السند واضغط "تمت التسوية"، فيصل الفرع إشعار بذلك.</p>${toSet.map(r=>card(r,true,true)).join("")}</div>`:""}
- <h3 class="gf-lh">📋 كل الهدايا في الفترة (${rs.length})</h3>
- ${Object.keys(per).length>1?`<div class="pan" style="margin-bottom:12px"><h3 style="margin:0 0 8px">المعتمد لكل فرع</h3><div class="tw"><table><thead><tr><th>الفرع</th><th>عدد</th><th>قطع</th></tr></thead><tbody>${Object.entries(per).sort((a,b)=>b[1].p-a[1].p).map(([k,v])=>`<tr><td class="l"><bdi dir="ltr">${E(brName(k))}</bdi></td><td>${v.n}</td><td>${fmt(v.p)}</td></tr>`).join("")}</tbody></table></div></div>`:""}
- ${rs.length?rs.map(r=>card(r,true)).join(""):'<div class="pan off" style="text-align:center;padding:24px">لا توجد هدايا في هذه الفترة</div>'}`;
+ const head=`<div class="gx-hd"><div><h2>🎁 الهدايا والعينات</h2><small>${accOnly()?"المعتمد بانتظار التسوية والمسوّى":"تسجيل ← اعتماد مدير التسويق ← (رجوع العينة) ← تسوية المحاسب"}</small></div>${!X.noNew&&!X.view?`<button class="bt g" data-gf="new" type="button">➕ هدية / عينة من المستودع</button>`:""}</div>`;
+ const tabs=`<div class="gx-tabs" role="tablist">${TABS.map(([k,l,a])=>`<button type="button" role="tab" aria-selected="${VT===k}" class="${VT===k?"on":""}" data-gf="vt" data-id="${k}">${l}${a&&a.length&&k!=="all"&&k!=="sum"?` <i>${a.length}</i>`:""}</button>`).join("")}</div>`;
+ const brSel=`<div><small>الفرع</small><select id="gx-br"><option value="">كل الفروع والمستودع</option><option value="WH" ${F.br==="WH"?"selected":""}>المستودع</option>${(X.branches||[]).map(b=>{const c=String(b).split("-")[0];return `<option value="${E(c)}" ${F.br===c?"selected":""}>${E(b)}</option>`}).join("")}${brs.filter(c=>c!=="WH"&&!(X.branches||[]).some(b=>String(b).split("-")[0]===c)).map(c=>`<option value="${E(c)}" ${F.br===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>`;
+ const whySel=`<div><small>البند</small><select id="gx-why"><option value="">كل البنود</option>${WHY.map(w=>`<option ${F.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div>`;
+ const dates=`<div><small>من</small><input type="date" id="gx-from" value="${E(F.from)}"></div><div><small>إلى</small><input type="date" id="gx-to" value="${E(F.to)}"></div>`;
+ const stSel=`<div><small>الحالة</small><select id="gx-st"><option value="">كل الحالات</option>${Object.entries(STL).filter(([k])=>!accOnly()||k==="ok"||k==="set").map(([k,v])=>`<option value="${k}" ${F.st===k?"selected":""}>${v}</option>`).join("")}</select></div>`;
+ const search=`<div class="gx-q"><small>بحث</small><input type="search" id="gx-q" value="${E(F.q||"")}" placeholder="رقم، مستلم، جوال، كود..."></div>`;
+ const outB=`<div class="gx-out"><button class="bt" data-gf="print" type="button">🖨 PDF</button><button class="bt" data-gf="csv" type="button">⬇️ إكسل</button></div>`;
+ const filters=`<div class="gx-f ${q?"q":""}">${search}${brSel}${whySel}${q?"":dates+stSel+outB}</div>`;
+ let body="";
+ if(q){
+  const hint={ap:"الأقدم أولاً. اضغط على أي سطر لترى السند كاملاً قبل الاعتماد.",set:"بعد خصم الهدية من مخزون الفرع في النظام، اكتب مرجع السند واضغط تسوية (للعينة التي رجعت تُسوّى الصافي فقط).",ret:"عينات المستودع المعتمدة التي يجب أن ترجع. عند رجوعها اضغط \"رجعت العينة\" واكتب العدد."}[VT];
+  body=`<p class="gx-hint">${hint}</p>${rs.length?`<div class="gx-list">${rs.map(r=>line(r,VT)).join("")}</div>`:empty(VT==="ap"?"👌 لا توجد هدايا بانتظار الاعتماد":VT==="set"?"👌 لا توجد هدايا بانتظار التسوية":"👌 كل العينات رجعت")}`;
+ }else if(VT==="all"){
+  body=`<div class="gx-cnt">${rs.length} هدية في الفترة</div>${rs.length?`<div class="gx-list">${rs.map(r=>line(r,"all")).join("")}</div>`:empty("لا توجد هدايا في هذه الفترة")}`;
+ }else{
+  const ok=rs.filter(isAp),pcs=ok.reduce((s,r)=>s+net(r),0),per={},pw={};
+  rs.forEach(r=>{const o=per[r.br]=per[r.br]||{n:0,ok:0,p:0,pend:0,no:0};o.n++;if(isAp(r)){o.ok++;o.p+=net(r)}if(r.st==="pend")o.pend++;if(r.st==="no")o.no++});
+  ok.forEach(r=>{const k=WHY.includes(r.why)?r.why:"أخرى",o=pw[k]=pw[k]||{n:0,p:0};o.n++;o.p+=net(r)});
+  const k=(v,l,c)=>`<div class="gx-k ${c||""}"><b>${v}</b><small>${l}</small></div>`;
+  body=`<div class="gx-kp">${k(rs.length,"هدية في الفترة")}${k(ok.length,"معتمدة","ok")}${k(fmt(pcs),"قطعة صافي (معتمد)","ok")}${accOnly()?"":k(rs.filter(r=>r.st==="pend").length,"بانتظار الاعتماد","w")}${k(rs.filter(r=>r.st==="set").length,"تمت تسويتها","b")}${accOnly()?"":k(rs.filter(r=>r.st==="no").length,"مرفوضة","r")}</div>
+  <div class="gx-2"><div class="pan"><h3>لكل فرع</h3>${Object.keys(per).length?`<div class="tw"><table><thead><tr><th>الفرع</th><th>العدد</th><th>معتمد</th><th>قطع صافي</th>${accOnly()?"":"<th>بانتظار</th><th>مرفوض</th>"}</tr></thead><tbody>${Object.entries(per).sort((a,b)=>b[1].p-a[1].p).map(([c,v])=>`<tr><td class="l"><bdi dir="ltr">${E(brName(c))}</bdi></td><td>${v.n}</td><td>${v.ok}</td><td><b>${fmt(v.p)}</b></td>${accOnly()?"":`<td>${v.pend||"—"}</td><td>${v.no||"—"}</td>`}</tr>`).join("")}</tbody></table></div>`:empty("لا توجد بيانات")}</div>
+  <div class="pan"><h3>لكل بند (المعتمد)</h3>${Object.keys(pw).length?`<div class="tw"><table><thead><tr><th>البند</th><th>العدد</th><th>قطع صافي</th></tr></thead><tbody>${Object.entries(pw).sort((a,b)=>b[1].p-a[1].p).map(([w,v])=>`<tr><td class="l">${E(w)}</td><td>${v.n}</td><td><b>${fmt(v.p)}</b></td></tr>`).join("")}</tbody></table></div>`:empty("لا توجد بيانات")}</div></div>`;
+ }
+ return `${head}${tabs}${filters}${body}`;
 }
 // لو الفترة أقدم من اللي بيتسمع لايف: نحمّلها مرة واحدة
 async function ensureRange(){
@@ -315,6 +388,7 @@ function viewGift(id){
  ${canRet(r)?`<button class="bt g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}
  ${r.img?`<button class="bt" data-gf="img" data-id="${E(r.id)}" type="button">📎 صورة السند</button>`:""}
  <button class="bt" data-gf="gprint" data-id="${E(r.id)}" type="button">🖨 طباعة</button>
+ ${wh&&isOwner()?`<button class="bt" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt r" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}
  <button class="bt" data-gf="${wh?"close":"bopen"}" type="button">رجوع</button></div></div></div>`,"view");
 }
 function printGift(id){
@@ -390,6 +464,8 @@ function csv(){
 // ---------- الأحداث ----------
 async function click(e){
  const t=e.target.closest("[data-gf]");if(!t||!X)return;const a=t.dataset.gf,id=t.dataset.id;
+ if(a==="noop")return;
+ if(a==="vt"){VT=id;VTu=true;if(X.redraw)X.redraw();return}
  if(a==="bopen")return void openBranch();
  if(a==="close")return void closeM();
  if(a==="new")return void form(null);
@@ -408,12 +484,17 @@ async function click(e){
  if(a==="csv")return void csv();
  if(a==="edit"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(r)form(r);return}
  if(a==="del"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r||!confirm(`حذف هدية ${r.no} نهائياً مع السند الخاص بها؟`))return;
-  try{const b=writeBatch(X.db);b.delete(doc(X.db,"gifts",id));b.delete(doc(X.db,"giftimg",id));await withTimeout(b.commit(),15000);L.delete(id);OLD.delete(id);PEND.delete(id);X.toast("حُذفت");if(X.redraw)X.redraw()}
+  try{const b=writeBatch(X.db);b.delete(doc(X.db,"gifts",id));b.delete(doc(X.db,"giftimg",id));await withTimeout(b.commit(),15000);L.delete(id);OLD.delete(id);PEND.delete(id);X.toast("حُذفت");closeM();if(X.redraw)X.redraw()}
   catch(e){X.toast("تعذر الحذف")}}
 }
 function change(e){
- const id=e.target&&e.target.id;if(!X||!["gff","gft","gfb","gfs","gfw"].includes(id))return;
- if(id==="gff")F.from=e.target.value;if(id==="gft")F.to=e.target.value;if(id==="gfb")F.br=e.target.value;if(id==="gfs")F.st=e.target.value;if(id==="gfw")F.why=e.target.value;
+ const id=e.target&&e.target.id;if(!X||!["gx-from","gx-to","gx-br","gx-st","gx-why"].includes(id))return;
+ const v=e.target.value;if(id==="gx-from")F.from=v;if(id==="gx-to")F.to=v;if(id==="gx-br")F.br=v;if(id==="gx-st")F.st=v;if(id==="gx-why")F.why=v;
  if(F.from&&F.to&&F.from>F.to)[F.from,F.to]=[F.to,F.from];
  ensureRange().then(()=>X.redraw());
+}
+// البحث بيخفي ويظهر السطور على طول (من غير إعادة رسم، علشان الكتابة ماتتقطعش)
+function input(e){
+ if(!X||!e.target||e.target.id!=="gx-q")return;F.q=e.target.value.trim();const q=F.q.toLowerCase();
+ document.querySelectorAll(".gx-ln[data-s]").forEach(el=>{el.hidden=!!q&&!el.dataset.s.includes(q)});
 }
