@@ -2,7 +2,8 @@
 import {collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,writeBatch} from "./fb.js";
 import {calc,CATS,E,N,fmt,today,shrink,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {regSW,badge} from "./notify.js";
-import {zoomOpen} from "./zoom.js";
+import {zoomOpen,zoomGallery} from "./zoom.js";
+import {multiPick,saveExtras,loadExtras,dropExtras} from "./att.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const WH="المستودع الرئيسي";
@@ -42,7 +43,8 @@ export function view(){
 }
 // ---------- النماذج ----------
 function box(){let m=g("cmx");if(!m){m=document.createElement("div");m.id="cmx";m.className="cm";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}
-function closeM(){mode="";edit=null;img="";const m=box();m.className="cm";m.innerHTML=""}
+let PKL=null;
+function closeM(){mode="";edit=null;img="";PKL=null;const m=box();m.className="cm";m.innerHTML=""}
 function form(type,e){
  mode="form";edit=e||null;const ex=type==="exp";img=e&&e.img||"";imgBusy=false;const cars=X.cars?X.cars():[];
  const m=box();m.className="cm on";
@@ -53,24 +55,29 @@ function form(type,e){
  ${ex?`<label>رقم الفاتورة / المورّد (اختياري)</label><input id="finv" type="text" maxlength="60" value="${E(e&&e.inv||"")}">
  <label>مرتبط بسيارة (اختياري — يدخل في تكلفة السيارة)</label><select id="fcar"><option value="">—</option>${cars.map(c=>`<option value="${E(c.id)}" ${e&&e.car===c.id?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")}</select>`:""}
  <label>${ex?"البيان":"استلمتها من / ملاحظة"}</label><input id="fnote" type="text" maxlength="300" value="${E(e&&e.note||"")}">
- ${ex?(img&&!X.owner?`<label>صورة الفاتورة</label><small class="off">توجد صورة محفوظة ✅ (تغييرها أو حذفها للمالك فقط)</small>`:`<label>صورة الفاتورة (اختياري)</label><input id="ffile" type="file" accept="image/*"><small id="fh" class="off">${img?"توجد صورة محفوظة ✅ (إن اخترت صورة جديدة فستستبدلها)":""}</small>`):""}
+ ${ex?`<label>صور الفاتورة (اختياري)</label>${img?`<small class="off">${X.owner?"توجد صور محفوظة ✅ (إن اخترت صوراً جديدة فستستبدلها كلها)":"توجد صور محفوظة ✅ (تغييرها أو حذفها للمالك فقط، ويمكنك إضافة صور أخرى)"}</small>`:""}<div id="fmp"></div>`:""}
  <div class="fl" style="margin-top:16px"><button class="bt p" data-cx="save" data-type="${type}" type="button">حفظ</button><button class="bt" data-cx="cancel" type="button">رجوع</button></div></div>`;
  g("fa").focus();
- if(ex&&g("ffile"))g("ffile").onchange=async()=>{const f=g("ffile").files[0];if(!f)return;imgBusy=true;g("fh").textContent="جاري ضغط الصورة...";try{img=await shrink(f);g("fh").textContent="تم تجهيز الصورة ✅"}catch(x){g("ffile").value="";g("fh").textContent="الصورة غير صالحة"}imgBusy=false};
+ PKL=ex&&g("fmp")?multiPick(g("fmp"),{w:1200,cap:200000,toast:X.toast,add:img&&!X.owner?"إضافة صور أخرى":"إضافة صور الفاتورة"}):null;
 }
 async function save(type){
- if(imgBusy){X.toast("انتظر حتى تنتهي الصورة");return}
+ if(imgBusy||(PKL&&PKL.busy())){X.toast("انتظر حتى تنتهي الصور");return}
+ const IMS=PKL?PKL.imgs():[],keep=!!(edit&&edit.img),addOnly=keep&&!X.owner&&IMS.length>0,replace=IMS.length>0&&!addOnly;
+ // replace = الصور الجديدة مكان القديمة (تسجيل جديد، أو المالك، أو مفيش صورة قبل كده) / addOnly = صور زيادة بعد الموجودة
  const amt=Math.round(N(toEn(g("fa").value))*100)/100;
  if(!(amt>0)||amt>10000000){X.toast("اكتب مبلغ صحيح");return}
  const ex=type==="exp",car=ex?g("fcar").value:"",c=(X.cars?X.cars():[]).find(x=>x.id===car);
  const d={br:"WH",type,amt,cat:ex?g("fcat").value:"عهدة",dt:g("fdt").value||today(),st:"approved",ts:edit?edit.ts:Date.now()};
  const note=g("fnote").value.trim().slice(0,300);d.note=note;
  if(ex){d.inv=g("finv").value.trim().slice(0,60);d.car=car;d.carn=c?c.name+(c.plate?" "+c.plate:""):""}
- if(img)d.img=img;
+ if(replace)d.img=IMS[0];else if(img)d.img=img;
  try{
-  if(edit)await setDoc(doc(X.db,"ledger",edit.id),{...d,...(edit.sid?{sid:edit.sid}:{})});
-  else await setDoc(doc(collection(X.db,"ledger")),d);
-  closeM();X.toast("تم الحفظ")
+  const ref=edit?doc(X.db,"ledger",edit.id):doc(collection(X.db,"ledger"));
+  await setDoc(ref,edit?{...d,...(edit.sid?{sid:edit.sid}:{})}:d);
+  let bad=0;
+  if(replace){if(edit&&keep)await dropExtras(X.db,"ledger",ref.id);bad=await saveExtras(X.db,"ledger",ref.id,IMS.slice(1))}
+  else if(addOnly){const ex0=await loadExtras(X.db,"ledger",ref.id);const st=ex0.length?Math.max(...ex0.map(x=>x.k))+1:2;bad=await saveExtras(X.db,"ledger",ref.id,IMS,st)}
+  closeM();X.toast(bad?`تم الحفظ، لكن تعذّر رفع ${bad} من الصور`:"تم الحفظ",bad?"er":undefined)
  }catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message))}
 }
 function stmt(k,title,from,to,rows,opening){printStmt(stmtHtml({brn:WH,lbl:"الجهة",sg1:"أمين العهدة",title,opening,rows,from,to},X.logo))}
@@ -92,8 +99,8 @@ async function click(e){
   else if(a==="edit"){const en=LA.find(x=>x.id===id);if(en)form(en.type,en)}
   else if(a==="cancel")closeM();
   else if(a==="save")await save(t.dataset.type);
-  else if(a==="del"){if(confirm("حذف الحركة نهائياً؟"))await deleteDoc(doc(X.db,"ledger",id))}
-  else if(a==="img"){const en=LA.find(x=>x.id===id);if(en&&en.img)zoomOpen(en.img,`${en.cat} — ${fmt(en.amt)}${en.inv?" · فاتورة "+en.inv:""}`,"ledger/"+en.id+"/img")}// كبيرة على الشاشة، والحذف للمالك فقط
+  else if(a==="del"){if(confirm("حذف الحركة نهائياً؟")){await deleteDoc(doc(X.db,"ledger",id));if(X.owner)dropExtras(X.db,"ledger",id)}}
+  else if(a==="img"){const en=LA.find(x=>x.id===id);if(en&&en.img){const ex=await loadExtras(X.db,"ledger",en.id);zoomGallery([{src:en.img,del:"ledger/"+en.id+"/img"},...ex.map(x=>({src:x.src,del:"doc:"+x.path}))],`${en.cat} — ${fmt(en.amt)}${en.inv?" · فاتورة "+en.inv:""}`,0)}}// كبيرة على الشاشة، والحذف للمالك فقط
   else if(a==="stmt"){const k=cur();stmt(k,"كشف حساب العهدة (الفترة الحالية)",k.open[0]?k.open[0].dt:today(),today(),k.open,k.opening)}
   else if(a==="close")await closePeriod();
   else if(a==="ps"){const s=SA.find(x=>x.id===id);if(s)stmt(null,"كشف حساب العهدة — "+s.no,s.from,s.to,LA.filter(e=>e.sid===id),N(s.opening))}

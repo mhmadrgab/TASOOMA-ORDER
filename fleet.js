@@ -499,7 +499,7 @@ function podHtml(rid){
  const sg=isImg(p.sig)?`<img src="${E(p.sig)}" alt="توقيع" data-zoom data-zt="توقيع المستلم: ${E(p.name||"")}" data-zdel="requests/${E(rid)}/pod.sig" style="height:56px;background:#fff;border:1px solid var(--line);border-radius:8px">`:"";
  const im=isImg(p.img)?`<img src="${E(p.img)}" alt="صورة التسليم" data-zoom data-zt="صورة التسليم · ${E(r.brn||"")}" data-zdel="requests/${E(rid)}/pod.img" style="max-width:100%;max-height:220px;border-radius:10px">`:"";
  // الصور الجديدة في pods/{رقم الطلب}: زرار بيجيبها وقت الضغط بس (zoom.js)
- const bs=(p.sg&&!sg?`<button class="bt s" type="button" data-podv="${E(rid)}|sig" data-zt="توقيع المستلم: ${E(p.name||"")}">✍ التوقيع</button>`:"")+(p.ph&&!im?`<button class="bt s" type="button" data-podv="${E(rid)}|img" data-zt="صورة التسليم · ${E(r.brn||"")}">📷 صورة التسليم</button>`:"");
+ const bs=(p.sg&&!sg?`<button class="bt s" type="button" data-podv="${E(rid)}|sig" data-zt="توقيع المستلم: ${E(p.name||"")}">✍ التوقيع</button>`:"")+(p.ph&&!im?`<button class="bt s" type="button" data-podv="${E(rid)}|img" data-zt="صورة التسليم · ${E(r.brn||"")}">📷 صور التسليم</button>`:"");
  return sg||im||bs?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:6px">${sg}${im}${bs}</div>`:"";
 }
 function tripDetail(id){

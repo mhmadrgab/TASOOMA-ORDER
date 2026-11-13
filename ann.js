@@ -2,6 +2,7 @@
 // ann/{id} = {t: النص, by: إيميل اللي بعت, n: اسمه, ts}. ann/{id}/rd/{الطرف} = {ts, n} قرأها إمتى (الطرف = كود الفرع أو الإيميل)
 // الإشعار لكل الأجهزة من السيرفر (/ann) على دفعات (annPush في fb.js). العلامة الحمرا على الزرار = جديد من آخر مرة فتحت (على الجهاز ده).
 import {collection,doc,addDoc,setDoc,getDoc,getDocs,deleteDoc,onSnapshot,query,orderBy,limit,withTimeout,failReason,FAIL_MSG,annPush} from "./fb.js";
+import {zoomGallery} from "./zoom.js";
 const g=id=>document.getElementById(id);
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const N=x=>Number.isFinite(+x)?+x:0;
@@ -112,7 +113,10 @@ async function recStart(){
   paint();
 }
 function recStop(){if(REC&&REC.mr.state!=="inactive")REC.mr.stop()}
-let PIC=null;const IMG={};// PIC = الصورة المختارة قبل الإرسال، IMG = اللي اتحمّل {id:{t,f}}
+const CSS2=`.annpvs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.annpvs .annpv{margin:0}.annpv.wait{display:flex;align-items:center;justify-content:center;min-height:80px;border:2px dashed #d9d4cb;border-radius:12px;color:#6f6b64;font-size:13px}.annpvn{display:block;color:#6f6b64;margin:4px 0 2px}
+.annimg{position:relative}.annic{position:absolute;bottom:8px;inset-inline-start:8px;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700}
+.annmore{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;margin-top:6px}.annmore button{padding:0;border:0;border-radius:10px;overflow:hidden;aspect-ratio:1;background:#eee;cursor:zoom-in}.annmore img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .3s}.annmore img.ok{opacity:1}`;
+let PICS=[],PBUSY=0;const IMG={};const PMAX=10;// PICS = الصور المختارة قبل الإرسال، IMG = اللي اتحمّل {id:{t,f,t2,f2...}}
 const loadEl=f=>new Promise((ok,no)=>{const u=URL.createObjectURL(f),i=new Image();i.onload=()=>ok({i,u});i.onerror=()=>{URL.revokeObjectURL(u);no(new Error("img"))};i.src=u});
 function jpg(im,max,q){const s=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight)),w=Math.max(1,Math.round(im.naturalWidth*s)),h=Math.max(1,Math.round(im.naturalHeight*s));
   const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,w,h);x.imageSmoothingQuality="high";x.drawImage(im,0,0,w,h);return {d:c.toDataURL("image/jpeg",q),w,h}}
@@ -132,18 +136,28 @@ async function getImg(id,k){
 }
 // يحط الصورة في كل مكان ظاهرة فيه (القايمة أو نافذة الفرع)
 async function fillImg(id,k){const v=await getImg(id,k);document.querySelectorAll(`[data-annimg="${id}"] img`).forEach(el=>{if(v&&(!el.dataset.k||el.dataset.k==="t")){el.onload=()=>el.classList.add("ok");el.src=v;el.dataset.k=k;if(el.complete&&el.naturalWidth)el.classList.add("ok")}})}
-const imgBox=a=>a.img?`<button type="button" class="annimg" data-annimg="${E(a.id)}" aria-label="تكبير الصورة" style="aspect-ratio:${N(a.w)||4}/${N(a.h)||3}"><img alt=""></button>`:"";
-async function viewImg(id){
-  const a=A.find(x=>x.id===id)||{};let v=g("anniv");if(!v){v=document.createElement("div");v.id="anniv";document.body.appendChild(v);v.addEventListener("click",e=>{if(e.target===v||e.target.closest("[data-annivx]"))v.className=""})}
+const icOf=a=>a.img?Math.max(1,Math.min(PMAX,N(a.ic)||1)):0;
+const imgBox=a=>a.img?`<button type="button" class="annimg" data-annimg="${E(a.id)}" aria-label="تكبير الصورة" style="aspect-ratio:${N(a.w)||4}/${N(a.h)||3}"><img alt="">${icOf(a)>1?`<span class="annic">🖼 ${icOf(a)}</span>`:""}</button>${icOf(a)>1?`<div class="annmore">${Array.from({length:icOf(a)-1},(_,j)=>`<button type="button" data-annimx="${E(a.id)}|${j+2}" aria-label="الصورة ${j+2}"><img alt=""></button>`).join("")}</div>`:""}`:"";
+// المصغّرات بتاعة الصور التانية
+async function fillMore(a){for(let k=2;k<=icOf(a);k++){const v=await getImg(a.id,"t"+k);document.querySelectorAll(`[data-annimx="${a.id}|${k}"] img`).forEach(el=>{if(v&&!el.src){el.onload=()=>el.classList.add("ok");el.src=v}})}}
+async function viewImg(id,start=1){
+  const a=A.find(x=>x.id===id)||{};
+  if(icOf(a)>1){
+    X.toast(`⏳ جاري تحميل ${icOf(a)} صور بالجودة الكاملة...`);
+    const ks=Array.from({length:icOf(a)},(_,j)=>j+1),L=await Promise.all(ks.map(async k=>(await getImg(id,k===1?"f":"f"+k))||(await getImg(id,k===1?"t":"t"+k))));
+    return void zoomGallery(L.filter(Boolean).map(src=>({src})),`📢 ${a.n||"الإدارة"}`,Math.max(0,start-1));
+  }let v=g("anniv");if(!v){v=document.createElement("div");v.id="anniv";document.body.appendChild(v);v.addEventListener("click",e=>{if(e.target===v||e.target.closest("[data-annivx]"))v.className=""})}
   v.className="on";v.innerHTML=`<div class="t"><b>📢 ${E(a.n||"الإدارة")}</b><button type="button" data-annivx>✕ إغلاق</button></div><div class="v"><img alt="" src="${(IMG[id]&&(IMG[id].f||IMG[id].t))||""}"></div><div class="l">⏳ تحميل الجودة الكاملة...</div>`;
   const f=await getImg(id,"f");if(!g("anniv")||v.className!=="on")return;
   const im=v.querySelector(".v img"),l=v.querySelector(".l");
   if(f){im.src=f;l.outerHTML="";v.querySelector(".t b").insertAdjacentHTML("afterend",`<a href="${f}" download="tasooma-ann-${E(id)}.jpg">⬇️ حفظ الصورة</a>`)}else l.textContent="تعذر تحميل الصورة";
 }
-async function pickImg(file){
-  if(!file||!/^image\//.test(file.type)){X.toast("اختر صورة");return}
-  const b=document.querySelector("[data-annpic]");if(b){b.disabled=true;b.textContent="⏳ تجهيز الصورة..."}
-  try{PIC=await encode(file);paint()}catch(e){X.toast(e&&e.message==="big"?"الصورة كبيرة جداً، جرّب صورة أخرى":"تعذر فتح الصورة، جرّب صورة أخرى");paint()}
+async function pickImgs(files){
+  files=[...files].filter(f=>/^image\//.test(f.type));if(!files.length){X.toast("اختر صورة");return}
+  const room=PMAX-PICS.length-PBUSY;if(room<=0){X.toast(`الحد الأقصى ${PMAX} صور`);return}
+  if(files.length>room)X.toast(`الحد الأقصى ${PMAX} صور، سيُضاف ${room} فقط`);
+  files=files.slice(0,room);PBUSY+=files.length;paint();
+  for(const file of files){try{PICS.push(await encode(file))}catch(e){X.toast(e&&e.message==="big"?"صورة كبيرة جداً، جرّب صورة أخرى":"تعذر فتح إحدى الصور")}PBUSY--;paint()}
 }
 const seen=()=>{try{return N(localStorage.getItem(LS))}catch(e){return 0}};
 const markSeen=()=>{const t=A.length?N(A[0].ts):0;try{localStorage.setItem(LS,String(Math.max(seen(),t)))}catch(e){}paintBtn()};
@@ -156,7 +170,7 @@ const when=t=>new Date(N(t)).toLocaleString("ar-EG-u-nu-latn",{weekday:"short",d
 // ctx: {db, auth, toast, party: "003" | إيميل, email, name(), canPost, mount(btn), total: عدد الفروع (للقراءة)}
 export function initAnn(ctx){
   stopAnn();X=ctx;
-  if(!g("ann-css")){const s=document.createElement("style");s.id="ann-css";s.textContent=CSS;document.head.appendChild(s)}
+  if(!g("ann-css")){const s=document.createElement("style");s.id="ann-css";s.textContent=CSS+CSS2;document.head.appendChild(s)}
   if(X.mount){const b=document.createElement("button");b.id="annb";b.type="button";b.dataset.annopen="1";X.mount(b)}paintBtn();
   // آخر 30 تعميم (قراءة خفيفة)
   UN=onSnapshot(query(collection(X.db,"ann"),orderBy("ts","desc"),limit(30)),sn=>{
@@ -192,7 +206,7 @@ function showPop(){
   const fresh=m.dataset.id!==a.id;m.dataset.id=a.id;m.className="on";
   m.innerHTML=`<div class="annk annpk${fresh?" pop":""}"><div class="annh"><span style="font-size:30px">📢</span><div><b>تعميم من الإدارة</b><small>${E(a.n||"الإدارة")} · ${when(a.ts)}</small></div><button type="button" data-annpx aria-label="إغلاق">✕</button></div>
   <div class="annpb">${bodyOf(a)}${Q.length>1?`<div class="annpn">يوجد ${Q.length-1} تعميم آخر بعد هذا</div>`:""}</div></div>`;
-  if(a.img)fillImg(a.id,"f");// الفرع بيشوف الصورة الأصلية على طول
+  if(a.img){fillImg(a.id,"f");if(icOf(a)>1)fillMore(a)}// الفرع بيشوف الصورة الأصلية على طول
 }
 async function dismissPop(){
   const a=Q.shift();if(!a||!X)return showPop();addDis(a.id);showPop();
@@ -202,7 +216,7 @@ async function delAnn(id){
   if(!X||!X.canPost)return;
   if(!confirm("حذف هذا التعميم نهائياً؟ سيختفي من عند الجميع."))return;
   const a=A.find(x=>x.id===id);
-  try{if(a&&a.img)await Promise.all(["f","t"].map(k=>deleteDoc(doc(X.db,"ann",id,"img",k)).catch(()=>{})));
+  try{if(a&&a.img){const ks=["f","t"];for(let k=2;k<=icOf(a);k++)ks.push("f"+k,"t"+k);await Promise.all(ks.map(k=>deleteDoc(doc(X.db,"ann",id,"img",k)).catch(()=>{})))}
     if(a&&a.v)await deleteDoc(doc(X.db,"ann",id,"aud","a")).catch(()=>{});
     await withTimeout(deleteDoc(doc(X.db,"ann",id)),20000);X.toast("🗑 حُذف التعميم")}
   catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
@@ -214,16 +228,16 @@ function open(){if(!X)return;const m=box();m.className="on";paint();markRead();m
 function paint(){
   const m=g("annm");if(!m||!X)return;const s=seen(),keep=g("annt")?g("annt").value:"",foc=document.activeElement&&document.activeElement.id==="annt";
   m.innerHTML=`<div class="annk"><div class="annh"><span style="font-size:30px">📢</span><div><b>التعميمات</b><small>رسائل الإدارة والمستودع لكل الفروع</small></div><button type="button" data-annx aria-label="إغلاق">✕</button></div>
-  ${X.canPost?`<div class="annc">${!PIC?`<div class="annbg annbgc" data-annfocus><svg class="wm" viewBox="0 0 512 512" aria-hidden="true">${WOLF}</svg><div class="hd3"><svg viewBox="80 60 352 390" aria-hidden="true">${WOLF}</svg>TASOOMA</div><textarea id="annt" class="abt s1" rows="1" maxlength="1000" placeholder="اكتب التعميم أو العرض هنا..."></textarea><div class="ft">📢 ${E(X.name()||"الإدارة")}</div><span class="cnt" id="annn"></span></div>`
+  ${X.canPost?`<div class="annc">${!PICS.length?`<div class="annbg annbgc" data-annfocus><svg class="wm" viewBox="0 0 512 512" aria-hidden="true">${WOLF}</svg><div class="hd3"><svg viewBox="80 60 352 390" aria-hidden="true">${WOLF}</svg>TASOOMA</div><textarea id="annt" class="abt s1" rows="1" maxlength="1000" placeholder="اكتب التعميم أو العرض هنا..."></textarea><div class="ft">📢 ${E(X.name()||"الإدارة")}</div><span class="cnt" id="annn"></span></div>`
    :`<textarea id="annt" maxlength="2000" placeholder="اكتب كلاماً مع الصورة (اختياري)..."></textarea>`}
-   ${PIC?`<div class="annpv"><img src="${PIC.t}" alt=""><button type="button" data-annrm aria-label="إزالة الصورة">✕</button><small>${PIC.w}×${PIC.h} · جودة عالية</small></div>`:""}
+   ${PICS.length||PBUSY?`<div class="annpvs">${PICS.map((p,i)=>`<div class="annpv"><img src="${p.t}" alt=""><button type="button" data-annrm="${i}" aria-label="إزالة الصورة ${i+1}">✕</button><small>${i+1}${i===0?" · الرئيسية":""}</small></div>`).join("")}${PBUSY?`<div class="annpv wait">⏳ تجهيز ${PBUSY}...</div>`:""}</div><small class="annpvn">${PICS.length} من ${PMAX} صور · جودة عالية</small>`:""}
    ${VO?`<div class="annvop"><span>🎤</span><audio controls src="${VO.a}"></audio><button type="button" data-annvrm aria-label="حذف التسجيل">✕</button></div>`:""}
-   <input id="annf" type="file" accept="image/*" hidden>
-   <div class="row"><button type="button" class="pic" data-annpic>📷 ${PIC?"تغيير الصورة":"إضافة صورة"}</button><button type="button" class="pic${REC?" rec":""}" data-annrec>${REC?`⏹ إيقاف التسجيل <small>${fmtS((Date.now()-REC.t0)/1000)} / ${fmtS(MAXS)}</small>`:`🎤 ${VO?"إعادة التسجيل":"تسجيل صوت"}`}</button><small>سيصل إشعار فوري لكل الفروع والمستودع</small><button type="button" data-anns ${REC?"disabled":""}>📢 إرسال للجميع</button></div></div>`:""}
+   <input id="annf" type="file" accept="image/*" multiple hidden>
+   <div class="row">${PICS.length+PBUSY<PMAX?`<button type="button" class="pic" data-annpic ${PBUSY?"disabled":""}>📷 ${PICS.length?"إضافة صورة أخرى":"إضافة صور"}</button>`:""}<button type="button" class="pic${REC?" rec":""}" data-annrec>${REC?`⏹ إيقاف التسجيل <small>${fmtS((Date.now()-REC.t0)/1000)} / ${fmtS(MAXS)}</small>`:`🎤 ${VO?"إعادة التسجيل":"تسجيل صوت"}`}</button><small>سيصل إشعار فوري لكل الفروع والمستودع</small><button type="button" data-anns ${REC?"disabled":""}>📢 إرسال للجميع</button></div></div>`:""}
   <div class="annl">${A.length?A.map(a=>`<div class="anni${N(a.ts)>s&&a.by!==X.email?" nw":""}"><div class="hd2"><b>${E(a.n||"الإدارة")}</b><span>· ${when(a.ts)}</span></div>${bodyOf(a)}
    ${X.canPost?`<div class="rdrow"><span class="rd" data-annr="${E(a.id)}">👁 ${CNT[a.id]!=null?`قرأه ${CNT[a.id].n}`:"من قرأه؟"}</span><button type="button" class="anndel" data-anndel="${E(a.id)}">🗑 حذف</button></div>${CNT[a.id]&&CNT[a.id].open?`<div class="annrd">${CNT[a.id].names.map(E).join(" · ")||"لا أحد بعد"}</div>`:""}`:""}</div>`).join(""):`<div class="anne">📭<br>لا توجد تعميمات بعد</div>`}</div></div>`;
   const t=g("annt");if(t&&keep)t.value=keep;fitBg();if(t&&foc){t.focus();try{t.setSelectionRange(t.value.length,t.value.length)}catch(e){}}
-  A.forEach(a=>{if(a.img)fillImg(a.id,"t")});// المصغّرة بس في القايمة (الأصلية لما يضغط)
+  A.forEach(a=>{if(a.img){fillImg(a.id,"t");if(icOf(a)>1)fillMore(a)}});// المصغّرة بس في القايمة (الأصلية لما يضغط)
 }
 // "قرأتها": كل طرف بيسجّل مرة واحدة على آخر التعميمات اللي ظهرتله
 async function markRead(){
@@ -238,17 +252,19 @@ async function readers(id){
 async function post(){
   if(busy||!X||!X.canPost)return;const t=String((g("annt")||{}).value||"").trim().slice(0,2000);
   if(REC){X.toast("أوقف التسجيل أولاً");return}
-  if(!t&&!PIC&&!VO){X.toast("اكتب التعميم أو أضف صورة أو سجّل صوتاً");return}
-  const bg=!PIC&&!!t;// الكلام من غير صورة = على خلفية تاسومة دايماً
+  if(PBUSY){X.toast("انتظر حتى تنتهي الصور");return}
+  if(!t&&!PICS.length&&!VO){X.toast("اكتب التعميم أو أضف صورة أو سجّل صوتاً");return}
+  const bg=!PICS.length&&!!t;// الكلام من غير صورة = على خلفية تاسومة دايماً
   if(!confirm("إرسال هذا التعميم إلى كل الفروع والمستودع؟"))return;
-  busy=true;const b=document.querySelector("[data-anns]");if(b){b.disabled=true;b.textContent=PIC||VO?"⏳ جاري الرفع...":"⏳ جاري الإرسال..."}
+  busy=true;const b=document.querySelector("[data-anns]");if(b){b.disabled=true;b.textContent=PICS.length||VO?"⏳ جاري الرفع...":"⏳ جاري الإرسال..."}
   try{
     // الصورة والصوت الأول (علشان لما التعميم يوصل للفروع يكونوا موجودين)، وبعدين التعميم نفسه
-    const id=Date.now().toString(36)+Math.random().toString(36).slice(2,10),p=PIC,vo=VO;
+    const id=Date.now().toString(36)+Math.random().toString(36).slice(2,10),ps=PICS.slice(0,PMAX),p=ps[0],vo=VO;
     if(p){await withTimeout(setDoc(doc(X.db,"ann",id,"img","f"),{i:p.f}),90000);await withTimeout(setDoc(doc(X.db,"ann",id,"img","t"),{i:p.t}),30000);IMG[id]={f:p.f,t:p.t}}
+    for(let k=2;k<=ps.length;k++){const q=ps[k-1];if(b)b.textContent=`⏳ رفع الصورة ${k} من ${ps.length}...`;await withTimeout(setDoc(doc(X.db,"ann",id,"img","f"+k),{i:q.f}),90000);await withTimeout(setDoc(doc(X.db,"ann",id,"img","t"+k),{i:q.t}),30000);IMG[id]["f"+k]=q.f;IMG[id]["t"+k]=q.t}
     if(vo){await withTimeout(setDoc(doc(X.db,"ann",id,"aud","a"),{a:vo.a}),90000);AUDC[id]=vo.a}
-    await withTimeout(setDoc(doc(X.db,"ann",id),{t,by:X.email,n:String(X.name()||"الإدارة").slice(0,60),ts:Date.now(),...(p?{img:1,w:p.w,h:p.h}:{}),...(bg?{bg:1}:{}),...(vo?{v:1,d:vo.d}:{})}),20000);
-    PIC=null;VO=null;g("annt").value="";X.toast("📢 أُرسل التعميم، وجاري إبلاغ الجميع");annPush(X.auth,id);paint()}
+    await withTimeout(setDoc(doc(X.db,"ann",id),{t,by:X.email,n:String(X.name()||"الإدارة").slice(0,60),ts:Date.now(),...(p?{img:1,w:p.w,h:p.h,...(ps.length>1?{ic:ps.length}:{})}:{}),...(bg?{bg:1}:{}),...(vo?{v:1,d:vo.d}:{})}),20000);
+    PICS=[];VO=null;g("annt").value="";X.toast("📢 أُرسل التعميم، وجاري إبلاغ الجميع");annPush(X.auth,id);paint()}
   catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
   busy=false;const b2=document.querySelector("[data-anns]");if(b2){b2.disabled=false;b2.textContent="📢 إرسال للجميع"}
 }
@@ -259,7 +275,8 @@ document.addEventListener("click",e=>{
   if(t.closest("[data-anns]"))return void post();
   if(t.closest("[data-annpx]"))return void dismissPop();
   if(t.closest("[data-annpic]"))return void (g("annf")&&g("annf").click());
-  if(t.closest("[data-annrm]")){PIC=null;return void paint()}
+  const rm=t.closest("[data-annrm]");if(rm){PICS.splice(N(rm.dataset.annrm),1);return void paint()}
+  const mx=t.closest("[data-annimx]");if(mx){const [aid,k]=mx.dataset.annimx.split("|");return void viewImg(aid,N(k))}
   if(t.closest("[data-annrec]"))return void (REC?recStop():recStart());
   if(t.closest("[data-annvrm]")){VO=null;return void paint()}
   const pl=t.closest("[data-annplay]");if(pl)return void playVo(pl.dataset.annplay);
@@ -269,4 +286,4 @@ document.addEventListener("click",e=>{
   const r=t.closest("[data-annr]");if(r)return void readers(r.dataset.annr);
 });
 document.addEventListener("input",e=>{if(X&&e.target.id==="annt")fitBg()});
-document.addEventListener("change",e=>{if(!X||e.target.id!=="annf")return;const f=e.target.files&&e.target.files[0];e.target.value="";if(f)pickImg(f)});
+document.addEventListener("change",e=>{if(!X||e.target.id!=="annf")return;const fs=e.target.files?[...e.target.files]:[];e.target.value="";if(fs.length)pickImgs(fs)});

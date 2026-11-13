@@ -273,7 +273,7 @@ function convHtml(){
   <button class="bcdown" id="bcdown" data-bcdown type="button" aria-label="آخر رسالة" title="آخر رسالة" hidden>${IC.down}</button>
   <div class="bcrq" id="bcrq" hidden></div>
   <div class="bcq">${(QUICK[T()]||[]).map(q=>`<button data-bcq="${E(q)}" type="button">${E(q)}</button>`).join("")}</div>
-  <div class="bcf" id="bcfoot"><button class="pic" id="bcpic" type="button" title="إرسال صورة" aria-label="إرسال صورة">${IMG_IC}</button><input type="file" id="bcfile" accept="image/*" hidden><textarea id="bcin" rows="1" maxlength="${LEN}" placeholder="اكتب رسالة..."></textarea><button class="mic" id="bcmic" type="button" title="رسالة صوتية" aria-label="رسالة صوتية">${IC.mic}</button><button id="bcsend" type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>
+  <div class="bcf" id="bcfoot"><button class="pic" id="bcpic" type="button" title="إرسال صورة" aria-label="إرسال صورة">${IMG_IC}</button><input type="file" id="bcfile" accept="image/*" multiple hidden><textarea id="bcin" rows="1" maxlength="${LEN}" placeholder="اكتب رسالة..."></textarea><button class="mic" id="bcmic" type="button" title="رسالة صوتية" aria-label="رسالة صوتية">${IC.mic}</button><button id="bcsend" type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>
   <div class="bcr2" id="bcrec" hidden><button class="x" data-bccancel type="button" title="إلغاء" aria-label="إلغاء">${IC.trash}</button><div class="pill"><span class="dot"></span><span class="tm" id="bcrt">0:00</span></div><button class="ok" data-bcstop type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>`;
 }
 const emptyTxt=()=>`<div class="bcnone"><b>💬</b>اختر من القائمة لتبدأ محادثة<br><small>🔒 محادثاتك خاصة بك، لا يراها أحد غيرك</small></div>`;
@@ -310,7 +310,7 @@ function wire(el){
     // الحاسوب: Enter يبعت و Shift+Enter سطر جديد. الجوال: Enter سطر جديد عادي
     if(e.target.id==="bcin"&&e.key==="Enter"&&!e.shiftKey&&!isMob()){e.preventDefault();sendText()}
   });
-  el.addEventListener("change",e=>{if(e.target.id==="bcfile"&&e.target.files&&e.target.files[0])sendImage(e.target.files[0])});
+  el.addEventListener("change",e=>{if(e.target.id==="bcfile"&&e.target.files&&e.target.files.length)sendImages([...e.target.files])});
   el.addEventListener("input",e=>{if(e.target.id==="bcin"){grow();if(CUR)DRAFT[CUR]=e.target.value}if(e.target.id==="bcqs"){Q=e.target.value.trim().toLowerCase();paintList()}});
 }
 // خانة الكتابة بتكبر مع النص، والزرار بيتبدّل: 🎤 لما فاضية، وسهم الإرسال لما فيها كلام
@@ -465,10 +465,20 @@ const IMG_MAX=950000;
 function loadImg(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(u);ok(im)};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error("img"))};im.src=u})}
 function toJpeg(im,side,q){const s=Math.min(1,side/Math.max(im.naturalWidth,im.naturalHeight)),w=Math.max(1,Math.round(im.naturalWidth*s)),h=Math.max(1,Math.round(im.naturalHeight*s));
   const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,w,h);x.imageSmoothingQuality="high";x.drawImage(im,0,0,w,h);return {d:c.toDataURL("image/jpeg",q),w,h}}
-async function sendImage(file){
-  if(!CUR||busy)return;const cid=CUR,i=g("bcin");
+async function sendImages(files){
+  files=files.filter(f=>/^image\//.test(f.type||""));if(!files.length){X.toast("اختر صورة فقط");return}
+  if(files.length>10){X.toast("الحد الأقصى 10 صور في المرة، سيُرسل أول 10");files=files.slice(0,10)}
+  const cid=CUR;
+  for(let k=0;k<files.length;k++){
+    for(let w=0;busy&&w<300;w++)await new Promise(r=>setTimeout(r,200));// نستنى الرسالة اللي قبلها تخلص
+    if(CUR!==cid)return;// قفل المحادثة أو فتح غيرها: نوقف
+    await sendImage(files[k],k===0,files.length>1?`${k+1}/${files.length}`:"");
+  }
+}
+async function sendImage(file,withCap=true,lbl=""){
+  if(!CUR||busy)return;const cid=CUR,i=withCap?g("bcin"):null;
   if(!/^image\//.test(file.type||"")){X.toast("اختر صورة فقط");return}
-  X.toast("⏳ جاري تجهيز الصورة بأعلى جودة...");
+  X.toast(lbl?`⏳ جاري تجهيز الصورة ${lbl}...`:"⏳ جاري تجهيز الصورة بأعلى جودة...");
   let im;try{im=await loadImg(file)}catch(e){X.toast("تعذر قراءة الصورة",true);return}
   // نبدأ بأعلى جودة ونقلّل لحد ما تدخل في المساحة
   let best=null;
@@ -477,7 +487,7 @@ async function sendImage(file){
   const th=toJpeg(im,420,.72);
   const cap=i?String(i.value||"").trim().slice(0,LEN):"";
   const m={img:1,w:best.w,h:best.h,th:th.d};if(cap)m.t=cap;
-  deliver(cid,m,null,()=>{if(cap){DRAFT[cid]="";if(CUR===cid&&i){i.value="";grow()}}X.toast("📷 أُرسلت الصورة")},best.d);
+  deliver(cid,m,null,()=>{if(cap){DRAFT[cid]="";if(CUR===cid&&i){i.value="";grow()}}X.toast(lbl?`📷 أُرسلت الصورة ${lbl}`:"📷 أُرسلت الصورة")},best.d);
 }
 const IMGC=new Map();
 async function viewImg(id){
