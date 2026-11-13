@@ -1,12 +1,16 @@
 // خدمة بسيطة: شبكة أولاً، ولو النت قطع تفتح آخر نسخة من الصفحة. مفيش تخزين لبيانات Firebase.
-const V="tasooma-v117";
+const V="tasooma-v118";
 const SHELL=["./index.html","./admin.html","./ui.css","./ui.js","./icons.js","./mnt.js","./i18n.js","./i18n-en.js","./workers.js","./bchat.js","./prof.js","./audit.js","./backup.js","./dash.js","./fb.js","./sb-lib.js","./sbcore.js","./sb-config.js","./cust.js","./notify.js","./br-extra.js","./ad-extra.js","./fleet.js","./map.js","./zoom.js","./att.js","./gifts.js","./staff.js","./ann.js","./short.js","./pres.js","./track.js","./driver.html","./ext.html","./manifest-driver.json","./icon-192.png"];
-self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL)).catch(()=>{}));self.skipWaiting()});
+self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL.map(u=>new Request(u,{cache:"reload"})))).catch(()=>{}));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",e=>{
  const r=e.request;if(r.method!=="GET")return;
  const u=new URL(r.url);if(u.origin!==location.origin||u.pathname.endsWith(".apk"))return;// ملف تطبيق السواقين: تحميل عادي من غير تخزين
- e.respondWith(fetch(r).then(res=>{if(res.ok){const cp=res.clone();caches.open(V).then(c=>c.put(r,cp))}return res}).catch(()=>caches.match(r,{ignoreSearch:true})));
+ // (14 نوفمبر 2026) cache:"no-cache" = اسأل GitHub كل مرة "فيه نسخة أحدث؟" (رد صغير 304 لو مفيش). من غيرها المتصفح كان بيفضل
+ // شغّال بالنسخة القديمة لحد 10 دقايق بعد الرفع (GitHub بيبعت max-age=600)، فالتحديثات كانت بتتأخر.
+ // الصفحات نفسها (navigate) مايتعملّهاش Request جديد بإعدادات، فبنطلبها بالعنوان؛ ولو حصل تحويل (redirect) نرجع للطلب الأصلي.
+ const fresh=r.mode==="navigate"?fetch(r.url,{cache:"no-cache",credentials:"same-origin"}).then(res=>res.redirected?fetch(r):res):fetch(r,{cache:"no-cache"});
+ e.respondWith(fresh.then(res=>{if(res.ok){const cp=res.clone();caches.open(V).then(c=>c.put(r,cp))}return res}).catch(()=>caches.match(r,{ignoreSearch:true})));
 });
 // الإشعارات اللي الصفحة نفسها بتعرضها (لما تكون مفتوحة ومش قدامه): الضغط عليها بيفتح الرابط
 self.addEventListener("notificationclick",e=>{
