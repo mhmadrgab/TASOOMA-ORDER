@@ -276,3 +276,39 @@ body .rq .chp,body .rq[class] .chp{background:var(--st);color:#fff;font-weight:7
 .rq details>summary{color:color-mix(in srgb,var(--st) 80%,var(--ink));font-weight:600}
 @media (prefers-color-scheme:dark){.rq .rh{background:linear-gradient(180deg,color-mix(in srgb,var(--st) 20%,transparent),transparent)}.rq .kp>span{background:color-mix(in srgb,var(--st) 16%,var(--field,#242424))}.rq details>summary{color:color-mix(in srgb,var(--st) 55%,#fff)}}
 body .rq[class]{border-inline-start-color:var(--st)}
+
+/* ================= 🧭 شريط لوحة المستودع (13 نوفمبر 2026، محمد: "إعادة هيكلة… ورقة يدوية نصها مخفي") =================
+   فوق: الشعار يمين، والأدوات شمال بحجم وشكل واحد. تحت: كل التبويبات سطر كامل بحجم واحد ومفيش حاجة بتتقطع
+   (لو مش هتكفي بتنزل سطر تاني على الكمبيوتر، وعلى الموبايل بتتسحب). خاص بلوحة المستودع بس (الهيدر اللي فيه .tabs). */
+.hi:has(>.tabs){max-width:1180px;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"br tl" "tb tb";row-gap:12px;align-items:center}
+.hi:has(>.tabs)>.br{grid-area:br}
+.hi:has(>.tabs)>div:has(>.tools){grid-area:tl;justify-self:end;flex-wrap:nowrap!important;gap:8px!important;overflow:visible}
+.hi:has(>.tabs) .tools{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.hi:has(>.tabs) .tools>*,.hi:has(>.tabs) .tabs-out{flex:none}
+.hi:has(>.tabs) .tools>button,.hi:has(>.tabs) .tabs-out{height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;border-radius:11px;border:1px solid #3a3a3a;background:#252525;color:#e8e8e8;font-size:13.5px;font-weight:600}
+.hi:has(>.tabs) .tools .gi,.hi:has(>.tabs) .tabs-out .gi{font-size:13px!important}
+.hi:has(>.tabs) .tabs-out{color:#ff8a80;border-color:#5a2a26}
+.hi:has(>.tabs) [hidden]{display:none!important}
+/* زرار "حسابي" على الموبايل: قاعدة قديمة كانت بتخفي الصورة كمان، فكان بيبان زرار فاضي رفيع */
+@media (max-width:600px){.pfme>.pfa{display:inline-flex!important;align-items:center;justify-content:center}}
+.hi:has(>.tabs)>.tabs{grid-area:tb;order:0;flex:none;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;overflow:visible;-webkit-mask-image:none;mask-image:none;padding:0}
+.hi:has(>.tabs) .tabs button{flex:1 1 auto;justify-content:center;height:42px;display:inline-flex;align-items:center;gap:8px;padding:0 16px 0 12px;border-radius:13px;border:1px solid #363636;background:#232323;color:#e6e6e6;font-size:15px;font-weight:600;white-space:nowrap}
+.hi:has(>.tabs) .tabs button .gi{font-size:15px!important}
+.hi:has(>.tabs) .tabs button:hover{background:#2c2c2c}
+.hi:has(>.tabs) .tabs button.on{background:var(--acc);border-color:var(--acc);color:#1b1b1b;font-weight:800}
+@media (min-width:761px){
+ .hi:has(>.tabs)>.tabs{gap:6px}
+ .hi:has(>.tabs) .tabs button{height:40px;padding:0 12px 0 9px;font-size:14px;gap:6px;max-width:210px}
+ .hi:has(>.tabs) .tabs button .gi{font-size:14px!important}
+}
+/* الشاشات المتوسطة والموبايل: الأدوات مش هتكفي جنب الشعار (كان زرار الخروج بيطلع بره) فبتنزل سطر لوحدها تحت التبويبات وبتتسحب */
+@media (max-width:1100px){
+ .hi:has(>.tabs){grid-template-columns:minmax(0,1fr);grid-template-areas:"br" "tb" "tl";row-gap:10px}
+ .hi:has(>.tabs)>div:has(>.tools){justify-self:stretch;overflow-x:auto;scrollbar-width:none}
+ .hi:has(>.tabs)>div:has(>.tools)::-webkit-scrollbar{display:none}
+}
+@media (max-width:760px){
+ .hi:has(>.tabs)>.tabs{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;padding-inline:8px;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 22px,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(90deg,transparent,#000 22px,#000 calc(100% - 22px),transparent)}
+ .hi:has(>.tabs) .tabs button{flex:none;height:40px;font-size:14.5px}
+}
