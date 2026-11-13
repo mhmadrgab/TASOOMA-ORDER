@@ -146,6 +146,52 @@
   const w=setInterval(()=>{if(window.__uiOk){d.remove();clearInterval(w)}},500);
  },12000);
 })();
+// ✨ رسالة "المنصة بثوبها الجديد" (14 نوفمبر 2026، طلب محمد): بتظهر مرة واحدة لكل مستخدم (المديرين والفروع والسواقين) بعد الدخول،
+// وأول ما يقفلها مابتظهرش تاني على الجهاز ده (localStorage: tz_news). لرسالة جديدة بعدين: غيّر NEWS_ID والنص.
+(function(){
+ if(!/(admin|index|driver)\.html$|\/$/.test(location.pathname))return;
+ const NEWS_ID="theme-2026-11";
+ let seen;try{seen=localStorage.getItem("tz_news")}catch(e){return}// مفيش تخزين = مانعرضش (علشان ماتطلعش كل مرة)
+ if(seen===NEWS_ID)return;
+ const vis=el=>!!(el&&el.offsetParent!==null);
+ const loggedIn=()=>window.__uiOk&&!document.getElementById("boot")&&![...document.querySelectorAll('input[type="password"]')].some(vis)&&!document.getElementById("tz-stuck");
+ const t0=Date.now(),iv=setInterval(()=>{if(Date.now()-t0>15*6e4){clearInterval(iv);return}if(loggedIn()){clearInterval(iv);setTimeout(()=>{if(loggedIn())show()},700)}},800);
+ function show(){
+  if(document.getElementById("tz-news"))return;
+  if(!document.getElementById("tz-news-css")){const s=document.createElement("style");s.id="tz-news-css";s.textContent=`
+#tz-news{position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(30,18,32,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:tzn-f .25s ease both}
+#tz-news .k{width:100%;max-width:440px;max-height:calc(100vh - 36px);overflow:auto;background:var(--card,#fffaf3);color:var(--ink,#2a1d2c);border-radius:24px;box-shadow:0 30px 80px rgba(30,15,35,.45);text-align:start;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;animation:tzn-u .45s cubic-bezier(.23,1,.32,1) both}
+#tz-news .h{position:relative;background:#2a1d2c;color:#fff;padding:22px 22px 20px;display:flex;align-items:center;gap:14px;border-radius:24px 24px 0 0}
+#tz-news .h::after{content:"";position:absolute;inset-inline:0;bottom:0;height:4px;background:linear-gradient(90deg,#6f7d45,#b48aab 45%,#b48aab 55%,#6f7d45)}
+#tz-news .h img{width:54px;height:54px;border-radius:14px;flex:none;background:#fff}
+#tz-news .h small{display:block;color:#e3c8dd;font-size:13px;font-weight:500}#tz-news .h b{display:block;font-size:21px;line-height:1.35;font-weight:700}
+#tz-news .b{padding:18px 22px 6px;font-size:15px;line-height:1.75}
+#tz-news .b>p{margin:0 0 14px;color:var(--mut,#74687a)}
+#tz-news ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+#tz-news li{display:flex;gap:12px;align-items:flex-start;background:var(--soft,#f6eee3);border-radius:14px;padding:11px 13px}
+#tz-news li i{font-style:normal;font-size:20px;line-height:1.3;flex:none}
+#tz-news li b{display:block;font-size:14.5px}#tz-news li span{display:block;font-size:13px;color:var(--mut,#74687a);line-height:1.6}
+#tz-news .f{padding:16px 22px 20px}
+#tz-news .f button{width:100%;min-height:50px;border:0;border-radius:14px;background:#8a5a83;color:#fff;font:700 16px/1 'IBM Plex Sans Arabic',Tahoma,sans-serif;cursor:pointer;box-shadow:0 8px 22px rgba(138,90,131,.35)}
+#tz-news .f button:active{transform:scale(.97)}
+#tz-news .f small{display:block;text-align:center;color:var(--mut,#74687a);font-size:12.5px;margin-top:10px}
+@media (prefers-color-scheme:dark){#tz-news .h{background:#120c14}#tz-news .f button{background:#b48aab;color:#1d1720}}
+@keyframes tzn-f{from{opacity:0}}@keyframes tzn-u{from{opacity:0;transform:translateY(18px) scale(.96)}}
+@media (prefers-reduced-motion:reduce){#tz-news,#tz-news .k{animation:none}}`;document.head.appendChild(s)}
+  const d=document.createElement("div");d.id="tz-news";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-labelledby","tz-news-t");
+  d.innerHTML=`<div class="k"><div class="h"><img src="./icon-192.png" alt=""><div><small>تحديث جديد</small><b id="tz-news-t">منصة تاسومة بثوبها الجديد</b></div></div>
+<div class="b"><p>طوّرنا المنصة لتناسب متطلبات عملكم اليومية، وهذا أبرز ما تغيّر:</p><ul>
+<li><i>🎨</i><div><b>تصميم جديد مريح للعين</b><span>ألوان هادئة من الموف والبيج والزيتوني، مناسبة لساعات العمل الطويلة.</span></div></li>
+<li><i>🧭</i><div><b>كل شيء في مكانه</b><span>الأقسام والأزرار كما اعتدتم عليها، فلا حاجة لتعلّم شيء جديد.</span></div></li>
+<li><i>⚡</i><div><b>أسرع وأكثر ثباتاً</b><span>فتح أسرع، وتعمل حتى مع الشبكات الضعيفة.</span></div></li>
+</ul></div>
+<div class="f"><button type="button">ابدأ الاستخدام</button><small>شكراً لكم، فريق تاسومة 🤍</small></div></div>`;
+  const close=()=>{try{localStorage.setItem("tz_news",NEWS_ID)}catch(e){}d.remove();document.removeEventListener("keydown",esc)};
+  const esc=e=>{if(e.key==="Escape")close()};
+  d.querySelector(".f button").onclick=close;d.addEventListener("click",e=>{if(e.target===d)close()});document.addEventListener("keydown",esc);
+  document.body.appendChild(d);setTimeout(()=>{const b=d.querySelector(".f button");if(b)b.focus({preventScroll:true})},300);
+ }
+})();
 // 🎬 (13 نوفمبر 2026، transitions.dev) قفل النوافذ بنعومة: أي نافذة بتتقفل (بيتشال منها "on")، بنسيبها ظاهرة 150ms
 // بكلاس is-closing (الخلفية بتختفي بالتدريج واللوحة بتصغر)، وبعدين بتختفي. الملفات التانية مش محتاجة تتغيّر.
 // لو اتفتحت تاني في النص، بنلغي القفل على طول. الضغطات بتعدّي من تحتها وهي بتقفل (pointer-events:none في ui.css).
