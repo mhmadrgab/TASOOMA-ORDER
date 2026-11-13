@@ -2004,4 +2004,9 @@ export default {
 "يدخل ويرى مديول الصيانة فقط: يعتمد طلبات الفروع ويحدد الموعد والفني، ويسجّل الإصلاح، ويستطيع فتح طلب صيانة لأي فرع بنفسه.":"Sees only the maintenance module: approves branch requests, sets the appointment and technician, records the repair, and can open a request for any branch himself.",
 "لا يوجد مهندسو صيانة بعد. أضفه من الأعلى واختر":"No maintenance engineers yet. Add one above and choose",
 "مهندس صيانة":"Maintenance engineer",
+"المنصة تأخرت في الفتح":"The platform is taking too long to open",
+"تأكد من الإنترنت ثم اضغط إعادة المحاولة.":"Check the internet, then press Try again.",
+"جرّب إعادة المحاولة. وإذا تكرر ذلك اضغط «تحديث كامل» (لن يُسجَّل خروجك).":"Press Try again. If it keeps happening, press “Full refresh” (you will stay logged in).",
+"إعادة المحاولة":"Try again",
+"تحديث كامل":"Full refresh",
 };

@@ -71,11 +71,11 @@ const CSS=`
 #mtm .act button.r{background:#e5372b;border-color:#e5372b;color:#fff}
 #mtm .act button:disabled{opacity:.6;cursor:progress}
 #mtbtn{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 14px;padding:14px 18px;border:1px solid var(--line);border-radius:18px;cursor:pointer;font:inherit;text-align:start;color:var(--ink);background:var(--card);box-shadow:0 1px 2px rgba(0,0,0,.05),0 10px 24px -14px rgba(11,107,219,.35)}
-#mtbtn .ic{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;font-size:32px;flex:none;background:linear-gradient(160deg,#cfe2fb,#8fb8f0)}
+#mtbtn .ic{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;font-size:34px;flex:none;background:none}
 #mtbtn .tx{flex:1;min-width:0}#mtbtn .tx b{display:block;font-size:19px}#mtbtn .tx small{display:block;color:var(--mut);font-size:13.5px}
-#mtbtn .bd{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}#mtbtn .bd span{background:#0b6bdb;color:#fff;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700}#mtbtn .bd span.g{background:#1f9d45}
+#mtbtn .m-bd{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}#mtbtn .m-bd span{background:#0b6bdb;color:#fff;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700}#mtbtn .m-bd span.g{background:#1f9d45}
 #mtbtn .ar{font-size:24px;opacity:.6;transform:scaleX(-1)}
-@media (prefers-color-scheme:dark){#mtbtn .ic{background:linear-gradient(160deg,#1d3a63,#0b4a98)}}
+@media (prefers-color-scheme:dark){#mtbtn .ic{background:none}}
 `;
 function css(){if(!g("mt-css")){const s=document.createElement("style");s.id="mt-css";s.textContent=CSS;document.head.appendChild(s)}}
 

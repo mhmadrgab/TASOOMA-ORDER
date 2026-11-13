@@ -85,7 +85,7 @@
  let ready=false,minDone=!H.classList.contains("app");
  const hide=()=>{if(!ready||!minDone||!boot||!boot.isConnected||boot.classList.contains("out"))return;boot.classList.add("out");setTimeout(()=>boot.remove(),600)};
  if(!minDone)setTimeout(()=>{minDone=true;hide()},Math.max(0,1700-performance.now()));
- window.uiReady=()=>{if(ready)return;ready=true;H.classList.remove("aw");hide()};
+ window.uiReady=()=>{if(ready)return;ready=true;window.__uiOk=1;H.classList.remove("aw");hide()};
  if(!H.classList.contains("aw"))window.uiReady();// صفحات من غير تسجيل دخول
  // الموبايل: الشريط اللي فوق بيختفي وإنت نازل ويرجع أول ما تطلع لفوق (مساحة أكبر للمحتوى)
  let lastY=scrollY,tick=false;
@@ -105,6 +105,46 @@
  }).catch(()=>{});
  if(document.readyState==="loading")addEventListener("DOMContentLoaded",()=>setTimeout(chk,1500));else setTimeout(chk,1500);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)chk()});
+})();
+// 🛟 (13 نوفمبر 2026، "المنصة مش بتفتح عند بعض الناس")
+// 1) بعض شبكات الجوال بتحجب supabase.co (حصل في الهند والإمارات). بنجرّب Supabase مباشرة، ولو مش واصل والنت شغّال
+//    وسيرفرنا واصل: الجهاز بيتعلّم (tz_via=p) فـ fb.js بيكلّم Supabase من سيرفر Cloudflare، وبنعيد التحميل مرة واحدة.
+//    ولو بعدين Supabase بقى واصل مباشرة، بنرجع للطريق العادي من الفتحة الجاية.
+// 2) لو الصفحة ما عرفتش مين داخل خلال 12 ثانية (بعد 10 ثواني الصفحة بتعرض شاشة الدخول لوحدها، والدخول هيفضل يقول "بطيء"): بدل شاشة فاضية، رسالة واضحة + "إعادة المحاولة" و"تحديث كامل".
+(function(){
+ if(!/(admin|index|driver)\.html$|\/$/.test(location.pathname))return;
+ const SB="https://kycuhijnrzoqggonrsbx.supabase.co/auth/v1/health?apikey=sb_publishable_CKCnA4MaSdGltJWsIrREaQ_guOg-CPa",PX="https://tasooma-push.tasooma.workers.dev/";
+ const get=k=>{try{return localStorage.getItem(k)}catch(e){return null}},put=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
+ const ss=(k,v)=>{try{if(v===undefined)return sessionStorage.getItem(k);sessionStorage.setItem(k,v)}catch(e){return null}};
+ const ping=(u,ms)=>new Promise(ok=>{const t=setTimeout(()=>ok(false),ms);fetch(u,{mode:"no-cors",cache:"no-store"}).then(()=>{clearTimeout(t);ok(true)},()=>{clearTimeout(t);ok(false)})});
+ let firstErr="";
+ addEventListener("error",e=>{if(!firstErr&&e&&e.message)firstErr=String(e.message).slice(0,160)});
+ addEventListener("unhandledrejection",e=>{if(!firstErr&&e&&e.reason)firstErr=String(e.reason&&e.reason.message||e.reason).slice(0,160)});
+ const via=get("tz_via")==="p";
+ setTimeout(async()=>{
+  if(!navigator.onLine)return;
+  const direct=await ping(SB,via?8000:7000);
+  if(direct){if(via)put("tz_via",null);return}
+  if(via)return;
+  const px=await ping(PX,8000);
+  if(px&&!ss("tz_via_r")){put("tz_via","p");ss("tz_via_r","1");location.reload()}
+ },via?10000:800);
+ setTimeout(()=>{
+  if(window.__uiOk||document.getElementById("tz-stuck"))return;
+  const d=document.createElement("div");d.id="tz-stuck";d.setAttribute("role","alert");
+  d.style.cssText="position:fixed;inset:auto 12px 18px 12px;margin:auto;max-width:460px;z-index:100000;visibility:visible!important;background:#fff;color:#1b1b1b;border-radius:18px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.45);font:400 14.5px/1.7 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;text-align:right";
+  const off=!navigator.onLine;
+  d.innerHTML=`<b style="font-size:16px">${off?"📡 لا يوجد اتصال بالإنترنت":"⏳ المنصة تأخرت في الفتح"}</b><div style="margin:6px 0 12px;color:#555">${off?"تأكد من الإنترنت ثم اضغط إعادة المحاولة.":"جرّب إعادة المحاولة. وإذا تكرر ذلك اضغط «تحديث كامل» (لن يُسجَّل خروجك)."}</div>`+
+   `<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-r style="flex:1;min-height:44px;border:0;border-radius:12px;background:#1b1b1b;color:#fff;font-weight:700;font-size:14.5px;font-family:inherit;cursor:pointer">إعادة المحاولة</button><button type="button" data-f style="flex:1;min-height:44px;border:1px solid #ccc;border-radius:12px;background:#fff;color:#1b1b1b;font-weight:700;font-size:14.5px;font-family:inherit;cursor:pointer">تحديث كامل</button></div>`+
+   (firstErr?`<div data-notr style="margin-top:10px;font-size:11.5px;color:#888;direction:ltr;text-align:left;word-break:break-all">${firstErr.replace(/[<>&]/g,"")}</div>`:"");
+  d.querySelector("[data-r]").onclick=()=>location.reload();
+  d.querySelector("[data-f]").onclick=async()=>{put("tz_via",null);ss("tz_via_r","");
+   try{const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()))}catch(e){}
+   try{const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}catch(e){}
+   location.replace(location.pathname+"?r="+Date.now()+location.hash)};
+  document.body.appendChild(d);
+  const w=setInterval(()=>{if(window.__uiOk){d.remove();clearInterval(w)}},500);
+ },12000);
 })();
 // 🎬 (13 نوفمبر 2026، transitions.dev) قفل النوافذ بنعومة: أي نافذة بتتقفل (بيتشال منها "on")، بنسيبها ظاهرة 150ms
 // بكلاس is-closing (الخلفية بتختفي بالتدريج واللوحة بتصغر)، وبعدين بتختفي. الملفات التانية مش محتاجة تتغيّر.

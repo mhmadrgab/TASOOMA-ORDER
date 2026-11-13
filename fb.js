@@ -24,9 +24,13 @@ export const ADMIN_EMAIL = "mohamedrgab20@gmail.com";
 export const emailOf = c => `${c}@${DOMAIN}`;
 // كل صفحة ليها دخول لوحدها (فرع / مستودع / سائق) بمفتاح تخزين مختلف، و"sec" (إنشاء الحسابات) مابيتفتكرش خالص
 const APPS = {};
+// 🛟 الطريق الاحتياطي: لو شبكة الجهاز حاجبة supabase.co (ui.js بيكتشف ده ويكتب tz_via)، الكلام بيعدّي من سيرفر Cloudflare بتاعنا
+const VIA_P = "https://tasooma-push.tasooma.workers.dev/sb";
+let VIA = SB_URL; try { if (localStorage.getItem("tz_via") === "p") VIA = VIA_P } catch (e) {}
+export const SB_VIA = VIA;
 export function makeFb(name) {
   if (APPS[name]) return APPS[name];
-  const c = createClient(SB_URL, SB_KEY, {auth: {storageKey: "tz-sb-" + name, persistSession: name !== "sec", autoRefreshToken: name !== "sec", detectSessionInUrl: false},
+  const c = createClient(VIA, SB_KEY, {auth: {storageKey: "tz-sb-" + name, persistSession: name !== "sec", autoRefreshToken: name !== "sec", detectSessionInUrl: false},
     realtime: {params: {eventsPerSecond: 10}}});
   const db = {c}, app = {name, sb: c, db};
   return APPS[name] = {app, db, auth: new S.Auth(c)};
