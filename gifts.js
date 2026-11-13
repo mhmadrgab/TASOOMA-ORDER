@@ -96,11 +96,7 @@ const CSS=`
 #gfbtn .tx{flex:1;min-width:0}#gfbtn .tx b{display:block;font-size:19px;font-weight:800}#gfbtn .tx small{display:block;font-size:13.5px;color:#4a3a14;margin-top:2px}
 #gfbtn .bd{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}#gfbtn .bd span{background:rgba(27,27,27,.85);color:#f3e7c8;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700}
 #gfbtn .ar{font-size:24px;font-weight:800;flex:none;opacity:.7}html[dir="rtl"] #gfbtn .ar{transform:scaleX(-1)}
-/* (13 نوفمبر 2026، مراجعة التصميم) الذهبي كان مالي الكارت ومنافس زرار الإرسال: بقى كارت عادي والذهبي في الأيقونة بس */
-body #gfbtn{background:var(--card,#fff);color:var(--ink,#1b1b1b);border:1.5px solid var(--line,#e6e2db);box-shadow:0 1px 2px rgba(0,0,0,.05),0 10px 24px -14px rgba(60,45,10,.3)}
-body #gfbtn::after{display:none}
-body #gfbtn .ic{background:linear-gradient(160deg,#f7e3b0,#d4ae5c);color:#5a4210;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 4px 10px -4px rgba(168,131,47,.6)}
-body #gfbtn .tx small{color:var(--mut,#6f6b64)}
+/* (13 نوفمبر 2026) محمد رجّع كارت الهدايا الذهبي الأصلي (كان أحلى من الأبيض) */
 .gf-hero{display:flex;align-items:center;gap:14px;margin:-20px -22px 14px;padding:18px 22px;border-radius:18px 18px 0 0;background:linear-gradient(120deg,#2b2416,#1b1b1b);color:#f3e7c8}
 .gf-hero .ic{font-size:40px}.gf-hero h3{margin:0;font-size:21px;color:#fff}.gf-hero p{margin:3px 0 0;font-size:13.5px;color:#cdb67a;line-height:1.7}
 .gf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}.gf-stats div{background:var(--soft);border-radius:14px;padding:10px;text-align:center}.gf-stats b{display:block;font-size:22px}.gf-stats small{color:var(--mut);font-size:12.5px}
