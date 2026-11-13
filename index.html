@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<script src="./i18n.js"></script>
+<script src="./i18n.js"></script><script src="./icons.js" defer></script>
 <!-- شاشة البداية: خطوط لوجو تاسومة بترسم نفسها. ومحتوى الصفحة مخفي (aw) إلى ما نعرف مين داخل، علشان مايبانش حاجة قبل تسجيل الدخول -->
 <script>(function(){var h=document.documentElement;h.classList.add("aw");if(navigator.standalone||matchMedia("(display-mode: standalone)").matches)h.classList.add("app");setTimeout(function(){if(!h.classList.contains("aw"))return;var g=document.getElementById("gate");if(g&&!document.body.classList.contains("lock"))g.classList.add("on");h.classList.remove("aw");var b=document.getElementById("boot");if(b)b.remove()},10000)})()</script>
 <style>
@@ -148,6 +148,7 @@ table.g{border-spacing:0}
 .rc small{display:block;font-size:12px;color:var(--mut)}
 .rc b{display:block;font-size:19px;line-height:1.35;word-break:break-word}
 .rc.to{background:var(--acc);border-color:var(--acc);color:#1b1b1b}.rc.to small{color:#3a2f12}
+@media screen{body:not([data-ty="tr"]) .rc.to{background:var(--soft);border-color:var(--acc);color:var(--ink)}body:not([data-ty="tr"]) .rc.to small{color:var(--mut)}}
 .ra{align-self:center;font-size:26px;color:var(--acc);font-weight:700}
 .rw{color:#c4362b;font-size:13px;align-self:center}
 .cg{background:var(--field);border:0;border-inline-start:5px solid var(--acc);border-radius:14px;padding:12px 16px;margin-bottom:12px}

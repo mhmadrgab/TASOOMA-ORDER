@@ -119,7 +119,9 @@ function ring(id,color,pct,label,sub,pill){
    <h4>${E(label)}</h4><p>${E(sub)}</p>${pill||""}</div>`;
 }
 // حالة النسبة: أيقونة + كلمة (اللون لوحده مش كفاية)
-const pill=pct=>pct===null?"":pct>=90?`<span class="dz-pill"><i style="background:var(--dz-good)"></i>ممتاز</span>`:pct>=70?`<span class="dz-pill"><i style="background:var(--dz-warn)"></i>جيد</span>`:`<span class="dz-pill"><i style="background:var(--dz-bad)"></i>يحتاج إلى متابعة</span>`;
+// (13 نوفمبر 2026) لون الدايرة = الحالة (زي الشارة تحتها) بدل 4 ألوان مالهاش معنى: ممتاز أخضر، جيد ذهبي، محتاج متابعة أحمر
+const ringC=pct=>pct===null?"var(--dz-track)":pct>=90?"var(--dz-r3)":pct>=70?"var(--dz-r2)":"var(--dz-bad)";
+const pill=pct=>pct===null?"":pct>=90?`<span class="dz-pill"><i style="background:var(--dz-r3)"></i>ممتاز</span>`:pct>=70?`<span class="dz-pill"><i style="background:var(--dz-r2)"></i>جيد</span>`:`<span class="dz-pill"><i style="background:var(--dz-bad)"></i>يحتاج إلى متابعة</span>`;
 // سطر الملخّص تحت العنوان (أرقام الفترة نفسها، مش حالة الطلبات حالياً)
 const sum=(id,icon,val,label)=>`<span>${icon} <b ${cu(moved(id,val),val)}>${fmt(val)}</b> ${E(label)}</span>`;
 
@@ -164,10 +166,10 @@ export function dashView(R){
   <div class="dz-hd"><h2>📊 لوحة الأداء <small>${E(lbl)}</small></h2><div class="dz-per" role="group" aria-label="الفترة">${PERS.map(([k,n])=>`<button type="button" data-dp="${k}" class="${PER===k?"on":""}" aria-pressed="${PER===k}">${n}</button>`).join("")}</div></div>
   <div class="dz-sum">${C.length?`${sum("k1","🧾",C.length,"طلب")}${sum("k2","🏬",brs,"فرع قدّموا طلبات")}${sum("k3","📦",pcs,"قطعة")}${stg("⏰","حتى يبدأ التجهيز",tPrep,"من وصول الطلب إلى المستودع حتى يضغط أحدهم \"بدء التجهيز\"")}${stg("🧰","التجهيز حتى خروج السائق",tWait,"من \"بدء التجهيز\" حتى يبدأ السائق الرحلة بالطلب (التجهيز نفسه + انتظار السائق)")}${stg("🚚","الطريق",tRoad,"من خروج السائق حتى يسلّم للفرع")}`:`<span>💤 لم يتم إنشاء طلبات ${PER==="1"?"اليوم":"في هذه الفترة"} لا يزال</span>`}</div>
   <div class="dz-rings">
-   ${ring("r1","var(--dz-r1)",p1,"سُلِّمت",C.length?`${fmt(dl.length)} من ${fmt(C.length)} طلب`:"لا توجد طلبات في هذه الفترة")}
-   ${ring("r2","var(--dz-r2)",p2,"أكّدوا الاستلام",dl.length?`${fmt(rc.length)} من ${fmt(dl.length)} سُلِّم`:"لا يوجد تسليم بعد",pill(p2))}
-   ${ring("r3","var(--dz-r3)",p3,"استلام سليم",rc.length?(rc.length-ok.length?`${fmt(rc.length-ok.length)} بملاحظات نقص/تلف`:"دون أي ملاحظات"):"لا يوجد تأكيد بعد",pill(p3))}
-   ${ring("r4","var(--dz-r4)",p4,"وصلت خلال 24 ساعة",tt.length?`متوسط التوصيل ${dur(avg)}`:"لا يوجد تسليم بعد",pill(p4))}
+   ${ring("r1",ringC(p1),p1,"سُلِّمت",C.length?`${fmt(dl.length)} من ${fmt(C.length)} طلب`:"لا توجد طلبات في هذه الفترة")}
+   ${ring("r2",ringC(p2),p2,"أكّدوا الاستلام",dl.length?`${fmt(rc.length)} من ${fmt(dl.length)} سُلِّم`:"لا يوجد تسليم بعد",pill(p2))}
+   ${ring("r3",ringC(p3),p3,"استلام سليم",rc.length?(rc.length-ok.length?`${fmt(rc.length-ok.length)} بملاحظات نقص/تلف`:"دون أي ملاحظات"):"لا يوجد تأكيد بعد",pill(p3))}
+   ${ring("r4",ringC(p4),p4,"وصلت خلال 24 ساعة",tt.length?`متوسط التوصيل ${dur(avg)}`:"لا يوجد تسليم بعد",pill(p4))}
   </div>
   <div class="dz-card"><h3>الطلبات حالياً <small>اضغط على أي مرحلة لترى طلباتها</small></h3><div class="dz-flow">
    ${stage("new","🆕","جديد","--dz-new")}${stage("prep","⏳","قيد التجهيز","--dz-prep")}${stage("go","🚚","في الطريق","--dz-go")}${stage("done","📦","وصل وبانتظار التأكيد","--dz-done")}

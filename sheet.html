@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<script src="./i18n.js"></script>
+<script src="./i18n.js"></script><script src="./icons.js" defer></script>
 <script>/* الورقة اليدوية بتفتح جوه لوحة المستودع بس (بعد تسجيل الدخول). لو حد فتح الرابط لوحده: مايشوفش حاجة ويروح لصفحة الدخول */if(window.top===window){document.documentElement.style.display="none";location.replace("./admin.html")}</script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>/* منع فتح المنصة داخل إطار في موقع آخر (Clickjacking). الإطار من نفس الموقع مسموح */(function(){var ok=true;try{ok=window.top===window.self||window.top.location.origin===location.origin}catch(e){ok=false}if(!ok){document.documentElement.style.display="none";try{window.top.location=window.self.location.href}catch(e){}}})()</script>
@@ -115,6 +115,7 @@ table.g{border-spacing:0}
 .rc small{display:block;font-size:12px;color:var(--mut)}
 .rc b{display:block;font-size:19px;line-height:1.35;word-break:break-word}
 .rc.to{background:var(--acc);border-color:var(--acc);color:#1b1b1b}.rc.to small{color:#3a2f12}
+@media screen{body:not([data-ty="tr"]) .rc.to{background:var(--soft);border-color:var(--acc);color:var(--ink)}body:not([data-ty="tr"]) .rc.to small{color:var(--mut)}}
 .ra{align-self:center;font-size:26px;color:var(--acc);font-weight:700}
 .rw{color:#c4362b;font-size:13px;align-self:center}
 .cg{background:var(--field);border:0;border-inline-start:5px solid var(--acc);border-radius:14px;padding:12px 16px;margin-bottom:12px}

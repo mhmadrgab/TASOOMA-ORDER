@@ -9,7 +9,9 @@ const N=x=>Number.isFinite(+x)?+x:0;
 const LS="ann_seen";
 let X=null,UN=null,A=[],CNT={},RDU=null,busy=false;
 const CSS=`
-#annb{font:inherit;font-weight:800;font-size:14px;border:0;border-radius:999px;padding:8px 14px;background:linear-gradient(135deg,#f1d58e,#a8832f);color:#1b1b1b;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;position:relative}
+#annb{font:inherit;font-weight:500;font-size:14px;border:1px solid #444;border-radius:999px;padding:6px 14px;background:transparent;color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;position:relative}
+/* (13 نوفمبر 2026) الذهبي بس لما فيه تعميم جديد ماتقراش، علشان مايتنافسش مع التبويب المفتوح */
+#annb.nw{background:linear-gradient(135deg,#f1d58e,#a8832f);color:#1b1b1b;border-color:transparent;font-weight:800}
 #annb i{font-style:normal;background:#c0392b;color:#fff;border-radius:999px;min-width:20px;padding:0 6px;font-size:12px;line-height:20px}
 #annb.nw{animation:ann-ring 1.8s ease-in-out infinite}@keyframes ann-ring{0%,100%{transform:rotate(0)}8%{transform:rotate(-8deg)}16%{transform:rotate(8deg)}24%{transform:rotate(0)}}
 #annm{display:none;position:fixed;inset:0;z-index:86;background:rgba(0,0,0,.55);padding:14px;overflow:auto;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}#annm.on{display:block}
@@ -21,14 +23,14 @@ const CSS=`
 .annc .row{display:flex;gap:8px;align-items:center;margin-top:8px}.annc .row small{color:var(--mut);font-size:12.5px;flex:1}
 .annc button{font:inherit;font-weight:800;border:0;border-radius:12px;padding:10px 18px;background:#1b1b1b;color:#fff;cursor:pointer}.annc button:disabled{opacity:.5}
 .annl{padding:12px 18px 18px;max-height:62vh;overflow:auto}
-.anni{border-radius:16px;padding:12px 16px;margin-top:10px;background:var(--card);border:1.5px solid var(--line);border-inline-start:5px solid #d4ae5c}
+.anni{border-radius:16px;padding:12px 16px;margin-top:10px;background:var(--card);border:1.5px solid var(--line)}.anni.nw{border-color:#d4ae5c}
 .anni.nw{background:#fff8e6}.anni .hd2{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--mut)}.anni .hd2 b{color:var(--ink);font-size:14.5px}
 .anni .tx{white-space:pre-wrap;word-wrap:break-word;font-size:16px;line-height:1.7;margin-top:6px}
 .anni .rd{margin-top:8px;font-size:12.5px;color:#1d6fb8;font-weight:700;cursor:pointer}
 .rdrow{display:flex;align-items:center;gap:10px;margin-top:8px}.rdrow .rd{margin-top:0}
 .anndel{margin-inline-start:auto;font:inherit;font-size:12.5px;font-weight:800;border:1px solid #e3b4ad;background:transparent;color:#c0392b;border-radius:10px;padding:4px 12px;cursor:pointer}.anndel:hover{background:#c0392b;color:#fff}
 #annp{display:none;position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.6);padding:14px;overflow:auto;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}#annp.on{display:flex;align-items:center;justify-content:center}
-.annpk{width:100%;max-width:560px;margin:0}.annpk.pop{animation:ann-pop .42s cubic-bezier(.2,.9,.3,1.25)}@keyframes ann-pop{from{opacity:0;transform:translateY(24px) scale(.92)}to{opacity:1;transform:none}}
+.annpk{width:100%;max-width:560px;margin:0}.annpk.pop{animation:ann-pop .42s cubic-bezier(.16,1,.3,1)}@keyframes ann-pop{from{opacity:0;transform:translateY(24px) scale(.92)}to{opacity:1;transform:none}}
 .annpb{padding:18px 22px 22px;max-height:60vh;overflow:auto}.annpb .tx{white-space:pre-wrap;word-wrap:break-word;font-size:18px;line-height:1.8}
 .annpn{margin-top:14px;font-size:13px;color:var(--mut);font-weight:700}
 .annrd{margin-top:6px;font-size:12.5px;color:var(--mut);line-height:1.9}

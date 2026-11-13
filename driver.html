@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<script src="./i18n.js"></script>
+<script src="./i18n.js"></script><script src="./icons.js" defer></script>
 <!-- شاشة البداية: خطوط لوجو تاسومة بترسم نفسها. ومحتوى الصفحة مخفي (aw) إلى ما نعرف مين داخل، علشان مايبانش حاجة قبل تسجيل الدخول -->
 <script>(function(){var h=document.documentElement;h.classList.add("aw");if(navigator.standalone||matchMedia("(display-mode: standalone)").matches)h.classList.add("app");setTimeout(function(){if(!h.classList.contains("aw"))return;var g=document.getElementById("gate");if(g&&!document.body.classList.contains("lock"))g.classList.add("on");h.classList.remove("aw");var b=document.getElementById("boot");if(b)b.remove()},10000)})()</script>
 <style>
@@ -157,7 +157,7 @@ function ordPreview(rs){
  const o=order(rs,null),known=o.filter(r=>GEO.br[codeOf(r.brn)]);if(known.length<2)return "";
  const start={c:"WH",p:GEO.wh},m=Math.round(routeCost(known.map(nodeOf),start,start)),seen=new Set(),names=[];
  o.forEach(r=>{const t=r.tr&&r.tr.fr&&!N(r.pk),k=(t?r.tr.frn+">":"")+r.brn;if(!seen.has(k)){seen.add(k);names.push(t?`🔄 استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ثم سلّم <bdi dir="ltr">${E(r.brn)}</bdi>`:`<bdi dir="ltr">${E(r.brn)}</bdi>`)}});
- return `<div class="mut" style="background:#eef6f2;border-radius:10px;padding:8px 10px;margin-top:8px;color:#1f5d46;line-height:1.9"><b>🧭 الترتيب المقترح (أقصر طريق):</b>${names.map((n,i)=>`<div><b style="display:inline-block;min-width:22px;text-align:center;background:#1f5d46;color:#fff;border-radius:50%;font-size:12px;line-height:22px;margin-inline-end:6px">${i+1}</b>${n}</div>`).join("")}<div>🏁 الرجوع إلى المستودع</div><small>الوقت التقريبي للمشوار كله مع الرجوع: ~${m>=60?Math.floor(m/60)+" س "+(m%60)+" د":m+" د"}</small></div>`;
+ return `<div class="mut" style="background:color-mix(in srgb,#2f8f3e 13%,transparent);border:1px solid color-mix(in srgb,#2f8f3e 30%,transparent);border-radius:10px;padding:8px 10px;margin-top:8px;color:var(--ink);line-height:1.9"><b>🧭 الترتيب المقترح (أقصر طريق):</b>${names.map((n,i)=>`<div><b style="display:inline-block;min-width:22px;text-align:center;background:#1f5d46;color:#fff;border-radius:50%;font-size:12px;line-height:22px;margin-inline-end:6px">${i+1}</b>${n}</div>`).join("")}<div>🏁 الرجوع إلى المستودع</div><small>الوقت التقريبي للمشوار كله مع الرجوع: ~${m>=60?Math.floor(m/60)+" س "+(m%60)+" د":m+" د"}</small></div>`;
 }
 // ---------- وقت الوصول المتوقع لكل فرع ----------
 // كل رحلة قصيرة: الوقت الفعلي من رحلات قبل كده لنفس "من فين لفين" (المستودع←الملقا غير غرناطة←الملقا)،
