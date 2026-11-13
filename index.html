@@ -492,6 +492,7 @@ loadUI();
 import {makeFb,pushRegister,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,setDoc,updateDoc,onSnapshot,query,where,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 import {initBranch,stopBranch} from "./br-extra.js";
 import {initGifts,stopGifts} from "./gifts.js";
+import {initMnt,stopMnt} from "./mnt.js";
 import {initAnn,stopAnn} from "./ann.js";
 import {notify,beep,badge,autoPush} from "./notify.js";
 import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.js";
@@ -612,6 +613,9 @@ function enter(b){
  initTrack({db,code:code(b),getReq:id=>REQS[id]});// 📍 "تابع السائق على الخريطة" في الطلب اللي في الطريق
  initAnn({db,auth,toast,party:code(b),email:"",name:()=>b,canPost:false,popup:true});// مفيش زرار تعميمات عند الفرع: التعميم بيطلع في وشه لحد ما يقفله
  initGifts({db,toast,mode:"branch",code:code(b),brn:b,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:""},owner:()=>false,ping:ids=>ping(auth,[],[],[],ids)});
+ // 🔧 طلبات الصيانة (13 نوفمبر 2026): كارت تحت كارت الهدايا، والفرع بيطلب ويتابع ويأكد الإصلاح
+ initMnt({db,toast,mode:"branch",code:code(b),brn:b,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:b},ping:ids=>ping(auth,[],[],[],[],ids),
+  mount:btn=>{const a=document.getElementById("gfbtn")||document.getElementById("me");if(a)a.parentNode.insertBefore(btn,a.nextSibling)}});
  // الدردشة الخاص مع المستودع (زرار عائم 💬 + زرار "تواصل مع المستودع" فوق + زرار على كل طلب): الفرع بيختار يكلّم مين،
  // وكل محادثة خاصة بين الفرع والشخص ده بس
  initBChat({db,app,party:"b-"+code(b),codes:BR,name:()=>String(st&&st.dr||"").trim(),myLabel:()=>b,brn:c=>BR.find(x=>code(x)===c)||(c===code(b)?b:c),toast,beep,notify,ping:c=>ping(auth,[],[c]),
@@ -632,7 +636,7 @@ function deepReq(id){
  if(q.get("gift")){let n=0;const iv=setInterval(()=>{n++;const b=document.querySelector('[data-gf="bopen"]');if(b){clearInterval(iv);b.click()}else if(n>40)clearInterval(iv)},500)}
  if(rq||q.get("gift"))try{history.replaceState(null,"",location.pathname)}catch(e){}}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
-function gateOn(){B=null;stopBranch();stopGifts();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBranch();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");

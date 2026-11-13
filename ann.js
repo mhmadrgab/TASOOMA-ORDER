@@ -9,7 +9,7 @@ const N=x=>Number.isFinite(+x)?+x:0;
 const LS="ann_seen";
 let X=null,UN=null,A=[],CNT={},RDU=null,busy=false;
 const CSS=`
-#annb{font:inherit;font-weight:500;font-size:14px;border:1px solid #444;border-radius:999px;padding:6px 14px;background:transparent;color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;position:relative}
+#annb{font:inherit;font-weight:500;font-size:14px;border:1px solid #444;border-radius:999px;padding:6px 14px;background:transparent;color:#ddd;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;position:relative}
 /* (13 نوفمبر 2026) الذهبي بس لما فيه تعميم جديد ماتقراش، علشان مايتنافسش مع التبويب المفتوح */
 #annb.nw{background:linear-gradient(135deg,#f1d58e,#a8832f);color:#1b1b1b;border-color:transparent;font-weight:800}
 #annb i{font-style:normal;background:#c0392b;color:#fff;border-radius:999px;min-width:20px;padding:0 6px;font-size:12px;line-height:20px}

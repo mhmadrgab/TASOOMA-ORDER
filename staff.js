@@ -6,10 +6,12 @@ import {avatar,ownerMe,meReady} from "./prof.js";
 export const OWNER_NAME="محمد رجب";
 const g=id=>document.getElementById(id);
 // gift = محاسب الهدايا: يشوف الهدايا والعينات ويطلّع تقاريرها بس (الاعتماد للي معاه "الطلبات" وللمديرين)
-const PERMS=[["req","الطلبات"],["cus","العهدة"],["fl","السيارات والسائقين"],["gift","🎁 الهدايا (مشاهدة وتقارير)"],["ga","✅ اعتماد الهدايا"]];
+const PERMS=[["req","الطلبات"],["cus","العهدة"],["fl","السيارات والسائقين"],["gift","🎁 الهدايا (مشاهدة وتقارير)"],["ga","✅ اعتماد الهدايا"],["mt","🔧 الصيانة"]];
 // مدير التسويق: الهدايا والعينات فقط (يعتمدها ويرفضها). p.gm فقط من غير أي صلاحية تانية
 // 🔑 المدير اللي معاه p.pm (المالك بيحدده) يغيّر صلاحيات المحاسبين دي بس (القواعد كمان). "اعتماد الهدايا" للمالك بس
 const PM_KEYS=["req","cus","fl","gift"];
+// 🔧 مهندس الصيانة (13 نوفمبر 2026): p.mt بس، بيشوف مديول الصيانة لوحده
+const isEng=s=>s.v!==true&&s.admin!==true&&!!(s.p&&s.p.mt===true&&!s.p.req&&!s.p.cus&&!s.p.fl&&!s.p.gift&&!s.p.gm);
 const isMkt=s=>s.v!==true&&s.admin!==true&&!!(s.p&&s.p.gm===true&&!s.p.req&&!s.p.cus&&!s.p.fl&&!s.p.gift);
 // ga = "اعتماد الهدايا": المالك بيدّيها لأي مدير أو محاسب (غير مدير التسويق اللي بيعتمد أصلاً)
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
@@ -36,7 +38,7 @@ const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم ا�
 // الصفحة مقسومة: مالك النظام، المديرين، المحاسبين. المالك بس اللي بيعدّل؛ المدير بيشوف بس (ويلاقي نفسه في قسم المديرين)
 export function view(){
  // V = المتابعين (صاحب الشركة): بيشوفوا كل حاجة من غير تعديل
- const pw=PW(),own=X.owner,me=X.me,V=S.filter(s=>s.v===true),M=S.filter(s=>s.v!==true&&s.admin===true),G=S.filter(s=>isMkt(s)),A=S.filter(s=>s.v!==true&&s.admin!==true&&!isMkt(s));
+ const pw=PW(),own=X.owner,me=X.me,V=S.filter(s=>s.v===true),M=S.filter(s=>s.v!==true&&s.admin===true),G=S.filter(s=>isMkt(s)),T=S.filter(s=>isEng(s)),A=S.filter(s=>s.v!==true&&s.admin!==true&&!isMkt(s)&&!isEng(s));
  const you=id=>id===me?' <span class="pill go">أنت</span>':"";
  const st=s=>`<span class="pill ${s.enabled?"":"off2"}">${s.enabled?"مفعّل":"معطّل"}</span>`;
  const pwc=s=>`<td>${pw[s.id]?`<span class="pin" data-spc="${E(s.id)}">••••••••</span> <button class="bt s" data-sf="show" data-id="${E(s.id)}" type="button">إظهار</button>`:'<span class="off">—</span>'}</td>`;
@@ -57,11 +59,13 @@ export function view(){
  const nc=s=>own?`<td style="white-space:nowrap">${dvs(s.id)} <button class="bt s" data-sf="ntest" data-id="${E(s.id)}" type="button" ${testing?"disabled":""}>${testing===s.id?"⏳":"🔔 جرّب"}</button></td>`:"";
  return `${own?`<div class="pan"><h3 style="margin:0 0 10px">👑 مالك النظام</h3><div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px">${avatar(me,on,44)}<div><b>${E(on)}</b>${mo.k?` <span class="pill">${E(mo.k)}</span>`:""}<div class="off" dir="ltr" style="font-size:13px">${E(me)}</div></div><span class="pill go">أنت</span><span class="off" style="font-size:13.5px">🔔 ${dvs(me)}</span> <button class="bt s" data-sf="ntest" data-id="${E(me)}" type="button" ${testing?"disabled":""}>${testing===me?"⏳":"🔔 جرّب"}</button><button class="bt s" data-pfopen type="button" style="margin-inline-start:auto">✏️ اسمي وكنيتي وصورتي</button></div></div>
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 10px">➕ إضافة موظف</h3>
- <div class="fl" style="margin:0"><input id="sfe" type="email" dir="ltr" placeholder="البريد الإلكتروني" value="${E(f.e)}" autocomplete="off" style="flex:1;min-width:190px"><input id="sfn" placeholder="الاسم" value="${E(f.n)}" maxlength="40" style="flex:1;min-width:140px"><input id="sfp" dir="ltr" placeholder="كلمة المرور (اختياري)" value="${E(f.p)}" autocomplete="off" style="flex:1;min-width:150px"><select id="sfr"><option value="acc" ${f.r==="acc"?"selected":""}>محاسب</option><option value="adm" ${f.r==="adm"?"selected":""}>مدير</option><option value="mkt" ${f.r==="mkt"?"selected":""}>📣 مدير تسويق (الهدايا فقط)</option><option value="view" ${f.r==="view"?"selected":""}>👁 متابع (صاحب الشركة)</option></select><button class="bt p" data-sf="add" type="button" ${busy?"disabled":""}>إضافة</button></div></div>`:""}
+ <div class="fl" style="margin:0"><input id="sfe" type="email" dir="ltr" placeholder="البريد الإلكتروني" value="${E(f.e)}" autocomplete="off" style="flex:1;min-width:190px"><input id="sfn" placeholder="الاسم" value="${E(f.n)}" maxlength="40" style="flex:1;min-width:140px"><input id="sfp" dir="ltr" placeholder="كلمة المرور (اختياري)" value="${E(f.p)}" autocomplete="off" style="flex:1;min-width:150px"><select id="sfr"><option value="acc" ${f.r==="acc"?"selected":""}>محاسب</option><option value="adm" ${f.r==="adm"?"selected":""}>مدير</option><option value="mkt" ${f.r==="mkt"?"selected":""}>📣 مدير تسويق (الهدايا فقط)</option><option value="eng" ${f.r==="eng"?"selected":""}>🔧 مهندس صيانة (الصيانة فقط)</option><option value="view" ${f.r==="view"?"selected":""}>👁 متابع (صاحب الشركة)</option></select><button class="bt p" data-sf="add" type="button" ${busy?"disabled":""}>إضافة</button></div></div>`:""}
  ${own||V.length?`<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 4px">👁 المتابعين (${V.length})</h3><p class="off" style="margin:0 0 8px;font-size:13px">مثل صاحب الشركة: يرى لوحة الأداء والطلبات والتحويلات والعهدة والسيارات والعمال والسجل، ولا يستطيع تعديل أو حذف أي شيء. وليس له دردشة ولا كلمات مرور.</p><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
  ${V.length?V.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,""):""}</tr>`).join(""):empty(own?7:4,"لا يوجد متابعون بعد. أضفه من الأعلى واختر \"👁 متابع\"")}</tbody></table></div></div>`:""}
  ${own||G.length?`<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 4px">📣 مديرو التسويق (${G.length})</h3><p class="off" style="margin:0 0 8px;font-size:13px">يدخل ويرى مديول الهدايا والعينات فقط، ويعتمد هدايا الفروع والمستودع أو يرفضها. لو أردت أن يعتمد شخص آخر، فعّل له "✅ اعتماد الهدايا" في جدول المديرين أو المحاسبين.</p><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
  ${G.length?G.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,""):""}</tr>`).join(""):empty(own?7:4,"لا يوجد مديرو تسويق بعد. أضفه من الأعلى واختر \"📣 مدير تسويق\"")}</tbody></table></div></div>`:""}
+ ${own||T.length?`<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 4px">🔧 مهندسو الصيانة (${T.length})</h3><p class="off" style="margin:0 0 8px;font-size:13px">يدخل ويرى مديول الصيانة فقط: يعتمد طلبات الفروع ويحدد الموعد والفني، ويسجّل الإصلاح، ويستطيع فتح طلب صيانة لأي فرع بنفسه.</p><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
+ ${T.length?T.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,""):""}</tr>`).join(""):empty(own?7:4,"لا يوجد مهندسو صيانة بعد. أضفه من الأعلى واختر \"🔧 مهندس صيانة\"")}</tbody></table></div></div>`:""}
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🛡 المديرين (${M.length})</h3><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th><th>✅ اعتماد الهدايا</th><th title="يستطيع تعديل صلاحيات المحاسبين">🔑 صلاحيات المحاسبين</th><th title="يظهر للفروع في قسم المستودع بالدردشة">💬 المستودع بالدردشة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
  ${M.length?M.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td><td><input type="checkbox" data-sp2="ga" data-id="${E(s.id)}" ${s.p&&s.p.ga===true?"checked":""} ${own?"":"disabled"}></td><td><input type="checkbox" data-sp2="pm" data-id="${E(s.id)}" ${s.p&&s.p.pm===true?"checked":""} ${own?"":"disabled"}></td>${cwc(s)}${own?nc(s)+pwc(s)+acts(s,`<button class="bt s" data-sf="toacc" data-id="${E(s.id)}" type="button">تحويل لمحاسب</button> `):""}</tr>`).join(""):empty(own?10:7,"لا يوجد مديرون بعد")}</tbody></table></div></div>
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 8px">🧾 المحاسبين (${A.length})</h3>${!own&&X.pm?`<p class="off" style="margin:0 0 8px;font-size:13px">🔑 يمكنك تعديل صلاحيات المحاسبين (الطلبات، العهدة، السيارات، الهدايا). اعتماد الهدايا لمالك النظام فقط.</p>`:""}<div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${PERMS.map(p=>`<th>${p[1]}</th>`).join("")}<th title="يظهر للفروع في قسم المستودع بالدردشة">💬 المستودع بالدردشة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
@@ -83,10 +87,10 @@ async function add(){
   }
   else{pw=genPw();try{await createUserWithEmailAndPassword(a,e,pw)}finally{try{await signOut(a)}catch(x){}}}
   await setDoc(doc(X.db,"secrets",e),{pw});
-  const adm=f.r==="adm",vw=f.r==="view",mk=f.r==="mkt";
+  const adm=f.r==="adm",vw=f.r==="view",mk=f.r==="mkt",eg=f.r==="eng";
   // المتابع: من غير أي صلاحية تعديل (v = يشوف بس)
-  await setDoc(doc(X.db,"staff",e),vw?{name:n,enabled:true,admin:false,v:true,p:{}}:mk?{name:n,enabled:true,admin:false,p:{gm:true}}:{name:n,enabled:true,admin:adm,p:{req:true,cus:true,fl:true}});
-  f={e:"",n:"",p:"",r:"acc"};X.toast("تمت إضافة "+n+(vw?" كمتابع (للمشاهدة فقط)":mk?" كمدير تسويق (الهدايا فقط)":adm?" كمدير":" — راجع الصلاحيات"));
+  await setDoc(doc(X.db,"staff",e),vw?{name:n,enabled:true,admin:false,v:true,p:{}}:mk?{name:n,enabled:true,admin:false,p:{gm:true}}:eg?{name:n,enabled:true,admin:false,p:{mt:true}}:{name:n,enabled:true,admin:adm,p:{req:true,cus:true,fl:true}});
+  f={e:"",n:"",p:"",r:"acc"};X.toast("تمت إضافة "+n+(vw?" كمتابع (للمشاهدة فقط)":mk?" كمدير تسويق (الهدايا فقط)":eg?" كمهندس صيانة (الصيانة فقط)":adm?" كمدير":" — راجع الصلاحيات"));
  }catch(x){if(!(window.uiAuthErr&&uiAuthErr(x,"الموظف")))X.toast(AERR(x))}
  busy=false;X.redraw();
 }

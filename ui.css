@@ -236,13 +236,13 @@ table,.dz,.am,[data-num]{font-variant-numeric:tabular-nums}
 @keyframes t-media-in{from{opacity:0;transform:scale(var(--scale-medium))}to{opacity:1;transform:none}}
 
 /* النوافذ: الخلفية بتظهر بالتدريج، واللوحة بتكبر من 96% بنعومة (250ms). القديمة اللي كان ليها حركة (#md/#em/.mdl/.wkm/#npm/#uim/#bcm) بقت على نفس المقياس */
-:is(.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#md,#em,.mdl,.wkm,#npm,#uim,#bcm,#anniv,#bciv,#zbx,.ov).on{animation:t-veil-in var(--modal-open-dur) var(--modal-ease) both}
-:is(.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#npm,#uim,#bcm).on>:first-child,
+:is(#mtm,.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#md,#em,.mdl,.wkm,#npm,#uim,#bcm,#anniv,#bciv,#zbx,.ov).on{animation:t-veil-in var(--modal-open-dur) var(--modal-ease) both}
+:is(#mtm,.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#npm,#uim,#bcm).on>:first-child,
 #md.on .mb,#em.on .eb,.mdl.on .card,.wkm.on .wkk{animation:t-modal-in var(--modal-open-dur) var(--modal-ease) both;transform-origin:center top}
 /* عارضات الصور: الصورة نفسها بتكبر بهدوء */
 #zbx.on .zi,#bciv.on>img,#anniv.on .v,.ov.on img{animation:t-media-in var(--modal-open-dur) var(--modal-ease) both}
 /* القفل: أسرع وأهدى (150ms)، والضغطات بتعدّي من تحتها على طول. ui.js بيحط is-closing ويشيلها */
-:is(.cm,.xm,.fm,.gfm,#annm,#bcgi,#wrm,.mdl,.wkm,#npm,#uim,.ov).is-closing{display:block!important}
+:is(#mtm,.cm,.xm,.fm,.gfm,#annm,#bcgi,#wrm,.mdl,.wkm,#npm,#uim,.ov).is-closing{display:block!important}
 :is(#annp,#pfm,#pfc,#md,#em,#bcm,#anniv,#bciv,#zbx).is-closing{display:flex!important}
 .is-closing{pointer-events:none!important;animation:t-veil-out var(--modal-close-dur) var(--modal-ease) both!important}
 .is-closing>:first-child,#md.is-closing .mb,#em.is-closing .eb,.mdl.is-closing .card,.wkm.is-closing .wkk{animation:t-modal-out var(--modal-close-dur) var(--modal-ease) both!important}
@@ -253,9 +253,26 @@ details[open]::details-content{block-size:auto}
 summary{transition:color var(--duration-quick) var(--ease-out)}
 
 @media (prefers-reduced-motion:reduce){
- :is(.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#md,#em,.mdl,.wkm,#npm,#uim,#bcm,#anniv,#bciv,#zbx,.ov).on,
- :is(.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#npm,#uim,#bcm).on>:first-child,#md.on .mb,#em.on .eb,.mdl.on .card,.wkm.on .wkk,
+ :is(#mtm,.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#md,#em,.mdl,.wkm,#npm,#uim,#bcm,#anniv,#bciv,#zbx,.ov).on,
+ :is(#mtm,.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#npm,#uim,#bcm).on>:first-child,#md.on .mb,#em.on .eb,.mdl.on .card,.wkm.on .wkk,
  #zbx.on .zi,#bciv.on>img,#anniv.on .v,.ov.on img,.is-closing,.is-closing>:first-child{animation:none!important}
  .is-closing{display:none!important}
  details::details-content{transition:none}
 }
+
+/* (13 نوفمبر 2026) أيقونة جنب اسم التبويب في نفس السطر (مايلفّش تحت الأيقونة) */
+.tabs button,.tabs-out,#annb{white-space:nowrap}
+
+/* ================= 📦 صفحة الطلبات أوضح (13 نوفمبر 2026، محمد: "باهتة") =================
+   لون لكل حالة (نفس ألوان الأيقونات): جديد ذهبي، قيد التجهيز تركواز، في الطريق أزرق، تم التسليم أخضر، تم الاستلام رمادي مخضر.
+   الشارة بقت لون مليان وكلام أبيض، ورأس الكارت واخد لمسة خفيفة من لون الحالة، والكارت ليه حد وظل أوضح. */
+.rq{--st:#b8892a;border:1px solid var(--line);border-inline-start:6px solid var(--st);box-shadow:0 1px 2px rgba(0,0,0,.06),0 10px 26px -18px rgba(40,30,10,.45)}
+.rq.prep{--st:#0a8fa3}.rq.go{--st:#0b6bdb}.rq.done{--st:#1f9d45;opacity:1}.rq.recv{--st:#5f7d6b}
+.rq .rh{background:linear-gradient(180deg,color-mix(in srgb,var(--st) 11%,transparent),transparent)}
+.rq .rh b{letter-spacing:-.01em}
+body .rq .chp,body .rq[class] .chp{background:var(--st);color:#fff;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.15);border:0}
+.rq .kp>span{background:color-mix(in srgb,var(--st) 9%,var(--field,#f3f1ed));border:1px solid color-mix(in srgb,var(--st) 18%,transparent)}
+.rq .kp b{color:var(--ink)}
+.rq details>summary{color:color-mix(in srgb,var(--st) 80%,var(--ink));font-weight:600}
+@media (prefers-color-scheme:dark){.rq .rh{background:linear-gradient(180deg,color-mix(in srgb,var(--st) 20%,transparent),transparent)}.rq .kp>span{background:color-mix(in srgb,var(--st) 16%,var(--field,#242424))}.rq details>summary{color:color-mix(in srgb,var(--st) 55%,#fff)}}
+body .rq[class]{border-inline-start-color:var(--st)}
