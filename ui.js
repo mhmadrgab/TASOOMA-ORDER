@@ -106,3 +106,19 @@
  if(document.readyState==="loading")addEventListener("DOMContentLoaded",()=>setTimeout(chk,1500));else setTimeout(chk,1500);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)chk()});
 })();
+// 🎬 (13 نوفمبر 2026، transitions.dev) قفل النوافذ بنعومة: أي نافذة بتتقفل (بيتشال منها "on")، بنسيبها ظاهرة 150ms
+// بكلاس is-closing (الخلفية بتختفي بالتدريج واللوحة بتصغر)، وبعدين بتختفي. الملفات التانية مش محتاجة تتغيّر.
+// لو اتفتحت تاني في النص، بنلغي القفل على طول. الضغطات بتعدّي من تحتها وهي بتقفل (pointer-events:none في ui.css).
+(()=>{
+ const SEL=".cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#md,#em,.mdl,.wkm,#npm,#uim,#bcm,#anniv,#bciv,#zbx,.ov";
+ if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+ const ms=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--modal-close-dur"))||150;
+ const T=new WeakMap();
+ const mo=new MutationObserver(L=>{for(const m of L){const el=m.target;if(!(el instanceof Element)||!el.matches(SEL))continue;
+  const was=/(^|\s)on(\s|$)/.test(m.oldValue||""),now=el.classList.contains("on");
+  if(now){if(el.classList.contains("is-closing")){clearTimeout(T.get(el));el.classList.remove("is-closing")}continue}
+  if(was&&!now&&el.isConnected&&!el.classList.contains("is-closing")){el.classList.add("is-closing");T.set(el,setTimeout(()=>el.classList.remove("is-closing"),ms()))}
+ }});
+ const go=()=>mo.observe(document.body,{subtree:true,attributes:true,attributeFilter:["class"],attributeOldValue:true});
+ if(document.body)go();else document.addEventListener("DOMContentLoaded",go);
+})();

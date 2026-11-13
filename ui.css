@@ -218,3 +218,44 @@ body.ui-stage #gate,.lg,.gc{position:relative;z-index:1}
 html{caret-color:var(--acc,#a8832f);accent-color:var(--acc,#a8832f)}
 /* الأرقام في الجداول والعدّادات تبقى بعرض ثابت علشان العواميد ماتتهزّش */
 table,.dz,.am,[data-num]{font-variant-numeric:tabular-nums}
+
+/* ================= 🎬 الحركة (13 نوفمبر 2026، مهارة transitions.dev) =================
+   مقياس حركة واحد لكل المنصة (نفس قيم transitions.dev). أي حركة جديدة تاخد منه بدل أرقام عشوائية. */
+:root{
+ --duration-stagger:40ms;--duration-micro:80ms;--duration-quick:150ms;--duration-fast:250ms;--duration-medium:350ms;--duration-slow:400ms;--duration-very-slow:500ms;
+ --ease-smooth-out:cubic-bezier(0.22,1,0.36,1);--ease-in-out:ease-in-out;--ease-out:ease-out;
+ --distance-micro:4px;--distance-base:8px;--distance-medium:12px;
+ --scale-large:0.96;--scale-medium:0.97;--blur-small:2px;
+ --modal-open-dur:var(--duration-fast);--modal-close-dur:var(--duration-quick);--modal-scale:var(--scale-large);--modal-ease:var(--ease-smooth-out);
+ interpolate-size:allow-keywords;
+}
+@keyframes t-veil-in{from{opacity:0}to{opacity:1}}
+@keyframes t-veil-out{from{opacity:1}to{opacity:0}}
+@keyframes t-modal-in{from{opacity:0;transform:translateY(var(--distance-base)) scale(var(--modal-scale));filter:blur(var(--blur-small))}to{opacity:1;transform:none;filter:none}}
+@keyframes t-modal-out{from{opacity:1;transform:none}to{opacity:0;transform:scale(var(--modal-scale))}}
+@keyframes t-media-in{from{opacity:0;transform:scale(var(--scale-medium))}to{opacity:1;transform:none}}
+
+/* النوافذ: الخلفية بتظهر بالتدريج، واللوحة بتكبر من 96% بنعومة (250ms). القديمة اللي كان ليها حركة (#md/#em/.mdl/.wkm/#npm/#uim/#bcm) بقت على نفس المقياس */
+:is(.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#md,#em,.mdl,.wkm,#npm,#uim,#bcm,#anniv,#bciv,#zbx,.ov).on{animation:t-veil-in var(--modal-open-dur) var(--modal-ease) both}
+:is(.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#npm,#uim,#bcm).on>:first-child,
+#md.on .mb,#em.on .eb,.mdl.on .card,.wkm.on .wkk{animation:t-modal-in var(--modal-open-dur) var(--modal-ease) both;transform-origin:center top}
+/* عارضات الصور: الصورة نفسها بتكبر بهدوء */
+#zbx.on .zi,#bciv.on>img,#anniv.on .v,.ov.on img{animation:t-media-in var(--modal-open-dur) var(--modal-ease) both}
+/* القفل: أسرع وأهدى (150ms)، والضغطات بتعدّي من تحتها على طول. ui.js بيحط is-closing ويشيلها */
+:is(.cm,.xm,.fm,.gfm,#annm,#bcgi,#wrm,.mdl,.wkm,#npm,#uim,.ov).is-closing{display:block!important}
+:is(#annp,#pfm,#pfc,#md,#em,#bcm,#anniv,#bciv,#zbx).is-closing{display:flex!important}
+.is-closing{pointer-events:none!important;animation:t-veil-out var(--modal-close-dur) var(--modal-ease) both!important}
+.is-closing>:first-child,#md.is-closing .mb,#em.is-closing .eb,.mdl.is-closing .card,.wkm.is-closing .wkk{animation:t-modal-out var(--modal-close-dur) var(--modal-ease) both!important}
+
+/* "تفاصيل" بتتفتح وتتقفل بالطول بدل ما تنط (متصفحات Chrome الحديثة؛ الباقي زي الأول من غير حركة) */
+details::details-content{block-size:0;overflow:clip;transition:block-size var(--duration-fast) var(--ease-smooth-out),content-visibility var(--duration-fast) allow-discrete}
+details[open]::details-content{block-size:auto}
+summary{transition:color var(--duration-quick) var(--ease-out)}
+
+@media (prefers-reduced-motion:reduce){
+ :is(.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#md,#em,.mdl,.wkm,#npm,#uim,#bcm,#anniv,#bciv,#zbx,.ov).on,
+ :is(.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#npm,#uim,#bcm).on>:first-child,#md.on .mb,#em.on .eb,.mdl.on .card,.wkm.on .wkk,
+ #zbx.on .zi,#bciv.on>img,#anniv.on .v,.ov.on img,.is-closing,.is-closing>:first-child{animation:none!important}
+ .is-closing{display:none!important}
+ details::details-content{transition:none}
+}

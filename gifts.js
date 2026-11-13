@@ -113,7 +113,7 @@ body #gfbtn .tx small{color:var(--mut,#6f6b64)}
 /* ===== التصميم الرابع: ابسط وأجمل ===== */
 .g4{--g4r:18px}
 .g4-hd{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 14px}.g4-hd h2{margin:0 0 8px;font-size:22px}
-.g4-per{display:flex;gap:6px;flex-wrap:wrap}.g4-per button{font:inherit;font-size:13.5px;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--mut);border-radius:999px;padding:6px 14px;cursor:pointer;transition:all .2s}
+.g4-per{display:flex;gap:6px;flex-wrap:wrap}.g4-per button{font:inherit;font-size:13.5px;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--mut);border-radius:999px;padding:6px 14px;cursor:pointer;transition:background-color var(--duration-quick) var(--ease-out),color var(--duration-quick) var(--ease-out),border-color var(--duration-quick) var(--ease-out)}
 .g4-per button.on{background:#1b1b1b;border-color:#1b1b1b;color:#fff}
 .g4-hb{display:flex;gap:8px;margin-inline-start:auto}.g4-hb .bt{width:auto;margin:0}
 .g4-ks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 14px}
@@ -144,7 +144,7 @@ body #gfbtn .tx small{color:var(--mut,#6f6b64)}
 .g4-search{flex:1;display:flex;align-items:center;gap:8px;background:var(--field,#f3f1ed);border-radius:14px;padding:0 12px;border:1.5px solid transparent;transition:border-color .2s}.g4-search:focus-within{border-color:#d4ae5c}
 .g4-search input{border:0;background:none;height:46px;flex:1;margin:0;padding:0;outline:none;box-shadow:none}
 .g4-fbtn{font:inherit;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;height:46px;padding:0 14px;cursor:pointer;white-space:nowrap}.g4-fbtn.on{border-color:#d4ae5c;background:#fff8e6}
-.g4-chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}.g4-chips button{font:inherit;font-size:13.5px;border:0;background:var(--soft);color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer;transition:all .2s}.g4-chips button.on{background:#d4ae5c;color:#1b1b1b;font-weight:700}
+.g4-chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}.g4-chips button{font:inherit;font-size:13.5px;border:0;background:var(--soft);color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer;transition:background-color var(--duration-quick) var(--ease-out),color var(--duration-quick) var(--ease-out)}.g4-chips button.on{background:#d4ae5c;color:#1b1b1b;font-weight:700}
 .g4-adv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:10px 0 4px;padding:12px;background:var(--soft);border-radius:14px;animation:ui-up .25s ease both}
 .g4-adv label{display:flex;flex-direction:column;gap:4px;margin:0}.g4-adv small{color:var(--mut);font-size:12px;font-weight:700}.g4-adv select,.g4-adv input{width:100%;height:42px;margin:0}
 .g4-cnt{color:var(--mut);font-size:13px;font-weight:700;margin:10px 4px 4px}
@@ -165,7 +165,7 @@ body #gfbtn .tx small{color:var(--mut,#6f6b64)}
 .gs-set{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;padding:10px;border-radius:14px;background:#eef4fb;margin-bottom:4px}.gs-set input{flex:1;min-width:160px;margin:0}.gs-set .bt{flex:none!important;min-width:0!important}
 @media (prefers-color-scheme:dark){.gs-set{background:#14243a}}
 /* ===== الكروت التفاعلية + لوحة الشغل + الفلاتر الجديدة ===== */
-.g4-k{position:relative;overflow:hidden}.g4-k .tx{flex:1;min-width:0}.g4-k em{display:block;font-style:normal;font-size:11.5px;color:var(--mut);margin-top:2px;opacity:0;transform:translateY(4px);transition:all .2s}
+.g4-k{position:relative;overflow:hidden}.g4-k .tx{flex:1;min-width:0}.g4-k em{display:block;font-style:normal;font-size:11.5px;color:var(--mut);margin-top:2px;opacity:0;transform:translateY(4px);transition:opacity var(--duration-quick) var(--ease-out),transform var(--duration-quick) var(--ease-smooth-out)}
 .g4-k:hover em,.g4-k.on em,.g4-k.mine em{opacity:1;transform:none}
 .g4-k .g4-car{position:absolute;bottom:6px;left:12px;font-size:10px;color:var(--mut);opacity:.6}
 .g4-k.on{border-color:#d4ae5c;box-shadow:0 10px 26px rgba(168,131,47,.18);transform:translateY(-2px)}
@@ -185,7 +185,7 @@ body #gfbtn .tx small{color:var(--mut,#6f6b64)}
 .g4-empty.sm{padding:18px}.g4-empty.sm span{font-size:30px}
 /* الفلاتر: أقراص بأيقونة، من غير عناوين فوق (كانت بتنزل وتبان مكسورة) */
 .g4-fbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 4px;animation:ui-up .25s ease both}
-.g4-fc{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 6px 0 12px;margin:0;border-radius:999px;background:var(--soft);border:1.5px solid transparent;transition:all .2s;color:var(--ink);max-width:100%}
+.g4-fc{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 6px 0 12px;margin:0;border-radius:999px;background:var(--soft);border:1.5px solid transparent;transition:background-color var(--duration-quick) var(--ease-out),border-color var(--duration-quick) var(--ease-out);color:var(--ink);max-width:100%}
 .g4-fc.on{background:#fff8e6;border-color:#d4ae5c}.g4-fc .fi{font-size:15px}
 .g4-fc select,.g4-fc input{border:0!important;background:none!important;box-shadow:none!important;height:38px!important;padding:0 4px!important;margin:0!important;font:inherit;font-size:14px;font-weight:700;color:var(--ink);outline:none;width:auto;min-width:0;line-height:38px;-webkit-appearance:none;appearance:none;cursor:pointer}
 .g4-fc select{padding-inline-end:18px!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8478'/%3E%3C/svg%3E") no-repeat left 4px center!important}
