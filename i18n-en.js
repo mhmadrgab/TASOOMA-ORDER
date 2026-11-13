@@ -2009,4 +2009,12 @@ export default {
 "جرّب إعادة المحاولة. وإذا تكرر ذلك اضغط «تحديث كامل» (لن يُسجَّل خروجك).":"Press Try again. If it keeps happening, press “Full refresh” (you will stay logged in).",
 "إعادة المحاولة":"Try again",
 "تحديث كامل":"Full refresh",
+"مرفقات المحاسب":"Accountant attachments",
+"إرفاق صور":"Attach photos",
+"حفظ الصور":"Save photos",
+"تعذّر تحميل المرفقات":"Could not load the attachments",
+"اختر صورة واحدة على الأقل":"Choose at least one photo",
+"تم إرفاق الصور ✅":"Photos attached ✅",
+"تعذّر رفع بعض الصور، حاول مرة أخرى":"Some photos could not be uploaded, try again",
+"أرفق صوراً من جهازك لهذا السند (لا يغيّر أي شيء في الهدية).":"Attach photos from your device to this voucher (it does not change anything in the gift).",
 };

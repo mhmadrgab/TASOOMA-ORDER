@@ -4,6 +4,8 @@
 // التسوية (نوفمبر 2026): المحاسب (gift) بيشوف المعتمد بس، ويكتب رقم/مرجع السند في السيستم ← st:"set", sa:{e,n,at,ref}, sm:"YYYY-MM" (شهر الهدية)
 //   المحاسب بيسمع st=="ok" (اللي مستني تسوية) + المتسوّي الشهر ده، والشهور الأقدم بتتحمّل من التقرير (st=="set" && sm==الشهر، من غير فهرس مركّب)
 // صورة السند لوحدها في giftimg/{id} = {img} (بتتحمّل بس لما حد يدوس 📎، علشان القايمة تفضل خفيفة).
+// 📎 مرفقات المحاسب (13 نوفمبر 2026، طلب محمد): المحاسب يرفق صور من عنده لهدية معتمدة/متسوّية من غير ما يلمس الهدية نفسها
+//   giftimg/{id}/a/{1..10} = {img,n,at} — إضافة بس، والحذف للمالك (القواعد: supabase/002_rules.sql sub='a'). بتتحمّل لما السند يتفتح.
 import {collection,doc,getDoc,getDocs,setDoc,deleteDoc,updateDoc,onSnapshot,query,where,writeBatch,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {E,N,fmt,today,shrink,printStmt,ensurePrintCss} from "./cust.js";
 import {initZoom,zoomOpen,zoomGallery} from "./zoom.js";
@@ -32,6 +34,7 @@ const ymOf=t=>new Date(N(t)).toLocaleDateString("en-CA").slice(0,7);
 const D=864e5,LIVE=31;// آخر 31 يوم بيتسمعوا لايف في المستودع (كانت 90: توفير قراءات نوفمبر 2026)، والأقدم بيتحمّل وقت التقرير
 let X=null,L=new Map(),LS=new Map(),PEND=new Map(),OLD=new Map(),MON=new Set(),un=[],bun=null,BL=[],img="",imgBusy=false,edit=null,PK=null;
 let F={from:"",to:"",br:"",st:"",why:"",q:""};
+let ACC=null,ACCL=[];// مرفقات المحاسب: صندوق الاختيار المفتوح، والصور المحمّلة للسند المفتوح
 const CSS=`
 .gfm{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.55);overflow:auto;padding:16px}.gfm.on{display:block}
 .gfk{max-width:680px;margin:3vh auto;background:var(--card);border-radius:18px;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
@@ -47,6 +50,11 @@ const CSS=`
 .gf-card.ok{border-inline-start-color:#2f8f3e}.gf-card.no{border-inline-start-color:#c4362b;opacity:.85}
 .gf-card h4{margin:0 0 4px;font-size:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}.gf-card .m{color:var(--mut);font-size:13.5px}
 .gf-st{border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700;background:#f6edd2;color:#6b5314}.gf-st.set{background:#dde9f7;color:#1c4f86}.gf-card.set{border-inline-start-color:#2a78d6}
+.gs-acc:empty{display:none}.gs-acc{margin:14px 0 0;border:1.5px dashed var(--line);border-radius:14px;padding:12px 14px}
+.gs-ah{display:flex;align-items:center;gap:8px;margin-bottom:8px}.gs-ah b{font-size:15px}.gs-ah small{color:var(--mut);font-size:12.5px}
+.gs-ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-bottom:10px}
+.gs-ag button{border:1px solid var(--line);background:var(--field,#f3f1ed);border-radius:12px;padding:0;overflow:hidden;cursor:zoom-in;font:inherit;color:var(--mut);text-align:center}
+.gs-ag img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.gs-ag span{display:block;font-size:11px;line-height:1.35;padding:4px 4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gf-set{margin-top:8px;background:#eef4fb;color:#1c4f86;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8}.gf-set small{color:#4a6a90}
 /* ورقة الهدية (زي ورقة تحميل النواقص) */
 .gfk:has(.gs){padding:0;overflow:hidden}.gs{margin:0;background:var(--card)}
@@ -476,7 +484,7 @@ async function ensureRange(){
 // ---------- النافذة ----------
 function box(){let m=g("gfm");if(!m){m=document.createElement("div");m.id="gfm";m.className="gfm";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}
 function openM(h,v){const m=box();m.innerHTML=`<div class="gfk">${h}</div>`;m.className="gfm on";m.dataset.v=v||""}
-function closeM(){const m=g("gfm");if(m){m.className="gfm";m.innerHTML="";m.dataset.v=""}img="";imgBusy=false;edit=null;PK=null}
+function closeM(){const m=g("gfm");if(m){m.className="gfm";m.innerHTML="";m.dataset.v=""}img="";imgBusy=false;edit=null;PK=null;ACC=null;ACCL=[]}
 // ---------- نموذج التسجيل ----------
 const rowHtml=(x={})=>`<div class="gf-row"><input data-r="k" placeholder="الكود" dir="ltr" maxlength="40" value="${E(x.k||"")}"><input data-r="c" placeholder="اللون" maxlength="40" value="${E(x.c||"")}"><input data-r="z" placeholder="المقاس" maxlength="20" value="${E(x.z||"")}"><input data-r="q" placeholder="العدد" inputmode="numeric" value="${x.q?E(x.q):""}"><button type="button" data-gf="rmrow" title="احذف السطر">✕</button></div>`;
 function form(r){
@@ -564,6 +572,7 @@ function viewGift(id){
  openM(`<div class="gs"><div class="gs-hd"><img src="./icon-192.png" alt=""><div><b>${isSample(r)?"سند عينة":"سند هدية"}</b><small>${E(r.no)}</small></div><span class="gf-st ${st}">${STL[st]||st}</span></div>
  <div class="gs-bd">${(()=>{const x=wh?repOf(r):null;if(!x)return "";const L=all().filter(y=>y.id!==r.id&&y.st!=="no"&&Math.abs(N(y.ts)-N(r.ts))<=30*864e5&&y.to&&(x.by==="ph"?phK(y.to.ph)===phK(r.to.ph):(y.br===r.br&&nmK(y.to.n)===nmK(r.to.n)))).sort((a,b)=>N(b.ts)-N(a.ts)).slice(0,5);
   return `<div class="gs-rep">🔁 <b>${x.by==="ph"?"رقم الجوال نفسه":"اسم المستلم نفسه"} استلم ${x.n===1?"هدية أخرى":x.n===2?"هديتين أخريين":x.n+" هدايا أخرى"} خلال 30 يوماً</b>${L.map(y=>`<div>${E(y.dt||"")} · <bdi dir="ltr">${E(y.brn||brName(y.br))}</bdi> · ${E(y.why||"")} · ${net(y)} قطعة · ${E((STL[y.st]||"").replace(/^\S+\s/,""))}</div>`).join("")}</div>`})()}${sheetHtml(r)}
+ ${wh&&isAp(r)?`<div class="gs-acc" id="gfacc" data-id="${E(r.id)}"></div>`:""}
  <div class="gs-ac">${wh&&canApprove()&&st==="pend"?`<button class="bt g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
  ${canRet(r)?`<button class="bt g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}
  ${wh&&canSettle()&&st==="ok"?`<div class="gs-set">${waitRet(r)?'<span class="g4-st w">↩️ العينة لم ترجع بعد: الأفضل الانتظار</span>':""}<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند في النظام"><button class="bt g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)} قطعة</button></div>`:""}
@@ -571,7 +580,37 @@ function viewGift(id){
  <button class="bt" data-gf="gprint" data-id="${E(r.id)}" type="button">🖨 طباعة</button>
  ${wh&&isOwner()?`<button class="bt" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt r" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}
  <button class="bt" data-gf="${wh?"close":"bopen"}" type="button">رجوع</button></div></div></div>`,"view");
+ if(wh&&isAp(r))loadAcc(r.id,false);
 }
+// ---------- 📎 مرفقات المحاسب ----------
+const JPEG=/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
+const canAcc=()=>canSettle()&&!X.view;
+async function loadAcc(id,open){
+ const here=()=>{const el=g("gfacc");return el&&el.dataset.id===id?el:null};if(!here())return;
+ let L=[],bad=false;
+ try{const s=await withTimeout(getDocs(collection(X.db,"giftimg",id,"a")),15000);L=s.docs.map(d=>({k:+d.id,...(d.data()||{})})).filter(x=>x.k>=1&&typeof x.img==="string"&&JPEG.test(x.img)).sort((a,b)=>a.k-b.k)}
+ catch(e){bad=true}
+ const el=here();if(!el)return;ACCL=L;const can=canAcc();
+ if(!can&&!L.length&&!bad){el.innerHTML="";ACC=null;return}
+ el.innerHTML=`<div class="gs-ah"><b>📎 مرفقات المحاسب</b>${L.length?`<small>(${L.length}/10)</small>`:""}</div>${bad?'<div class="m">تعذّر تحميل المرفقات</div>':""}
+ ${L.length?`<div class="gs-ag">${L.map((x,i)=>`<button type="button" data-gf="accimg" data-id="${E(id)}" data-i="${i}"><img src="${x.img}" alt=""><span data-notr><bdi>${E(x.n||"")}</bdi><br>${hm(x.at)}</span></button>`).join("")}</div>`:""}
+ ${can&&!bad&&L.length<10?(open?`<div id="gfaccp"></div><div class="gf-act" style="margin-top:8px"><button class="bt g" data-gf="accsave" data-id="${E(id)}" type="button">💾 حفظ الصور</button><button class="bt" data-gf="accx" data-id="${E(id)}" type="button">إلغاء</button></div>`
+  :`<button class="bt s" data-gf="accadd" data-id="${E(id)}" type="button">📷 إرفاق صور</button>${L.length?"":'<div class="m" style="margin-top:6px">أرفق صوراً من جهازك لهذا السند (لا يغيّر أي شيء في الهدية).</div>'}`):""}`;
+ ACC=open&&g("gfaccp")?multiPick(g("gfaccp"),{max:10-L.length,w:1400,cap:230000,toast:X.toast,add:"إضافة صور"}):null;
+}
+async function accSave(id){
+ if(!ACC||!canAcc())return;if(ACC.busy()){X.toast("انتظر حتى تنتهي الصور");return}
+ const IMS=ACC.imgs().filter(s=>JPEG.test(s));if(!IMS.length){X.toast("اختر صورة واحدة على الأقل");return}
+ const btn=document.querySelector('[data-gf="accsave"]');if(btn){btn.disabled=true;btn.textContent="⏳ جاري الرفع..."}
+ const start=ACCL.reduce((m,x)=>Math.max(m,x.k),0)+1,nm=String(X.me.n||X.me.e||"").slice(0,60);let ok=0,bad=0,denied=false;
+ for(let k=0;k<IMS.length;k++){const n=start+k;if(n>10){bad+=IMS.length-k;break}
+  try{await withTimeout(setDoc(doc(X.db,"giftimg",id,"a",String(n)),{img:IMS[k],n:nm,at:Date.now()}),20000);ok++}
+  catch(e){bad++;if((await failReason(e))==="denied")denied=true}}
+ if(!bad)X.toast("📎 تم إرفاق الصور ✅");
+ else X.toast(denied&&!ok?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":"تعذّر رفع بعض الصور، حاول مرة أخرى","er");
+ loadAcc(id,false);
+}
+async function dropAcc(id){try{const s=await getDocs(collection(X.db,"giftimg",id,"a"));for(const d of s.docs){try{await deleteDoc(doc(X.db,"giftimg",id,"a",d.id))}catch(e){}}}catch(e){}}
 function printGift(id){
  const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r)return;
  printStmt(`<div class="st"><div class="ph"><h2>${isSample(r)?"سند عينة":"سند هدية"}</h2><div>${E(r.no)} · ${E((STL[r.st]||"").replace(/^\S+\s/,""))}</div></div>
@@ -666,6 +705,11 @@ async function click(e){
  if(a==="rmrow"){const w=g("gfrows"),row=t.closest(".gf-row");if(w&&row&&w.children.length>1)row.remove();return}
  if(a==="save")return void save();
  if(a==="img")return void showImg(id);
+ if(a==="accadd"||a==="accx")return void loadAcc(id,a==="accadd");
+ if(a==="accsave")return void accSave(id);
+ if(a==="accimg"){const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);zoomGallery(ACCL.map(x=>({src:x.img,del:`doc:giftimg/${id}/a/${x.k}`})),`مرفقات المحاسب · ${r?r.no:""}`,+t.dataset.i||0);
+  // لما الصورة تتقفل (أو المالك يمسح واحدة) نحدّث المرفقات في السند
+  const zb=g("zbx");if(zb)new MutationObserver((_,o)=>{if(!zb.className){o.disconnect();loadAcc(id,false)}}).observe(zb,{attributes:true,attributeFilter:["class"]});return}
  if(a==="ok"||a==="no")return void decide(id,a==="ok");
  if(a==="okrt"||a==="oknort")return void decide(id,true,a==="okrt");
  if(a==="ret")return void retForm(id);
@@ -677,7 +721,7 @@ async function click(e){
  if(a==="csv")return void csv();
  if(a==="edit"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(r)form(r);return}
  if(a==="del"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r||!confirm(`حذف هدية ${r.no} نهائياً مع السند الخاص بها؟`))return;
-  try{const b=writeBatch(X.db);b.delete(doc(X.db,"gifts",id));b.delete(doc(X.db,"giftimg",id));await withTimeout(b.commit(),15000);dropExtras(X.db,"giftimg",id);L.delete(id);OLD.delete(id);PEND.delete(id);X.toast("حُذفت");closeM();if(X.redraw)X.redraw()}
+  try{const b=writeBatch(X.db);b.delete(doc(X.db,"gifts",id));b.delete(doc(X.db,"giftimg",id));await withTimeout(b.commit(),15000);dropExtras(X.db,"giftimg",id);dropAcc(id);L.delete(id);OLD.delete(id);PEND.delete(id);X.toast("حُذفت");closeM();if(X.redraw)X.redraw()}
   catch(e){X.toast("تعذر الحذف")}}
 }
 function change(e){

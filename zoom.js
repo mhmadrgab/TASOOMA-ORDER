@@ -7,7 +7,7 @@ import {loadExtras} from "./att.js";
 let C=null,cur=null;
 // الحاجات اللي ينفع تتمسح من هنا بس (مايتمسحش أي حقل مجدداً بالغلط)
 const OK={"requests":["pod.img","pod.sig"],"ledger":["img"],"pods":["img","sig"],"giftimg":["img"]};
-const XOK=/^(giftimg|pods|ledger)\/[A-Za-z0-9_-]{1,64}\/x\/([2-9]|10)$/;
+const XOK=/^((giftimg|pods|ledger)\/[A-Za-z0-9_-]{1,64}\/x\/([2-9]|10)|giftimg\/[A-Za-z0-9_-]{1,64}\/a\/([1-9]|10))$/;// a = مرفقات المحاسب على الهدية
 // صور التسليم الجديدة في pods/{رقم الطلب}: لما تتمسح بنشيل العلامة اللي على الطلب أيضاً (ph/sg)
 const FLAG={img:"pod.ph",sig:"pod.sg"};
 const isData=s=>typeof s==="string"&&/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(s);
