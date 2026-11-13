@@ -8,10 +8,10 @@ import {collection,doc,getDoc,getDocs,setDoc,query,where,withTimeout} from "./fb
 const ALL=["branches","staff","ledger","settlements","drivers","workers","wrate","geo","cars","whdir"];
 const BYTIME=[["requests","ts"],["trips","start"],["fuel","ts"],["pods","at"],["log","ts"]];
 const OVERLAP=60*864e5,NAG=7*864e5;
-const STYLE=`#bkp{position:relative;white-space:nowrap}#bkp .bkd{position:absolute;top:1px;inset-inline-end:1px;width:10px;height:10px;border-radius:50%;background:#e5484d;border:2px solid #1b1b1b}
-.bkn{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:11px 14px;border-radius:14px;background:#fff4e2;border:1px solid #efc47c;color:#6b4300;font-weight:700;font-size:14px}
-.bkn button{font:inherit;font-size:13.5px;border:0;border-radius:999px;background:#1b1b1b;color:#fff;padding:7px 15px;cursor:pointer}
-@media (prefers-color-scheme:dark){.bkn{background:#2b2210;border-color:#6b5226;color:#f0d49a}.bkn button{background:#d4ae5c;color:#1b1b1b}}`;
+const STYLE=`#bkp{position:relative;white-space:nowrap}#bkp .bkd{position:absolute;top:1px;inset-inline-end:1px;width:10px;height:10px;border-radius:50%;background:#e5484d;border:2px solid #2a1d2c}
+.bkn{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:11px 14px;border-radius:14px;background:#fff4e2;border:1px solid #dcbcd4;color:#6b4300;font-weight:700;font-size:14px}
+.bkn button{font:inherit;font-size:13.5px;border:0;border-radius:999px;background:#2a1d2c;color:#fff;padding:7px 15px;cursor:pointer}
+@media (prefers-color-scheme:dark){.bkn{background:#2b2210;border-color:#5f3a59;color:#e6cde0}.bkn button{background:#b48aab;color:#2a1d2c}}`;
 let X=null,META=null,busy=false;
 const N=x=>Number.isFinite(+x)?+x:0;
 const dd=t=>new Date(t).toLocaleDateString("en-GB");

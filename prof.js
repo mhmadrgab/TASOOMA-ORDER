@@ -3,15 +3,15 @@
 // ctx = {db, me:إيميلي, owner, name:()=>اسمي, k:()=>كنيتي, toast, redraw, onMe(ME) للمالك}
 import {collection,doc,onSnapshot,setDoc,deleteDoc} from "./fb.js";
 import {E} from "./cust.js";
-const STYLE=`.pfa{border-radius:50%;object-fit:cover;flex:none;display:inline-block;vertical-align:middle;background:#1b1b1b}
-.pfi{display:inline-grid;place-items:center;color:#d4ae5c;font-weight:800;line-height:1}
+const STYLE=`.pfa{border-radius:50%;object-fit:cover;flex:none;display:inline-block;vertical-align:middle;background:#2a1d2c}
+.pfi{display:inline-grid;place-items:center;color:#b48aab;font-weight:800;line-height:1}
 .pfme{display:inline-flex!important;align-items:center;gap:7px;padding:3px 12px 3px 4px!important}.pfme span{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:600px){.pfme span{display:none}.pfme{padding:3px!important}}
 #pfm{display:none;position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.55);padding:16px;align-items:center;justify-content:center}
 #pfm.on{display:flex}#pfm .bx{background:var(--card);color:var(--ink);border-radius:20px;width:100%;max-width:400px;padding:22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 #pfm h3{margin:12px 0 2px;font-size:20px}#pfm .k{color:var(--acc);font-weight:700;min-height:22px}#pfm .off{font-size:13px}
 #pfm .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
-#pfm input[type=text]{width:100%;font:inherit;font-size:15px;border-radius:12px;border:1.5px solid var(--line);background:var(--field,#f3f1ed);color:var(--ink);padding:9px 12px;margin-top:8px}
+#pfm input[type=text]{width:100%;font:inherit;font-size:15px;border-radius:12px;border:1.5px solid var(--line);background:var(--field,#f2e9dd);color:var(--ink);padding:9px 12px;margin-top:8px}
 #pfm label{display:block;text-align:start;font-size:13px;color:var(--mut);margin-top:10px}`;
 let X=null,AV={},ME=null,un=[],busy=false;
 export const photo=em=>AV[String(em||"").toLowerCase()]||"";
@@ -32,9 +32,9 @@ const VP=260;let CR=null;
 const CSTYLE=`#pfc{display:none;position:fixed;inset:0;z-index:92;background:rgba(0,0,0,.7);padding:16px;align-items:center;justify-content:center}#pfc.on{display:flex}
 #pfc .bx{background:var(--card);color:var(--ink);border-radius:20px;width:100%;max-width:360px;padding:20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 #pfc h3{margin:0 0 4px;font-size:18px}#pfc p{margin:0 0 12px;font-size:13px;color:var(--mut)}
-.pfcv{width:${VP}px;height:${VP}px;max-width:100%;margin:0 auto;border-radius:50%;overflow:hidden;position:relative;background:#111;touch-action:none;cursor:grab;box-shadow:0 0 0 4px #d4ae5c}
+.pfcv{width:${VP}px;height:${VP}px;max-width:100%;margin:0 auto;border-radius:50%;overflow:hidden;position:relative;background:#111;touch-action:none;cursor:grab;box-shadow:0 0 0 4px #b48aab}
 .pfcv:active{cursor:grabbing}.pfcv img{position:absolute;left:0;top:0;transform-origin:0 0;user-select:none;-webkit-user-drag:none;pointer-events:none;max-width:none}
-#pfc input[type=range]{width:100%;margin:16px 0 4px;accent-color:#d4ae5c}#pfc .zl{display:flex;justify-content:space-between;font-size:12px;color:var(--mut)}
+#pfc input[type=range]{width:100%;margin:16px 0 4px;accent-color:#b48aab}#pfc .zl{display:flex;justify-content:space-between;font-size:12px;color:var(--mut)}
 #pfc .row{display:flex;gap:8px;justify-content:center;margin-top:14px}`;
 function cropOpen(file){
   return new Promise((done,fail)=>{

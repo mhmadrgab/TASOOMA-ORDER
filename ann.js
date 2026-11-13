@@ -11,19 +11,19 @@ let X=null,UN=null,A=[],CNT={},RDU=null,busy=false;
 const CSS=`
 #annb{font:inherit;font-weight:500;font-size:14px;border:1px solid #444;border-radius:999px;padding:6px 14px;background:transparent;color:#ddd;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;position:relative}
 /* (13 نوفمبر 2026) الذهبي بس لما فيه تعميم جديد ماتقراش، علشان مايتنافسش مع التبويب المفتوح */
-#annb.nw{background:linear-gradient(135deg,#f1d58e,#a8832f);color:#1b1b1b;border-color:transparent;font-weight:800}
+#annb.nw{background:linear-gradient(135deg,#e3c8dd,#8a5a83);color:#2a1d2c;border-color:transparent;font-weight:800}
 #annb i{font-style:normal;background:#c0392b;color:#fff;border-radius:999px;min-width:20px;padding:0 6px;font-size:12px;line-height:20px}
 #annb.nw{animation:ann-ring 1.8s ease-in-out infinite}@keyframes ann-ring{0%,100%{transform:rotate(0)}8%{transform:rotate(-8deg)}16%{transform:rotate(8deg)}24%{transform:rotate(0)}}
 #annm{display:none;position:fixed;inset:0;z-index:86;background:rgba(0,0,0,.55);padding:14px;overflow:auto;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}#annm.on{display:block}
 .annk{max-width:640px;margin:3vh auto;background:var(--card);color:var(--ink);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}
-.annh{display:flex;align-items:center;gap:12px;padding:16px 20px;background:linear-gradient(120deg,#2b2416,#1b1b1b);color:#fff;border-bottom:3px solid #d4ae5c}
-.annh b{font-size:19px;display:block}.annh small{color:#cdb67a;font-size:12.5px}.annh button{margin-inline-start:auto;font:inherit;background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:17px}
-.annc{padding:14px 18px;border-bottom:1px solid var(--line);background:var(--soft,#f6f2e9)}
+.annh{display:flex;align-items:center;gap:12px;padding:16px 20px;background:linear-gradient(120deg,#2d2131,#2a1d2c);color:#fff;border-bottom:3px solid #b48aab}
+.annh b{font-size:19px;display:block}.annh small{color:#cfb1c8;font-size:12.5px}.annh button{margin-inline-start:auto;font:inherit;background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:17px}
+.annc{padding:14px 18px;border-bottom:1px solid var(--line);background:var(--soft,#f6eee3)}
 .annc textarea{width:100%;min-height:90px;resize:vertical;font:inherit;font-size:16px;line-height:1.6;border-radius:14px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px}
 .annc .row{display:flex;gap:8px;align-items:center;margin-top:8px}.annc .row small{color:var(--mut);font-size:12.5px;flex:1}
-.annc button{font:inherit;font-weight:800;border:0;border-radius:12px;padding:10px 18px;background:#1b1b1b;color:#fff;cursor:pointer}.annc button:disabled{opacity:.5}
+.annc button{font:inherit;font-weight:800;border:0;border-radius:12px;padding:10px 18px;background:#2a1d2c;color:#fff;cursor:pointer}.annc button:disabled{opacity:.5}
 .annl{padding:12px 18px 18px;max-height:62vh;overflow:auto}
-.anni{border-radius:16px;padding:12px 16px;margin-top:10px;background:var(--card);border:1.5px solid var(--line)}.anni.nw{border-color:#d4ae5c}
+.anni{border-radius:16px;padding:12px 16px;margin-top:10px;background:var(--card);border:1.5px solid var(--line)}.anni.nw{border-color:#b48aab}
 .anni.nw{background:#fff8e6}.anni .hd2{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--mut)}.anni .hd2 b{color:var(--ink);font-size:14.5px}
 .anni .tx{white-space:pre-wrap;word-wrap:break-word;font-size:16px;line-height:1.7;margin-top:6px}
 .anni .rd{margin-top:8px;font-size:12.5px;color:#1d6fb8;font-weight:700;cursor:pointer}
@@ -39,33 +39,33 @@ const CSS=`
 .annpv{position:relative;margin-top:10px;border-radius:14px;overflow:hidden;background:#111;max-height:260px;display:flex;justify-content:center}
 .annpv img{max-width:100%;max-height:260px;display:block}.annpv button{position:absolute;top:8px;inset-inline-end:8px;width:34px;height:34px;padding:0;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:15px}
 .annpv small{position:absolute;bottom:6px;inset-inline-start:8px;background:rgba(0,0,0,.6);color:#fff;border-radius:8px;padding:2px 8px;font-size:11.5px}
-.annimg{display:block;width:100%;margin-top:10px;padding:0;border:0;border-radius:14px;overflow:hidden;cursor:zoom-in;background:#1b1b1b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='14' fill='none' stroke='%23d4ae5c' stroke-width='3' stroke-dasharray='60 30'/%3E%3C/svg%3E") center/42px no-repeat;max-height:70vh}
+.annimg{display:block;width:100%;margin-top:10px;padding:0;border:0;border-radius:14px;overflow:hidden;cursor:zoom-in;background:#2a1d2c url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='14' fill='none' stroke='%23d4ae5c' stroke-width='3' stroke-dasharray='60 30'/%3E%3C/svg%3E") center/42px no-repeat;max-height:70vh}
 .annimg img{width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .3s}.annimg img.ok{opacity:1}
 .annpb .annimg{margin:0 0 14px}
 #anniv{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.94);flex-direction:column}#anniv.on{display:flex}
 #anniv .t{display:flex;gap:10px;align-items:center;padding:12px 14px;color:#fff}#anniv .t b{flex:1;font-size:15px}
 #anniv .t a,#anniv .t button{font:inherit;font-weight:800;font-size:14px;border:0;border-radius:10px;padding:8px 14px;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;text-decoration:none}
 #anniv .v{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;padding:8px}#anniv .v img{max-width:100%;max-height:100%;object-fit:contain}
-#anniv .l{color:#cdb67a;text-align:center;padding:6px;font-size:13px}
-.annc .bgt[aria-pressed="true"]{background:linear-gradient(135deg,#d9b25f,#a8832f);color:#1b1b1b;border-color:transparent}
+#anniv .l{color:#cfb1c8;text-align:center;padding:6px;font-size:13px}
+.annc .bgt[aria-pressed="true"]{background:linear-gradient(135deg,#b48aab,#8a5a83);color:#2a1d2c;border-color:transparent}
 /* وانت بتكتب على خلفية تاسومة: خانة الكتابة جوه الكارت نفسه، فبتشوف البوست كامل زي ما هيوصل بالظبط */
 .annc .annbgc{margin-top:0;cursor:text}
 .annc .annbgc textarea{position:relative;width:100%;min-height:0;height:auto;margin:0;padding:4px 0;border:0;border-radius:0;background:transparent;color:#fff;text-align:center;font-family:inherit;font-weight:800;line-height:1.55;resize:none;overflow:hidden;text-shadow:0 2px 12px rgba(0,0,0,.5);box-shadow:none;outline:none}
 .annc .annbgc textarea:focus{box-shadow:none;outline:none}
-.annc .annbgc textarea::placeholder{color:#cdb67a;opacity:.85;font-weight:700;font-size:18px}
-.annbgc .cnt{position:absolute;bottom:8px;inset-inline-start:12px;color:#cdb67a;font-size:11px;opacity:.8}
+.annc .annbgc textarea::placeholder{color:#cfb1c8;opacity:.85;font-weight:700;font-size:18px}
+.annbgc .cnt{position:absolute;bottom:8px;inset-inline-start:12px;color:#cfb1c8;font-size:11px;opacity:.8}
 .annbg{position:relative;overflow:hidden;margin-top:10px;border-radius:16px;min-height:300px;padding:26px 22px 22px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:14px;text-align:center;color:#fff;
-  background:radial-gradient(circle at 18% 12%,rgba(212,174,92,.28),transparent 45%),radial-gradient(circle at 85% 90%,rgba(212,174,92,.2),transparent 50%),linear-gradient(140deg,#151515,#2b2416 55%,#151515);border:2px solid #d4ae5c;box-shadow:inset 0 0 0 6px rgba(212,174,92,.08)}
-.annbg .wm{position:absolute;inset:0;margin:auto;width:78%;max-width:340px;height:auto;fill:#d4ae5c;opacity:.08;pointer-events:none}
-.annbg .hd3{position:relative;display:flex;align-items:center;gap:8px;color:#d4ae5c;font-weight:800;letter-spacing:4px;font-size:13px;direction:ltr}.annbg .hd3 svg{width:30px;height:30px;fill:#d4ae5c}
+  background:radial-gradient(circle at 18% 12%,rgba(180,138,171,.28),transparent 45%),radial-gradient(circle at 85% 90%,rgba(180,138,171,.2),transparent 50%),linear-gradient(140deg,#151515,#2d2131 55%,#151515);border:2px solid #b48aab;box-shadow:inset 0 0 0 6px rgba(180,138,171,.08)}
+.annbg .wm{position:absolute;inset:0;margin:auto;width:78%;max-width:340px;height:auto;fill:#b48aab;opacity:.08;pointer-events:none}
+.annbg .hd3{position:relative;display:flex;align-items:center;gap:8px;color:#b48aab;font-weight:800;letter-spacing:4px;font-size:13px;direction:ltr}.annbg .hd3 svg{width:30px;height:30px;fill:#b48aab}
 .annbg .abt{position:relative;white-space:pre-wrap;word-wrap:break-word;font-weight:800;line-height:1.55;text-shadow:0 2px 12px rgba(0,0,0,.5);max-width:100%}
 .annbg .abt.s1{font-size:34px}.annbg .abt.s2{font-size:27px}.annbg .abt.s3{font-size:21px}.annbg .abt.s4{font-size:17px;font-weight:700}.annbg .abt.s5{font-size:15px;font-weight:600;line-height:1.75;text-align:start}
-.annvo{margin-top:12px}.annvo button{width:100%;font:inherit;font-weight:800;font-size:16px;border:0;border-radius:14px;padding:13px 16px;background:linear-gradient(135deg,#d9b25f,#a8832f);color:#1b1b1b;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(168,131,47,.35)}
+.annvo{margin-top:12px}.annvo button{width:100%;font:inherit;font-weight:800;font-size:16px;border:0;border-radius:14px;padding:13px 16px;background:linear-gradient(135deg,#b48aab,#8a5a83);color:#2a1d2c;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(138,90,131,.35)}
 .annvo button:disabled{opacity:.7}.annvo small{opacity:.75;font-weight:700}.annvo audio{width:100%;height:46px}
 .annvop{display:flex;gap:8px;align-items:center;margin-top:10px;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:6px 10px}.annvop audio{flex:1;min-width:0;height:40px}
 .annvop button{width:32px;height:32px;padding:0;border-radius:50%;background:#c0392b;color:#fff;font-size:14px;flex:none}
 .annc .row{flex-wrap:wrap}.annc .rec{background:#c0392b!important;color:#fff!important;border-color:#c0392b!important;animation:ann-rec 1.2s ease-in-out infinite}.annc .rec small{opacity:.85}@keyframes ann-rec{50%{opacity:.75}}
-.annbg .ft{position:relative;width:100%;display:flex;align-items:center;gap:10px;color:#cdb67a;font-size:12px}.annbg .ft::before,.annbg .ft::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,#d4ae5c,transparent)}
+.annbg .ft{position:relative;width:100%;display:flex;align-items:center;gap:10px;color:#cfb1c8;font-size:12px}.annbg .ft::before,.annbg .ft::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,#b48aab,transparent)}
 .annpb .annbg{margin:0 0 6px}
 @media (max-width:480px){.annbg{min-height:260px}.annbg .abt.s1{font-size:28px}.annbg .abt.s2{font-size:23px}}
 @media (prefers-color-scheme:dark){.anni.nw{background:#2b2210}}
@@ -115,7 +115,7 @@ async function recStart(){
   paint();
 }
 function recStop(){if(REC&&REC.mr.state!=="inactive")REC.mr.stop()}
-const CSS2=`.annpvs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.annpvs .annpv{margin:0}.annpv.wait{display:flex;align-items:center;justify-content:center;min-height:80px;border:2px dashed #d9d4cb;border-radius:12px;color:#6f6b64;font-size:13px}.annpvn{display:block;color:#6f6b64;margin:4px 0 2px}
+const CSS2=`.annpvs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.annpvs .annpv{margin:0}.annpv.wait{display:flex;align-items:center;justify-content:center;min-height:80px;border:2px dashed #d9d4cb;border-radius:12px;color:#74687a;font-size:13px}.annpvn{display:block;color:#74687a;margin:4px 0 2px}
 .annimg{position:relative}.annic{position:absolute;bottom:8px;inset-inline-start:8px;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700}
 .annmore{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;margin-top:6px}.annmore button{padding:0;border:0;border-radius:10px;overflow:hidden;aspect-ratio:1;background:#eee;cursor:zoom-in}.annmore img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .3s}.annmore img.ok{opacity:1}`;
 let PICS=[],PBUSY=0;const IMG={};const PMAX=10;// PICS = الصور المختارة قبل الإرسال، IMG = اللي اتحمّل {id:{t,f,t2,f2...}}

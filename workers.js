@@ -9,16 +9,16 @@ const CSS=`
 .wkk{max-width:460px;margin:6vh auto;background:var(--card);border-radius:18px;padding:20px 22px}.wkk h3{margin:0 0 4px}
 .wkp{display:flex;gap:10px;align-items:center;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;cursor:pointer}.wkp input{width:20px;height:20px;flex:none}
 .wkp:has(input:checked){border-color:var(--acc);background:var(--soft)}
-.wtop{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#1b1b1b,#2b2416);color:#fff;border-radius:16px;padding:16px 20px;margin-bottom:14px;border:1px solid rgba(212,174,92,.35)}
-.wtop .ic{font-size:38px}.wtop small{display:block;color:#cdb67a}.wtop b{font-size:22px}.wtop .sc2{margin-inline-start:auto;font-size:34px;font-weight:700;color:#e8cf8a}
+.wtop{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#2a1d2c,#2d2131);color:#fff;border-radius:16px;padding:16px 20px;margin-bottom:14px;border:1px solid rgba(180,138,171,.35)}
+.wtop .ic{font-size:38px}.wtop small{display:block;color:#cfb1c8}.wtop b{font-size:22px}.wtop .sc2{margin-inline-start:auto;font-size:34px;font-weight:700;color:#e3c8dd}
 .wsc{display:inline-flex;align-items:center;justify-content:center;min-width:48px;padding:3px 10px;border-radius:999px;font-weight:700;font-size:17px}
-.wsc.a{background:#d8efd9;color:#1d5a24}.wsc.b{background:#f6edd2;color:#6b5314}.wsc.c{background:#f8d9d5;color:#8a2218}
+.wsc.a{background:#e3e7cf;color:#45512a}.wsc.b{background:#f2e5ee;color:#5f3a59}.wsc.c{background:#f8d9d5;color:#8a2218}
 .wbr{display:flex;gap:4px;margin-top:4px}.wbr i{display:block;height:5px;border-radius:3px}
-.wup{color:#2f8f3e;font-weight:700}.wdn{color:#c4362b;font-weight:700}
+.wup{color:#6f7d45;font-weight:700}.wdn{color:#c4362b;font-weight:700}
 .wrv{border:1.5px solid var(--line);border-inline-start:5px solid #c4362b;border-radius:12px;padding:10px 14px;margin-bottom:8px}
 .wrv .rn{font-size:13.5px;color:var(--mut);margin:4px 0 8px}
 .wnote{font-size:13px;color:var(--mut);line-height:1.9}
-@media (prefers-color-scheme:dark){.wsc.a{background:#173a1b;color:#8fd39a}.wsc.b{background:#3a3115;color:#e8cf8a}.wsc.c{background:#40191a;color:#f1a5a0}}
+@media (prefers-color-scheme:dark){.wsc.a{background:#2a301b;color:#b9c68a}.wsc.b{background:#3d2b40;color:#e3c8dd}.wsc.c{background:#40191a;color:#f1a5a0}}
 @media print{.wkm{display:none!important}}
 `;
 const ym=t=>new Date(N(t)).toLocaleDateString("en-CA").slice(0,7);
@@ -80,12 +80,12 @@ export function view(){
   ${wait.map(r=>`<div class="wrv"><b>${E(r.brn)}</b> · <bdi dir="ltr">${E(r.no)}</bdi><div class="rn">👷 ${E(r.prep.by.map(nm).join("، "))}${(r.rcv.lines||[]).slice(0,6).map(x=>`<br><bdi dir="ltr">${E(x.k)} ${E(x.c||"")} ${E(x.z||"")}</bdi>: مطلوب ${N(x.q)} · استلم ${N(x.r)}`).join("")}${r.rcv.note?`<br>📝 ${E(r.rcv.note)}`:""}</div>
   <div class="fl" style="margin:0"><button class="bt s" data-wk="fault" data-id="${E(r.id)}" type="button" style="color:#c4362b">خطأ تجهيز</button><button class="bt s" data-wk="nofault" data-id="${E(r.id)}" type="button">ليس خطأ العمال</button>${X.owner?`<button class="bt s r" data-wk="qdel" data-id="${E(r.id)}" type="button" title="تُحذف الملاحظة من المراجعة ولا تُحسب على أحد">🗑 حذف</button>`:""}</div></div>`).join("")}</div>`:""}
  ${X.owner&&done.length?`<details class="pan" style="margin-bottom:14px"><summary style="cursor:pointer;font-weight:700">🗂 ملاحظات استلام راجعتها (${done.length})</summary><p class="off" style="font-size:13px;margin:8px 0 10px">يمكنك تغيير القرار أو حذف الملاحظة نهائياً من التقييم.</p>
-  ${done.map(r=>`<div class="wrv" style="border-inline-start-color:${r.qa.fault?"#c4362b":"#2f8f3e"}"><b>${E(r.brn)}</b> · <bdi dir="ltr">${E(r.no)}</bdi> · ${r.qa.fault?'<span style="color:#c4362b;font-weight:700">خطأ تجهيز</span>':'<span style="color:#2f8f3e;font-weight:700">ليس خطأ العمال</span>'}<div class="rn">👷 ${E(r.prep.by.map(nm).join("، "))}${r.rcv.note?` · 📝 ${E(r.rcv.note)}`:""}</div>
+  ${done.map(r=>`<div class="wrv" style="border-inline-start-color:${r.qa.fault?"#c4362b":"#6f7d45"}"><b>${E(r.brn)}</b> · <bdi dir="ltr">${E(r.no)}</bdi> · ${r.qa.fault?'<span style="color:#c4362b;font-weight:700">خطأ تجهيز</span>':'<span style="color:#6f7d45;font-weight:700">ليس خطأ العمال</span>'}<div class="rn">👷 ${E(r.prep.by.map(nm).join("، "))}${r.rcv.note?` · 📝 ${E(r.rcv.note)}`:""}</div>
   <div class="fl" style="margin:0"><button class="bt s" data-wk="${r.qa.fault?"nofault":"fault"}" data-id="${E(r.id)}" type="button">↺ ${r.qa.fault?"ليس خطأ العمال":"خطأ تجهيز"}</button><button class="bt s r" data-wk="qdel" data-id="${E(r.id)}" type="button">🗑 حذف</button></div></div>`).join("")}</details>`:""}
  <div class="pan"><div class="tw"><table><thead><tr><th>#</th><th>العامل</th><th>الدرجة</th><th>سطور</th><th>قطع</th><th>طلبات</th><th>دقيقة / 10 سطور</th><th>الدقة</th><th>تقييمك</th><th>عن الشهر الماضي</th><th></th></tr></thead><tbody>
  ${rows.length?rows.map((s,i)=>{const d=s.id in pv?s.score-pv[s.id]:null;return `<tr><td>${i+1}</td><td><b>${E(nm(s.id))}</b><small class="off" style="display:block">${s.days.size} يوم عمل</small></td>
   <td><span class="wsc ${cls(s.score)}" title="إنتاجية ${Math.round(s.sc.p)}/40 · دقة ${Math.round(s.sc.a)}/30 · سرعة ${Math.round(s.sc.s)}/15 · تقييمك ${Math.round(s.sc.m)}/15">${s.score}</span>
-  <div class="wbr" title="إنتاجية · دقة · سرعة · تقييمك"><i style="width:${s.sc.p}px;background:#a8832f"></i><i style="width:${s.sc.a}px;background:#2f8f3e"></i><i style="width:${s.sc.s}px;background:#1d8a99"></i><i style="width:${s.sc.m}px;background:#6a56c9"></i></div></td>
+  <div class="wbr" title="إنتاجية · دقة · سرعة · تقييمك"><i style="width:${s.sc.p}px;background:#8a5a83"></i><i style="width:${s.sc.a}px;background:#6f7d45"></i><i style="width:${s.sc.s}px;background:#1d8a99"></i><i style="width:${s.sc.m}px;background:#6a56c9"></i></div></td>
   <td>${fmt(Math.round(s.lines))}</td><td>${fmt(Math.round(s.pcs))}</td><td>${fmt(Math.round(s.reqs*10)/10)}</td><td>${minPer10(s)??"—"}</td>
   <td>${s.acc===null?'<span class="off">—</span>':Math.round(s.acc*100)+"%"}${s.err?`<small style="display:block;color:#c4362b">${s.err} خطأ</small>`:""}${s.wait?`<small class="off" style="display:block">${s.wait} بانتظار المراجعة</small>`:""}</td>
   <td>${X.admin?`<select data-wst="${E(s.id)}" style="padding:6px 8px"><option value="">—</option>${[5,4,3,2,1].map(n=>`<option value="${n}" ${N(stars[s.id])===n?"selected":""}>${"★".repeat(n)}</option>`).join("")}</select>`:(s.star?"★".repeat(s.star):"—")}</td>

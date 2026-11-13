@@ -7,15 +7,15 @@ import {shrink} from "./cust.js";
 export const MAXI=10;
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const CSS=`.mp{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:6px}
-.mp .mt{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#f1efec;border:1px solid var(--line,#e6e2db)}
+.mp .mt{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#f3edf1;border:1px solid var(--line,#e3d5c3)}
 .mp .mt img{width:100%;height:100%;object-fit:cover;display:block}
 .mp .mt b{position:absolute;top:4px;inset-inline-start:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;border-radius:8px;padding:1px 6px}
 .mp .mt button{position:absolute;top:4px;inset-inline-end:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:15px;line-height:26px;padding:0;cursor:pointer}
-.mp .ma{aspect-ratio:1;border-radius:12px;border:2px dashed var(--line,#d9d4cb);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:var(--mut,#6f6b64);font-size:12.5px;text-align:center;padding:6px;background:transparent;font-family:inherit}
+.mp .ma{aspect-ratio:1;border-radius:12px;border:2px dashed var(--line,#d9d4cb);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:var(--mut,#74687a);font-size:12.5px;text-align:center;padding:6px;background:transparent;font-family:inherit}
 .mp .ma i{font-style:normal;font-size:24px}
 .mp .ma.wait{cursor:progress;opacity:.7}
-.mp-h{font-size:12.5px;color:var(--mut,#6f6b64);margin-top:4px}
-@media (prefers-color-scheme:dark){.mp .mt{background:#242424}}`;
+.mp-h{font-size:12.5px;color:var(--mut,#74687a);margin-top:4px}
+@media (prefers-color-scheme:dark){.mp .mt{background:#282029}}`;
 function css(){if(!document.getElementById("mp-css")){const s=document.createElement("style");s.id="mp-css";s.textContent=CSS;document.head.appendChild(s)}}
 let SEQ=0;
 // صندوق اختيار صور: el = العنصر اللي هيترسم جوّاه. بيرجّع {imgs(), busy(), set(list)}

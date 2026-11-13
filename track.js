@@ -18,14 +18,14 @@ let GEO=null;// أماكن الفروع (بتتقري مرة واحدة)
 let T=null;// الخريطة المفتوحة حالياً
 const CSS=MAP_CSS+`
 #trk{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
-#trk .trk-in{background:var(--card,#fff);color:var(--tx,#1b1b1b);width:min(720px,100%);max-height:96vh;overflow:auto;border-radius:20px 20px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.3)}
+#trk .trk-in{background:var(--card,#fff);color:var(--tx,#2a1d2c);width:min(720px,100%);max-height:96vh;overflow:auto;border-radius:20px 20px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.3)}
 @media (min-width:760px){#trk{align-items:center}#trk .trk-in{border-radius:20px}}
 #trk h3{margin:0 0 4px;font-size:17px}
 #trk .trk-s{font-size:14px;font-weight:700;border-radius:12px;padding:9px 12px;margin:8px 0;background:#e3f0fb;color:#1c4f86}
 #trk .trk-s.n{background:#1f8a3c;color:#fff}#trk .trk-s.w{background:#fdecea;color:#c0392b}
-#trk .trk-m{font-size:12.5px;color:var(--mut,#6f6b64);margin-top:6px;line-height:1.7}
+#trk .trk-m{font-size:12.5px;color:var(--mut,#74687a);margin-top:6px;line-height:1.7}
 #trk .tz-mapc{height:min(56vh,440px)}
-#trk .trk-x{width:100%;margin-top:12px;padding:12px;border:0;border-radius:12px;font:700 15px inherit;background:#1b1b1b;color:#fff;cursor:pointer}
+#trk .trk-x{width:100%;margin-top:12px;padding:12px;border:0;border-radius:12px;font:700 15px inherit;background:#2a1d2c;color:#fff;cursor:pointer}
 .trkb{display:block;width:100%;margin-top:6px;padding:10px;border:0;border-radius:10px;font:700 14px inherit;background:#6a56c9;color:#fff;cursor:pointer}
 .tz-me{background:#1f8a3c;color:#fff;border:2px solid #fff;border-radius:999px;padding:3px 10px;font-size:12.5px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 @media (prefers-color-scheme:dark){#trk .trk-s{background:#14304d;color:#9cc7f0}#trk .trk-s.n{background:#1f8a3c;color:#fff}#trk .trk-s.w{background:#4a1f1b;color:#f3b0a8}}

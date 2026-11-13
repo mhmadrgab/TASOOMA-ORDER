@@ -6,16 +6,16 @@
 <!-- شاشة البداية: خطوط لوجو تاسومة بترسم نفسها. ومحتوى الصفحة مخفي (aw) إلى ما نعرف مين داخل، علشان مايبانش حاجة قبل تسجيل الدخول -->
 <script>(function(){var h=document.documentElement;h.classList.add("aw");if(navigator.standalone||matchMedia("(display-mode: standalone)").matches)h.classList.add("app");setTimeout(function(){if(!h.classList.contains("aw"))return;var g=document.getElementById("gate");if(g&&!document.body.classList.contains("lock"))g.classList.add("on");h.classList.remove("aw");var b=document.getElementById("boot");if(b)b.remove()},10000)})()</script>
 <style>
-html.app{background:#1b1b1b}
+html.app{background:#2a1d2c}
 #boot{display:none}
 html.aw body>*:not(#boot){visibility:hidden!important}
-html.app #boot,html.aw #boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(55% 40% at 50% 45%,#2b2315 0%,#1b1b1b 70%);transition:opacity .5s ease,visibility .5s}
+html.app #boot,html.aw #boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(55% 40% at 50% 45%,#2b2315 0%,#2a1d2c 70%);transition:opacity .5s ease,visibility .5s}
 #boot.out{opacity:0;visibility:hidden}
-#boot svg{width:136px;height:136px;overflow:visible;filter:drop-shadow(0 0 18px rgba(212,174,92,.25))}
-#boot .l{fill:none;stroke:#d4ae5c;stroke-width:5;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:bd .75s calc(var(--i)*55ms) cubic-bezier(.55,.1,.25,1) forwards,bl .5s 1.4s ease forwards}
+#boot svg{width:136px;height:136px;overflow:visible;filter:drop-shadow(0 0 18px rgba(180,138,171,.25))}
+#boot .l{fill:none;stroke:#b48aab;stroke-width:5;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:bd .75s calc(var(--i)*55ms) cubic-bezier(.55,.1,.25,1) forwards,bl .5s 1.4s ease forwards}
 #boot .f{fill:#fff;fill-rule:evenodd;opacity:0;animation:bf .55s 1.15s ease forwards}
-#boot b{font:600 15px/1 Arial,Helvetica,sans-serif;color:#e8cf8a;letter-spacing:.05em;opacity:0;animation:bt .8s 1s ease forwards}
-#boot i{display:block;width:110px;height:2px;border-radius:2px;background:rgba(212,174,92,.18) linear-gradient(90deg,transparent,#d4ae5c,transparent) no-repeat;background-size:45% 100%;animation:bb 1.1s ease-in-out infinite}
+#boot b{font:600 15px/1 Arial,Helvetica,sans-serif;color:#e3c8dd;letter-spacing:.05em;opacity:0;animation:bt .8s 1s ease forwards}
+#boot i{display:block;width:110px;height:2px;border-radius:2px;background:rgba(180,138,171,.18) linear-gradient(90deg,transparent,#b48aab,transparent) no-repeat;background-size:45% 100%;animation:bb 1.1s ease-in-out infinite}
 @keyframes bd{to{stroke-dashoffset:0}}
 @keyframes bl{to{stroke-opacity:.3}}
 @keyframes bf{to{opacity:1}}
@@ -27,21 +27,21 @@ html.app #boot,html.aw #boot{position:fixed;inset:0;z-index:9999;display:flex;fl
 <link rel="apple-touch-startup-image" href="./splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="./splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://*.workers.dev wss://*.workers.dev https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://*.firebaseapp.com https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
 <script>/* منع فتح المنصة داخل إطار في موقع آخر (Clickjacking). الإطار من نفس الموقع مسموح */(function(){var ok=true;try{ok=window.top===window.self||window.top.location.origin===location.origin}catch(e){ok=false}if(!ok){document.documentElement.style.display="none";try{window.top.location=window.self.location.href}catch(e){}}})()</script>
-<link rel="manifest" href="./manifest-driver.json"><meta name="theme-color" content="#1b1b1b"><link rel="apple-touch-icon" href="./icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest-driver.json"><meta name="theme-color" content="#2a1d2c"><link rel="apple-touch-icon" href="./icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="referrer" content="strict-origin"><meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>تطبيق السائق - تاسومة</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
 <style>
-:root{--bg:#efede9;--card:#fff;--ink:#1b1b1b;--mut:#6f6b64;--line:#e6e2db;--acc:#a8832f;--soft:#f6f2e9;--field:#f3f1ed;--ring:rgba(168,131,47,.22);--ok:#2f8f3e;--go:#6a56c9}
-@media (prefers-color-scheme:dark){:root{--bg:#0f0f0f;--card:#1a1a1a;--ink:#f1efec;--mut:#9d9a94;--line:#2f2f2f;--acc:#d4ae5c;--soft:#221f18;--field:#242424;--ring:rgba(212,174,92,.25);--ok:#5cc06c;--go:#a597ee}}
+:root{--bg:#ebe0d1;--card:#fffaf3;--ink:#2a1d2c;--mut:#74687a;--line:#e3d5c3;--acc:#8a5a83;--soft:#f6eee3;--field:#f2e9dd;--ring:rgba(138,90,131,.22);--ok:#6f7d45;--go:#6a56c9}
+@media (prefers-color-scheme:dark){:root{--bg:#141015;--card:#1d1720;--ink:#f3edf1;--mut:#a498a7;--line:#382d3b;--acc:#b48aab;--soft:#261c28;--field:#282029;--ring:rgba(180,138,171,.25);--ok:#a4b46e;--go:#a597ee}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 "IBM Plex Sans Arabic",Tahoma,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
 button,input,select{font:inherit;color:var(--ink)}
 input,select{width:100%;background:var(--field);border:1.5px solid transparent;border-radius:12px;padding:13px 14px}
 input:focus,select:focus{outline:0;border-color:var(--acc);box-shadow:0 0 0 4px var(--ring)}
 label{display:block;color:var(--mut);font-size:14px;margin:12px 0 4px}
-.hd{background:#1b1b1b;border-bottom:3px solid var(--acc);padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
-.hd img{height:38px}.hd b{color:#fff;display:block;line-height:1.2}.hd small{color:#cdb67a}
+.hd{background:#2a1d2c;border-bottom:3px solid var(--acc);padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.hd img{height:38px}.hd b{color:#fff;display:block;line-height:1.2}.hd small{color:#cfb1c8}
 .hd .sp{flex:1}.hd button{background:none;border:1.5px solid #444;color:#ddd;border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
 /* الجوال: الشريط كان أعرض من الشاشة (الصفحة كانت بتتسحب يمين وشمال). السطر الأول: اللوجو والاسم والخروج، والتاني: اللغة والإشعارات والرسائل */
 @media (max-width:520px){
@@ -56,7 +56,7 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
 .card{background:var(--card);border-radius:18px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .card h3{margin:0 0 6px;font-size:18px}
 .b{border:1.5px solid var(--line);background:var(--card);border-radius:14px;padding:14px 18px;font-weight:700;cursor:pointer;width:100%}
-.b.p{background:var(--ink);color:var(--bg);border-color:var(--ink)}.b.g{background:var(--acc);border-color:var(--acc);color:#1b1b1b}.b.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.b.p{background:var(--ink);color:var(--bg);border-color:var(--ink)}.b.g{background:var(--acc);border-color:var(--acc);color:#2a1d2c}.b.ok{background:var(--ok);border-color:var(--ok);color:#fff}
 .b:disabled{opacity:.5}.row{display:flex;gap:10px;margin-top:12px}.row .b{flex:1}
 .stop{display:flex;gap:12px;align-items:center;justify-content:space-between;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
 .stop{flex-wrap:wrap}.stop>div{min-width:0;flex:1 1 150px}.stop>.b{white-space:normal;max-width:100%}/* (13 نوفمبر 2026) زرار "استلمت من فرع اسمه طويل" كان بيوسّع الصفحة على الموبايل */
@@ -67,8 +67,8 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
 .pill{border-radius:999px;padding:2px 12px;font-size:13px;font-weight:700;background:#e4def7;color:#44348a}
 .kp{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.kp span{background:var(--soft);border-radius:10px;padding:4px 12px;font-size:15px}
 .mut{color:var(--mut);font-size:14px}.er{color:#c4362b;min-height:22px;font-size:15px;margin-top:8px}
-#gate{max-width:380px;margin:10vh auto;padding:0 18px;text-align:center}#gate .card{padding:26px 22px}#gate img{height:62px;background:#1b1b1b;padding:10px 16px;border-radius:14px}
-#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-140px);z-index:80;background:#1b1b1b;color:#fff;padding:12px 22px;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.3);transition:.35s;border:1px solid var(--acc);max-width:92vw;text-align:center}#toast.on{transform:translateX(-50%) translateY(0)}#toast.er{border-color:#c4362b}
+#gate{max-width:380px;margin:10vh auto;padding:0 18px;text-align:center}#gate .card{padding:26px 22px}#gate img{height:62px;background:#2a1d2c;padding:10px 16px;border-radius:14px}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-140px);z-index:80;background:#2a1d2c;color:#fff;padding:12px 22px;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.3);transition:.35s;border:1px solid var(--acc);max-width:92vw;text-align:center}#toast.on{transform:translateX(-50%) translateY(0)}#toast.er{border-color:#c4362b}
 .b.it{width:auto;padding:5px 12px;font-size:13px;font-weight:500;margin-top:6px}
 .itg{border:1.5px solid var(--line);border-inline-start:5px solid var(--acc);border-radius:12px;padding:8px 12px;margin-bottom:8px}.itg>b{font-size:17px;display:block}
 .itr{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-top:1px dashed var(--line)}.itr b{font-size:18px}
@@ -157,7 +157,7 @@ function ordPreview(rs){
  const o=order(rs,null),known=o.filter(r=>GEO.br[codeOf(r.brn)]);if(known.length<2)return "";
  const start={c:"WH",p:GEO.wh},m=Math.round(routeCost(known.map(nodeOf),start,start)),seen=new Set(),names=[];
  o.forEach(r=>{const t=r.tr&&r.tr.fr&&!N(r.pk),k=(t?r.tr.frn+">":"")+r.brn;if(!seen.has(k)){seen.add(k);names.push(t?`🔄 استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ثم سلّم <bdi dir="ltr">${E(r.brn)}</bdi>`:`<bdi dir="ltr">${E(r.brn)}</bdi>`)}});
- return `<div class="mut" style="background:color-mix(in srgb,#2f8f3e 13%,transparent);border:1px solid color-mix(in srgb,#2f8f3e 30%,transparent);border-radius:10px;padding:8px 10px;margin-top:8px;color:var(--ink);line-height:1.9"><b>🧭 الترتيب المقترح (أقصر طريق):</b>${names.map((n,i)=>`<div><b style="display:inline-block;min-width:22px;text-align:center;background:#1f5d46;color:#fff;border-radius:50%;font-size:12px;line-height:22px;margin-inline-end:6px">${i+1}</b>${n}</div>`).join("")}<div>🏁 الرجوع إلى المستودع</div><small>الوقت التقريبي للمشوار كله مع الرجوع: ~${m>=60?Math.floor(m/60)+" س "+(m%60)+" د":m+" د"}</small></div>`;
+ return `<div class="mut" style="background:color-mix(in srgb,#6f7d45 13%,transparent);border:1px solid color-mix(in srgb,#6f7d45 30%,transparent);border-radius:10px;padding:8px 10px;margin-top:8px;color:var(--ink);line-height:1.9"><b>🧭 الترتيب المقترح (أقصر طريق):</b>${names.map((n,i)=>`<div><b style="display:inline-block;min-width:22px;text-align:center;background:#1f5d46;color:#fff;border-radius:50%;font-size:12px;line-height:22px;margin-inline-end:6px">${i+1}</b>${n}</div>`).join("")}<div>🏁 الرجوع إلى المستودع</div><small>الوقت التقريبي للمشوار كله مع الرجوع: ~${m>=60?Math.floor(m/60)+" س "+(m%60)+" د":m+" د"}</small></div>`;
 }
 // ---------- وقت الوصول المتوقع لكل فرع ----------
 // كل رحلة قصيرة: الوقت الفعلي من رحلات قبل كده لنفس "من فين لفين" (المستودع←الملقا غير غرناطة←الملقا)،

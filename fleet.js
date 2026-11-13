@@ -44,12 +44,12 @@ const isImg=s=>typeof s==="string"&&/^data:image\/(png|jpe?g|webp);base64,/.test
 const CSS=`
 .fm{display:none;position:fixed;inset:0;z-index:76;background:rgba(0,0,0,.55);overflow:auto;padding:18px}.fm.on{display:block}
 .fk{max-width:560px;margin:4vh auto;background:var(--card);border-radius:18px;padding:20px 22px}.fk h3{margin:0 0 4px}.fk label{display:block;color:var(--mut);font-size:13px;margin:12px 0 4px}.fk input,.fk select{width:100%}.fk .bt{width:auto}
-.al{background:#f8d9d5;color:#8a2218;border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:14.5px}.al.w{background:#f6edd2;color:#6b5314}
+.al{background:#f8d9d5;color:#8a2218;border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:14.5px}.al.w{background:#f2e5ee;color:#5f3a59}
 .tr{background:var(--card);border-radius:16px;padding:14px 18px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.06);border-inline-start:6px solid #6a56c9}
-.tr h4{margin:0 0 4px;font-size:17px}.tr .st1{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tr .st1 span{background:var(--soft);border-radius:10px;padding:4px 10px;font-size:14px}.tr .st1 span.ok{background:#d8efd9;color:#1d5a24}
-.pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#d8efd9;color:#1d5a24}.pill.off2{background:#f8d9d5;color:#8a2218}.pill.go{background:#e4def7;color:#44348a}
+.tr h4{margin:0 0 4px;font-size:17px}.tr .st1{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tr .st1 span{background:var(--soft);border-radius:10px;padding:4px 10px;font-size:14px}.tr .st1 span.ok{background:#e3e7cf;color:#45512a}
+.pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#e3e7cf;color:#45512a}.pill.off2{background:#f8d9d5;color:#8a2218}.pill.go{background:#e4def7;color:#44348a}
 .fl2{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}.sub{margin:22px 0 8px;font-size:18px}
-@media (prefers-color-scheme:dark){.al{background:#40191a;color:#f1a5a0}.al.w{background:#3a3115;color:#e8cf8a}.pill{background:#173a1b;color:#8fd39a}.pill.go{background:#2a2450;color:#c3b8f5}}
+@media (prefers-color-scheme:dark){.al{background:#40191a;color:#f1a5a0}.al.w{background:#3d2b40;color:#e3c8dd}.pill{background:#2a301b;color:#b9c68a}.pill.go{background:#2a2450;color:#c3b8f5}}
 @media print{.fm{display:none!important}}
 `;
 export const cars=()=>CARS;
@@ -91,7 +91,7 @@ function farOf(s,tid){
  const p={lat:med(o.map(x=>x.lat)),lng:med(o.map(x=>x.lng))},k=km2r(p,{lat:+s.lat,lng:+s.lng});return k>FAR_KM?{km:k}:null;
 }
 const farTxt=k=>k<1?Math.round(k*1000)+" متر":(Math.round(k*10)/10)+" كم";
-const farTag=(s,tid)=>{const x=farOf(s,tid);return !x?"":x.none?' <span class="pill" style="background:#f1efe9;color:#6f6b64" title="لم يسجّل جوال السائق موقع التسليم">📍 بدون موقع</span>':` <span class="pill" style="background:#fdecea;color:#c0392b" title="موقع التسليم بعيد عن موقع الفرع المعروف">⚠️ سُلِّم على بعد ${farTxt(x.km)} من الفرع</span>`};
+const farTag=(s,tid)=>{const x=farOf(s,tid);return !x?"":x.none?' <span class="pill" style="background:#f1efe9;color:#74687a" title="لم يسجّل جوال السائق موقع التسليم">📍 بدون موقع</span>':` <span class="pill" style="background:#fdecea;color:#c0392b" title="موقع التسليم بعيد عن موقع الفرع المعروف">⚠️ سُلِّم على بعد ${farTxt(x.km)} من الفرع</span>`};
 // الوقت المتوقع لرحلة قصيرة: من رحلات قبل كده لنفس المشوار، ولو أول مرة نقدّره من المسافة (35 كم/س + 5 دقائق تسليم)
 function legMs(prev,code,pp){if(pp[prev+">"+code])return pp[prev+">"+code]*6e4;const k=kmBetween(geoPt(prev),geoPt(code));if(k!==null)return (k/35*60+5)*6e4;const a=geoPt(code);return a&&a.avg?a.avg*6e4:null}
 // المكان اللي السائق أنهى فيه الرحلة: تطبيق السائق يسجّل loc بنفس وقت الإنهاء (end) بالظبط.
@@ -141,7 +141,7 @@ function paintSig(){const b=document.getElementById("flsig");if(b)b.innerHTML=si
 function liveStop(){if(LVU){LVU();LVU=null}if(LVT){clearInterval(LVT);LVT=null}LV={}}
 function attachLive(){
  const slot=g("flmap-slot");if(!slot)return;liveListen();
- if(!LM.host){LM.host=document.createElement("div");LM.host.className="tz-map";LM.host.innerHTML=`<div class="tz-mapc"></div><div class="tz-bar"><button class="bt s" data-fl="mfit" type="button">⤢ أظهر الكل</button><span class="tz-fw"></span><span>🚚 سائق في رحلة</span><span>🏭 المستودع</span><span><b style="background:#d4ae5c;border-radius:8px;padding:0 6px;color:#1b1b1b">كود</b> الفرع المتجه إليه</span><span>يتحدّث المكان تلقائياً</span></div>`}
+ if(!LM.host){LM.host=document.createElement("div");LM.host.className="tz-map";LM.host.innerHTML=`<div class="tz-mapc"></div><div class="tz-bar"><button class="bt s" data-fl="mfit" type="button">⤢ أظهر الكل</button><span class="tz-fw"></span><span>🚚 سائق في رحلة</span><span>🏭 المستودع</span><span><b style="background:#b48aab;border-radius:8px;padding:0 6px;color:#2a1d2c">كود</b> الفرع المتجه إليه</span><span>يتحدّث المكان تلقائياً</span></div>`}
  if(LM.host.parentNode!==slot)slot.appendChild(LM.host);
  if(LM.map){LM.map.invalidateSize();paintLive();return}
  if(LM.loading)return;LM.loading=true;
@@ -181,7 +181,7 @@ function paintLive(){
  LM.mk.forEach(m=>{m._seen=0});
  const nm=brNames(),wh=geoPt("WH"),act=TR.filter(t=>t.st==="active"),br=(GEOD&&GEOD.br)||{},nxt=new Set(),fit=[];
  if(okPt(wh)){mark("wh",wh,`<div class="tz-w">🏭</div>`,"<b>🏭 المستودع</b>",null,500);fit.push(wh)}
- const cols=["#6a56c9","#c4362b","#1c4f86","#2f8f3e","#a8832f","#b0478f"];
+ const cols=["#6a56c9","#c4362b","#1c4f86","#6f7d45","#8a5a83","#b0478f"];
  act.forEach((t,i)=>{
   const st=Array.isArray(t.stops)?t.stops:[],done=st.filter(s=>s.arr).length,rem=st.filter(s=>!s.arr);
   const rq=s=>X.R().find(r=>r.id===s.rid),eta=s=>{const r=rq(s);return N(r&&r.eta)||N(s.eta)};
@@ -190,7 +190,7 @@ function paintLive(){
   const lv=LV[t.drv],loc=lv&&lv.trip===t.id&&N(lv.ts)>N(t.loc&&t.loc.ts)&&okPt(lv)?{...lv,src:"bg"}:t.loc;
   if(!okPt(loc))return;
   const old=sigOff(t),nx=rem[0],rr=RT[t.id]&&RT[t.id].r,nxs=rr&&rr.legs&&rr.legs[0];
-  const pop=`<b>🚚 ${E(t.drvn)}</b><br>${E(t.carn)}<br>سلّم ${done} من ${st.length}${nx?`<br>متجه إلى <b><bdi dir="ltr">${E(nx.fr&&!nx.pk?(nx.frn||nx.fr)+" (استلام)":nx.brn)}</bdi></b>${eta(nx)?` · متوقع ~${hm(eta(nx))}`:""}`:"<br>أنهى التوصيلات"}${nx&&nxs?`<br>🚦 مع الزحام حالياً: يصل خلال ~${Math.max(1,Math.round(nxs/60))} د${rr.delay>60?` (منهم ${Math.round(rr.delay/60)} د زحام)`:""}`:""}${lv&&lv.trip===t.id&&N(lv.spd)>0?`<br>🏎 ${N(lv.spd)} كم/س`:""}<br><span style="color:#6f6b64">آخر مكان: ${ago(loc.ts)} (${hm(loc.ts)})${loc.src==="bg"?" · من التطبيق":""}</span>${old?`<br><b style="color:#c0392b">📵 انقطع الاتصال: غالباً النت فصل عند السائق</b>`:""}`;
+  const pop=`<b>🚚 ${E(t.drvn)}</b><br>${E(t.carn)}<br>سلّم ${done} من ${st.length}${nx?`<br>متجه إلى <b><bdi dir="ltr">${E(nx.fr&&!nx.pk?(nx.frn||nx.fr)+" (استلام)":nx.brn)}</bdi></b>${eta(nx)?` · متوقع ~${hm(eta(nx))}`:""}`:"<br>أنهى التوصيلات"}${nx&&nxs?`<br>🚦 مع الزحام حالياً: يصل خلال ~${Math.max(1,Math.round(nxs/60))} د${rr.delay>60?` (منهم ${Math.round(rr.delay/60)} د زحام)`:""}`:""}${lv&&lv.trip===t.id&&N(lv.spd)>0?`<br>🏎 ${N(lv.spd)} كم/س`:""}<br><span style="color:#74687a">آخر مكان: ${ago(loc.ts)} (${hm(loc.ts)})${loc.src==="bg"?" · من التطبيق":""}</span>${old?`<br><b style="color:#c0392b">📵 انقطع الاتصال: غالباً النت فصل عند السائق</b>`:""}`;
   const car=moveCar(t,loc,`<div class="tz-d${old?" old":""}"><b>🚚<i class="tz-hd"></i></b><span>${old?"📵 ":""}${E(t.drvn)}</span></div>`,pop,old);fit.push(loc);
   // الطريق اللي فاضل: من مكانه حالياً على الفروع اللي لا يزال ماسلّمهاش بالترتيب. خط متقطّع إلى ما المسار الحقيقي على الطريق يوصل (TomTom)
   const path=[loc,...rem.flatMap(s=>[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))])].filter(okPt);

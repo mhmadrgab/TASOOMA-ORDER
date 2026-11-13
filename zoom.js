@@ -15,9 +15,9 @@ const CSS=`#zbx{display:none;position:fixed;inset:0;z-index:95;background:rgba(0
 #zbx.on{display:flex}#zbx .zi{position:relative;display:flex;align-items:center;justify-content:center;max-width:100%}
 #zbx img{max-width:96vw;max-height:74vh;object-fit:contain;border-radius:10px;background:#fff;touch-action:pinch-zoom;user-select:none}
 #zbx .zt{color:#fff;font-size:15px;text-align:center}#zbx .zb{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-#zbx .zb>*{font:inherit;font-weight:700;border:0;border-radius:12px;padding:11px 20px;cursor:pointer;background:#fff;color:#1b1b1b;text-decoration:none}
+#zbx .zb>*{font:inherit;font-weight:700;border:0;border-radius:12px;padding:11px 20px;cursor:pointer;background:#fff;color:#2a1d2c;text-decoration:none}
 #zbx .zb .d{background:#c4362b;color:#fff}
-#zbx .zn{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#1b1b1b;font-size:28px;line-height:44px;cursor:pointer;padding:0}
+#zbx .zn{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#2a1d2c;font-size:28px;line-height:44px;cursor:pointer;padding:0}
 #zbx .zn.p{inset-inline-start:6px}#zbx .zn.n{inset-inline-end:6px}#zbx .zn:disabled{opacity:.3;cursor:default}
 #zbx .zc{color:#fff;background:rgba(255,255,255,.16);border-radius:999px;padding:3px 12px;font-size:13px;font-weight:700}
 #zbx .zd{display:flex;gap:6px;max-width:92vw;overflow-x:auto;padding:2px}#zbx .zd img{width:46px;height:46px;max-height:none;object-fit:cover;border-radius:8px;opacity:.5;cursor:pointer;border:2px solid transparent;background:#333}

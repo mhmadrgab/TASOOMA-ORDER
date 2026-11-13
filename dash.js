@@ -14,11 +14,11 @@ const dur=ms=>!ms?"—":ms<H?`${Math.max(1,Math.round(ms/6e4))} دقيقة`:ms<4
 const dlvAt=r=>N(r.dlv)||N(r.rcv&&r.rcv.at);
 const reduce=()=>{try{return matchMedia("(prefers-reduced-motion: reduce)").matches}catch(e){return false}};
 const STYLE=`
-.dz{--dz-card:#fff;--dz-ink:#1b1b1b;--dz-ink2:#55524c;--dz-mut:#8a867e;--dz-grid:#ece9e3;--dz-track:#efece6;--dz-s1:#a8832f;--dz-s2:#00899e;
- --dz-r1:#00899e;--dz-r2:#a8832f;--dz-r3:#2f8f3e;--dz-r4:#2a78d6;--dz-new:#a8832f;--dz-prep:#00899e;--dz-go:#2a78d6;--dz-done:#2f8f3e;
- --dz-good:#0ca30c;--dz-warn:#fab219;--dz-bad:#d03b3b;--dz-goodt:#006300;--dz-shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px -14px rgba(60,45,10,.25);margin-bottom:16px}
-@media (prefers-color-scheme:dark){.dz{--dz-card:#1a1a1a;--dz-ink:#f1efec;--dz-ink2:#c3c2b7;--dz-mut:#8f8b84;--dz-grid:#2b2b2b;--dz-track:#2a2a2a;--dz-s1:#b08a36;--dz-s2:#1b9fb3;
- --dz-r1:#1b9fb3;--dz-r2:#c9a04a;--dz-r3:#43a957;--dz-r4:#3987e5;--dz-new:#c9a04a;--dz-prep:#1b9fb3;--dz-go:#3987e5;--dz-done:#43a957;--dz-goodt:#0ca30c;--dz-shadow:0 1px 2px rgba(0,0,0,.4)}}
+.dz{--dz-card:#fffaf3;--dz-ink:#2a1d2c;--dz-ink2:#5a4e5c;--dz-mut:#8b7f8c;--dz-grid:#e9dfd0;--dz-track:#ece2d4;--dz-s1:#8a5a83;--dz-s2:#00899e;
+ --dz-r1:#00899e;--dz-r2:#8a5a83;--dz-r3:#6f7d45;--dz-r4:#2a78d6;--dz-new:#8a5a83;--dz-prep:#00899e;--dz-go:#2a78d6;--dz-done:#6f7d45;
+ --dz-good:#6f7d45;--dz-warn:#fab219;--dz-bad:#d03b3b;--dz-goodt:#45512a;--dz-shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px -14px rgba(60,45,10,.25);margin-bottom:16px}
+@media (prefers-color-scheme:dark){.dz{--dz-card:#1d1720;--dz-ink:#f3edf1;--dz-ink2:#cfc4d0;--dz-mut:#9a8e9c;--dz-grid:#2e2532;--dz-track:#2c2330;--dz-s1:#8a5a83;--dz-s2:#1b9fb3;
+ --dz-r1:#1b9fb3;--dz-r2:#a06f97;--dz-r3:#a4b46e;--dz-r4:#3987e5;--dz-new:#a06f97;--dz-prep:#1b9fb3;--dz-go:#3987e5;--dz-done:#a4b46e;--dz-goodt:#6f7d45;--dz-shadow:0 1px 2px rgba(0,0,0,.4)}}
 .dz-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
 .dz-hd h2{margin:0;font-size:19px;display:flex;align-items:center;gap:8px;color:var(--dz-ink)}
 .dz-hd h2 small{font-size:12.5px;font-weight:600;color:var(--dz-mut)}

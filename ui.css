@@ -53,7 +53,7 @@ input,select,textarea{transition:border-color .2s,box-shadow .2s,background-colo
 button{transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .22s,background-color .22s,border-color .22s,color .22s,opacity .22s}
 button:not(:disabled):active{transform:scale(.97)}
 .b.p:not(:disabled):hover,.bt.p:not(:disabled):hover,.bt.g:not(:disabled):hover,.b.g:not(:disabled):hover,button.b.sd:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.16)}
-.tabs button.on{box-shadow:0 4px 14px rgba(212,174,92,.35)}
+.tabs button.on{box-shadow:0 4px 14px rgba(180,138,171,.35)}
 .fl .chip{transition:background-color .2s,color .2s,border-color .2s,transform .16s}
 
 /* الكروت: رفعة خفيفة مع الماوس */
@@ -77,14 +77,14 @@ button:not(:disabled):active{transform:scale(.97)}
 #md.on .mb,#em.on .eb,.mdl.on .card,.wkm.on .wkk{animation:ui-pop .38s cubic-bezier(.16,1,.3,1) both}
 
 /* زرار "تنزيل الصورة" في ورقة الطلب */
-.ov a.b{display:inline-block;text-decoration:none;font:inherit;font-weight:700;border-radius:12px;padding:13px 22px;border:1.5px solid #d4ae5c;background:#d4ae5c;color:#1b1b1b}
+.ov a.b{display:inline-block;text-decoration:none;font:inherit;font-weight:700;border-radius:12px;padding:13px 22px;border:1.5px solid #b48aab;background:#b48aab;color:#2a1d2c}
 
 /* نافذة "فعّل الإشعارات" بنفس شكل نافذة التسجيل */
 #npm{display:none;position:fixed;inset:0;z-index:97;background:rgba(0,0,0,.55);overflow:auto;padding:18px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 #npm.on{display:block;animation:ui-fade .22s ease both}
 #npm .uik{text-align:center}#npm .uik ol{text-align:right}#npm .uib{justify-content:center}
 #npm .bt{font:inherit;font-weight:700;border-radius:12px;padding:11px 20px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
-#npm .bt.p{background:#d4ae5c;border-color:#d4ae5c;color:#1b1b1b}
+#npm .bt.p{background:#b48aab;border-color:#b48aab;color:#2a1d2c}
 
 /* نافذة "افتح التسجيل في Firebase" */
 #uim{display:none;position:fixed;inset:0;z-index:98;background:rgba(0,0,0,.55);overflow:auto;padding:18px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
@@ -96,16 +96,16 @@ button:not(:disabled):active{transform:scale(.97)}
 
 /* كارت الترحيب */
 .hello{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
- background:linear-gradient(135deg,#1b1b1b 0%,#2b2416 100%);color:#fff;border-radius:20px;padding:18px 22px;margin-bottom:16px;
- border:1px solid rgba(212,174,92,.3);box-shadow:0 14px 34px rgba(0,0,0,.14)}
-.hello::after{content:"";position:absolute;width:220px;height:220px;inset-inline-start:-60px;top:-110px;border-radius:50%;background:radial-gradient(circle,rgba(212,174,92,.28),transparent 70%);pointer-events:none}
+ background:linear-gradient(135deg,#2a1d2c 0%,#2d2131 100%);color:#fff;border-radius:20px;padding:18px 22px;margin-bottom:16px;
+ border:1px solid rgba(180,138,171,.3);box-shadow:0 14px 34px rgba(0,0,0,.14)}
+.hello::after{content:"";position:absolute;width:220px;height:220px;inset-inline-start:-60px;top:-110px;border-radius:50%;background:radial-gradient(circle,rgba(180,138,171,.28),transparent 70%);pointer-events:none}
 .hello .hl{position:relative;z-index:1;min-width:0}
 .hello b{font-size:21px;line-height:1.4;display:block}
-.hello p{margin:4px 0 0;color:#e2cf9e;font-size:14.5px}
+.hello p{margin:4px 0 0;color:#dcc3d6;font-size:14.5px}
 .hchips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.hchips span{background:rgba(255,255,255,.07);border:1px solid rgba(212,174,92,.28);border-radius:999px;padding:4px 12px;font-size:13px;color:#f1efec}
+.hchips span{background:rgba(255,255,255,.07);border:1px solid rgba(180,138,171,.28);border-radius:999px;padding:4px 12px;font-size:13px;color:#f3edf1}
 .hello .hc{position:relative;z-index:1;text-align:left;display:flex;flex-direction:column;align-items:flex-end}
-.hello .hc b{font-size:30px;line-height:1.1;color:#e8cf8a;font-variant-numeric:tabular-nums;direction:ltr}
+.hello .hc b{font-size:30px;line-height:1.1;color:#e3c8dd;font-variant-numeric:tabular-nums;direction:ltr}
 .hello .hc small{color:#b9b4aa;font-size:12.5px}
 #hello{display:none}.lock #hello{display:block}
 @media (max-width:560px){.hello{padding:16px}.hello b{font-size:18px}.hello .hc{flex-direction:row;align-items:baseline;gap:10px;flex-wrap:wrap;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:8px}.hello .hc b{font-size:20px}}
@@ -135,13 +135,13 @@ html.ui-offline::after{content:"⚠ النت فاصل — أول ما يرجع،
 
 /* ---------- شاشات الدخول ---------- */
 .ui-stage{background:#0b0b0b!important}
-/* التطبيق المثبّت: html.app ليه خلفية #1b1b1b، فخلفية شاشة الدخول كانت بتبان شريط على قد المحتوى بس (نوفمبر 2026) */
+/* التطبيق المثبّت: html.app ليه خلفية #2a1d2c، فخلفية شاشة الدخول كانت بتبان شريط على قد المحتوى بس (نوفمبر 2026) */
 html:has(body.ui-stage){background:#0b0b0b!important}
 .ui-stage::before,.ui-stage::after{content:"";position:fixed;pointer-events:none;z-index:0}
 .ui-stage::before{inset:-25%;
- background:radial-gradient(38% 34% at 72% 28%,rgba(212,174,92,.22),transparent 70%),
+ background:radial-gradient(38% 34% at 72% 28%,rgba(180,138,171,.22),transparent 70%),
   radial-gradient(34% 30% at 26% 74%,rgba(29,138,153,.16),transparent 70%),
-  radial-gradient(24% 22% at 50% 50%,rgba(212,174,92,.07),transparent 70%);
+  radial-gradient(24% 22% at 50% 50%,rgba(180,138,171,.07),transparent 70%);
  animation:ui-drift 22s ease-in-out infinite alternate}
 .ui-stage::after{inset:0;
  background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
@@ -149,12 +149,12 @@ html:has(body.ui-stage){background:#0b0b0b!important}
 body.ui-stage #gate,.lg,.gc{position:relative;z-index:1}
 
 .ui-stage .lg,.ui-stage .gc,.ui-stage #gate .card{
- background:rgba(22,22,22,.74);color:#f1efec;border:1px solid rgba(212,174,92,.22);border-radius:24px;overflow:hidden;
+ background:rgba(22,22,22,.74);color:#f3edf1;border:1px solid rgba(180,138,171,.22);border-radius:24px;overflow:hidden;
  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
  box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);
  animation:ui-rise .75s cubic-bezier(.2,.8,.2,1) both}
 .ui-stage .lg::before,.ui-stage .gc::before,.ui-stage #gate .card::before{content:"";position:absolute;top:0;left:12%;right:12%;height:2px;
- background:linear-gradient(90deg,transparent,#d4ae5c,transparent);opacity:.9}
+ background:linear-gradient(90deg,transparent,#b48aab,transparent);opacity:.9}
 .ui-stage .lg>*,.ui-stage .gc>*,.ui-stage #gate .card>*{animation:ui-up .6s cubic-bezier(.2,.8,.2,1) both}
 .ui-stage .lg>:nth-child(1),.ui-stage .gc>:nth-child(1),.ui-stage #gate .card>:nth-child(1){animation:ui-pop .7s cubic-bezier(.16,1,.3,1) .15s both,ui-float 5s ease-in-out 1s infinite}
 .ui-stage .lg>:nth-child(2),.ui-stage .gc>:nth-child(2),.ui-stage #gate .card>:nth-child(2){animation-delay:.25s}
@@ -163,25 +163,25 @@ body.ui-stage #gate,.lg,.gc{position:relative;z-index:1}
 .ui-stage .lg>:nth-child(5),.ui-stage .gc>:nth-child(5),.ui-stage #gate .card>:nth-child(5){animation-delay:.46s}
 .ui-stage .lg>:nth-child(6),.ui-stage .gc>:nth-child(6),.ui-stage #gate .card>:nth-child(6){animation-delay:.53s}
 .ui-stage .lg>:nth-child(n+7),.ui-stage .gc>:nth-child(n+7),.ui-stage #gate .card>:nth-child(n+7){animation-delay:.6s}
-.ui-stage .lg img,.ui-stage .gc img,.ui-stage #gate .card img{filter:drop-shadow(0 8px 22px rgba(212,174,92,.28))}
-.ui-stage .lg p,.ui-stage .gc p,.ui-stage #gate .mut{color:#9d9a94}
+.ui-stage .lg img,.ui-stage .gc img,.ui-stage #gate .card img{filter:drop-shadow(0 8px 22px rgba(180,138,171,.28))}
+.ui-stage .lg p,.ui-stage .gc p,.ui-stage #gate .mut{color:#a498a7}
 .ui-stage .lg input,.ui-stage .gc input,.ui-stage .gc select,.ui-stage #gate input{
- background:rgba(255,255,255,.045);color:#f1efec;border:1.5px solid rgba(255,255,255,.09)}
+ background:rgba(255,255,255,.045);color:#f3edf1;border:1.5px solid rgba(255,255,255,.09)}
 .ui-stage .lg input:focus,.ui-stage .gc input:focus,.ui-stage .gc select:focus,.ui-stage #gate input:focus{
- border-color:#d4ae5c;background:rgba(255,255,255,.07);box-shadow:0 0 0 4px rgba(212,174,92,.18)}
-.ui-stage .gc select option{background:#1a1a1a;color:#f1efec}
+ border-color:#b48aab;background:rgba(255,255,255,.07);box-shadow:0 0 0 4px rgba(180,138,171,.18)}
+.ui-stage .gc select option{background:#1d1720;color:#f3edf1}
 .ui-stage input::placeholder{color:#77736c}
 .ui-stage .er{color:#ff8a7a}
 
 /* زرار الدخول الذهبي + لمعة + مؤشر تحميل */
 .ui-stage .gc .go,.ui-stage .lg .bt.p,.ui-stage #gate .b.p{
- position:relative;overflow:hidden;border:0;color:#1b1b1b;
- background:linear-gradient(135deg,#ebcd84,#c49a3e);box-shadow:0 10px 26px rgba(212,174,92,.28)}
+ position:relative;overflow:hidden;border:0;color:#2a1d2c;
+ background:linear-gradient(135deg,#e3c8dd,#9d6c94);box-shadow:0 10px 26px rgba(180,138,171,.28)}
 .ui-stage .gc .go::before,.ui-stage .lg .bt.p::before,.ui-stage #gate .b.p::before{content:"";position:absolute;top:0;bottom:0;width:45%;left:-60%;
  background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-18deg);animation:ui-shine 3.8s ease-in-out 1.2s infinite}
-.ui-stage .gc .go:not(:disabled):hover,.ui-stage .lg .bt.p:not(:disabled):hover,.ui-stage #gate .b.p:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(212,174,92,.38)}
+.ui-stage .gc .go:not(:disabled):hover,.ui-stage .lg .bt.p:not(:disabled):hover,.ui-stage #gate .b.p:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(180,138,171,.38)}
 .ui-stage .gc .go:disabled::after,.ui-stage .lg .bt.p:disabled::after,.ui-stage #gate .b.p:disabled::after{content:"";display:inline-block;width:15px;height:15px;margin-inline-start:10px;vertical-align:-2px;
- border:2.5px solid rgba(27,27,27,.25);border-top-color:#1b1b1b;border-radius:50%;animation:ui-spin .7s linear infinite}
+ border:2.5px solid rgba(27,27,27,.25);border-top-color:#2a1d2c;border-radius:50%;animation:ui-spin .7s linear infinite}
 
 /* ---------- الحركات ---------- */
 @keyframes ui-fade{from{opacity:0}to{opacity:1}}
@@ -193,7 +193,7 @@ body.ui-stage #gate,.lg,.gc{position:relative;z-index:1}
 @keyframes ui-sweep{0%{transform:translateX(-110%)}60%,100%{transform:translateX(300%)}}
 @keyframes ui-shine{0%{left:-60%}35%,100%{left:130%}}
 @keyframes ui-spin{to{transform:rotate(360deg)}}
-@keyframes ui-glow{0%,100%{box-shadow:0 0 0 0 rgba(212,174,92,.45)}60%{box-shadow:0 0 0 7px rgba(212,174,92,0)}}
+@keyframes ui-glow{0%,100%{box-shadow:0 0 0 0 rgba(180,138,171,.45)}60%{box-shadow:0 0 0 7px rgba(180,138,171,0)}}
 
 /* اللي مفعّل "تقليل الحركة" في جهازه، أو وقت حفظ الصورة والطباعة */
 @media (prefers-reduced-motion:reduce){
@@ -210,12 +210,12 @@ body.ui-stage #gate,.lg,.gc{position:relative;z-index:1}
 @media print{html,html.app,html.aw,body{background:#fff!important}}
 
 /* الإشعار: الطلب اللي اتفتح من الإشعار بيلمع ثواني */
-.tzflash{animation:tzf 3.5s ease-out}@keyframes tzf{0%,65%{box-shadow:0 0 0 3px #d4ae5c,0 0 26px rgba(212,174,92,.65)}100%{box-shadow:0 0 0 0 transparent}}
+.tzflash{animation:tzf 3.5s ease-out}@keyframes tzf{0%,65%{box-shadow:0 0 0 3px #b48aab,0 0 26px rgba(180,138,171,.65)}100%{box-shadow:0 0 0 0 transparent}}
 
 /* ✨ مراجعة التصميم (13 نوفمبر 2026): حلقة التركيز للكيبورد كانت مش ظاهرة خالص (outline: none في كل الأزرار).
    دلوقتي أي حاجة بتتداس بتاخد حلقة ذهبية واضحة لما الواحد يتنقّل بالـ Tab بس (مش مع اللمس أو الماوس). */
-:where(button,a,summary,select,input,textarea,[role="button"],[tabindex]):focus-visible{outline:2px solid var(--acc,#a8832f);outline-offset:2px;border-radius:inherit}
-html{caret-color:var(--acc,#a8832f);accent-color:var(--acc,#a8832f)}
+:where(button,a,summary,select,input,textarea,[role="button"],[tabindex]):focus-visible{outline:2px solid var(--acc,#8a5a83);outline-offset:2px;border-radius:inherit}
+html{caret-color:var(--acc,#8a5a83);accent-color:var(--acc,#8a5a83)}
 /* الأرقام في الجداول والعدّادات تبقى بعرض ثابت علشان العواميد ماتتهزّش */
 table,.dz,.am,[data-num]{font-variant-numeric:tabular-nums}
 
@@ -266,15 +266,15 @@ summary{transition:color var(--duration-quick) var(--ease-out)}
 /* ================= 📦 صفحة الطلبات أوضح (13 نوفمبر 2026، محمد: "باهتة") =================
    لون لكل حالة (نفس ألوان الأيقونات): جديد ذهبي، قيد التجهيز تركواز، في الطريق أزرق، تم التسليم أخضر، تم الاستلام رمادي مخضر.
    الشارة بقت لون مليان وكلام أبيض، ورأس الكارت واخد لمسة خفيفة من لون الحالة، والكارت ليه حد وظل أوضح. */
-.rq{--st:#b8892a;border:1px solid var(--line);border-inline-start:6px solid var(--st);box-shadow:0 1px 2px rgba(0,0,0,.06),0 10px 26px -18px rgba(40,30,10,.45)}
-.rq.prep{--st:#0a8fa3}.rq.go{--st:#0b6bdb}.rq.done{--st:#1f9d45;opacity:1}.rq.recv{--st:#5f7d6b}
+.rq{--st:#8a5a83;border:1px solid var(--line);border-inline-start:6px solid var(--st);box-shadow:0 1px 2px rgba(0,0,0,.06),0 10px 26px -18px rgba(40,30,10,.45)}
+.rq.prep{--st:#0a8fa3}.rq.go{--st:#0b6bdb}.rq.done{--st:#6f7d45;opacity:1}.rq.recv{--st:#5f7d6b}
 .rq .rh{background:linear-gradient(180deg,color-mix(in srgb,var(--st) 11%,transparent),transparent)}
 .rq .rh b{letter-spacing:-.01em}
 body .rq .chp,body .rq[class] .chp{background:var(--st);color:#fff;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.15);border:0}
-.rq .kp>span{background:color-mix(in srgb,var(--st) 9%,var(--field,#f3f1ed));border:1px solid color-mix(in srgb,var(--st) 18%,transparent)}
+.rq .kp>span{background:color-mix(in srgb,var(--st) 9%,var(--field,#f2e9dd));border:1px solid color-mix(in srgb,var(--st) 18%,transparent)}
 .rq .kp b{color:var(--ink)}
 .rq details>summary{color:color-mix(in srgb,var(--st) 80%,var(--ink));font-weight:600}
-@media (prefers-color-scheme:dark){.rq .rh{background:linear-gradient(180deg,color-mix(in srgb,var(--st) 20%,transparent),transparent)}.rq .kp>span{background:color-mix(in srgb,var(--st) 16%,var(--field,#242424))}.rq details>summary{color:color-mix(in srgb,var(--st) 55%,#fff)}}
+@media (prefers-color-scheme:dark){.rq .rh{background:linear-gradient(180deg,color-mix(in srgb,var(--st) 20%,transparent),transparent)}.rq .kp>span{background:color-mix(in srgb,var(--st) 16%,var(--field,#282029))}.rq details>summary{color:color-mix(in srgb,var(--st) 55%,#fff)}}
 body .rq[class]{border-inline-start-color:var(--st)}
 
 /* ================= 🧭 شريط لوحة المستودع (13 نوفمبر 2026، محمد: "إعادة هيكلة… ورقة يدوية نصها مخفي") =================
@@ -295,7 +295,7 @@ body .rq[class]{border-inline-start-color:var(--st)}
 .hi:has(>.tabs) .tabs button{flex:1 1 auto;justify-content:center;height:42px;display:inline-flex;align-items:center;gap:8px;padding:0 16px 0 12px;border-radius:13px;border:1px solid #363636;background:#232323;color:#e6e6e6;font-size:15px;font-weight:600;white-space:nowrap}
 .hi:has(>.tabs) .tabs button .gi{font-size:15px!important}
 .hi:has(>.tabs) .tabs button:hover{background:#2c2c2c}
-.hi:has(>.tabs) .tabs button.on{background:var(--acc);border-color:var(--acc);color:#1b1b1b;font-weight:800}
+.hi:has(>.tabs) .tabs button.on{background:var(--acc);border-color:var(--acc);color:#2a1d2c;font-weight:800}
 @media (min-width:761px){
  .hi:has(>.tabs)>.tabs{gap:6px}
  .hi:has(>.tabs) .tabs button{height:40px;padding:0 12px 0 9px;font-size:14px;gap:6px;max-width:210px}
@@ -312,3 +312,18 @@ body .rq[class]{border-inline-start-color:var(--st)}
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 22px,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(90deg,transparent,#000 22px,#000 calc(100% - 22px),transparent)}
  .hi:has(>.tabs) .tabs button{flex:none;height:40px;font-size:14.5px}
 }
+
+/* ================= 🎨 الثوب الجديد: موف + بيج + زيتوني (نسب 60 بيج / 30 باذنجاني-موف / 10 زيتوني) ================= */
+:root{--olive:#6f7d45;--olive-s:#e9ecd9;--olive-t:#3f4a22}
+@media (prefers-color-scheme:dark){:root{--olive:#a4b46e;--olive-s:#262a1b;--olive-t:#d3dcae}}
+/* أزرار الإنجاز (تم التجهيز، تسوية، إنشاء…) زيتوني بكتابة بيضاء */
+.bt.g,.b.g{background:var(--olive)!important;border-color:var(--olive)!important;color:#fff!important}
+@media (prefers-color-scheme:dark){.bt.g,.b.g{color:#1d1a12!important}}
+/* دواير الأداء: الأداء الكويس زيتوني (جيد فاتح، ممتاز أغمق)، والموف بيفضل للأزرار والتنقّل */
+body .dz{--dz-r2:#8d9c5c;--dz-r3:#5e6d34}
+@media (prefers-color-scheme:dark){body .dz{--dz-r2:#a4b46e;--dz-r3:#c3d189}}
+/* "مباشر" زيتوني */
+.live{color:var(--olive)!important}.live i{background:var(--olive)!important;box-shadow:0 0 0 0 color-mix(in srgb,var(--olive) 60%,transparent)}
+/* خط الهيدر: موف بيذوب في زيتوني (توقيع الثوب الجديد) */
+.hd{border-bottom:0!important;box-shadow:inset 0 -3px 0 0 var(--acc)}
+.hd::before{content:"";position:absolute;inset-inline:0;bottom:0;height:3px;pointer-events:none;background:linear-gradient(90deg,var(--olive),var(--acc) 45%,var(--acc) 55%,var(--olive))}

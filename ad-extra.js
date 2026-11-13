@@ -11,16 +11,16 @@ let X=null,LA=[],SA=[],un=[],mode="",edit=null,img="",imgBusy=false,fc="";
 const CSS=`
 .cm{display:none;position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.55);overflow:auto;padding:18px}.cm.on{display:block}
 .ck2{max-width:520px;margin:4vh auto;background:var(--card);border-radius:18px;padding:20px 22px}.ck2 h3{margin:0 0 4px}.ck2 label{display:block;color:var(--mut);font-size:13px;margin:12px 0 4px}.ck2 input,.ck2 select{width:100%}
-.bal{background:#1b1b1b;color:#fff;border-radius:16px;padding:18px 22px;margin-bottom:14px;display:flex;gap:26px;flex-wrap:wrap;align-items:center}.bal b{font-size:38px;direction:ltr;display:block;line-height:1.2}.bal small{color:#cdb67a;display:block}.bal.neg b{color:#ff8a80}
+.bal{background:#2a1d2c;color:#fff;border-radius:16px;padding:18px 22px;margin-bottom:14px;display:flex;gap:26px;flex-wrap:wrap;align-items:center}.bal b{font-size:38px;direction:ltr;display:block;line-height:1.2}.bal small{color:#cfb1c8;display:block}.bal.neg b{color:#ff8a80}
 .am{font-weight:700;direction:ltr;white-space:nowrap}.am.in{color:var(--done)}.am.ex{color:#c4362b}
 .ck2 .bt,.pan .bt,.bt.g,.fk .bt{width:auto}
 img.rc{max-width:100%;border-radius:10px}
 .nb2:empty{display:none}.nb2{background:#c4362b;color:#fff;border-radius:999px;font-size:12px;padding:0 7px;margin-inline-start:6px;font-weight:700}
-.rcb{background:#f8d9d5;color:#8a2218;border-radius:10px;padding:8px 12px;margin:0 18px 12px;font-size:14px}.rcb.ok{background:#d8efd9;color:#1d5a24}
-.rq.recv{border-inline-start-color:var(--done);opacity:.85}.rq.recv .chp{background:#d8efd9;color:#1d5a24}
+.rcb{background:#f8d9d5;color:#8a2218;border-radius:10px;padding:8px 12px;margin:0 18px 12px;font-size:14px}.rcb.ok{background:#e3e7cf;color:#45512a}
+.rq.recv{border-inline-start-color:var(--done);opacity:.85}.rq.recv .chp{background:#e3e7cf;color:#45512a}
 .rq.go{border-inline-start-color:#6a56c9}.rq.go .chp{background:#e4def7;color:#44348a}
 .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tools button{white-space:nowrap}.tools button{background:none;border:1.5px solid #444;color:#ddd;border-radius:999px;padding:6px 14px;cursor:pointer;font:inherit;font-size:14px}
-@media (prefers-color-scheme:dark){.rcb{background:#40191a;color:#f1a5a0}.rcb.ok{background:#173a1b;color:#8fd39a}.rq.go .chp{background:#2a2450;color:#c3b8f5}}
+@media (prefers-color-scheme:dark){.rcb{background:#40191a;color:#f1a5a0}.rcb.ok{background:#2a301b;color:#b9c68a}.rq.go .chp{background:#2a2450;color:#c3b8f5}}
 @media print{.cm{display:none!important}}
 `;
 const cur=()=>calc(LA,SA);
