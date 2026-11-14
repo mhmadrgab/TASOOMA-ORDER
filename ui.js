@@ -146,6 +146,21 @@
   const w=setInterval(()=>{if(window.__uiOk){d.remove();clearInterval(w)}},500);
  },12000);
 })();
+// 🔄 (14 نوفمبر 2026) المنصة بتفتح من النسخة اللي على الجهاز (sw.js). لما نسخة جديدة تتنزّل في الخلفية وتشتغل، بنعمل ريفرش مرة واحدة
+// علشان الناس تشوف الجديد على طول — بس لو الصفحة لسه مفتوحة من قريب (أقل من 25 ثانية) والمستخدم مابدأش يكتب أو يدوس، علشان مانضيّعش شغله.
+(function(){
+ if(!("serviceWorker" in navigator))return;
+ const had=!!navigator.serviceWorker.controller,t0=Date.now();let busy=false;
+ const mark=()=>{busy=true};addEventListener("pointerdown",mark,{once:true,capture:true});addEventListener("keydown",mark,{once:true,capture:true});
+ // نسأل "فيه نسخة جديدة؟" (sw.js بس، ملف صغير) أول ما الصفحة تفتح، وكل ما المنصة ترجع قدام المستخدم
+ const upd=()=>navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});
+ setTimeout(upd,1500);document.addEventListener("visibilitychange",()=>{if(!document.hidden)upd()});
+ navigator.serviceWorker.addEventListener("controllerchange",()=>{
+  if(!had||busy||Date.now()-t0>25000)return;
+  try{if(sessionStorage.getItem("tz_swr"))return;sessionStorage.setItem("tz_swr","1")}catch(e){return}
+  location.reload();
+ });
+})();
 // ✨ رسالة "المنصة بثوبها الجديد" (14 نوفمبر 2026، طلب محمد): بتظهر مرة واحدة لكل مستخدم (المديرين والفروع والسواقين) بعد الدخول،
 // وأول ما يقفلها مابتظهرش تاني على الجهاز ده (localStorage: tz_news). لرسالة جديدة بعدين: غيّر NEWS_ID والنص.
 (function(){

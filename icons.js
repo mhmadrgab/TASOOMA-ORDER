@@ -22,8 +22,8 @@ function ensureSprite(n){
 // HTML جاهز لأي حد عايز يحط أيقونة بنفسه: window.tzIcon("🚚")
 function svg(n){return '<svg viewBox="0 0 256 256" aria-hidden="true"><use href="#gs-'+n+'" fill="currentColor"/></svg>'}
 // كل أيقونة بتتبني مرة واحدة وبعدين بننسخها (أسرع بكتير من بناء HTML كل مرة)
-const TPL={};function make(mp,raw){let t=TPL[mp[0]+(mp[1]||"")];if(!t){ensureSprite(mp[0]);t=document.createElement("span");t.className="gi";t.style.setProperty("--h",mp[1]);t.innerHTML=svg(mp[0])+'<span class="gt"></span>';TPL[mp[0]+(mp[1]||"")]=t}const i=t.cloneNode(true);i.lastChild.textContent=raw;return i}
-window.tzIcon=e=>{const m=MAP[String(e).replace(/\uFE0F/g,"")];if(!m)return e;ensureSprite(m[0]);return '<span class="gi" style="--h:'+m[1]+'">'+svg(m[0])+'<span class="gt">'+e+'</span></span>'};
+const TPL={};function make(mp,raw){let t=TPL[mp[0]+(mp[1]||"")];if(!t){ensureSprite(mp[0]);t=document.createElement("span");t.className="gi";t.dataset.k=mp[0];t.style.setProperty("--h",mp[1]);t.innerHTML=svg(mp[0])+'<span class="gt"></span>';TPL[mp[0]+(mp[1]||"")]=t}const i=t.cloneNode(true);i.lastChild.textContent=raw;return i}
+window.tzIcon=e=>{const m=MAP[String(e).replace(/\uFE0F/g,"")];if(!m)return e;ensureSprite(m[0]);return '<span class="gi" data-k="'+m[0]+'" style="--h:'+m[1]+'">'+svg(m[0])+'<span class="gt">'+e+'</span></span>'};
 function swap(t){
   const v=t.nodeValue;RE.lastIndex=0;if(!RE.test(v))return;RE.lastIndex=0;
   const fr=document.createDocumentFragment();let last=0,m;
@@ -56,7 +56,7 @@ css.textContent=".gi{--h:#636a75;display:inline-flex;align-items:center;justify-
 /* جوه مربع أيقونة كبير جاهز (زي كارت الهدايا): الأيقونة لوحدها بلونها من غير مربع تاني */
 "#gfbtn .ic .gi,.gi-plain .gi{background:none;box-shadow:none;padding:0;width:1.15em;height:1.15em;vertical-align:-.2em;color:var(--h)}#gfbtn .ic .gi::after,.gi-plain .gi::after{display:none}"+
 ".gi>.gt{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;opacity:0}"+
-"@media print{.gi>svg{filter:none}}";
+"span.gi{background:none!important;box-shadow:none!important;padding:0!important;width:1.2em!important;height:1.2em!important;vertical-align:-.22em!important;color:currentColor!important;opacity:.82!important}span.gi>svg{filter:none!important}"+"span.gi:is([data-k=check-circle],[data-k=check-fat]){color:var(--olive,#6f7d45)!important;opacity:1!important}"+"span.gi:is([data-k=x-circle],[data-k=prohibit],[data-k=prohibit-inset]){color:#c4362b!important;opacity:1!important}"+"span.gi:is([data-k=warning],[data-k=hourglass-medium]){color:#b8720f!important;opacity:1!important}"+"button span.gi:is([data-k]){color:currentColor!important}"+":is(h1,h2,h3,.dz-hd h2,#mtbtn .ic,#tz-news li i,#tz-news .h) span.gi{background:var(--h)!important;background:linear-gradient(180deg,color-mix(in srgb,var(--h) 72%,#fff) 0%,var(--h) 55%,color-mix(in srgb,var(--h) 88%,#000) 100%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(0,0,0,.08),0 2px 5px rgba(0,0,0,.18)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(0,0,0,.08),0 2px 5px color-mix(in srgb,var(--h) 45%,transparent)!important;padding:.26em!important;width:1.45em!important;height:1.45em!important;vertical-align:-.38em!important;color:#fff!important;opacity:1!important}:is(h1,h2,h3,.dz-hd h2,#mtbtn .ic,#tz-news li i,#tz-news .h) span.gi>svg{filter:drop-shadow(0 .6px .8px rgba(0,0,0,.28))!important}"+"@media print{.gi>svg{filter:none}}";
 function start(){(document.head||document.documentElement).appendChild(css);scan(document.body);mo.observe(document.body,{childList:true,subtree:true,characterData:true})}
 if(document.body)start();else document.addEventListener("DOMContentLoaded",start);
 })();

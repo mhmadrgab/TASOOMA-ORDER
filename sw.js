@@ -1,16 +1,18 @@
 // خدمة بسيطة: شبكة أولاً، ولو النت قطع تفتح آخر نسخة من الصفحة. مفيش تخزين لبيانات Firebase.
-const V="tasooma-v118";
+const V="tasooma-v119";
 const SHELL=["./index.html","./admin.html","./ui.css","./ui.js","./icons.js","./mnt.js","./i18n.js","./i18n-en.js","./workers.js","./bchat.js","./prof.js","./audit.js","./backup.js","./dash.js","./fb.js","./sb-lib.js","./sbcore.js","./sb-config.js","./cust.js","./notify.js","./br-extra.js","./ad-extra.js","./fleet.js","./map.js","./zoom.js","./att.js","./gifts.js","./staff.js","./ann.js","./short.js","./pres.js","./track.js","./driver.html","./ext.html","./manifest-driver.json","./icon-192.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL.map(u=>new Request(u,{cache:"reload"})))).catch(()=>{}));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",e=>{
  const r=e.request;if(r.method!=="GET")return;
  const u=new URL(r.url);if(u.origin!==location.origin||u.pathname.endsWith(".apk"))return;// ملف تطبيق السواقين: تحميل عادي من غير تخزين
- // (14 نوفمبر 2026) cache:"no-cache" = اسأل GitHub كل مرة "فيه نسخة أحدث؟" (رد صغير 304 لو مفيش). من غيرها المتصفح كان بيفضل
- // شغّال بالنسخة القديمة لحد 10 دقايق بعد الرفع (GitHub بيبعت max-age=600)، فالتحديثات كانت بتتأخر.
- // الصفحات نفسها (navigate) مايتعملّهاش Request جديد بإعدادات، فبنطلبها بالعنوان؛ ولو حصل تحويل (redirect) نرجع للطلب الأصلي.
- const fresh=r.mode==="navigate"?fetch(r.url,{cache:"no-cache",credentials:"same-origin"}).then(res=>res.redirected?fetch(r):res):fetch(r,{cache:"no-cache"});
- e.respondWith(fresh.then(res=>{if(res.ok){const cp=res.clone();caches.open(V).then(c=>c.put(r,cp))}return res}).catch(()=>caches.match(r,{ignoreSearch:true})));
+ // (14 نوفمبر 2026، "المنصة تقيلة") من الجهاز الأول: ملفات المنصة بتتنزّل مرة واحدة لكل نسخة (V) وقت التثبيت، وبعدها بتفتح من الجهاز فوراً
+ // من غير ما تستنى النت (كان كل ملف بيسأل GitHub كل فتحة، ~36 ملف = ثواني على شبكة الموبايل).
+ // التحديث: أي رفع جديد بيغيّر V هنا ← المتصفح بيلاحظ إن sw.js اتغيّر ← بينزّل النسخة الجديدة كلها في الخلفية ← ui.js بيعمل ريفرش مرة واحدة.
+ // ⚠️ لازم V يتغيّر مع كل رفع (وإلا الأجهزة هتفضل بالنسخة القديمة).
+ const nav=r.mode==="navigate",key=nav?(/\/$/.test(u.pathname)?new URL("./index.html",self.registration.scope).href:u.origin+u.pathname):r;
+ e.respondWith(caches.open(V).then(c=>c.match(key,{ignoreSearch:true}).then(hit=>hit||fetch(r).then(res=>{if(res.ok&&res.type==="basic"&&!res.redirected)c.put(key,res.clone());return res})))
+  .catch(()=>caches.match(key,{ignoreSearch:true}).then(h=>h||fetch(r))));
 });
 // الإشعارات اللي الصفحة نفسها بتعرضها (لما تكون مفتوحة ومش قدامه): الضغط عليها بيفتح الرابط
 self.addEventListener("notificationclick",e=>{
