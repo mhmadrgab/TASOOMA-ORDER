@@ -34,7 +34,7 @@ const ymOf=t=>new Date(N(t)).toLocaleDateString("en-CA").slice(0,7);
 const D=864e5,LIVE=31;// آخر 31 يوم بيتسمعوا لايف في المستودع (كانت 90: توفير قراءات نوفمبر 2026)، والأقدم بيتحمّل وقت التقرير
 let X=null,L=new Map(),LS=new Map(),PEND=new Map(),OLD=new Map(),MON=new Set(),un=[],bun=null,BL=[],img="",imgBusy=false,edit=null,PK=null;
 let F={from:"",to:"",br:"",st:"",why:"",q:""};
-let ACC=null,ACCL=[];// مرفقات المحاسب: صندوق الاختيار المفتوح، والصور المحمّلة للسند المفتوح
+let ACC=null,ACCL=[],MINE=new Map();// مرفقات المحاسب: صندوق الاختيار المفتوح، والصور المحمّلة للسند المفتوح
 const CSS=`
 .gfm{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.55);overflow:auto;padding:16px}.gfm.on{display:block}
 .gfk{max-width:680px;margin:3vh auto;background:var(--card);border-radius:18px;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
@@ -149,6 +149,9 @@ const CSS=`
 .g4-search input{border:0;background:none;height:46px;flex:1;margin:0;padding:0;outline:none;box-shadow:none}
 .g4-fbtn{font:inherit;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;height:46px;padding:0 14px;cursor:pointer;white-space:nowrap}.g4-fbtn.on{border-color:#b48aab;background:#fff8e6}
 .g4-chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}.g4-chips button{font:inherit;font-size:13.5px;border:0;background:var(--soft);color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer;transition:background-color var(--duration-quick) var(--ease-out),color var(--duration-quick) var(--ease-out)}.g4-chips button.on{background:#b48aab;color:#2a1d2c;font-weight:700}
+.g4-chips .g4-mine{background:transparent;box-shadow:inset 0 0 0 1.5px var(--acc);color:var(--acc);font-weight:700;margin-inline-end:6px}.g4-chips .g4-mine.on{background:var(--acc);color:#fff;box-shadow:none}
+.g4-minehint{margin:8px 0 2px;font-size:13px;color:var(--mut);background:var(--soft);border-radius:10px;padding:8px 12px}
+.g4-st.me{background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc)}
 .g4-adv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:10px 0 4px;padding:12px;background:var(--soft);border-radius:14px;animation:ui-up .25s ease both}
 .g4-adv label{display:flex;flex-direction:column;gap:4px;margin:0}.g4-adv small{color:var(--mut);font-size:12px;font-weight:700}.g4-adv select,.g4-adv input{width:100%;height:42px;margin:0}
 .g4-cnt{color:var(--mut);font-size:13px;font-weight:700;margin:10px 4px 4px}
@@ -259,7 +262,10 @@ td.gx-act{cursor:default}td.gx-act>*{vertical-align:middle;margin:2px}td.gx-it s
 @media (prefers-color-scheme:dark){.gx-warn{background:#3a2a08;color:#f6c770}.gx-ok{background:#2a301b;color:#b9c68a}}
 
 `;
-const all=()=>{const m=new Map([...OLD,...L,...LS,...PEND]);return [...m.values()]};
+const all=()=>{const m=new Map([...OLD,...MINE,...L,...LS,...PEND]);return [...m.values()]};
+// ✏️ (15 نوفمبر 2026) "سجّلتها أنا": اللي سجّل الهدية يلاقيها بسرعة ويعدّلها طول ما هي لسه بانتظار الاعتماد (القواعد بتسمح بده بس)
+const byMe=r=>!!r&&String(r.by&&r.by.e||"").toLowerCase()===meE();
+const canEditMine=r=>!!X&&!X.view&&!!r&&r.st==="pend"&&byMe(r)&&(X.mode==="branch"?r.br===X.code:(r.br==="WH"&&!X.noNew));
 const hm=t=>new Date(N(t)).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
 const brName=c=>c==="WH"?"المستودع":((X&&X.branches||[]).find(b=>String(b).split("-")[0]===c)||c);
 const itemsTxt=r=>(Array.isArray(r.rows)?r.rows:[]).map(x=>[x.k,x.c,x.z].filter(Boolean).join(" ")+" × "+N(x.q)).join(" · ");
@@ -288,10 +294,12 @@ export function initGifts(ctx){
    // المعتمد اللي لسه ماتسوّاش (والعينات اللي مستنية ترجع) مهما كان قديم، علشان مايختفيش لما الفترة اللايف بقت شهر
    un.push(onSnapshot(query(collection(X.db,"gifts"),where("st","==","ok")),sn=>{LS=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},()=>{}));
   }
+  // اللي بيسجّل هدايا (المديرين وصلاحية الطلبات): هداياه هو بتفضل ظاهرة له مهما كانت قديمة، علشان يتابعها ويعدّلها (والمحاسب منهم بيشوف دي بس + المعتمد)
+  if(!X.noNew&&!X.view&&meE())un.push(onSnapshot(query(collection(X.db,"gifts"),where("by.e","==",meE())),sn=>{MINE=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},()=>{}));
  }
  if(!window.__gfc){window.__gfc=1;document.addEventListener("click",click);document.addEventListener("change",change);document.addEventListener("input",input)}
 }
-export function stopGifts(){un.forEach(f=>f());un=[];VT="";VTu=false;ANIM=true;SHOWN=30;WK=null;WKu=false;if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MON=new Set();closeM()}
+export function stopGifts(){un.forEach(f=>f());un=[];VT="";VTu=false;ANIM=true;SHOWN=30;WK=null;WKu=false;if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MINE=new Map();MON=new Set();F.mine=false;closeM()}
 export const pendingCount=()=>PEND.size;
 // للتقرير الأسبوعي (short.js): الهدايا من تاريخ معيّن، والصافي
 export const giftsSince=t=>all().filter(r=>N(r.ts)>=t);
@@ -350,7 +358,7 @@ function setPer(p){
 }
 function filtered(){
  const a=F.from?new Date(F.from+"T00:00:00").getTime():0,b=F.to?new Date(F.to+"T23:59:59").getTime():Infinity;
- return all().filter(r=>N(r.ts)>=a&&N(r.ts)<=b&&brWhy(r)&&(!F.st||(F.st==="ret"?waitRet(r):r.st===F.st))).sort((x,y)=>N(y.ts)-N(x.ts));
+ return all().filter(r=>(F.mine?byMe(r):N(r.ts)>=a&&N(r.ts)<=b)&&brWhy(r)&&(!F.st||(F.st==="ret"?waitRet(r):r.st===F.st))).sort((x,y)=>N(y.ts)-N(x.ts));
 }
 function queues(){
  return {
@@ -376,7 +384,7 @@ const dayKey=t=>new Date(N(t)).toDateString();
 function dayLbl(t){const d=new Date(N(t)),n=new Date(),y=new Date(Date.now()-864e5);if(d.toDateString()===n.toDateString())return "اليوم";if(d.toDateString()===y.toDateString())return "أمس";
  return d.toLocaleDateString("ar-EG-u-nu-latn",{weekday:"long",day:"numeric",month:"long"})}
 const ST4={pend:["⏳","بانتظار الاعتماد","w"],ok:["✅","معتمدة","ok"],set:["🧾","تمت التسوية","b"],no:["❌","مرفوضة","r"]};
-const stTag=r=>{const s=accOnly()&&r.st==="ok"?["⏳","بانتظار التسوية","w"]:(ST4[r.st]||ST4.pend);return `<span class="g4-st ${s[2]}">${s[0]} ${s[1]}</span>${r.st==="pend"&&X.mode!=="branch"?repTag(r):""}${r.rt===true&&!r.rb&&isAp(r)?'<span class="g4-st w">↩️ لم ترجع</span>':""}${r.rb?`<span class="g4-st ok">↩️ صافي ${net(r)}</span>`:""}`};
+const stTag=r=>{const s=accOnly()&&r.st==="ok"?["⏳","بانتظار التسوية","w"]:(ST4[r.st]||ST4.pend);return `<span class="g4-st ${s[2]}">${s[0]} ${s[1]}</span>${byMe(r)&&X.mode!=="branch"?`<span class="g4-st me">👤 ${canEditMine(r)?"سجّلتَها · يمكنك تعديلها":"سجّلتَها"}</span>`:""}${r.st==="pend"&&X.mode!=="branch"?repTag(r):""}${r.rt===true&&!r.rb&&isAp(r)?'<span class="g4-st w">↩️ لم ترجع</span>':""}${r.rb?`<span class="g4-st ok">↩️ صافي ${net(r)}</span>`:""}`};
 // سطر في القايمة
 const line=(r,i)=>`<div class="g4-ln" data-gf="view" data-id="${E(r.id)}" data-s="${E(sText(r))}" ${sOk(r)?"":"hidden"} style="--i:${Math.min(i,12)}">
  ${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${tShort(r.ts)}</small><small class="g4-it">${short(r)}</small></div>
@@ -452,7 +460,8 @@ export function giftsView(){
  <div class="g4-ks">${card("sum","🎁",fmt(pcs),"قطعة معتمدة","g",`${ok.length} هدية في الفترة`)}${accOnly()?"":card("ap","⏳",cnt.ap,"بانتظار الاعتماد",cnt.ap?"w":"",cnt.ap?"اضغط للاعتماد":"")}${card("set","🧾",cnt.set,"بانتظار التسوية",cnt.set?"b":"",cnt.set?"اضغط للتسوية":"")}${accOnly()?`<button type="button" class="g4-k${F.st==="set"?" on":""}" data-gf="kst" data-id="set"><span class="ic">✔️</span><span class="tx"><b data-count="${inP.filter(r=>r.st==="set").length}">${inP.filter(r=>r.st==="set").length}</b><small>سوّيتها في الفترة</small><em>${fmt(inP.filter(r=>r.st==="set").reduce((a,r)=>a+N(r.sa&&r.sa.net!=null?r.sa.net:net(r)),0))} قطعة · اضغط لعرضها</em></span></button>`:""}${accOnly()?"":card("ret","↩️",cnt.ret,"عينات لم ترجع",cnt.ret?"o":"",cnt.ret?"اضغط للمتابعة":"")}</div>
  ${workPanel(per,pw,ok,pcs)}
  <div class="g4-box"><div class="g4-bar1"><div class="g4-search"><span>🔍</span><input type="search" id="gx-q" value="${E(F.q||"")}" placeholder="ابحث برقم الهدية أو المستلم أو الجوال أو الكود..."></div><button type="button" class="g4-fbtn ${FOPEN?"on":""}" data-gf="fopen">⚙️ فلاتر${nF?` <span class="g4-fn">${nF}</span>`:""}</button></div>
- <div class="g4-chips">${chips.map(([s,l])=>`<button type="button" class="${(F.st||"")===s?"on":""}" data-gf="kst" data-id="${s}">${l}</button>`).join("")}</div>
+ <div class="g4-chips">${!X.noNew&&!X.view?`<button type="button" class="g4-mine${F.mine?" on":""}" data-gf="mine">👤 هداياي${(()=>{const n=all().filter(r=>byMe(r)&&r.st==="pend").length;return n?` <span class="g4-fn">${n}</span>`:""})()}</button>`:""}${chips.map(([s,l])=>`<button type="button" class="${(F.st||"")===s?"on":""}" data-gf="kst" data-id="${s}">${l}</button>`).join("")}</div>
+ ${F.mine?`<div class="g4-minehint">👤 كل الهدايا التي سجّلتها أنت (من كل الفترات). التي لا تزال بانتظار الاعتماد يمكنك تعديلها: افتحها ثم اضغط «✏️ تعديل».</div>`:""}
  ${FOPEN||PER==="c"?`<div class="g4-fbar">${fChip("gx-br","🏬",!!F.br,`<select id="gx-br" aria-label="الفرع">${brOpts}</select>`,"br")}${fChip("gx-why","🏷",!!F.why,`<select id="gx-why" aria-label="البند"><option value="">كل البنود</option>${WHY.map(w=>`<option ${F.why===w?"selected":""}>${E(w)}</option>`).join("")}</select>`,"why")}
  ${fChip("gx-from","📅",PER==="c",`<input type="date" id="gx-from" value="${E(F.from)}" aria-label="من"><span class="fa">←</span><input type="date" id="gx-to" value="${E(F.to)}" aria-label="إلى">`,"per")}${nF?`<button type="button" class="g4-fclr" data-gf="fclr" data-id="all">مسح الفلاتر</button>`:""}</div>`:""}
  <div class="g4-cnt">${vis.length} هدية${F.st||F.br||F.why||F.q?" (مفلترة)":""}</div>
@@ -498,9 +507,9 @@ function form(r){
  <div class="gf-2"><div><label>السبب *</label><select id="gfw">${WHY.map(w=>`<option ${r&&r.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div>
  <div><label>المسجِّل (تلقائي)</label><input id="gfby" dir="auto" maxlength="60" value="${E(r&&r.by?r.by.n:autoName)}" disabled title="يُكتب تلقائياً باسم الحساب الداخل"></div></div>
  <label>ملاحظة</label><textarea id="gfnote" rows="2" maxlength="300" placeholder="اختياري">${E(r&&r.note||"")}</textarea>
- <label>${r?"صور سند جديدة (اختياري، تستبدل الحالية)":"صور السند (اختياري)"}</label><div id="gfmp"></div>
+ ${r&&!isOwner()?`<div class="m" style="margin-top:12px;font-size:13px;color:var(--mut)">📎 صور السند تبقى كما هي. يمكنك التعديل حتى يعتمدها مدير التسويق.</div>`:`<label>${r?"صور سند جديدة (اختياري، تستبدل الحالية)":"صور السند (اختياري)"}</label><div id="gfmp"></div>`}
  <div class="gf-act"><button class="bt p" data-gf="save" type="button">${r?"💾 حفظ التعديل":"✅ تسجيل"}</button><button class="bt" data-gf="${X.mode==="branch"&&!r?"bopen":"close"}" type="button">رجوع</button></div>`,"form");
- PK=multiPick(g("gfmp"),{w:1400,cap:230000,toast:X.toast,add:"إضافة صور السند"});
+ PK=g("gfmp")?multiPick(g("gfmp"),{w:1400,cap:230000,toast:X.toast,add:"إضافة صور السند"}):null;
 }
 async function save(){
  if(PK&&PK.busy()){X.toast("انتظر حتى تنتهي الصور");return}
@@ -516,8 +525,10 @@ async function save(){
  const btn=document.querySelector('[data-gf="save"]');if(btn){btn.disabled=true;btn.textContent="⏳ جاري الحفظ..."}
  try{
   const pcs=rows.reduce((s,x)=>s+x.q,0);
-  if(edit){// المالك بس
+  if(edit){// المالك، أو اللي سجّلها وهي لسه بانتظار الاعتماد (من غير تغيير الصور)
    const d={...edit,rows,pcs,to,why,note};delete d.id;if(!note)delete d.note;if(img)d.img=1;
+   if(!isOwner()){const id=edit.id;await withTimeout(setDoc(doc(X.db,"gifts",id),d),20000);const nr={...d,id};if(MINE.has(id))MINE.set(id,nr);if(L.has(id))L.set(id,nr);if(PEND.has(id))PEND.set(id,nr);
+    X.toast("تم حفظ التعديل ✅");closeM();if(X.mode==="branch")openBranch();else{viewGift(id);if(X.redraw)X.redraw()}return}
    const b=writeBatch(X.db);b.set(doc(X.db,"gifts",edit.id),d);if(img)b.set(doc(X.db,"giftimg",edit.id),{img});
    await withTimeout(b.commit(),20000);
    if(img){await dropExtras(X.db,"giftimg",edit.id);const bad=await saveExtras(X.db,"giftimg",edit.id,IMS.slice(1));if(bad)X.toast(`تعذّر حفظ ${bad} من الصور الإضافية`,"er")}
@@ -532,7 +543,8 @@ async function save(){
   if(IMS.length>1){if(btn)btn.textContent=`⏳ جاري رفع الصور (${IMS.length})...`;const bad=await saveExtras(X.db,"giftimg",ref.id,IMS.slice(1));if(bad)X.toast(`سُجّلت الهدية، لكن تعذّر رفع ${bad} من الصور. افتحها وأضفها لاحقاً أو أبلغ المستودع`,"er")}
   if(X.ping)X.ping([ref.id]);
   X.toast(IMS.length>1?`سُجّلت ✅ مع ${IMS.length} صور، وبانتظار اعتماد مدير التسويق`:"سُجّلت ✅ وبانتظار اعتماد مدير التسويق");
-  if(X.mode==="branch")openBranch();else closeM();
+  // (15 نوفمبر 2026) المستودع: نفتح السند على طول، فيه زرار «تعديل» لحد ما تتعتمد (بدل ما يدوّر عليها في القايمة)
+  if(X.mode==="branch")openBranch();else{MINE.set(ref.id,{...d,id:ref.id});closeM();viewGift(ref.id);if(X.redraw)X.redraw()}
  }catch(e){if(btn){btn.disabled=false;btn.textContent=edit?"💾 حفظ التعديل":"✅ تسجيل"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
 }
 // ---------- الاعتماد / الرفض ----------
@@ -578,7 +590,7 @@ function viewGift(id){
  ${wh&&canSettle()&&st==="ok"?`<div class="gs-set">${waitRet(r)?'<span class="g4-st w">↩️ العينة لم ترجع بعد: الأفضل الانتظار</span>':""}<input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="مرجع السند في النظام"><button class="bt g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تسوية ${net(r)} قطعة</button></div>`:""}
  ${r.img?`<button class="bt" data-gf="img" data-id="${E(r.id)}" type="button">📎 صورة السند</button>`:""}
  <button class="bt" data-gf="gprint" data-id="${E(r.id)}" type="button">🖨 طباعة</button>
- ${wh&&isOwner()?`<button class="bt" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt r" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}
+ ${(wh&&isOwner())||canEditMine(r)?`<button class="bt" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button>`:""}${wh&&isOwner()?`<button class="bt r" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}
  <button class="bt" data-gf="${wh?"close":"bopen"}" type="button">رجوع</button></div></div></div>`,"view");
  if(wh&&isAp(r))loadAcc(r.id,false);
 }
@@ -695,6 +707,7 @@ async function click(e){
  if(a==="wk"){WK=WK===id||!id?null:id;WKu=true;X.redraw();if(WK)setTimeout(()=>{const w=g("g4w");if(w&&w.getBoundingClientRect().top>innerHeight*.75)w.scrollIntoView({behavior:"smooth",block:"start"})},40);return}
  if(a==="fclr"){if(id==="br"||id==="all")F.br="";if(id==="why"||id==="all")F.why="";if(id==="per"||id==="all"){setPer("m0")}SHOWN=30;ensureRange().then(()=>X.redraw());return}
  if(a==="fopen"){FOPEN=!FOPEN;X.redraw();return}
+ if(a==="mine"){F.mine=!F.mine;SHOWN=30;X.redraw();return}
  if(a==="todoall"){TODOALL=!TODOALL;X.redraw();return}
  if(a==="more"){SHOWN+=50;X.redraw();return}
  if(a==="sumopen"){SUMOPEN=!SUMOPEN;X.redraw();return}
@@ -719,7 +732,7 @@ async function click(e){
  if(a==="set")return void settle(id,t);
  if(a==="print")return void printReport();
  if(a==="csv")return void csv();
- if(a==="edit"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(r)form(r);return}
+ if(a==="edit"){const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(r&&(isOwner()||canEditMine(r)))form(r);return}
  if(a==="del"){if(!isOwner())return;const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r||!confirm(`حذف هدية ${r.no} نهائياً مع السند الخاص بها؟`))return;
   try{const b=writeBatch(X.db);b.delete(doc(X.db,"gifts",id));b.delete(doc(X.db,"giftimg",id));await withTimeout(b.commit(),15000);dropExtras(X.db,"giftimg",id);dropAcc(id);L.delete(id);OLD.delete(id);PEND.delete(id);X.toast("حُذفت");closeM();if(X.redraw)X.redraw()}
   catch(e){X.toast("تعذر الحذف")}}

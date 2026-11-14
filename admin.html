@@ -301,7 +301,7 @@ function start(){
  // المستودع (المديرين وصلاحية الطلبات) بيسجّل هدايا المستودع وبتروح بانتظار الاعتماد. المحاسب (gift) والمتابع بيشوفوا ويطلّعوا تقارير
  if(adm||can("req")||can("gift")||can("gm")||can("ga")||vw)initGifts({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},approver:ROLE.p.gm===true||ROLE.p.ga===true,
   // المحاسب (gift) من غير تسجيل ولا اعتماد: بيشوف المعتمد بس ويسوّيه بمرجع السند في السيستم. المديرين كمان يقدروا يسوّوا
-  acc:!adm&&!vw&&can("gift")&&!can("req")&&ROLE.p.gm!==true&&ROLE.p.ga!==true,settler:!vw&&(adm||can("gift")),noNew:!(adm||can("req")),view:vw,owner:()=>ROLE.owner===true,branches:BR,redraw:draw,tab:()=>tab,
+  acc:!adm&&!vw&&can("gift")&&ROLE.p.gm!==true&&ROLE.p.ga!==true,/* (15 نوفمبر 2026) حتى لو معاه صلاحية الطلبات: بيشوف المعتمد بس (+ اللي سجّله بنفسه) */settler:!vw&&(adm||can("gift")),noNew:!(adm||can("req")),view:vw,owner:()=>ROLE.owner===true,branches:BR,redraw:draw,tab:()=>tab,
   ping:ids=>ping(auth,[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="gift"]');if(b)b.innerHTML=giftLbl()}});
  // 🔧 الصيانة: المدير والمهندس يعتمدوا ويقفلوا، والمتابع يشوف بس
   if(adm||can("mt")||vw)initMnt({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},eng:!vw&&(adm||can("mt")),view:vw,branches:BR,redraw:draw,active:()=>tab==="mnt",

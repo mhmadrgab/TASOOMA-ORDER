@@ -2030,4 +2030,10 @@ export default {
 "ابدأ الاستخدام":"Get started",
 "شكراً لكم، فريق تاسومة 🤍":"Thank you, the TASOOMA team 🤍",
 "شكراً لكم، فريق تاسومة":"Thank you, the TASOOMA team",
+"هداياي":"My gifts",
+"كل الهدايا التي سجّلتها أنت (من كل الفترات). التي لا تزال بانتظار الاعتماد يمكنك تعديلها: افتحها ثم اضغط «✏️ تعديل».":"All the gifts you registered (any period). The ones still waiting for approval can be edited: open one, then press “✏️ Edit”.",
+"كل الهدايا التي سجّلتها أنت (من كل الفترات). التي لا تزال بانتظار الاعتماد يمكنك تعديلها: افتحها ثم اضغط «":"All the gifts you registered (any period). The ones still waiting for approval can be edited: open one, then press “",
+"سجّلتَها · يمكنك تعديلها":"Yours · you can edit it",
+"سجّلتَها":"Yours",
+"صور السند تبقى كما هي. يمكنك التعديل حتى يعتمدها مدير التسويق.":"The voucher photos stay as they are. You can edit until the marketing manager approves it.",
 };
