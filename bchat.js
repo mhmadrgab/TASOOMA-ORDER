@@ -642,7 +642,7 @@ function paintList(){
   const rows=people().filter(p=>!FILT||kindOf(p)===FILT).map(p=>{
     const cid=cidFor(p),s=SUMS[cid],n=pname(p,cid),t=p[0],d=t==="w"?DIR[pv(p)]:null;
     const role=t==="g"?`${(s&&Array.isArray(s.ms)?s.ms.length:0)} عضو`:t==="w"?(d?d.k||(isM(p)?"الإدارة":""):"لم يعد في المستودع"):t==="d"?(DDIR[pv(p)]?"سائق":"لم يعد موجوداً"):"";
-    return {p,cid,s,u:unreadOf(s),n,img:ph(p),av:t==="b"?E(pv(p)):t==="d"?"🚚":E([...n][0]||"؟"),cls:t==="b"?"":" p",role,o:t==="g"?0:t==="w"?(d?ROLE_O[d.r]??3:9):t==="d"?4:5};
+    return {p,cid,s,u:unreadOf(s),n,img:ph(p),av:t==="b"?E(pv(p)):t==="d"?"🚚":E([...n][0]||"؟"),cls:t==="b"?"":" p",role,o:t==="g"?0:t==="w"?(d?(ROLE_O[d.r]==null?3:ROLE_O[d.r]):9):t==="d"?4:5};
   }).filter(x=>!Q||x.n.toLowerCase().includes(Q)||x.p.toLowerCase().includes(Q))
     .sort((a,b)=>(b.u>0)-(a.u>0)||N(b.s&&b.s.last&&b.s.last.ts)-N(a.s&&a.s.last&&a.s.last.ts)||a.o-b.o||a.n.localeCompare(b.n));
   box.innerHTML=rows.map(x=>{const l=x.s&&x.s.last,my=l&&mine(x.cid,l.by);

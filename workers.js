@@ -86,7 +86,7 @@ export function view(){
  ${rows.length?rows.map((s,i)=>{const d=s.id in pv?s.score-pv[s.id]:null;return `<tr><td>${i+1}</td><td><b>${E(nm(s.id))}</b><small class="off" style="display:block">${s.days.size} يوم عمل</small></td>
   <td><span class="wsc ${cls(s.score)}" title="إنتاجية ${Math.round(s.sc.p)}/40 · دقة ${Math.round(s.sc.a)}/30 · سرعة ${Math.round(s.sc.s)}/15 · تقييمك ${Math.round(s.sc.m)}/15">${s.score}</span>
   <div class="wbr" title="إنتاجية · دقة · سرعة · تقييمك"><i style="width:${s.sc.p}px;background:#8a5a83"></i><i style="width:${s.sc.a}px;background:#6f7d45"></i><i style="width:${s.sc.s}px;background:#1d8a99"></i><i style="width:${s.sc.m}px;background:#6a56c9"></i></div></td>
-  <td>${fmt(Math.round(s.lines))}</td><td>${fmt(Math.round(s.pcs))}</td><td>${fmt(Math.round(s.reqs*10)/10)}</td><td>${minPer10(s)??"—"}</td>
+  <td>${fmt(Math.round(s.lines))}</td><td>${fmt(Math.round(s.pcs))}</td><td>${fmt(Math.round(s.reqs*10)/10)}</td><td>${minPer10(s)==null?"—":minPer10(s)}</td>
   <td>${s.acc===null?'<span class="off">—</span>':Math.round(s.acc*100)+"%"}${s.err?`<small style="display:block;color:#c4362b">${s.err} خطأ</small>`:""}${s.wait?`<small class="off" style="display:block">${s.wait} بانتظار المراجعة</small>`:""}</td>
   <td>${X.admin?`<select data-wst="${E(s.id)}" style="padding:6px 8px"><option value="">—</option>${[5,4,3,2,1].map(n=>`<option value="${n}" ${N(stars[s.id])===n?"selected":""}>${"★".repeat(n)}</option>`).join("")}</select>`:(s.star?"★".repeat(s.star):"—")}</td>
   <td>${d===null?'<span class="off">—</span>':d>0?`<span class="wup">▲ ${d}</span>`:d<0?`<span class="wdn">▼ ${-d}</span>`:"="}</td>
@@ -136,7 +136,7 @@ function slip(id){
  <table class="stt"><thead><tr><th>البند</th><th>الدرجة</th><th>التفاصيل</th></tr></thead><tbody>
  <tr><td>الإنتاجية</td><td class="n">${Math.round(s.sc.p)} / 40</td><td>${fmt(Math.round(s.lpd))} سطر في اليوم</td></tr>
  <tr><td>الدقة</td><td class="n">${Math.round(s.sc.a)} / 30</td><td>${s.acc===null?"لا توجد طلبات تمت مراجعتها":Math.round(s.acc*100)+"% دون خطأ"}${s.err?` (${s.err} خطأ)`:""}</td></tr>
- <tr><td>السرعة</td><td class="n">${Math.round(s.sc.s)} / 15</td><td>${minPer10(s)??"—"} دقيقة لكل 10 سطور</td></tr>
+ <tr><td>السرعة</td><td class="n">${Math.round(s.sc.s)} / 15</td><td>${minPer10(s)==null?"—":minPer10(s)} دقيقة لكل 10 سطور</td></tr>
  <tr><td>تقييم المدير</td><td class="n">${Math.round(s.sc.m)} / 15</td><td>${s.star?"★".repeat(s.star):"لم يُقيّم (3 نجوم)"}</td></tr></tbody></table>
  <div class="sg"><span>العامل</span><span>المدير</span></div></div>`);
 }

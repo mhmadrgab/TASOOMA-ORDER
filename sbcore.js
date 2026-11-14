@@ -33,7 +33,7 @@ export const where = (f, op, v) => ({k: "where", f: String(f), op, v});
 export const orderBy = (f, dir) => ({k: "order", f: String(f), desc: dir === "desc"});
 export const limit = n => ({k: "limit", n});
 export function query(ref, ...cs) {
-  const q = {type: "query", db: ref.db, path: ref.path, w: [...(ref.w || [])], order: ref.order || null, desc: !!ref.desc, lim: ref.lim ?? null};
+  const q = {type: "query", db: ref.db, path: ref.path, w: [...(ref.w || [])], order: ref.order || null, desc: !!ref.desc, lim: ref.lim == null ? null : ref.lim};
   for (const c of cs) { if (c.k === "where") q.w.push([c.f, c.op, clone(c.v)]); else if (c.k === "order") { q.order = c.f; q.desc = c.desc } else if (c.k === "limit") q.lim = c.n }
   return q;
 }
@@ -67,7 +67,7 @@ export function mapErr(e) {
 // ---------- القراءة ----------
 const rowSnap = (db, row) => new DocSnap(docRef(db, row.path), row.data);
 async function runQ(q) {
-  const {data, error} = await q.db.c.rpc("q", {p_col: q.path, p_where: q.w || [], p_order: q.order || null, p_desc: !!q.desc, p_limit: q.lim ?? null});
+  const {data, error} = await q.db.c.rpc("q", {p_col: q.path, p_where: q.w || [], p_order: q.order || null, p_desc: !!q.desc, p_limit: q.lim == null ? null : q.lim});
   if (error) throw mapErr(error);
   return (data || []).map(r => rowSnap(q.db, r));
 }
