@@ -92,7 +92,7 @@ const STYLE=`
 @media (prefers-reduced-motion:reduce){.dz *{animation:none!important;transition:none!important}}`;
 
 export function initDash(ctx){
-  X=ctx;SEEN={};
+  X=ctx;SEEN={};GO=false;LR=0;T0=0;
   if(!document.getElementById("dz-css")){const s=document.createElement("style");s.id="dz-css";s.textContent=STYLE;document.head.appendChild(s)}
   if(window.__dzc)return;window.__dzc=1;
   document.addEventListener("click",e=>{
@@ -115,16 +115,27 @@ let WAITB=0;
 function waitBoot(){if(WAITB)return;WAITB=setInterval(()=>{if(BOOT())return;clearInterval(WAITB);WAITB=0;if(X&&X.redraw)X.redraw()},200)}
 const ease=p=>1-Math.pow(1-p,3);
 const valAt=(s,now)=>s.from+(s.to-s.from)*ease(Math.min(1,(now-s.t)/DUR));
-// للأرقام والدواير: {el, from} أو null (ثابت من غير حركة)
-function anim(id,v){
-  if(BOOT()){waitBoot();return null}
+// (15 نوفمبر 2026، التقطيع لسه): أول ما الصفحة تفتح بتترسم كذا مرة ورا بعض (كل دفعة بيانات = رسم الصفحة كلها من جديد)،
+// والحركة وسط ده بتقطّع. فبنستنى لحد ما الرسم يهدى (مفيش رسم جديد 700ms، أو 2.5 ثانية بالكتير) وشاشة البداية تمشي،
+// وبعدين الدواير تتملي مرة واحدة. وإحنا مستنيين: الدواير فاضية والأرقام ثابتة.
+let GO=false,LR=0,T0=0,TMR=0;
+function gate(){
+  const now=Date.now(),gap=now-LR;LR=now;if(!T0)T0=now;
+  if(GO)return;
+  if(!BOOT()&&(gap>=700||now-T0>2500)){GO=true;return}
+  if(BOOT())waitBoot();
+  clearTimeout(TMR);TMR=setTimeout(()=>{const ric=window.requestIdleCallback||(f=>setTimeout(f,1));ric(()=>{if(X&&X.redraw)X.redraw()},{timeout:400})},750);
+}
+// للأرقام والدواير: {el, from} أو null (ثابت من غير حركة) أو {hold} (الدايرة فاضية لحد ما الصفحة تهدى)
+function anim(id,v,ring){
   const k=PER+"|"+v,s=SEEN[id],now=Date.now();
+  if(!GO){if(ring)return {hold:true};SEEN[id]={k,t:0,from:v,to:v,per:PER};return null}
   if(s&&s.k===k){const el=now-s.t;return el<DUR?{el,from:s.from}:null}
   const from=s&&s.per===PER?valAt(s,now):0;
   SEEN[id]={k,t:now,from,to:v,per:PER};return {el:0,from};
 }
 // للرسوم (الأعمدة): بتبدأ من الصفر بس أول مرة أو لما الشكل يتغيّر
-const moved=(id,v)=>{if(BOOT()){waitBoot();return -1}const k=PER+"|"+v,s=SEEN[id],now=Date.now();
+const moved=(id,v)=>{const k=PER+"|"+v,s=SEEN[id],now=Date.now();if(!GO){SEEN[id]={k,t:0,from:0,to:0,per:PER};return -1}
   if(!s||s.k!==k){SEEN[id]={k,t:now,from:0,to:0,per:PER};return 0}
   const el=now-s.t;return el<DUR?el:-1};
 const delay=el=>el>0?`animation-delay:-${el}ms;`:"";
@@ -132,10 +143,10 @@ const cuA=(a,v)=>a?`data-cu="${v}" data-from="${a.from}" data-t0="${Date.now()-a
 const cu=(id,v)=>cuA(anim(id,v),v);
 
 function ring(id,color,pct,label,sub,pill){
-  const C=2*Math.PI*42,has=pct!==null,v=has?Math.max(0,Math.min(100,pct)):0,off=C*(1-v/100),a=has?anim(id,Math.round(v)):null,o0=a?C*(1-Math.max(0,Math.min(100,a.from))/100):C;
+  const C=2*Math.PI*42,has=pct!==null,v=has?Math.max(0,Math.min(100,pct)):0,off=C*(1-v/100),a0=has?anim(id,Math.round(v),true):null,hold=!!(a0&&a0.hold),a=hold?null:a0,o0=a?C*(1-Math.max(0,Math.min(100,a.from))/100):C;
   return `<div class="dz-card dz-ring" role="img" aria-label="${E(label)}: ${has?Math.round(v)+"%":"لا توجد بيانات"}. ${E(sub)}">
-   <div class="w"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="tr" cx="50" cy="50" r="42"/>${has&&v>0?`<circle class="vl${a?" dz-anim":""}" cx="50" cy="50" r="42" style="color:${color};stroke:${color};--c:${o0.toFixed(2)};${a?delay(a.el):""}" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>`:""}</svg>
-   <div class="ct"><b>${has?`<span ${cuA(a,Math.round(v))}>${a?Math.round(a.from):Math.round(v)}</span><i>%</i>`:"—"}</b></div></div>
+   <div class="w"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="tr" cx="50" cy="50" r="42"/>${has&&v>0&&!hold?`<circle class="vl${a?" dz-anim":""}" cx="50" cy="50" r="42" style="color:${color};stroke:${color};--c:${o0.toFixed(2)};${a?delay(a.el):""}" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>`:""}</svg>
+   <div class="ct"><b>${has?`<span ${cuA(a,Math.round(v))}>${hold?0:a?Math.round(a.from):Math.round(v)}</span><i>%</i>`:"—"}</b></div></div>
    <h4>${E(label)}</h4><p>${E(sub)}</p>${pill||""}</div>`;
 }
 // حالة النسبة: أيقونة + كلمة (اللون لوحده مش كفاية)
@@ -147,6 +158,7 @@ const sum=(id,icon,val,label)=>`<span>${icon} <b ${cu(id,val)}>${fmt(val)}</b> $
 
 export function dashView(R){
   if(!X)return "";
+  gate();
   const t0=from(PER),now=Date.now(),RQ=R.filter(r=>!r.tr),C=RQ.filter(r=>N(r.ts)>=t0);// التحويلات ليها كارت لوحدها
   const dl=C.filter(r=>r.st==="done"||r.st==="recv"),rc=C.filter(r=>r.st==="recv"),ok=rc.filter(r=>!r.rcv||r.rcv.ok!==false);
   const tt=dl.map(r=>dlvAt(r)-N(r.ts)).filter(x=>x>0),fast=tt.filter(x=>x<=24*H).length,avg=tt.length?tt.reduce((a,b)=>a+b,0)/tt.length:0;
