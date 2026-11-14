@@ -129,8 +129,14 @@
   const px=await ping(PX,8000);
   if(px&&!ss("tz_via_r")){put("tz_via","p");ss("tz_via_r","1");location.reload()}
  },via?10000:800);
- setTimeout(()=>{
+ setTimeout(async()=>{
   if(window.__uiOk||document.getElementById("tz-stuck"))return;
+  // 🛟 (15 نوفمبر 2026) شبكة أمان: المنصة بتفتح من النسخة المحفوظة على الجهاز (sw.js). لو النسخة دي باظت لأي سبب والصفحة ماعرفتش تفتح،
+  // بنمسحها ونحمّل من جديد لوحدنا مرة واحدة (والنت شغّال). لو لسه واقفة بعدها، بتظهر الرسالة اللي تحت عادي.
+  if(navigator.onLine&&navigator.serviceWorker&&navigator.serviceWorker.controller&&!ss("tz_autofix")&&(ss("tz_autofix","1"),ss("tz_autofix")==="1")){// (لو التخزين المؤقت مقفول مانعملش ده، علشان مايحصلش ريفرش ورا ريفرش)
+   try{const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()))}catch(e){}
+   try{const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}catch(e){}
+   location.replace(location.pathname+"?r="+Date.now()+location.hash);return}
   const d=document.createElement("div");d.id="tz-stuck";d.setAttribute("role","alert");
   d.style.cssText="position:fixed;inset:auto 12px 18px 12px;margin:auto;max-width:460px;z-index:100000;visibility:visible!important;background:#fff;color:#2a1d2c;border-radius:18px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.45);font:400 14.5px/1.7 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;text-align:right";
   const off=!navigator.onLine;

@@ -33,8 +33,9 @@ const STYLE=`
 .dz-ring .w{position:relative;width:128px;height:128px}
 .dz-ring svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
 .dz-ring .tr{fill:none;stroke:var(--dz-track);stroke-width:10}
-.dz-ring .vl{fill:none;stroke-width:10;stroke-linecap:round;filter:drop-shadow(0 2px 4px color-mix(in srgb,currentColor 35%,transparent))}
-.dz-ring .vl.dz-anim{animation:dzRing 1.5s cubic-bezier(.22,.9,.24,1) both}
+.dz-ring .vl{fill:none;stroke-width:10;stroke-linecap:round}
+.dz b,.dz em,.dz-ring .ct b{font-variant-numeric:tabular-nums}
+.dz-ring .vl.dz-anim{animation:dzRing 1.5s cubic-bezier(.33,1,.68,1) both}
 @keyframes dzRing{from{stroke-dashoffset:var(--c)}}
 .dz-ring .ct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .dz-ring .ct b{font-size:30px;line-height:1;letter-spacing:-.5px}.dz-ring .ct b i{font-style:normal;font-size:16px;margin-inline-start:1px;color:var(--dz-ink2)}
@@ -105,17 +106,36 @@ export function initDash(ctx){
 // لازم تتحرك؟ (أول مرة، أو القيمة اتغيّرت، أو الفترة اتغيّرت). الصفحة بتترسم كذا مرة ورا بعض،
 // فلو اترسمت والحركة لا يزال شغّالة بنكمّلها من مكانها (رقم سالب = الحركة بدأت من كام ملّي ثانية) بدل ما تقف أو تبدأ من الأول.
 const DUR=1500;
-const moved=(id,v)=>{const k=PER+"|"+v,s=SEEN[id],now=Date.now();
-  if(!s||s.k!==k){SEEN[id]={k,t:now};return 0}
+// (15 نوفمبر 2026، "الدواير بتحمّل بتقطيع"): أول ما المنصة تفتح البيانات بتوصل على كذا دفعة، فكل ما النسبة تتغيّر الدايرة كانت بترجع للصفر
+// وتبدأ من الأول (كذا مرة ورا بعض)، وكانت بتبدأ وشاشة البداية لسه قدامها. دلوقتي:
+//  • الحركة بتبدأ بعد ما شاشة البداية تمشي (BOOT)، وقبلها الأرقام بتترسم ثابتة من غير ما تتسجّل.
+//  • لو القيمة اتغيّرت والحركة شغّالة/خلصت، بنكمّل من القيمة الظاهرة دلوقتي للقيمة الجديدة (from → to) بدل الرجوع للصفر.
+const BOOT=()=>!!document.getElementById("boot")||document.documentElement.classList.contains("aw");
+let WAITB=0;
+function waitBoot(){if(WAITB)return;WAITB=setInterval(()=>{if(BOOT())return;clearInterval(WAITB);WAITB=0;if(X&&X.redraw)X.redraw()},200)}
+const ease=p=>1-Math.pow(1-p,3);
+const valAt=(s,now)=>s.from+(s.to-s.from)*ease(Math.min(1,(now-s.t)/DUR));
+// للأرقام والدواير: {el, from} أو null (ثابت من غير حركة)
+function anim(id,v){
+  if(BOOT()){waitBoot();return null}
+  const k=PER+"|"+v,s=SEEN[id],now=Date.now();
+  if(s&&s.k===k){const el=now-s.t;return el<DUR?{el,from:s.from}:null}
+  const from=s&&s.per===PER?valAt(s,now):0;
+  SEEN[id]={k,t:now,from,to:v,per:PER};return {el:0,from};
+}
+// للرسوم (الأعمدة): بتبدأ من الصفر بس أول مرة أو لما الشكل يتغيّر
+const moved=(id,v)=>{if(BOOT()){waitBoot();return -1}const k=PER+"|"+v,s=SEEN[id],now=Date.now();
+  if(!s||s.k!==k){SEEN[id]={k,t:now,from:0,to:0,per:PER};return 0}
   const el=now-s.t;return el<DUR?el:-1};
 const delay=el=>el>0?`animation-delay:-${el}ms;`:"";
-const cu=(el,v)=>el>=0?`data-cu="${v}" data-t0="${Date.now()-el}"`:"";
+const cuA=(a,v)=>a?`data-cu="${v}" data-from="${a.from}" data-t0="${Date.now()-a.el}"`:"";
+const cu=(id,v)=>cuA(anim(id,v),v);
 
 function ring(id,color,pct,label,sub,pill){
-  const C=2*Math.PI*42,has=pct!==null,v=has?Math.max(0,Math.min(100,pct)):0,off=C*(1-v/100),el=has?moved(id,Math.round(v)):-1;
+  const C=2*Math.PI*42,has=pct!==null,v=has?Math.max(0,Math.min(100,pct)):0,off=C*(1-v/100),a=has?anim(id,Math.round(v)):null,o0=a?C*(1-Math.max(0,Math.min(100,a.from))/100):C;
   return `<div class="dz-card dz-ring" role="img" aria-label="${E(label)}: ${has?Math.round(v)+"%":"لا توجد بيانات"}. ${E(sub)}">
-   <div class="w"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="tr" cx="50" cy="50" r="42"/>${has&&v>0?`<circle class="vl${el>=0?" dz-anim":""}" cx="50" cy="50" r="42" style="color:${color};stroke:${color};--c:${C.toFixed(2)};${delay(el)}" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>`:""}</svg>
-   <div class="ct"><b>${has?`<span ${cu(el,Math.round(v))}>${Math.round(v)}</span><i>%</i>`:"—"}</b></div></div>
+   <div class="w"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="tr" cx="50" cy="50" r="42"/>${has&&v>0?`<circle class="vl${a?" dz-anim":""}" cx="50" cy="50" r="42" style="color:${color};stroke:${color};--c:${o0.toFixed(2)};${a?delay(a.el):""}" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>`:""}</svg>
+   <div class="ct"><b>${has?`<span ${cuA(a,Math.round(v))}>${a?Math.round(a.from):Math.round(v)}</span><i>%</i>`:"—"}</b></div></div>
    <h4>${E(label)}</h4><p>${E(sub)}</p>${pill||""}</div>`;
 }
 // حالة النسبة: أيقونة + كلمة (اللون لوحده مش كفاية)
@@ -123,7 +143,7 @@ function ring(id,color,pct,label,sub,pill){
 const ringC=pct=>pct===null?"var(--dz-track)":pct>=90?"var(--dz-r3)":pct>=70?"var(--dz-r2)":"var(--dz-bad)";
 const pill=pct=>pct===null?"":pct>=90?`<span class="dz-pill"><i style="background:var(--dz-r3)"></i>ممتاز</span>`:pct>=70?`<span class="dz-pill"><i style="background:var(--dz-r2)"></i>جيد</span>`:`<span class="dz-pill"><i style="background:var(--dz-bad)"></i>يحتاج إلى متابعة</span>`;
 // سطر الملخّص تحت العنوان (أرقام الفترة نفسها، مش حالة الطلبات حالياً)
-const sum=(id,icon,val,label)=>`<span>${icon} <b ${cu(moved(id,val),val)}>${fmt(val)}</b> ${E(label)}</span>`;
+const sum=(id,icon,val,label)=>`<span>${icon} <b ${cu(id,val)}>${fmt(val)}</b> ${E(label)}</span>`;
 
 export function dashView(R){
   if(!X)return "";
@@ -142,7 +162,7 @@ export function dashView(R){
   const lbl=(PERS.find(p=>p[0]===PER)||PERS[1])[1];
   // المراحل حالياً (مهما كان تاريخ الطلب)
   const stage=(st,icon,name,k)=>{const L=RQ.filter(r=>r.st===st),old=L.length?Math.min(...L.map(r=>st==="new"?N(r.ts):st==="prep"?(N(r.prep&&r.prep.at)||N(r.ts)):st==="go"?(N(r.dep)||N(r.ts)):(dlvAt(r)||N(r.ts)))):0;
-    return `<button class="dz-st" data-s="${st}" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${L.length}"><span class="ic">${icon}</span><b><span ${cu(moved("st"+st,L.length),L.length)}>${fmt(L.length)}</span></b><span class="nm">${E(name)}</span><small>${L.length?"أقدم واحد منذ "+dur(now-old):"لا يوجد"}</small></button>`};
+    return `<button class="dz-st" data-s="${st}" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${L.length}"><span class="ic">${icon}</span><b><span ${cu("st"+st,L.length)}>${fmt(L.length)}</span></b><span class="nm">${E(name)}</span><small>${L.length?"أقدم واحد منذ "+dur(now-old):"لا يوجد"}</small></button>`};
   // يوماً بيوم: طلبات اتعملت (ذهبي) مقابل سُلِّمت (تركواز)
   const days=Math.max(7,+PER),d0=midnight(now)-(days-1)*D,rows=[];
   for(let i=0;i<days;i++){const a=d0+i*D,b=a+D;rows.push({a,n:RQ.filter(r=>N(r.ts)>=a&&N(r.ts)<b).length,d:RQ.filter(r=>{const t=dlvAt(r);return t>=a&&t<b}).length})}
@@ -192,7 +212,7 @@ function trCard(R,now){
   if(!R.some(r=>r.tr))return `<div class="dz-card" style="margin-top:12px"><h3>🔄 التحويلات بين الفروع</h3><div class="dz-none">لا توجد تحويلات بعد. أنشئ تحويلاً من تبويب <b>"ورقة يدوية"</b> ← نوع الورقة: <b>تحويل بين الفروع</b> ← اختر من فرع وإلى فرع ← <b>"🔄 أرسل التحويل للفرعين"</b>. فور إرساله سيظهر هنا وتتابعه خطوة بخطوة.</div></div>`;
   const TA=R.filter(r=>r.tr&&r.st!=="done"&&r.st!=="recv").sort((a,b)=>N(a.ts)-N(b.ts)),nd=R.filter(r=>r.tr&&r.st==="done").length;
   const wait=TA.filter(r=>r.st!=="go"&&!N(r.rdy)).length,rdy=TA.filter(r=>r.st!=="go"&&N(r.rdy)).length,go=TA.filter(r=>r.st==="go").length;
-  const cell=(id,n,icon,name,k,sub)=>`<button class="dz-st" data-s="tr" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${n}"><span class="ic">${icon}</span><b><span ${cu(moved(id,n),n)}>${fmt(n)}</span></b><span class="nm">${E(name)}</span><small>${E(sub)}</small></button>`;
+  const cell=(id,n,icon,name,k,sub)=>`<button class="dz-st" data-s="tr" type="button" style="--k:var(${k})" aria-label="${E(name)}: ${n}"><span class="ic">${icon}</span><b><span ${cu(id,n)}>${fmt(n)}</span></b><span class="nm">${E(name)}</span><small>${E(sub)}</small></button>`;
   return `<div class="dz-card" style="margin-top:12px"><h3>🔄 التحويلات بين الفروع <small>اضغط على أي خانة لترى التحويلات</small></h3><div class="dz-flow">
    ${cell("t1",wait,"📭","الفرع يجهّز","--dz-new","بانتظار الفرع المُرسِل")}${cell("t2",rdy,"✅","جاهز للسائق","--dz-prep","عيّن سائقاً من السيارات")}${cell("t3",go,"🚚","في الطريق","--dz-go","مع السائق")}${cell("t4",nd,"📦","وصل وبانتظار التأكيد","--dz-done","الفرع المستلم يؤكّد")}</div>
    ${TA.length?`<div class="dz-trl">${TA.slice(0,8).map(r=>`<div><b><bdi dir="ltr">${E(r.tr.frn)} → ${E(r.brn)}</bdi></b> · ${fmt(N(r.pcs))} قطعة<small>${E(trWhere(r))}${r.asg&&r.asg.drvn?" · 🚚 "+E(r.asg.drvn):""} · منذ ${dur(now-N(r.ts))} · <bdi dir="ltr">${E(r.no)}</bdi></small></div>`).join("")}${TA.length>8?`<small>و${TA.length-8} أيضاً…</small>`:""}</div>`:""}</div>`;
@@ -200,8 +220,9 @@ function trCard(R,now){
 // الأرقام بتعدّ من صفر إلى قيمتها
 function countUp(){
   document.querySelectorAll(".dz [data-cu]").forEach(el=>{
-    const to=N(el.dataset.cu),t0=N(el.dataset.t0)||Date.now();el.removeAttribute("data-cu");if(!to)return;
-    const tick=()=>{const p=Math.min(1,(Date.now()-t0)/1100),e=1-Math.pow(1-p,3);el.textContent=fmt(to*e);if(p<1&&el.isConnected)requestAnimationFrame(tick)};
+    const to=N(el.dataset.cu),fr=N(el.dataset.from),t0=N(el.dataset.t0)||Date.now();el.removeAttribute("data-cu");if(to===fr){el.textContent=fmt(to);return}
+    // نفس مدة ومنحنى الدايرة بالظبط، علشان الرقم والدايرة يمشوا مع بعض
+    const tick=()=>{const p=Math.min(1,(Date.now()-t0)/DUR);el.textContent=fmt(Math.round(fr+(to-fr)*ease(p)));if(p<1&&el.isConnected)requestAnimationFrame(tick)};
     tick();
   });
 }
