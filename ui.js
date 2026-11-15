@@ -82,10 +82,23 @@
  // شاشة البداية + انتظار الدخول: محتوى الصفحة مخفي (aw) إلى ما الصفحة تقول "عرفنا مين داخل" بـ uiReady()
  // في التطبيق المثبّت بنستنى أيضاً رسمة اللوجو تكمل (حوالي 1.7 ثانية)
  const H=document.documentElement,boot=document.getElementById("boot");
- let ready=false,minDone=!H.classList.contains("app");
- const hide=()=>{if(!ready||!minDone||!boot||!boot.isConnected||boot.classList.contains("out"))return;boot.classList.add("out");setTimeout(()=>boot.remove(),600)};
- if(!minDone)setTimeout(()=>{minDone=true;hide()},Math.max(0,1700-performance.now()));
- window.uiReady=()=>{if(ready)return;ready=true;window.__uiOk=1;H.classList.remove("aw");hide()};
+ // (15 نوفمبر 2026) الديب بيرسم نفسه في ~1 ثانية: شاشة البداية بتستنى لحد ما يخلص (في التطبيق 1.7 ثانية زي ما كانت)،
+ // والجهاز الخفيف (html.lite) من غير رسم فبتمشي أسرع.
+ const LITE=H.classList.contains("lite"),MIN=H.classList.contains("app")?1700:LITE?350:1150,HOLD=LITE?250:1000;
+ let ready=false,minDone=false;
+ // المحتوى بيفضل مستخبي (aw) لحد ما الديب يخلص، وبعدين شاشة البداية بتختفي بالتدريج فوق الصفحة (#boot.out بيفضل ظاهر وهو بيختفي)
+ const hide=()=>{if(!ready||!minDone)return;H.classList.remove("aw");if(!boot||!boot.isConnected||boot.classList.contains("out"))return;boot.classList.add("out");setTimeout(()=>boot.remove(),600)};
+ setTimeout(()=>{minDone=true;hide()},Math.max(0,MIN-performance.now()));
+ // 🐺 وهو بيرسم نفسه، الصفحة (اللي لسه مستخبية ورا شاشة البداية) مابتترسمش: الرسم التقيل بيستنى لحد ما الديب يخلص (ثانية واحدة)،
+ // وكل طلبات الرسم في الوقت ده بتبقى رسمة واحدة. ده اللي بيخلّي حركة الديب ناعمة.
+ let held=null;
+ window.tzBootHold=fn=>{
+  if(performance.now()>=HOLD||!boot||!boot.isConnected||boot.classList.contains("out")||!(H.classList.contains("aw")||H.classList.contains("app")))return false;
+  if(!held){held=fn;setTimeout(()=>{const f=held;held=null;try{f()}catch(e){setTimeout(()=>{throw e})}},Math.max(0,HOLD-performance.now()))}
+  else held=fn;
+  return true;
+ };
+ window.uiReady=()=>{if(ready)return;ready=true;window.__uiOk=1;hide()};
  if(!H.classList.contains("aw"))window.uiReady();// صفحات من غير تسجيل دخول
  // الموبايل: الشريط اللي فوق بيختفي وإنت نازل ويرجع أول ما تطلع لفوق (مساحة أكبر للمحتوى)
  let lastY=scrollY,tick=false;

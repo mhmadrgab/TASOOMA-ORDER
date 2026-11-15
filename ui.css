@@ -327,3 +327,13 @@ body .dz{--dz-r2:#8d9c5c;--dz-r3:#5e6d34}
 /* خط الهيدر: موف بيذوب في زيتوني (توقيع الثوب الجديد) */
 .hd{border-bottom:0!important;box-shadow:inset 0 -3px 0 0 var(--acc)}
 .hd::before{content:"";position:absolute;inset-inline:0;bottom:0;height:3px;pointer-events:none;background:linear-gradient(90deg,var(--olive),var(--acc) 45%,var(--acc) 55%,var(--olive))}
+
+/* ================= ⚡ الوضع الخفيف (html.lite، 15 نوفمبر 2026) =================
+   بيتفعّل لوحده أول ما الصفحة تفتح لو الجهاز ضعيف (رامات ≤ 2 جيجا، أو 4 أنوية أو أقل في أندرويد)، أو النت بطيء/توفير البيانات،
+   أو المستخدم مفعّل "تقليل الحركة". المنصة نفسها زي ما هي، بس من غير التأثيرات التقيلة: التغبيش، اللمعة اللي بتتحرك، وحركات الدخول. */
+html.lite *,html.lite *::before,html.lite *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.lite .hd::after{display:none!important}
+html.lite body{animation:none!important}
+html.lite .dz *,html.lite .g4.anim *{animation:none!important}
+html.lite button:not(:disabled):active{transform:none}
+html.lite .rq,html.lite .sc,html.lite .pan,html.lite .dz-st{transition:none!important}

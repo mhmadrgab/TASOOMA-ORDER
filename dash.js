@@ -128,6 +128,7 @@ function gate(){
 }
 // للأرقام والدواير: {el, from} أو null (ثابت من غير حركة) أو {hold} (الدايرة فاضية لحد ما الصفحة تهدى)
 function anim(id,v,ring){
+  if(document.documentElement.classList.contains("lite"))return null;// جهاز خفيف: الدواير والأرقام بتظهر على طول من غير حركة
   const k=PER+"|"+v,s=SEEN[id],now=Date.now();
   if(!GO){if(ring)return {hold:true};SEEN[id]={k,t:0,from:v,to:v,per:PER};return null}
   if(s&&s.k===k){const el=now-s.t;return el<DUR?{el,from:s.from}:null}
@@ -193,7 +194,7 @@ export function dashView(R){
   const topC=Object.entries(opn).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const tops=(L,id)=>{if(!L.length)return `<div class="dz-none">لا توجد بيانات في هذه الفترة</div>`;const m=L[0][1]||1,el=moved(id,JSON.stringify(L));
     return `<div class="dz-top${el>=0?" dz-grow2":""}">${L.map(([n,v])=>`<div class="dz-tr"><span title="${E(n)}">${E(n)}</span><div class="t"><i style="width:${Math.max(3,v/m*100)}%;${delay(el)}"></i></div><em>${fmt(v)}</em></div>`).join("")}</div>`};
-  if(!reduce())requestAnimationFrame(countUp);
+  requestAnimationFrame(countUp);setTimeout(countUp,50);// (الاتنين: لو الفريمات واقفة؛ countUp مابيشتغلش مرتين على نفس الرقم)
   return `<section class="dz" aria-label="لوحة الأداء">
   <div class="dz-hd"><h2>📊 لوحة الأداء <small>${E(lbl)}</small></h2><div class="dz-per" role="group" aria-label="الفترة">${PERS.map(([k,n])=>`<button type="button" data-dp="${k}" class="${PER===k?"on":""}" aria-pressed="${PER===k}">${n}</button>`).join("")}</div></div>
   <div class="dz-sum">${C.length?`${sum("k1","🧾",C.length,"طلب")}${sum("k2","🏬",brs,"فرع قدّموا طلبات")}${sum("k3","📦",pcs,"قطعة")}${stg("⏰","حتى يبدأ التجهيز",tPrep,"من وصول الطلب إلى المستودع حتى يضغط أحدهم \"بدء التجهيز\"")}${stg("🧰","التجهيز حتى خروج السائق",tWait,"من \"بدء التجهيز\" حتى يبدأ السائق الرحلة بالطلب (التجهيز نفسه + انتظار السائق)")}${stg("🚚","الطريق",tRoad,"من خروج السائق حتى يسلّم للفرع")}`:`<span>💤 لم يتم إنشاء طلبات ${PER==="1"?"اليوم":"في هذه الفترة"} لا يزال</span>`}</div>
@@ -232,9 +233,11 @@ function trCard(R,now){
 // الأرقام بتعدّ من صفر إلى قيمتها
 function countUp(){
   document.querySelectorAll(".dz [data-cu]").forEach(el=>{
-    const to=N(el.dataset.cu),fr=N(el.dataset.from),t0=N(el.dataset.t0)||Date.now();el.removeAttribute("data-cu");if(to===fr){el.textContent=fmt(to);return}
+    const to=N(el.dataset.cu),fr=N(el.dataset.from),t0=N(el.dataset.t0)||Date.now();el.removeAttribute("data-cu");if(to===fr||reduce()){el.textContent=fmt(to);return}
     // نفس مدة ومنحنى الدايرة بالظبط، علشان الرقم والدايرة يمشوا مع بعض
     const tick=()=>{const p=Math.min(1,(Date.now()-t0)/DUR);el.textContent=fmt(Math.round(fr+(to-fr)*ease(p)));if(p<1&&el.isConnected)requestAnimationFrame(tick)};
+    // لو المتصفح مابيرسمش فريمات (نافذة متغطية) الرقم لازم يوصل لقيمته برضه
+    setTimeout(()=>{if(el.isConnected)el.textContent=fmt(to)},Math.max(0,DUR-(Date.now()-t0))+60);
     tick();
   });
 }
