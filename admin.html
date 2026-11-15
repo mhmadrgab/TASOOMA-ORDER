@@ -331,7 +331,7 @@ function start(){
  if(adm||can("req")||vw)initShort({db,toast,R:()=>R,me:{e:me,get n(){return ROLE.name||me}},canBuy:adm||can("req"),owner:ROLE.owner===true,ownerEmail:ADMIN_EMAIL,redraw:draw});
  // 📢 التعميمات: الكل بيشوف، والمالك والمديرين بس بيبعتوا لكل الفروع والمستودع
  initAnn({db,auth,toast,party:me,email:me,name:()=>ROLE.name||me.split("@")[0],canPost:adm});
- if(adm||can("req")||vw)initWorkers({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,owner:ROLE.owner===true,view:vw,loadAll:loadAllReqs,loadSince:ensureSince,ping:ids=>ping(auth,ids)});
+ if(adm||can("req")||vw)initWorkers({db,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,me:{e:me,get n(){return ROLE.name||me}},owner:ROLE.owner===true,view:vw,loadAll:loadAllReqs,loadSince:ensureSince,ping:ids=>ping(auth,ids)});
  // الدردشة الخاص مع الفروع (لكل اللي بيشتغل على الطلبات): كل شخص ليه محادثاته هو بس مع كل فرع، محدش غيره بيشوفها
  // كل اللي في المستودع (مش المتابع): يكلّم السائقين والموظفين، واللي معاه الطلبات أو مدير يكلّم الفروع أيضاً
  {// الشات لكل اللي في المستودع، ومعاهم الإدارة: مدير التسويق وصاحب الشركة (نوفمبر 2026)، وبيكلّموا الفروع كمان

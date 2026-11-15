@@ -2,8 +2,10 @@
 // مين جهّز كل طلب (بيتحدد عند "بدء التجهيز") ← الإنتاجية والدقة والسرعة + تقييم المدير = درجة من 100
 import {collection,doc,setDoc,updateDoc,onSnapshot} from "./fb.js";
 import {E,N,fmt,printStmt,ensurePrintCss} from "./cust.js";
+import {initClean,stopClean,cleanView} from "./clean.js";
 const g=id=>document.getElementById(id);
-let X=null,W=[],RT={},un=[],mon="";
+let X=null,W=[],RT={},un=[],mon="",SUB="rate";// SUB: تقييم العمال أو 🧹 النظافة (15 نوفمبر 2026)
+try{if(localStorage.getItem("wk_sub")==="clean")SUB="clean"}catch(e){}
 const CSS=`
 .wkm{display:none;position:fixed;inset:0;z-index:77;background:rgba(0,0,0,.55);overflow:auto;padding:18px}.wkm.on{display:block}
 .wkk{max-width:460px;margin:6vh auto;background:var(--card);border-radius:18px;padding:20px 22px}.wkk h3{margin:0 0 4px}
@@ -51,7 +53,7 @@ function stats(mo){
  });
  const list=Object.values(S).filter(s=>s.lines>0);
  list.forEach(s=>{s.lpd=s.lines/Math.max(1,s.days.size);s.mpl=med(s.pl)});
- const avgLpd=list.reduce((a,s)=>a+s.lpd,0)/(list.length||1),teamMpl=med(list.flatMap(s=>s.pl)),stars=(RT[mo]&&RT[mo].stars)||{};
+ const avgLpd=list.reduce((a,s)=>a+s.lpd,0)/(list.length||1),teamMpl=med([].concat(...list.map(s=>s.pl))),stars=(RT[mo]&&RT[mo].stars)||{};
  list.forEach(s=>{
   const p=avgLpd>0?Math.min(1,s.lpd/avgLpd/1.3):1;          // سطور في اليوم: 130% من متوسط الفريق = الدرجة كاملة
   const judged=s.ok+s.err,acc=judged?s.ok/judged:1;          // من غير طلبات اتراجعت = كاملة
@@ -68,13 +70,15 @@ const minPer10=s=>s.mpl?Math.round(s.mpl*10/6e4):null;
 export function view(){
  if(!X)return "";
  const ms=months(),mo=ms.includes(mon)?mon:ms[0];mon=mo;
+ const sub=`<div class="cl-sub" role="tablist"><button type="button" role="tab" data-wk="sub" data-v="rate" class="${SUB==="rate"?"on":""}">👷 تقييم العمال</button><button type="button" role="tab" data-wk="sub" data-v="clean" class="${SUB==="clean"?"on":""}">🧹 النظافة</button></div>`;
+ if(SUB==="clean")return sub+`<div class="fl"><h3 style="margin:0">🧹 نظافة المستودع</h3><select id="wmon" style="margin-inline-start:auto">${ms.map(m=>`<option ${m===mo?"selected":""}>${m}</option>`).join("")}</select></div>`+cleanView(mo);
  const rows=stats(mo),pv={};stats(prevM(mo)).forEach(s=>pv[s.id]=s.score);
  const top=rows[0],idle=W.filter(w=>w.active!==false&&!rows.some(s=>s.id===w.id));
  const wait=X.R().filter(r=>hasBy(r)&&verdict(r)==="wait").sort((a,b)=>N(b.rcv&&b.rcv.at)-N(a.rcv&&a.rcv.at));
  const stars=(RT[mo]&&RT[mo].stars)||{};
  // اللي اتراجعت في الشهر ده (للمالك: يغيّر القرار أو يحذف)
  const done=X.owner?X.R().filter(r=>hasBy(r)&&r.st==="recv"&&r.rcv&&r.rcv.ok===false&&r.qa&&typeof r.qa.fault==="boolean"&&r.qa.x!==true&&ym(r.prep.at)===mo).sort((a,b)=>N(b.qa.at)-N(a.qa.at)):[];
- return `<div class="fl"><h3 style="margin:0">👷 تقييم العمال</h3><select id="wmon" style="margin-inline-start:auto">${ms.map(m=>`<option ${m===mo?"selected":""}>${m}</option>`).join("")}</select><button class="bt" data-wk="rep" type="button">🖨 التقرير الشهري</button></div>
+ return sub+`<div class="fl"><h3 style="margin:0">👷 تقييم العمال</h3><select id="wmon" style="margin-inline-start:auto">${ms.map(m=>`<option ${m===mo?"selected":""}>${m}</option>`).join("")}</select><button class="bt" data-wk="rep" type="button">🖨 التقرير الشهري</button></div>
  ${top?`<div class="wtop"><div class="ic">🏆</div><div><small>عامل الشهر (${E(mo)})</small><b>${E(nm(top.id))}</b><small>${fmt(Math.round(top.lines))} سطر · ${fmt(Math.round(top.pcs))} قطعة</small></div><div class="sc2">${top.score}</div></div>`:""}
  ${wait.length?`<div class="pan" style="margin-bottom:14px"><h3>⚠️ ملاحظات استلام تحتاج إلى مراجعتك (${wait.length})</h3><p class="off" style="font-size:13px;margin:0 0 10px">استلم الفرع بملاحظات. حدّد هل هذا خطأ في التجهيز (يُحسب على العمال) أم لا (تلف في الطريق، نقص من المخزن...).</p>
   ${wait.map(r=>`<div class="wrv"><b>${E(r.brn)}</b> · <bdi dir="ltr">${E(r.no)}</bdi><div class="rn">👷 ${E(r.prep.by.map(nm).join("، "))}${(r.rcv.lines||[]).slice(0,6).map(x=>`<br><bdi dir="ltr">${E(x.k)} ${E(x.c||"")} ${E(x.z||"")}</bdi>: مطلوب ${N(x.q)} · استلم ${N(x.r)}`).join("")}${r.rcv.note?`<br>📝 ${E(r.rcv.note)}`:""}</div>
@@ -146,6 +150,7 @@ async function click(e){
  try{
   if(a==="rep")report();
   else if(a==="slip")slip(id);
+  else if(a==="sub"){SUB=t.dataset.v==="clean"?"clean":"rate";try{localStorage.setItem("wk_sub",SUB)}catch(x){}X.redraw()}
   else if(!X.admin){X.toast("هذه الصلاحية للمدير فقط");return}
   else if(a==="add"){const n=(g("wnew").value||"").trim().slice(0,40);if(!n){X.toast("اكتب اسم العامل");return}if(W.some(w=>w.name===n)){X.toast("هذا الاسم موجود");return}await setDoc(doc(collection(X.db,"workers")),{name:n,active:true,ts:Date.now()});X.toast("تمت الإضافة")}
   else if(a==="ren"){const w=W.find(x=>x.id===id);const n=(prompt("الاسم الجديد:",w?w.name:"")||"").trim().slice(0,40);if(n)await setDoc(doc(X.db,"workers",id),{name:n},{merge:true})}
@@ -166,6 +171,8 @@ export function initWorkers(ctx){
  const draw=()=>{const tb=X.tab();if(tb==="wk"||tb==="req")X.redraw()};
  un.push(onSnapshot(collection(X.db,"workers"),sn=>{W=sn.docs.map(d=>({id:d.id,...d.data()}));draw()},()=>{}));
  // view = المتابع (صاحب الشركة) بيشوف التقييم
- if(X.admin||X.view)un.push(onSnapshot(collection(X.db,"wrate"),sn=>{RT={};sn.docs.forEach(d=>RT[d.id]=d.data());if(X.tab()==="wk")X.redraw()},()=>{}));
+ // 🧹 النظافة: المدير يقيّم ويبدّل، والمتابع يشوف
+  if(X.admin||X.view)initClean({db:X.db,toast:X.toast,admin:!!X.admin,owner:!!X.owner,me:X.me||{e:"",n:""},workers:()=>W,redraw:X.redraw,active:()=>X.tab()==="wk"});
+  if(X.admin||X.view)un.push(onSnapshot(collection(X.db,"wrate"),sn=>{RT={};sn.docs.forEach(d=>RT[d.id]=d.data());if(X.tab()==="wk")X.redraw()},()=>{}));
 }
-export function stop(){un.forEach(f=>f());un=[];W=[];RT={};const m=g("wkm");if(m){m.className="wkm";m.innerHTML=""}}
+export function stop(){stopClean();un.forEach(f=>f());un=[];W=[];RT={};const m=g("wkm");if(m){m.className="wkm";m.innerHTML=""}}
