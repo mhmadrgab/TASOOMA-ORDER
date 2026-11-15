@@ -143,11 +143,137 @@ function changes(prev, next) {
 // ---------- اللايف (onSnapshot) ----------
 // كل سماع = قناة Realtime على جدول docs بفلتر (col= المجموعة، أو path= المستند)، والـ RLS بيمنع اللي مش مسموحله يشوفه.
 // بنسمع الأول وبعدين نقرا، وأي تغيير بيوصل قبل القراءة بيتطبّق بعدها. لو الاتصال اتقطع ورجع: بنقرا تاني (علشان اللي فات).
+// ⚡ (15 نوفمبر 2026، محمد: "التحديث مش لحظي، الناس بتعمل ريفرش علشان الطلبات تظهر") — "المحطة" (hub):
+//  • قبل كده كل سماع كان ليه قناة لوحده (30+ قناة في اللوحة)، ولو الخط وقع (الشاشة اتقفلت، النت ضعيف، رجع من برنامج تاني)
+//    القناة كانت بتموت ومحدش بيلاحظ ← الطلبات الجديدة ماتوصلش غير بريفرش.
+//  • دلوقتي: قناة واحدة لكل صفحة فيها كل المجموعات اللي الصفحة بتسمعها (col=in.(...))، وبنراقبها:
+//    وقعت ← بنعمل واحدة جديدة لوحدنا (بعد 1، 2، 5، 10... ثانية). رجعت ← بنجيب اللي فات.
+//  • شبكة أمان: كل 30 ثانية (و8 ثواني لو الخط واقع) بنسأل "إيه اللي اتغيّر من آخر مرة؟" (updated_at) — صفوف قليلة بس.
+//    يعني حتى لو اللايف وقع خالص، أقصى تأخير 8 ثواني من غير ريفرش.
+//  • الصفحة رجعت قدام المستخدم / النت رجع: بنسأل على طول، ولو كانت في الخلفية أكتر من 5 دقايق بنقرا كل حاجة من جديد.
 let SEQ = 0;
+const HUBS = new Map();
+const BACK = [1000, 2000, 5000, 10000, 20000, 30000];
+const isVis = () => typeof document === "undefined" || !document.hidden;
+const qv = v => '"' + String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+const msOf = t => { const n = Date.parse(t); return isNaN(n) ? 0 : n };
+function hubOf(c) {
+  let h = HUBS.get(c); if (h) return h;
+  h = {c, subs: new Set(), live: null, pend: null, dirty: false, downAt: 0, tries: 0, rt: null, kt: null, gone: null, cur: null, polling: false, np: 0, hidAt: 0, discAt: 0, seen: new Map()};
+  HUBS.set(c, h);
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => { if (document.hidden) { h.hidAt = Date.now(); return } const away = h.hidAt ? Date.now() - h.hidAt : 0; h.hidAt = 0; wake(h, away) });
+    addEventListener("online", () => wake(h, 0));
+    addEventListener("pageshow", e => { if (e.persisted) wake(h, 6e5) });
+    setInterval(() => tick(h), 4000);
+  }
+  return h;
+}
+function hubFilters(h) {
+  const cols = new Set(), paths = new Set();
+  h.subs.forEach(s => s.isDoc ? paths.add(s.path) : cols.add(s.col));
+  const out = [], add = (f, arr) => { arr.sort(); for (let i = 0; i < arr.length; i += 90) { const p = arr.slice(i, i + 90); out.push(p.length === 1 ? `${f}=eq.${p[0]}` : `${f}=in.(${p.join(",")})`) } };
+  add("col", [...cols]); add("path", [...paths]);
+  return out;
+}
+function hubDispatch(h, ev, fromPoll) {
+  const n = ev.new && ev.new.path ? ev.new : null, o = ev.old && ev.old.path ? ev.old : null, path = (n || o || {}).path;
+  if (!path) return;
+  if (!fromPoll && n && n.updated_at) { if (h.seen.size > 3000) h.seen.clear(); h.seen.set(path, msOf(n.updated_at)) }
+  const col = (n && n.col) || (o && o.col) || path.slice(0, path.lastIndexOf("/"));
+  const bad = ev.errors && ev.errors.length;// الرسالة كبيرة (صورة) ووصلت من غير بيانات: نقرا من جديد بدل ما نفتكرها اتمسحت
+  h.subs.forEach(s => { if (s.isDoc ? s.path === path : s.col === col) { if (bad) s.reload(); else s.onEv(ev) } });
+}
+function hubDrop(h, ch) { try { if (ch) h.c.removeChannel(ch) } catch (e) {} }
+function hubRetry(h) {
+  if (h.rt || !h.subs.size) return;
+  const d = BACK[Math.min(h.tries, BACK.length - 1)]; h.tries++;
+  h.rt = setTimeout(() => { h.rt = null; hubConnect(h) }, d);
+}
+async function hubConnect(h) {
+  clearTimeout(h.kt); h.kt = null;
+  if (!h.subs.size) return;
+  if (h.pend) { h.dirty = true; return }
+  const fs = hubFilters(h), key = fs.join("|");
+  if (h.live && h.live._k === key) return;
+  const c = h.c;
+  try { const {data} = await c.auth.getSession(); const t = data && data.session && data.session.access_token; if (t && c.realtime && c.realtime.setAuth) c.realtime.setAuth(t) } catch (e) {}
+  if (h.pend || (h.live && h.live._k === key) || !h.subs.size) return;
+  let me;
+  try {
+    me = c.channel("tzl" + (++SEQ) + "_" + Math.random().toString(36).slice(2, 7)); me._k = key;
+    fs.forEach(f => me.on("postgres_changes", {event: "*", schema: "public", table: "docs", filter: f}, ev => { if (h.live === me || h.pend === me) hubDispatch(h, ev) }));
+    h.pend = me;
+    me.subscribe(st => {
+      if (st === "SUBSCRIBED") {
+        if (h.pend === me) {
+          const old = h.live, down = h.downAt ? Date.now() - h.downAt : 0;
+          h.live = me; h.pend = null; h.tries = 0; h.downAt = 0; h.discAt = 0;
+          if (old) hubDrop(h, old);
+          if (down > 60000) hubReloadAll(h); else hubPoll(h);// اللي حصل وإحنا بنوصل
+          if (h.dirty) { h.dirty = false; hubConnect(h) }
+        }
+        return;
+      }
+      if (st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") {
+        // الخط واقع: شبكة الأمان تبقى كل 8 ثواني بدل 30 (من دلوقتي)
+        if (h.pend === me) { h.pend = null; hubDrop(h, me); if (!h.live) { if (!h.downAt) h.downAt = Date.now(); h.np = Math.min(h.np, Date.now() + 8000) } hubRetry(h); if (h.dirty) h.dirty = false }
+        else if (h.live === me) { h.live = null; if (!h.downAt) h.downAt = Date.now(); h.np = Math.min(h.np, Date.now() + 3000); hubDrop(h, me); hubRetry(h) }
+      }
+    });
+  } catch (e) { if (h.pend === me) h.pend = null; hubRetry(h) }
+}
+function hubReloadAll(h) { h.subs.forEach(s => s.reload()) }
+// شبكة الأمان: الصفوف اللي اتغيّرت من آخر مرة (في المجموعات اللي الصفحة بتسمعها بس)
+async function hubPoll(h) {
+  if (h.polling || !h.subs.size) return;
+  h.polling = true; h.np = Date.now() + (h.live ? 30000 : 8000);
+  try {
+    const cols = [], paths = [];
+    h.subs.forEach(s => { if (s.isDoc) { if (paths.indexOf(s.path) < 0) paths.push(s.path) } else if (cols.indexOf(s.col) < 0) cols.push(s.col) });
+    const ors = [];
+    if (cols.length) ors.push(`col.in.(${cols.map(qv).join(",")})`);
+    if (paths.length) ors.push(`path.in.(${paths.map(qv).join(",")})`);
+    const base = () => h.c.from("docs").select("path,col,data,updated_at").or(ors.join(","));
+    if (!h.cur) {
+      const r = await base().order("updated_at", {ascending: false}).limit(1);
+      if (r.error) return;
+      const t = r.data && r.data[0] ? msOf(r.data[0].updated_at) : 0;
+      h.cur = new Date(Math.max(0, t - 120000)).toISOString();// دقيقتين لورا: اللي حصل وإحنا بنفتح
+    }
+    const r = await base().gt("updated_at", h.cur).order("updated_at", {ascending: true}).limit(150);
+    if (r.error || !r.data || !r.data.length) return;
+    h.cur = r.data[r.data.length - 1].updated_at;
+    if (r.data.length >= 150) { hubReloadAll(h); return }
+    for (const row of r.data) { if (h.seen.get(row.path) === msOf(row.updated_at)) continue; hubDispatch(h, {eventType: "UPDATE", new: row, old: null}, true) }
+  } catch (e) {} finally { h.polling = false }
+}
+function wake(h, away) {
+  if (!h.subs.size) return;
+  if (!h.live && !h.pend) { clearTimeout(h.rt); h.rt = null; h.tries = 0; hubConnect(h) }
+  if (away > 5 * 60000) hubReloadAll(h); else hubPoll(h);
+}
+function tick(h) {
+  if (!h.subs.size || !isVis()) return;
+  const rt = h.c.realtime;
+  // الخط نفسه (websocket) واقع ومارجعش لوحده خلال 15 ثانية: نبدأ من جديد
+  if (h.live && rt && rt.isConnected && !rt.isConnected()) { if (!h.discAt) h.discAt = Date.now(); else if (Date.now() - h.discAt > 15000) { const ch = h.live; h.live = null; h.downAt = h.discAt; h.discAt = 0; h.np = 0; hubDrop(h, ch); hubConnect(h) } }
+  else h.discAt = 0;
+  if (!h.live && !h.pend && !h.rt) hubConnect(h);
+  if (Date.now() >= h.np) hubPoll(h);
+}
+function hubAdd(h, s) {
+  h.subs.add(s); clearTimeout(h.gone); h.gone = null;
+  if (!h.kt) h.kt = setTimeout(() => hubConnect(h), 40);// كل السماعات اللي بتتعمل مع بعض = قناة واحدة
+}
+function hubRemove(h, s) {
+  h.subs.delete(s);
+  if (!h.subs.size) { clearTimeout(h.gone); h.gone = setTimeout(() => { if (h.subs.size) return; const a = h.live, b = h.pend; h.live = h.pend = null; h.cur = null; clearTimeout(h.rt); h.rt = null; hubDrop(h, a); hubDrop(h, b) }, 20000) }
+}
 export function onSnapshot(target, next, onErr) {
   const db = target.db, c = db.c, isDoc = target.type === "doc";
   const q = isDoc ? null : (target.type === "query" ? target : query(target));
-  let alive = true, loaded = false, cur = [], curDoc, pend = [], timer = null, ch = null, refetching = false, again = false;
+  let alive = true, loaded = false, cur = [], curDoc, pend = [], timer = null, refetching = false, again = false;
   const fail = e => { if (alive && onErr) try { onErr(mapErr(e)) } catch (x) {} };
   const emit = list => { const prev = cur; cur = list; if (alive) try { next(new QuerySnap(q, list, changes(prev, list))) } catch (x) { console.error(x) } };
   const emitDoc = data => { if (!alive) return; const s = new DocSnap(target, data); if (loaded && eq(curDoc, data)) return; curDoc = data; try { next(s) } catch (x) { console.error(x) } };
@@ -171,18 +297,17 @@ export function onSnapshot(target, next, onErr) {
     if (!loaded) { pend.push(ev); return }
     // فيه limit: أسهل وأضمن نقرا تاني (القايمة ممكن تتزحزح)
     if (q.lim != null) { clearTimeout(timer); timer = setTimeout(load, 250); return }
-    emit(sortDocs(q, apply(cur, ev)));
+    const nl = sortDocs(q, apply(cur, ev));
+    if (!changes(cur, nl).length) return;// نفس اللي معانا (مثلاً وصل من اللايف ومن شبكة الأمان): مانرسمش تاني
+    emit(nl);
   }
-  const filter = isDoc ? `path=eq.${target.path}` : `col=eq.${q.path}`;
-  try {
-    ch = c.channel("l" + (++SEQ) + "_" + Math.random().toString(36).slice(2, 7))
-      .on("postgres_changes", {event: "*", schema: "public", table: "docs", filter}, onEv)
-      // ⚡ (12 نوفمبر 2026) القراءة بتبدأ على طول، مش بعد ما خط اللايف يفتح: على بعض الشبكات الخط بياخد ثواني أو مابيفتحش،
-      // والصفحة كانت بتفضل فاضية لحد 10 ثواني ("المنصة معلّقة"). لما الخط يفتح بنقرا مرة كمان (علشان أي تغيير حصل في النص)
-      .subscribe(st => { if (!alive) return; if (st === "SUBSCRIBED") { if (loaded) load() } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") { if (!loaded) load() } });
-  } catch (e) {}
+  // ⚡ (12 نوفمبر 2026) القراءة بتبدأ على طول، مش بعد ما خط اللايف يفتح. والتحديثات من "المحطة" (فوق)
+  const h = hubOf(c);
+  const sub = {isDoc, path: isDoc ? target.path : null, col: isDoc ? null : q.path, onEv,
+    reload: () => { if (!alive) return; if (!loaded) return; clearTimeout(timer); timer = setTimeout(load, 150) }};
+  hubAdd(h, sub);
   load();
-  return () => { alive = false; clearTimeout(timer); try { if (ch) c.removeChannel(ch) } catch (e) {} };
+  return () => { alive = false; clearTimeout(timer); hubRemove(h, sub) };
 }
 
 // ---------- الدخول (زي Firebase Auth) ----------
