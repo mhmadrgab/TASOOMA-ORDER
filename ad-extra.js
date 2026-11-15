@@ -39,7 +39,7 @@ export function view(){
  <div class="row2"><div class="pan"><h3>المصروفات حسب البند</h3>${cats.length?cats.map(([n,v])=>`<div class="bar"><span style="direction:rtl">${E(n)}</span><i style="width:${Math.max(4,v/mx*55)}%"></i><em>${fmt(v)}</em></div>`).join(""):'<div class="off">لا توجد مصروفات في الفترة</div>'}</div>
  <div class="pan"><h3>الفترات المغلقة</h3>${pr.length?pr.map(s=>`<div class="bar" style="justify-content:space-between"><span style="direction:ltr;width:auto">${E(s.no)}</span><span style="width:auto;direction:rtl;color:var(--mut)">${E(s.from)} ← ${E(s.to)} · ${fmt(s.bal)}</span><button class="bt s" data-cx="ps" data-id="${E(s.id)}" type="button">🖨</button></div>`).join(""):'<div class="off">لا توجد فترة مغلقة بعد</div>'}</div></div>
  <div class="pan"><div class="fl" style="margin:0 0 10px"><h3 style="margin:0">حركات الفترة الحالية</h3><select id="cfc" style="margin-inline-start:auto"><option value="">كل البنود</option>${CATS.concat(["عهدة"]).concat([...new Set(k.open.map(e=>e.cat).filter(c=>c&&!CATS.includes(c)&&c!=="عهدة"))]).map(c=>`<option ${fc===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
- <div class="tw"><table><thead><tr><th>التاريخ</th><th>البند</th><th>البيان / الفاتورة</th><th>عهدة</th><th>مصروف</th><th>الرصيد</th><th></th></tr></thead><tbody>${rows.length?rows.map(({e,run})=>`<tr><td>${E(e.dt)}</td><td><b>${E(e.cat)}</b></td><td>${E([e.note,e.inv?"فاتورة "+e.inv:"",e.carn].filter(Boolean).join(" — "))}</td><td class="am in">${e.type==="in"?fmt(e.amt):""}</td><td class="am ex">${e.type==="exp"?fmt(e.amt):""}</td><td class="am">${fc?"":fmt(run)}</td><td style="white-space:nowrap">${e.img?`<button class="bt s" data-cx="img" data-id="${E(e.id)}" type="button">📎</button> `:""}<button class="bt s" data-cx="edit" data-id="${E(e.id)}" type="button">تعديل</button>${X.admin?` <button class="bt s" data-cx="del" data-id="${E(e.id)}" type="button">حذف</button>`:""}</td></tr>`).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:26px">لا توجد حركات بعد. ابدأ بـ "استلمت عهدة".</td></tr>'}</tbody></table></div></div>`;
+ <div class="tw"><table><thead><tr><th>التاريخ</th><th>البند</th><th>البيان / الفاتورة</th><th>عهدة</th><th>مصروف</th><th>الرصيد</th><th></th></tr></thead><tbody>${rows.length?rows.map(({e,run})=>`<tr><td>${E(e.dt)}</td><td><b>${E(e.cat)}</b></td><td>${E([e.note,e.inv?"فاتورة "+e.inv:"",e.carn].filter(Boolean).join(" — "))}</td><td class="am in">${e.type==="in"?fmt(e.amt):""}</td><td class="am ex">${e.type==="exp"?fmt(e.amt):""}</td><td class="am">${fc?"":fmt(run)}</td><td style="white-space:nowrap">${e.img||e.att?`<button class="bt s" data-cx="img" data-id="${E(e.id)}" type="button">📎</button> `:""}<button class="bt s" data-cx="edit" data-id="${E(e.id)}" type="button">تعديل</button>${X.admin?` <button class="bt s" data-cx="del" data-id="${E(e.id)}" type="button">حذف</button>`:""}</td></tr>`).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:26px">لا توجد حركات بعد. ابدأ بـ "استلمت عهدة".</td></tr>'}</tbody></table></div></div>`;
 }
 // ---------- النماذج ----------
 function box(){let m=g("cmx");if(!m){m=document.createElement("div");m.id="cmx";m.className="cm";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}
@@ -55,14 +55,14 @@ function form(type,e){
  ${ex?`<label>رقم الفاتورة / المورّد (اختياري)</label><input id="finv" type="text" maxlength="60" value="${E(e&&e.inv||"")}">
  <label>مرتبط بسيارة (اختياري — يدخل في تكلفة السيارة)</label><select id="fcar"><option value="">—</option>${cars.map(c=>`<option value="${E(c.id)}" ${e&&e.car===c.id?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")}</select>`:""}
  <label>${ex?"البيان":"استلمتها من / ملاحظة"}</label><input id="fnote" type="text" maxlength="300" value="${E(e&&e.note||"")}">
- ${ex?`<label>صور الفاتورة (اختياري)</label>${img?`<small class="off">${X.owner?"توجد صور محفوظة ✅ (إن اخترت صوراً جديدة فستستبدلها كلها)":"توجد صور محفوظة ✅ (تغييرها أو حذفها للمالك فقط، ويمكنك إضافة صور أخرى)"}</small>`:""}<div id="fmp"></div>`:""}
+ ${ex?`<label>صور أو ملف الفاتورة PDF (اختياري)</label>${img||(e&&e.att)?`<small class="off">${X.owner?"توجد صور محفوظة ✅ (إن اخترت صوراً جديدة فستستبدلها كلها)":"توجد صور محفوظة ✅ (تغييرها أو حذفها للمالك فقط، ويمكنك إضافة صور أخرى)"}</small>`:""}<div id="fmp"></div>`:""}
  <div class="fl" style="margin-top:16px"><button class="bt p" data-cx="save" data-type="${type}" type="button">حفظ</button><button class="bt" data-cx="cancel" type="button">رجوع</button></div></div>`;
  g("fa").focus();
- PKL=ex&&g("fmp")?multiPick(g("fmp"),{w:1200,cap:200000,toast:X.toast,add:img&&!X.owner?"إضافة صور أخرى":"إضافة صور الفاتورة"}):null;
+ PKL=ex&&g("fmp")?multiPick(g("fmp"),{w:1200,cap:200000,toast:X.toast,add:img&&!X.owner?"إضافة صور أو PDF":"صور أو PDF للفاتورة"}):null;
 }
 async function save(type){
  if(imgBusy||(PKL&&PKL.busy())){X.toast("انتظر حتى تنتهي الصور");return}
- const IMS=PKL?PKL.imgs():[],keep=!!(edit&&edit.img),addOnly=keep&&!X.owner&&IMS.length>0,replace=IMS.length>0&&!addOnly;
+ const IMS=PKL?PKL.imgs():[],PDFS=PKL?PKL.files():[],NEW=IMS.length+PDFS.length,keep=!!(edit&&(edit.img||edit.att)),addOnly=keep&&!X.owner&&NEW>0,replace=NEW>0&&!addOnly;
  // replace = الصور الجديدة مكان القديمة (تسجيل جديد، أو المالك، أو مفيش صورة قبل كده) / addOnly = صور زيادة بعد الموجودة
  const amt=Math.round(N(toEn(g("fa").value))*100)/100;
  if(!(amt>0)||amt>10000000){X.toast("اكتب مبلغ صحيح");return}
@@ -70,14 +70,15 @@ async function save(type){
  const d={br:"WH",type,amt,cat:ex?g("fcat").value:"عهدة",dt:g("fdt").value||today(),st:"approved",ts:edit?edit.ts:Date.now()};
  const note=g("fnote").value.trim().slice(0,300);d.note=note;
  if(ex){d.inv=g("finv").value.trim().slice(0,60);d.car=car;d.carn=c?c.name+(c.plate?" "+c.plate:""):""}
- if(replace)d.img=IMS[0];else if(img)d.img=img;
+ if(replace){if(IMS[0])d.img=IMS[0]}else if(img)d.img=img;
+ if(PDFS.length||(!replace&&edit&&edit.att))d.att=1;
  try{
   const ref=edit?doc(X.db,"ledger",edit.id):doc(collection(X.db,"ledger"));
   await setDoc(ref,edit?{...d,...(edit.sid?{sid:edit.sid}:{})}:d);
   let bad=0;
-  if(replace){if(edit&&keep)await dropExtras(X.db,"ledger",ref.id);bad=await saveExtras(X.db,"ledger",ref.id,IMS.slice(1))}
-  else if(addOnly){const ex0=await loadExtras(X.db,"ledger",ref.id);const st=ex0.length?Math.max(...ex0.map(x=>x.k))+1:2;bad=await saveExtras(X.db,"ledger",ref.id,IMS,st)}
-  closeM();X.toast(bad?`تم الحفظ، لكن تعذّر رفع ${bad} من الصور`:"تم الحفظ",bad?"er":undefined)
+  if(replace){if(edit&&keep)await dropExtras(X.db,"ledger",ref.id);bad=await saveExtras(X.db,"ledger",ref.id,IMS.slice(1).concat(PDFS))}
+  else if(addOnly){const ex0=await loadExtras(X.db,"ledger",ref.id);const st=ex0.length?Math.max(...ex0.map(x=>x.k))+1:2;bad=await saveExtras(X.db,"ledger",ref.id,IMS.concat(PDFS),st)}
+  closeM();X.toast(bad?`تم الحفظ، لكن تعذّر رفع ${bad} من المرفقات`:"تم الحفظ",bad?"er":undefined)
  }catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message))}
 }
 function stmt(k,title,from,to,rows,opening){printStmt(stmtHtml({brn:WH,lbl:"الجهة",sg1:"أمين العهدة",title,opening,rows,from,to},X.logo))}
@@ -100,7 +101,7 @@ async function click(e){
   else if(a==="cancel")closeM();
   else if(a==="save")await save(t.dataset.type);
   else if(a==="del"){if(confirm("حذف الحركة نهائياً؟")){await deleteDoc(doc(X.db,"ledger",id));if(X.owner)dropExtras(X.db,"ledger",id)}}
-  else if(a==="img"){const en=LA.find(x=>x.id===id);if(en&&en.img){const ex=await loadExtras(X.db,"ledger",en.id);zoomGallery([{src:en.img,del:"ledger/"+en.id+"/img"},...ex.map(x=>({src:x.src,del:"doc:"+x.path}))],`${en.cat} — ${fmt(en.amt)}${en.inv?" · فاتورة "+en.inv:""}`,0)}}// كبيرة على الشاشة، والحذف للمالك فقط
+  else if(a==="img"){const en=LA.find(x=>x.id===id);if(en&&(en.img||en.att)){const ex=await loadExtras(X.db,"ledger",en.id);zoomGallery([...(en.img?[{src:en.img,del:"ledger/"+en.id+"/img"}]:[]),...ex.map(x=>({src:x.src,nm:x.nm,del:"doc:"+x.path}))],`${en.cat} — ${fmt(en.amt)}${en.inv?" · فاتورة "+en.inv:""}`,0)}}// كبيرة على الشاشة، والحذف للمالك فقط
   else if(a==="stmt"){const k=cur();stmt(k,"كشف حساب العهدة (الفترة الحالية)",k.open[0]?k.open[0].dt:today(),today(),k.open,k.opening)}
   else if(a==="close")await closePeriod();
   else if(a==="ps"){const s=SA.find(x=>x.id===id);if(s)stmt(null,"كشف حساب العهدة — "+s.no,s.from,s.to,LA.filter(e=>e.sid===id),N(s.opening))}

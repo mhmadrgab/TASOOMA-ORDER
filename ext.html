@@ -91,13 +91,15 @@ async function pickup(rid,btn){
 }
 // تصغير الصورة (نفس فكرة المنصة)
 function shrink(file,max,cap){return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=rej;fr.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{let w=im.width,h=im.height;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);let q=.8,d=c.toDataURL("image/jpeg",q);while(d.length>cap&&q>.3){q-=.1;d=c.toDataURL("image/jpeg",q)}d.length>cap?rej(new Error("big")):res(d)};im.src=fr.result};fr.readAsDataURL(file)})}
+// PDF: لازم يكون PDF فعلاً (أول بايتات %PDF- = JVBERi0) وحجمه لحد 2 ميجا
+function readPdf(f){return new Promise((ok,no)=>{if(!f||f.size>2097152)return no(new Error("big"));const r=new FileReader();r.onerror=no;r.onload=()=>{const t=String(r.result||""),i=t.indexOf(","),b=i>0?t.slice(i+1):"";/^JVBERi0/.test(b)?ok({pdf:"data:application/pdf;base64,"+b,nm:String(f.name||"ملف.pdf").replace(/[<>"'\\/:*?|]/g,"").slice(0,100)}):no(new Error("type"))};r.readAsDataURL(f)})}
 function podForm(rid){
- const s=T.stops.find(x=>x.rid===rid);if(!s)return;const ship=T.type==="ship";let img="",busy=false,drawn=false;const PICS=[];let wait=0;const MAX=10;
+ const s=T.stops.find(x=>x.rid===rid);if(!s)return;const ship=T.type==="ship";let img="",busy=false,drawn=false;const PICS=[],PDFS=[];let wait=0;const MAX=10,MAXP=3;
  g("md").innerHTML=`<div class="card"><h3 style="margin:0">${ship?"🚚 استلام الطلب":"تسليم"} — <bdi dir="ltr">${E(s.brn)}</bdi></h3><div class="mut"><bdi dir="ltr">${E(s.no)}</bdi> · ${N(s.pcs)} قطعة</div>
  ${ship?`<label>رقم البوليصة / الشحنة</label><input id="pw" maxlength="40" dir="ltr" autocomplete="off" placeholder="1234567890">`:""}
  <label>${ship?"اسمك (موظف شركة الشحن)":"اسم المستلم في الفرع"}</label><input id="pn" maxlength="60" autocomplete="off" value="${ship?E(T.n):""}">
  <label>التوقيع (بإصبعك)</label><canvas id="pc" width="320" height="130" style="width:100%;height:130px;background:#fff;border:1.5px dashed var(--line);border-radius:12px;touch-action:none"></canvas><button class="b" id="pcl" type="button" style="padding:8px;margin-top:6px">مسح التوقيع</button>
- <label>${ship?"صور إيصال الشحن (مطلوبة إن لم يوجد رقم بوليصة)":"صور التسليم (اختياري)"}</label><input id="pf" type="file" accept="image/*" multiple hidden><div class="xmp" id="pg"></div><small class="mut" id="ph">يمكنك إضافة أكثر من صورة (حتى 10)</small>
+ <label>${ship?"صور أو ملف إيصال الشحن (مطلوب إن لم يوجد رقم بوليصة)":"صور التسليم (اختياري)"}</label><input id="pfc" type="file" accept="image/*" capture="environment" hidden><input id="pf" type="file" accept="image/*,application/pdf,.pdf" multiple hidden><div class="xmp" id="pg"></div><small class="mut" id="ph">صوّر مباشرة أو اختر صوراً أو ملفات PDF</small>
  <div class="row"><button class="b" id="p0" type="button">رجوع</button><button class="b ok" id="p1" type="button">تأكيد ✅</button></div></div>`;
  g("md").className="mdl on";
  const cv=g("pc"),cx=cv.getContext("2d");cx.lineWidth=2.4;cx.lineCap="round";cx.strokeStyle="#111";let dn=false;
@@ -105,18 +107,19 @@ function podForm(rid){
  cv.onpointerdown=e=>{dn=true;drawn=true;const [x,y]=pt(e);cx.beginPath();cx.moveTo(x,y);cx.lineTo(x+.1,y+.1);cx.stroke();try{cv.setPointerCapture(e.pointerId)}catch(x){}};
  cv.onpointermove=e=>{if(!dn)return;const [x,y]=pt(e);cx.lineTo(x,y);cx.stroke()};cv.onpointerup=cv.onpointercancel=()=>{dn=false};
  g("pcl").onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);drawn=false};
- const pg=()=>{g("pg").innerHTML=PICS.map((p,i)=>`<div class="xt"><img src="${p}" alt=""><b>${i+1}</b><button type="button" data-xr="${i}" aria-label="حذف">×</button></div>`).join("")+(PICS.length+wait<MAX?`<label class="xa" for="pf">${wait?"⏳ "+wait:"📷<br>"+(PICS.length?"صورة أخرى":"إضافة صور")}</label>`:"");
-  g("ph").textContent=PICS.length?`${PICS.length} من ${MAX} صور`:"يمكنك إضافة أكثر من صورة (حتى 10)";
-  g("pg").querySelectorAll("[data-xr]").forEach(b=>b.onclick=()=>{PICS.splice(+b.dataset.xr,1);pg()})};
+ const pg=()=>{g("pg").innerHTML=PICS.map((p,i)=>`<div class="xt"><img src="${p}" alt=""><b>${i+1}</b><button type="button" data-xr="${i}" aria-label="حذف">×</button></div>`).join("")+PDFS.map((p,i)=>`<div class="xt" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px;text-align:center;font-size:11px"><span style="font-size:26px">📄</span><span style="word-break:break-all;max-height:3.6em;overflow:hidden">${E(p.nm)}</span><button type="button" data-xp="${i}" aria-label="حذف">×</button></div>`).join("")+(PICS.length+PDFS.length+wait<MAX?(wait?`<div class="xa">⏳ ${wait}</div>`:`<label class="xa" for="pfc" style="border-style:solid;font-weight:700">📷<br>تصوير</label><label class="xa" for="pf">📎<br>صور أو PDF</label>`):"");
+  g("ph").textContent=PICS.length+PDFS.length?`${PICS.length+PDFS.length} من ${MAX}`:"صوّر مباشرة أو اختر صوراً أو ملفات PDF";
+  g("pg").querySelectorAll("[data-xr]").forEach(b=>b.onclick=()=>{PICS.splice(+b.dataset.xr,1);pg()});g("pg").querySelectorAll("[data-xp]").forEach(b=>b.onclick=()=>{PDFS.splice(+b.dataset.xp,1);pg()})};
  pg();
- g("pf").onchange=async()=>{const fs=[...g("pf").files].slice(0,MAX-PICS.length-wait);g("pf").value="";if(!fs.length)return;busy=true;wait+=fs.length;pg();
-  for(const f of fs){try{PICS.push(await shrink(f,800,120000))}catch(e){toast("إحدى الصور غير صالحة",1)}wait--;pg()}busy=wait>0};
+ const onPick=async inp=>{const fs=[...inp.files].slice(0,MAX-PICS.length-PDFS.length-wait);inp.value="";if(!fs.length)return;busy=true;wait+=fs.length;pg();
+   for(const f of fs){try{if(f.type==="application/pdf"||/\.pdf$/i.test(f.name||"")){if(PDFS.length>=MAXP)throw new Error("many");PDFS.push(await readPdf(f))}else PICS.push(await shrink(f,800,120000))}catch(e){toast(e&&e.message==="big"?"ملف PDF أكبر من 2 ميجا":e&&e.message==="many"?"الحد الأقصى 3 ملفات PDF":"أحد الملفات غير صالح",1)}wait--;pg()}busy=wait>0};
+ g("pf").onchange=()=>onPick(g("pf"));g("pfc").onchange=()=>onPick(g("pfc"));
  g("p0").onclick=()=>{g("md").className="mdl";g("md").innerHTML=""};
  g("p1").onclick=async()=>{
   img=PICS[0]||"";const name=g("pn").value.trim(),wb=ship?toEn(g("pw").value).trim():"";
-  if(!name)return toast("اكتب الاسم",1);if(ship&&!wb&&!img)return toast("اكتب رقم البوليصة أو صوّر الإيصال",1);if(busy)return toast("انتظر حتى تجهز الصورة",1);
+  if(!name)return toast("اكتب الاسم",1);if(ship&&!wb&&!img&&!PDFS.length)return toast("اكتب رقم البوليصة أو صوّر الإيصال",1);if(busy)return toast("انتظر حتى تجهز الصورة",1);
   g("p1").disabled=true;g("p1").textContent="جارٍ الحفظ…";
-  const body={op:"arr",rid,name,...(wb?{wb}:{}),...(img?{img}:{}),...(PICS.length>1?{more:PICS.slice(1)}:{}),...(LOC||{})};
+  const body={op:"arr",rid,name,...(wb?{wb}:{}),...(img?{img}:{}),...(PICS.length>1?{more:PICS.slice(1)}:{}),...(PDFS.length?{files:PDFS}:{}),...(LOC||{})};
   if(drawn){const sg=cv.toDataURL("image/png");if(sg.length<=40000)body.sig=sg}
   try{const r=await api(body);g("md").className="mdl";g("md").innerHTML="";T=await api(null);draw();toast(r.left?"تم التسجيل ✅":"تم ✅ سلّمت كل التوصيلات. اضغط 🏁 إنهاء الرحلة")}
   catch(e){g("p1").disabled=false;g("p1").textContent="تأكيد ✅";toast(ERR[e.code]||"تعذر الحفظ، تأكد من الإنترنت وحاول مجدداً",1)}

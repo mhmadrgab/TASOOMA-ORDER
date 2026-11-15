@@ -154,7 +154,7 @@ function form(){
  <label>الشيء المطلوب صيانته *</label><input id="mt-it" maxlength="100" placeholder="مثلاً: مكيف الصالة، باب المخزن، لمبة الواجهة">
  <label>وصف المشكلة</label><textarea id="mt-ds" maxlength="1000" placeholder="اكتب ما الذي يحدث بالضبط"></textarea>
  <label>الأولوية</label><div class="pr" id="mt-pr">${Object.entries(PRI).map(([k,[l,c]])=>`<button type="button" data-p="${k}" class="${k===pri?"on":""}" ${k===pri?`style="background:${c}"`:""}>${l}</button>`).join("")}</div>
- <label>صور المشكلة (اختياري)</label><div id="mt-mp"></div>
+ <label>صور المشكلة أو ملف PDF (اختياري)</label><div id="mt-mp"></div>
  <div class="act"><button class="p" data-mt="save" type="button">إرسال الطلب</button><button data-mt="${wh?"close":"bopen"}" type="button">رجوع</button></div>`,"form");
  PK=multiPick(g("mt-mp"),{w:1400,cap:230000,toast:X.toast});
  g("mt-cats").onclick=e=>{const b=e.target.closest("[data-c]");if(!b)return;cat=b.dataset.c;g("mt-cats").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))};
@@ -164,17 +164,17 @@ function form(){
 }
 async function save(){
  if(busy)return;if(PK&&PK.busy()){X.toast("انتظر حتى تنتهي الصور");return}
- const {cat,pri}=form.get();if(!cat){X.toast("اختر نوع العطل");return}const item=g("mt-it").value.trim().slice(0,100),desc=g("mt-ds").value.trim().slice(0,1000),IMS=PK?PK.imgs():[];
+ const {cat,pri}=form.get();if(!cat){X.toast("اختر نوع العطل");return}const item=g("mt-it").value.trim().slice(0,100),desc=g("mt-ds").value.trim().slice(0,1000),IMS=PK?PK.imgs():[],PDFS=PK?PK.files():[],EXTRA=IMS.slice(1).concat(PDFS);
  if(!item){X.toast("اكتب الشيء المطلوب صيانته");g("mt-it").focus();return}
  const wh=isWh(),brn=wh?String(g("mt-fb").value||""):String(X.brn||X.code),br=brn.split("-")[0];
  if(!/^\d{3}$/.test(br)){X.toast("اختر الفرع");return}
  const ts=Date.now(),dd=new Date(ts),p=n=>String(n).padStart(2,"0");
  const ref=doc(collection(X.db,"mnt"));
  const d={br,brn:brn.slice(0,40),no:`M-${br}-${p(dd.getMonth()+1)}${p(dd.getDate())}-${p(dd.getHours())}${p(dd.getMinutes())}`,ts,dt:dd.toLocaleDateString("en-CA"),cat,item,pri,st:wh?"ok":"new",by:{e:X.me.e,n:String(X.me.n||X.me.e).slice(0,60)},src:wh?"eng":"br"};
- if(desc)d.desc=desc;if(IMS.length)d.img=1;
+ if(desc)d.desc=desc;if(IMS.length||PDFS.length)d.img=1;
  const btn=document.querySelector('[data-mt="save"]');busy=true;if(btn){btn.disabled=true;btn.textContent="⏳ جاري الإرسال..."}
  try{const b=writeBatch(X.db);b.set(ref,d);if(IMS[0])b.set(doc(X.db,"mntimg",ref.id),{img:IMS[0]});await withTimeout(b.commit(),20000);
-  let bad=0;if(IMS.length>1){if(btn)btn.textContent=`⏳ رفع الصور (${IMS.length})...`;bad=await saveExtras(X.db,"mntimg",ref.id,IMS.slice(1))}
+  let bad=0;if(EXTRA.length){if(btn)btn.textContent=`⏳ رفع المرفقات (${IMS.length+PDFS.length})...`;bad=await saveExtras(X.db,"mntimg",ref.id,EXTRA)}
   if(X.ping)X.ping([ref.id]);busy=false;
   X.toast(bad?`أُرسل الطلب، لكن تعذّر رفع ${bad} من الصور`:wh?"✅ فُتح طلب الصيانة للفرع":"✅ أُرسل طلب الصيانة للمهندس",bad?"er":undefined);
   if(wh)closeM();else openBranch();
@@ -208,16 +208,16 @@ function finForm(id){const r=A.get(id);if(!r)return;
  openM(`<h3>✅ تم الإصلاح</h3><p style="margin:0;color:var(--mut)"><bdi dir="ltr">${E(r.brn)}</bdi> · ${CI(r.cat)} ${E(r.item)}</p>
  <label>ما الذي تم؟</label><textarea id="mt-fn" maxlength="500" placeholder="مثلاً: تم تغيير الكمبروسر وتنظيف الفلاتر"></textarea>
  <label>التكلفة بالريال (اختياري)</label><input id="mt-fc" inputmode="decimal" placeholder="0">
- <label>صور بعد الإصلاح (اختياري)</label><div id="mt-fp"></div>
+ <label>صور بعد الإصلاح أو فاتورة PDF (اختياري)</label><div id="mt-fp"></div>
  <div class="act"><button class="p" data-mt="finsave" data-id="${E(id)}" type="button">تم، أبلغ الفرع</button><button data-mt="close" type="button">رجوع</button></div>`,"fin");
  PK=multiPick(g("mt-fp"),{w:1400,cap:230000,toast:X.toast})}
 async function finSave(id){const r=A.get(id);if(!r)return;if(PK&&PK.busy()){X.toast("انتظر حتى تنتهي الصور");return}
- const note=g("mt-fn").value.trim().slice(0,500),cost=Math.round(N(toEn(g("mt-fc").value))*100)/100,IMS=PK?PK.imgs():[];
+ const note=g("mt-fn").value.trim().slice(0,500),cost=Math.round(N(toEn(g("mt-fc").value))*100)/100,IMS=PK?PK.imgs():[],PDFS=PK?PK.files():[];
  const fin={at:Date.now(),...who()};if(note)fin.note=note;if(cost>0)fin.cost=cost;
  const btn=document.querySelector('[data-mt="finsave"]');if(btn){btn.disabled=true;btn.textContent="⏳ جاري الحفظ..."}
  // صور بعد الإصلاح: بعد آخر صورة موجودة (أو الأولى لو مفيش)
- if(IMS.length){try{let L=IMS;if(!r.img){await setDoc(doc(X.db,"mntimg",id),{img:IMS[0]});L=IMS.slice(1)}const ex=await loadExtras(X.db,"mntimg",id);const st=ex.length?Math.max(...ex.map(x=>x.k))+1:2;if(L.length)await saveExtras(X.db,"mntimg",id,L,st)}catch(e){X.toast("تعذّر رفع بعض الصور","er")}}
- const ok=await upd(id,{st:"done",fin,...(IMS.length&&!r.img?{img:1}:{})},"✅ سُجّل الإصلاح وأُبلغ الفرع ليؤكد");
+ if(IMS.length||PDFS.length){try{let L=IMS;if(!r.img&&IMS[0]){await setDoc(doc(X.db,"mntimg",id),{img:IMS[0]});L=IMS.slice(1)}L=L.concat(PDFS);const ex=await loadExtras(X.db,"mntimg",id);const st=ex.length?Math.max(...ex.map(x=>x.k))+1:2;if(L.length)await saveExtras(X.db,"mntimg",id,L,st)}catch(e){X.toast("تعذّر رفع بعض المرفقات","er")}}
+ const ok=await upd(id,{st:"done",fin,...((IMS.length||PDFS.length)&&!r.img?{img:1}:{})},"✅ سُجّل الإصلاح وأُبلغ الفرع ليؤكد");
  if(ok)closeM();else if(btn){btn.disabled=false;btn.textContent="تم، أبلغ الفرع"}
 }
 // الفرع: تأكيد أو "لم يُصلح"
@@ -230,7 +230,7 @@ async function conf(id,ok,note){
  if(await upd(id,{st:ok?"conf":"ok",conf:c},ok?"✔ شكراً، تم تأكيد الإصلاح":"↩️ أُرجع الطلب للمهندس"))openBranch()}
 async function showImgs(id){
  try{const [s,ex]=await Promise.all([getDoc(doc(X.db,"mntimg",id)),loadExtras(X.db,"mntimg",id)]);const L=[];const im=s.exists()?s.data().img:"";
-  if(im)L.push({src:im,del:`mntimg/${id}/img`});ex.forEach(x=>L.push({src:x.src,del:"doc:"+x.path}));
+  if(im)L.push({src:im,del:`mntimg/${id}/img`});ex.forEach(x=>L.push({src:x.src,nm:x.nm,del:"doc:"+x.path}));
   const r=A.get(id);if(!L.length){X.toast("لا توجد صور");return}zoomGallery(L,`${r?r.no:""} · ${r?r.item:""}`,0)}
  catch(e){X.toast("تعذر تحميل الصور")}
 }

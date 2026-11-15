@@ -454,7 +454,7 @@ function podForm(rid){
  <label>${sh?"اسم موظف شركة الشحن الذي استلم":"اسم المستلم في الفرع"}</label><input id="pn" maxlength="60" autocomplete="off" placeholder="مثلاً: أحمد محمد">
  <label>توقيع المستلم (بإصبعك)</label><canvas id="pc" width="320" height="130" style="width:100%;height:130px;background:#fff;border:1.5px dashed var(--line);border-radius:12px;touch-action:none"></canvas><button class="b" id="pcl" type="button" style="margin-top:6px;padding:8px">مسح التوقيع</button>
  ${sh?`<label>رقم البوليصة / الشحنة (من إيصال الشركة)</label><input id="pw" maxlength="40" autocomplete="off" dir="ltr" placeholder="مثلاً: 1234567890">`:""}
- <label>${sh?"صور إيصال الشحن (مطلوبة إن لم يوجد رقم بوليصة)":"صور البضاعة / التسليم (اختياري)"}</label><div id="pfmp"></div>
+ <label>${sh?"صور أو ملف إيصال الشحن (مطلوب إن لم يوجد رقم بوليصة)":"صور البضاعة / التسليم (اختياري)"}</label><div id="pfmp"></div>
  <div class="row"><button class="b" id="p0" type="button">رجوع</button><button class="b ok" id="p1" type="button">تأكيد التسليم ✅</button></div>`);
  const cv=g("pc"),cx=cv.getContext("2d");cx.lineWidth=2.4;cx.lineCap="round";cx.strokeStyle="#111";let dn=false;
  const pt=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
@@ -462,18 +462,18 @@ function podForm(rid){
  cv.onpointermove=e=>{if(!dn)return;const [x,y]=pt(e);cx.lineTo(x,y);cx.stroke()};
  cv.onpointerup=cv.onpointercancel=()=>{dn=false};
  g("pcl").onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);drawn=false};
- const PKD=multiPick(g("pfmp"),{w:800,cap:120000,toast,add:sh?"صوّر الإيصال":"إضافة صور"});
+ const PKD=multiPick(g("pfmp"),{w:800,cap:120000,toast,add:sh?"صورة أو PDF للإيصال":"صور أو PDF"});// زرار «📷 تصوير» بيفتح الكاميرا على طول
  g("p0").onclick=closeM;
  g("p1").onclick=async()=>{
-  const IMS=PKD.imgs();img=IMS[0]||"";busy=PKD.busy();
+  const IMS=PKD.imgs(),PDFS=PKD.files(),EXTRA=IMS.slice(1).concat(PDFS);img=IMS[0]||"";busy=PKD.busy();
   const od=N(toEn(g("po").value));
   if(!(od>0)){toast("اكتب قراءة العداد","er");return}
   if(od<lo){toast(`يجب أن تكون قراءة العداد ${lo} أو أكثر (آخر قراءة)`,"er");return}
   if(od-lo>MAXLEG){toast(`الرقم كبير جداً (${od-lo} كم من آخر قراءة). راجع العداد`,"er");return}
   const wb=sh&&g("pw")?g("pw").value.trim().slice(0,40):"";
-  if(sh&&!wb&&!img){toast("اكتب رقم البوليصة أو صوّر إيصال شركة الشحن","er");return}
+  if(sh&&!wb&&!img&&!PDFS.length){toast("اكتب رقم البوليصة أو صوّر إيصال شركة الشحن","er");return}
   const nm=g("pn").value.trim();if(!nm){toast("اكتب اسم المستلم","er");return}
-  if(busy){toast("انتظر حتى تنتهي الصور","er");return}
+  if(busy){toast("انتظر حتى تنتهي الصور والملفات","er");return}
   g("p1").disabled=true;g("p1").textContent="جاري الحفظ...";
   const ts=Date.now(),loc=await here();let pod={name:nm.slice(0,60),at:ts},pics=null;if(sh){pod.co=String(sh).slice(0,60);if(wb)pod.wb=wb}// تسليم لشركة الشحن: اسم الشركة ورقم البوليصة
   if(drawn){const sg=cv.toDataURL("image/png");if(sg.length<=40000)(pics=pics||{}).sig=sg}
@@ -483,10 +483,11 @@ function podForm(rid){
    // ولو الصور جوّاه كانت حصة النقل المجانية في Firebase هتخلص والمنصة تقف. على الطلب علامة بس (ph/sg).
    // لو القواعد اللي في Firebase لا يزال قديمة (مابتعرفش pods) بنرجع للطريقة القديمة علشان التسليم مايقفش.
    if(pics){
-    try{await withTimeout(setDoc(doc(db,"pods",rid),{...pics,at:ts,drv:me.id}),15000);if(pics.img)pod.ph=1;if(pics.sig)pod.sg=1;
-     if(IMS.length>1){g("p1").textContent=`جاري رفع الصور (${IMS.length})...`;const bad=await saveExtras(db,"pods",rid,IMS.slice(1));if(bad)toast(`تعذّر رفع ${bad} من الصور، والتسليم سيُسجَّل`,"er")}}
+    try{await withTimeout(setDoc(doc(db,"pods",rid),{...pics,at:ts,drv:me.id}),15000);if(pics.img)pod.ph=1;if(pics.sig)pod.sg=1}
     catch(e){if(e&&e.code==="permission-denied")pod={...pod,...pics};else throw e}
    }
+   // باقي الصور وملفات PDF (لو الإيصال PDF بس من غير صورة، العلامة ph بتتحط برضه علشان المستودع يلاقيه)
+   if(EXTRA.length){g("p1").textContent=`جاري رفع المرفقات (${IMS.length+PDFS.length})...`;const bad=await saveExtras(db,"pods",rid,EXTRA);if(bad<EXTRA.length)pod.ph=1;if(bad)toast(`تعذّر رفع ${bad} من المرفقات، والتسليم سيُسجَّل`,"er")}
    const st=(a.stops||[]).map(x=>{if(x.rid!==rid)return x;const o={...x,arr:ts,rcvr:nm.slice(0,60),odo:od};const ct2=ctV(g("pct")?g("pct").value:"");if(ct2)o.ct=ct2;if(loc){o.lat=loc.lat;o.lng=loc.lng}return o});
    const rem=st.filter(x=>!x.arr),et=etas(rem,ts,codeOf(s.brn));// الباقي محسوب من الفرع اللي سُلِّم حالياً
    const stt=st.map(x=>et[x.rid]?{...x,eta:et[x.rid]}:x);

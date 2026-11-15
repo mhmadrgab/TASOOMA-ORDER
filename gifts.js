@@ -9,7 +9,7 @@
 import {collection,doc,getDoc,getDocs,setDoc,deleteDoc,updateDoc,onSnapshot,query,where,writeBatch,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {E,N,fmt,today,shrink,printStmt,ensurePrintCss} from "./cust.js";
 import {initZoom,zoomOpen,zoomGallery} from "./zoom.js";
-import {multiPick,saveExtras,loadExtras,dropExtras} from "./att.js";
+import {multiPick,saveExtras,loadExtras,dropExtras,isPdfData} from "./att.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const WHY=["هدية لعميل","تعويض عميل","عينة","تسويق / مؤثر","مناسبة / حدث","أخرى"];
@@ -54,7 +54,7 @@ const CSS=`
 .gs-ah{display:flex;align-items:center;gap:8px;margin-bottom:8px}.gs-ah b{font-size:15px}.gs-ah small{color:var(--mut);font-size:12.5px}
 .gs-ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-bottom:10px}
 .gs-ag button{border:1px solid var(--line);background:var(--field,#f2e9dd);border-radius:12px;padding:0;overflow:hidden;cursor:zoom-in;font:inherit;color:var(--mut);text-align:center}
-.gs-ag img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.gs-ag span{display:block;font-size:11px;line-height:1.35;padding:4px 4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gs-ag img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.gs-ag .gs-pdf{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;aspect-ratio:1;font-size:30px;background:#fbf3f2}.gs-ag .gs-pdf small{font-size:11px;padding:0 6px;word-break:break-all;color:var(--ink)}.gs-ag span{display:block;font-size:11px;line-height:1.35;padding:4px 4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gf-set{margin-top:8px;background:#eef4fb;color:#1c4f86;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8}.gf-set small{color:#4a6a90}
 /* ورقة الهدية (زي ورقة تحميل النواقص) */
 .gfk:has(.gs){padding:0;overflow:hidden}.gs{margin:0;background:var(--card)}
@@ -507,13 +507,13 @@ function form(r){
  <div class="gf-2"><div><label>السبب *</label><select id="gfw">${WHY.map(w=>`<option ${r&&r.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div>
  <div><label>المسجِّل (تلقائي)</label><input id="gfby" dir="auto" maxlength="60" value="${E(r&&r.by?r.by.n:autoName)}" disabled title="يُكتب تلقائياً باسم الحساب الداخل"></div></div>
  <label>ملاحظة</label><textarea id="gfnote" rows="2" maxlength="300" placeholder="اختياري">${E(r&&r.note||"")}</textarea>
- ${r&&!isOwner()?`<div class="m" style="margin-top:12px;font-size:13px;color:var(--mut)">📎 صور السند تبقى كما هي. يمكنك التعديل حتى يعتمدها مدير التسويق.</div>`:`<label>${r?"صور سند جديدة (اختياري، تستبدل الحالية)":"صور السند (اختياري)"}</label><div id="gfmp"></div>`}
+ ${r&&!isOwner()?`<div class="m" style="margin-top:12px;font-size:13px;color:var(--mut)">📎 صور السند تبقى كما هي. يمكنك التعديل حتى يعتمدها مدير التسويق.</div>`:`<label>${r?"مرفقات سند جديدة (اختياري، تستبدل الحالية)":"مرفقات السند: صور أو PDF (اختياري)"}</label><div id="gfmp"></div>`}
  <div class="gf-act"><button class="bt p" data-gf="save" type="button">${r?"💾 حفظ التعديل":"✅ تسجيل"}</button><button class="bt" data-gf="${X.mode==="branch"&&!r?"bopen":"close"}" type="button">رجوع</button></div>`,"form");
- PK=g("gfmp")?multiPick(g("gfmp"),{w:1400,cap:230000,toast:X.toast,add:"إضافة صور السند"}):null;
+ PK=g("gfmp")?multiPick(g("gfmp"),{w:1400,cap:230000,toast:X.toast,add:"صور أو PDF للسند"}):null;
 }
 async function save(){
  if(PK&&PK.busy()){X.toast("انتظر حتى تنتهي الصور");return}
- const IMS=PK?PK.imgs():[];img=IMS[0]||"";
+ const IMS=PK?PK.imgs():[],PDFS=PK?PK.files():[],EXTRA=IMS.slice(1).concat(PDFS);img=IMS[0]||"";// (ملفات PDF بتتحفظ مع المرفقات الإضافية)
  const rows=[...document.querySelectorAll("#gfrows .gf-row")].map(el=>{const v=k=>el.querySelector(`[data-r="${k}"]`).value.trim();return {k:v("k").slice(0,40),c:v("c").slice(0,40),z:v("z").slice(0,20),q:Math.min(99999,Math.round(N(toEn(v("q")))))}}).filter(x=>x.k&&x.q>0).map(x=>{const o={k:x.k,q:x.q};if(x.c)o.c=x.c;if(x.z)o.z=x.z;return o});
  const to={n:g("gfn").value.trim().slice(0,60)},ph=toEn(g("gfp").value).replace(/[^\d+]/g,"").slice(0,20);if(ph)to.ph=ph;
  const why=g("gfw").value,note=g("gfnote").value.trim().slice(0,300),byN=g("gfby").value.trim().slice(0,60);
@@ -526,23 +526,23 @@ async function save(){
  try{
   const pcs=rows.reduce((s,x)=>s+x.q,0);
   if(edit){// المالك، أو اللي سجّلها وهي لسه بانتظار الاعتماد (من غير تغيير الصور)
-   const d={...edit,rows,pcs,to,why,note};delete d.id;if(!note)delete d.note;if(img)d.img=1;
+   const d={...edit,rows,pcs,to,why,note};delete d.id;if(!note)delete d.note;if(img||PDFS.length)d.img=1;
    if(!isOwner()){const id=edit.id;await withTimeout(setDoc(doc(X.db,"gifts",id),d),20000);const nr={...d,id};if(MINE.has(id))MINE.set(id,nr);if(L.has(id))L.set(id,nr);if(PEND.has(id))PEND.set(id,nr);
     X.toast("تم حفظ التعديل ✅");closeM();if(X.mode==="branch")openBranch();else{viewGift(id);if(X.redraw)X.redraw()}return}
    const b=writeBatch(X.db);b.set(doc(X.db,"gifts",edit.id),d);if(img)b.set(doc(X.db,"giftimg",edit.id),{img});
    await withTimeout(b.commit(),20000);
-   if(img){await dropExtras(X.db,"giftimg",edit.id);const bad=await saveExtras(X.db,"giftimg",edit.id,IMS.slice(1));if(bad)X.toast(`تعذّر حفظ ${bad} من الصور الإضافية`,"er")}
+   if(img||PDFS.length){await dropExtras(X.db,"giftimg",edit.id);const bad=await saveExtras(X.db,"giftimg",edit.id,EXTRA);if(bad)X.toast(`تعذّر حفظ ${bad} من المرفقات الإضافية`,"er")}
    X.toast("تم حفظ التعديل ✅");closeM();if(X.mode==="branch")openBranch();return;
   }
   const wh=X.mode!=="branch",ts=Date.now(),dd=new Date(ts),p=n=>String(n).padStart(2,"0"),br=wh?"WH":X.code;
   const ref=doc(collection(X.db,"gifts")),no=`G-${br}-${p(dd.getMonth()+1)}${p(dd.getDate())}-${p(dd.getHours())}${p(dd.getMinutes())}`;
   const d={br,brn:wh?"المستودع":String(X.brn||br).slice(0,40),no,ts,dt:today(),rows,pcs,to,why,by:{e:X.me.e,n:byN},st:"pend"};
-  if(note)d.note=note;if(img)d.img=1;
+  if(note)d.note=note;if(img||PDFS.length)d.img=1;
   const b=writeBatch(X.db);b.set(ref,d);if(img)b.set(doc(X.db,"giftimg",ref.id),{img});
   await withTimeout(b.commit(),20000);
-  if(IMS.length>1){if(btn)btn.textContent=`⏳ جاري رفع الصور (${IMS.length})...`;const bad=await saveExtras(X.db,"giftimg",ref.id,IMS.slice(1));if(bad)X.toast(`سُجّلت الهدية، لكن تعذّر رفع ${bad} من الصور. افتحها وأضفها لاحقاً أو أبلغ المستودع`,"er")}
+  if(EXTRA.length){if(btn)btn.textContent=`⏳ جاري رفع المرفقات (${IMS.length+PDFS.length})...`;const bad=await saveExtras(X.db,"giftimg",ref.id,EXTRA);if(bad)X.toast(`سُجّلت الهدية، لكن تعذّر رفع ${bad} من المرفقات. افتحها وأضفها لاحقاً أو أبلغ المستودع`,"er")}
   if(X.ping)X.ping([ref.id]);
-  X.toast(IMS.length>1?`سُجّلت ✅ مع ${IMS.length} صور، وبانتظار اعتماد مدير التسويق`:"سُجّلت ✅ وبانتظار اعتماد مدير التسويق");
+  X.toast(IMS.length+PDFS.length>1?`سُجّلت ✅ مع ${IMS.length+PDFS.length} مرفقات، وبانتظار اعتماد مدير التسويق`:"سُجّلت ✅ وبانتظار اعتماد مدير التسويق");
   // (15 نوفمبر 2026) المستودع: نفتح السند على طول، فيه زرار «تعديل» لحد ما تتعتمد (بدل ما يدوّر عليها في القايمة)
   if(X.mode==="branch")openBranch();else{MINE.set(ref.id,{...d,id:ref.id});closeM();viewGift(ref.id);if(X.redraw)X.redraw()}
  }catch(e){if(btn){btn.disabled=false;btn.textContent=edit?"💾 حفظ التعديل":"✅ تسجيل"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
@@ -600,23 +600,23 @@ const canAcc=()=>canSettle()&&!X.view;
 async function loadAcc(id,open){
  const here=()=>{const el=g("gfacc");return el&&el.dataset.id===id?el:null};if(!here())return;
  let L=[],bad=false;
- try{const s=await withTimeout(getDocs(collection(X.db,"giftimg",id,"a")),15000);L=s.docs.map(d=>({k:+d.id,...(d.data()||{})})).filter(x=>x.k>=1&&typeof x.img==="string"&&JPEG.test(x.img)).sort((a,b)=>a.k-b.k)}
+ try{const s=await withTimeout(getDocs(collection(X.db,"giftimg",id,"a")),15000);L=s.docs.map(d=>({k:+d.id,...(d.data()||{})})).filter(x=>x.k>=1&&((typeof x.img==="string"&&JPEG.test(x.img))||isPdfData(x.pdf))).sort((a,b)=>a.k-b.k)}
  catch(e){bad=true}
  const el=here();if(!el)return;ACCL=L;const can=canAcc();
  if(!can&&!L.length&&!bad){el.innerHTML="";ACC=null;return}
  el.innerHTML=`<div class="gs-ah"><b>📎 مرفقات المحاسب</b>${L.length?`<small>(${L.length}/10)</small>`:""}</div>${bad?'<div class="m">تعذّر تحميل المرفقات</div>':""}
- ${L.length?`<div class="gs-ag">${L.map((x,i)=>`<button type="button" data-gf="accimg" data-id="${E(id)}" data-i="${i}"><img src="${x.img}" alt=""><span data-notr><bdi>${E(x.n||"")}</bdi><br>${hm(x.at)}</span></button>`).join("")}</div>`:""}
+ ${L.length?`<div class="gs-ag">${L.map((x,i)=>`<button type="button" data-gf="accimg" data-id="${E(id)}" data-i="${i}">${x.pdf?`<span class="gs-pdf">📄<small data-notr>${E(x.nm||"PDF")}</small></span>`:`<img src="${x.img}" alt="">`}<span data-notr><bdi>${E(x.n||"")}</bdi><br>${hm(x.at)}</span></button>`).join("")}</div>`:""}
  ${can&&!bad&&L.length<10?(open?`<div id="gfaccp"></div><div class="gf-act" style="margin-top:8px"><button class="bt g" data-gf="accsave" data-id="${E(id)}" type="button">💾 حفظ الصور</button><button class="bt" data-gf="accx" data-id="${E(id)}" type="button">إلغاء</button></div>`
   :`<button class="bt s" data-gf="accadd" data-id="${E(id)}" type="button">📷 إرفاق صور</button>${L.length?"":'<div class="m" style="margin-top:6px">أرفق صوراً من جهازك لهذا السند (لا يغيّر أي شيء في الهدية).</div>'}`):""}`;
  ACC=open&&g("gfaccp")?multiPick(g("gfaccp"),{max:10-L.length,w:1400,cap:230000,toast:X.toast,add:"إضافة صور"}):null;
 }
 async function accSave(id){
  if(!ACC||!canAcc())return;if(ACC.busy()){X.toast("انتظر حتى تنتهي الصور");return}
- const IMS=ACC.imgs().filter(s=>JPEG.test(s));if(!IMS.length){X.toast("اختر صورة واحدة على الأقل");return}
+ const IMS=ACC.imgs().filter(s=>JPEG.test(s)).map(s=>({img:s})).concat(ACC.files().map(f=>({pdf:f.pdf,nm:f.nm})));if(!IMS.length){X.toast("اختر صورة أو ملفاً واحداً على الأقل");return}
  const btn=document.querySelector('[data-gf="accsave"]');if(btn){btn.disabled=true;btn.textContent="⏳ جاري الرفع..."}
  const start=ACCL.reduce((m,x)=>Math.max(m,x.k),0)+1,nm=String(X.me.n||X.me.e||"").slice(0,60);let ok=0,bad=0,denied=false;
  for(let k=0;k<IMS.length;k++){const n=start+k;if(n>10){bad+=IMS.length-k;break}
-  try{await withTimeout(setDoc(doc(X.db,"giftimg",id,"a",String(n)),{img:IMS[k],n:nm,at:Date.now()}),20000);ok++}
+  try{await withTimeout(setDoc(doc(X.db,"giftimg",id,"a",String(n)),{...IMS[k],n:nm,at:Date.now()}),20000);ok++}
   catch(e){bad++;if((await failReason(e))==="denied")denied=true}}
  if(!bad)X.toast("📎 تم إرفاق الصور ✅");
  else X.toast(denied&&!ok?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":"تعذّر رفع بعض الصور، حاول مرة أخرى","er");
@@ -672,7 +672,7 @@ async function settle(id,el){
 async function showImg(id){
  const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);
  try{const [s,ex]=await Promise.all([withTimeout(getDoc(doc(X.db,"giftimg",id)),15000),loadExtras(X.db,"giftimg",id)]);const im=s.exists()?s.data().img:"";
-  const list=[];if(im)list.push({src:im,del:`giftimg/${id}/img`});ex.forEach(x=>list.push({src:x.src,del:"doc:"+x.path}));
+  const list=[];if(im)list.push({src:im,del:`giftimg/${id}/img`});ex.forEach(x=>list.push({src:x.src,nm:x.nm,del:"doc:"+x.path}));
   if(!list.length){X.toast("لا توجد صورة سند (ربما حُذفت)");return}
   zoomGallery(list,`سند ${r?r.no:""} · ${r?(r.brn||brName(r.br)):""}`,0);
  }catch(e){X.toast(e&&e.code==="permission-denied"?"غير مسموح لك برؤية هذا السند":"تعذر تحميل السند، تأكد من الإنترنت")}
@@ -720,7 +720,7 @@ async function click(e){
  if(a==="img")return void showImg(id);
  if(a==="accadd"||a==="accx")return void loadAcc(id,a==="accadd");
  if(a==="accsave")return void accSave(id);
- if(a==="accimg"){const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);zoomGallery(ACCL.map(x=>({src:x.img,del:`doc:giftimg/${id}/a/${x.k}`})),`مرفقات المحاسب · ${r?r.no:""}`,+t.dataset.i||0);
+ if(a==="accimg"){const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);zoomGallery(ACCL.map(x=>({src:x.pdf||x.img,nm:x.nm,del:`doc:giftimg/${id}/a/${x.k}`})),`مرفقات المحاسب · ${r?r.no:""}`,+t.dataset.i||0);
   // لما الصورة تتقفل (أو المالك يمسح واحدة) نحدّث المرفقات في السند
   const zb=g("zbx");if(zb)new MutationObserver((_,o)=>{if(!zb.className){o.disconnect();loadAcc(id,false)}}).observe(zb,{attributes:true,attributeFilter:["class"]});return}
  if(a==="ok"||a==="no")return void decide(id,a==="ok");

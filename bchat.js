@@ -10,7 +10,8 @@
 //   whdir/{email}       = {n, k, r}: أسماء اللي في المستودع وكنيتهم (المالك بس بيكتبها، staff.js). ava/{email} = صورهم
 //   كل شخص بيظهر باسمه وكنيته وصورته بس (من غير "مدير" أو "مالك النظام")
 import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,orderBy,limit,writeBatch,increment,deleteField,withTimeout,failReason,FAIL_MSG} from "./fb.js";
-import {initPres,stopPres,presOf,presTxt} from "./pres.js";// 🟢 متصل الآن / آخر ظهور
+import {initPres,stopPres,presOf,presTxt} from "./pres.js";
+import {readPdf,openPdf} from "./att.js";// 🟢 متصل الآن / آخر ظهور
 const LEN=1000,MAXS=60,MAXB=470000,PAGE=40,SEP="__";// نفس الحدود اللي في firestore.rules
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const N=x=>Number.isFinite(+x)?+x:0;
@@ -76,7 +77,8 @@ html[dir="ltr"] .bcg.ot:not(.cont)::before{left:auto;right:-8px;clip-path:polygo
 .bcg.ot>i{color:#8a5a83}
 /* 📷 الصور + 👥 الجروبات */
 .bcf button.pic{background:transparent;color:var(--mut);box-shadow:none;width:42px}.bcf button.pic svg{width:24px;height:24px}
-.bcg.pic{padding:4px 4px 5px}.bcimg{display:block;border:0;padding:0;margin:0 0 4px;border-radius:9px;overflow:hidden;cursor:zoom-in;background:rgba(0,0,0,.08);width:min(280px,62vw);max-height:340px}.bcimg img{width:100%;height:100%;object-fit:cover;display:block}
+.bcg.pic{padding:4px 4px 5px}.bcfile{display:flex;align-items:center;gap:10px;border:0;background:rgba(0,0,0,.06);border-radius:12px;padding:10px 12px;cursor:pointer;font:inherit;color:inherit;text-align:start;max-width:260px}.bcfile i{font-style:normal;font-size:26px}.bcfile b{display:block;font-size:13.5px;word-break:break-all}.bcfile small{display:block;font-size:11.5px;opacity:.7}
+.bcimg{display:block;border:0;padding:0;margin:0 0 4px;border-radius:9px;overflow:hidden;cursor:zoom-in;background:rgba(0,0,0,.08);width:min(280px,62vw);max-height:340px}.bcimg img{width:100%;height:100%;object-fit:cover;display:block}
 .bcg.pic .bcx{padding:0 6px}.bcg.pic>i{padding:2px 6px 0}.bcg.pic small{padding:0 6px}
 #bciv{display:none;position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.92);flex-direction:column;align-items:center;justify-content:center;padding:12px}#bciv.on{display:flex}
 #bciv img{max-width:100%;max-height:78vh;object-fit:contain;border-radius:8px}#bciv .iv-t{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:12px 16px;color:#fff}#bciv .iv-t small{opacity:.7}#bciv .iv-t button{margin-inline-start:auto;font:inherit;background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:50%;width:40px;height:40px;cursor:pointer}
@@ -273,7 +275,7 @@ function convHtml(){
   <button class="bcdown" id="bcdown" data-bcdown type="button" aria-label="آخر رسالة" title="آخر رسالة" hidden>${IC.down}</button>
   <div class="bcrq" id="bcrq" hidden></div>
   <div class="bcq">${(QUICK[T()]||[]).map(q=>`<button data-bcq="${E(q)}" type="button">${E(q)}</button>`).join("")}</div>
-  <div class="bcf" id="bcfoot"><button class="pic" id="bcpic" type="button" title="إرسال صورة" aria-label="إرسال صورة">${IMG_IC}</button><input type="file" id="bcfile" accept="image/*" multiple hidden><textarea id="bcin" rows="1" maxlength="${LEN}" placeholder="اكتب رسالة..."></textarea><button class="mic" id="bcmic" type="button" title="رسالة صوتية" aria-label="رسالة صوتية">${IC.mic}</button><button id="bcsend" type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>
+  <div class="bcf" id="bcfoot"><button class="pic" id="bcpic" type="button" title="إرسال صورة أو ملف PDF" aria-label="إرسال صورة أو ملف PDF">${IMG_IC}</button><input type="file" id="bcfile" accept="image/*,application/pdf,.pdf" multiple hidden><textarea id="bcin" rows="1" maxlength="${LEN}" placeholder="اكتب رسالة..."></textarea><button class="mic" id="bcmic" type="button" title="رسالة صوتية" aria-label="رسالة صوتية">${IC.mic}</button><button id="bcsend" type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>
   <div class="bcr2" id="bcrec" hidden><button class="x" data-bccancel type="button" title="إلغاء" aria-label="إلغاء">${IC.trash}</button><div class="pill"><span class="dot"></span><span class="tm" id="bcrt">0:00</span></div><button class="ok" data-bcstop type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>`;
 }
 const emptyTxt=()=>`<div class="bcnone"><b>💬</b>اختر من القائمة لتبدأ محادثة<br><small>🔒 محادثاتك خاصة بك، لا يراها أحد غيرك</small></div>`;
@@ -292,6 +294,7 @@ function wire(el){
     if(t.closest("#bcsend"))return void sendText();
     if(t.closest("#bcpic")){const f=g("bcfile");if(f){f.value="";f.click()}return}
     if(t.closest("[data-img]"))return void viewImg(t.closest("[data-img]").dataset.img);
+    if(t.closest("[data-file]"))return void viewFile(t.closest("[data-file]").dataset.file);
     if(t.closest("[data-bcng]"))return void groupForm(null);
     if(isG(CUR)&&t.closest(".bch")&&!t.closest("button"))return void groupInfo();
     if(t.closest("#bcmic"))return void startRec();
@@ -310,7 +313,7 @@ function wire(el){
     // الحاسوب: Enter يبعت و Shift+Enter سطر جديد. الجوال: Enter سطر جديد عادي
     if(e.target.id==="bcin"&&e.key==="Enter"&&!e.shiftKey&&!isMob()){e.preventDefault();sendText()}
   });
-  el.addEventListener("change",e=>{if(e.target.id==="bcfile"&&e.target.files&&e.target.files.length)sendImages([...e.target.files])});
+  el.addEventListener("change",e=>{if(e.target.id==="bcfile"&&e.target.files&&e.target.files.length)sendFiles([...e.target.files])});
   el.addEventListener("input",e=>{if(e.target.id==="bcin"){grow();if(CUR)DRAFT[CUR]=e.target.value}if(e.target.id==="bcqs"){Q=e.target.value.trim().toLowerCase();paintList()}});
 }
 // خانة الكتابة بتكبر مع النص، والزرار بيتبدّل: 🎤 لما فاضية، وسهم الإرسال لما فيها كلام
@@ -384,6 +387,7 @@ function paintMsgs(){
     // gone: السيرفر مسح الصوت بعد 30 يوم (علشان مساحة Firebase المجانية)
     const body=m.v&&m.gone?`<div class="bcgone">🎤 رسالة صوتية (${mmss(m.d)}) · حُذفت تلقائياً بعد 30 يوماً</div>`:m.v?`<div class="bcvo"><button data-play="${E(m.id)}" type="button" aria-label="تشغيل">${PLAY.id===m.id?"⏸":"▶"}</button><span class="bar"><b id="bcpb-${E(m.id)}"></b></span><span class="du">${mmss(m.d)}</span></div>`
       // صورة: المصغّرة جوه الرسالة، والأصلية بجودة عالية بتتحمّل لما يدوس عليها
+      :m.f?`<button class="bcfile" data-file="${E(m.id)}" type="button" aria-label="فتح الملف"><i>📄</i><span><b data-notr>${E(m.fn||"ملف.pdf")}</b><small>PDF · ${kbs(m.fs)}</small></span></button>`
       :m.img?`<button class="bcimg" data-img="${E(m.id)}" type="button" aria-label="فتح الصورة" style="aspect-ratio:${N(m.w)||4}/${N(m.h)||3}">${/^data:image\/jpeg;base64,/.test(m.th||"")?`<img src="${m.th}" alt="">`:"📷"}</button>${m.t?`<span class="bcx" data-notr>${E(m.t)}</span>`:""}`
       :QALL.has(m.t)?`<span class="bcx">${E(m.t)}</span>`:`<span class="bcx" data-notr>${E(m.t||"")}</span>`;
     const rq=m.rq&&m.rq.no?`<span class="rqt">📦 بخصوص طلب <bdi dir="ltr">${E(m.rq.no)}</bdi></span>`:"";
@@ -418,9 +422,9 @@ function write(cid,m,a,full){
   const ts=Date.now(),n=String(X.name()||"").trim().slice(0,60),b=writeBatch(X.db),ref=doc(sub(cid,"msgs"));
   const old=isOld(cid),by=old?oldBy():X.me,rq=CTX[cid],msg={by,n,ts,...m,...(rq?{rq:{id:String(rq.id).slice(0,40),no:String(rq.no).slice(0,40)}}:{})};
   if(a)b.set(subDoc(cid,"aud",ref.id),{a});
-  if(full)b.set(subDoc(cid,"img",ref.id),{i:full});// الصورة بجودتها الكاملة لوحدها (بتتحمّل بس لما حد يفتحها)
+  if(full)b.set(subDoc(cid,m.f?"fil":"img",ref.id),m.f?{p:full}:{i:full});// الصورة بجودتها الكاملة لوحدها (بتتحمّل بس لما حد يفتحها)
   b.set(ref,msg);
-  const last={by,n,t:m.v?"🎤 رسالة صوتية":m.img?(m.t?"📷 "+String(m.t).slice(0,190):"📷 صورة"):String(m.t).slice(0,200),ts,v:!!m.v};
+  const last={by,n,t:m.v?"🎤 رسالة صوتية":m.f?("📄 "+String(m.fn||"ملف").slice(0,180)):m.img?(m.t?"📷 "+String(m.t).slice(0,190):"📷 صورة"):String(m.t).slice(0,200),ts,v:!!m.v};
   if(isG(cid)){
     // الجروب: آخر رسالة + العدّاد يزيد لكل الأعضاء غيري + أنا قريت لحد دلوقتي
     const G=SUMS[cid]||{},up={last,["r."+gk(X.me)]:ts,["u."+gk(X.me)]:0,["nm."+gk(X.me)]:String(X.myLabel?X.myLabel():n||pname(X.me)).slice(0,60)};
@@ -465,6 +469,30 @@ const IMG_MAX=950000;
 function loadImg(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(u);ok(im)};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error("img"))};im.src=u})}
 function toJpeg(im,side,q){const s=Math.min(1,side/Math.max(im.naturalWidth,im.naturalHeight)),w=Math.max(1,Math.round(im.naturalWidth*s)),h=Math.max(1,Math.round(im.naturalHeight*s));
   const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,w,h);x.imageSmoothingQuality="high";x.drawImage(im,0,0,w,h);return {d:c.toDataURL("image/jpeg",q),w,h}}
+// صور وملفات PDF مع بعض: الـ PDF بيتبعت كرسالة ملف، والصور زي ما هي
+const kbs=n=>{n=N(n);return n>=1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB"};
+const isPdfF=f=>f&&(f.type==="application/pdf"||/\.pdf$/i.test(f.name||""));
+async function sendFiles(files){
+  const P=files.filter(isPdfF).slice(0,5),I=files.filter(f=>!isPdfF(f));
+  if(I.length)await sendImages(I);
+  const cid=CUR;
+  for(const f of P){
+    for(let w=0;busy&&w<300;w++)await new Promise(r=>setTimeout(r,200));
+    if(CUR!==cid)return;
+    let x;try{x=await readPdf(f)}catch(e){X.toast(e&&e.message==="big"?"ملف PDF أكبر من 2 ميجا، صغّره ثم أعد المحاولة":"هذا الملف ليس PDF صالحاً",true);continue}
+    X.toast("⏳ جاري إرسال الملف...");
+    await deliver(cid,{f:1,fn:x.nm,fs:x.sz},null,()=>X.toast("📄 أُرسل الملف"),x.pdf);
+  }
+}
+const FILC=new Map();
+async function viewFile(id){
+  const m=MSGS.find(x=>x.id===id),cid=CUR;if(!m)return;
+  let p=FILC.get(cid+"/"+id);
+  if(!p){X.toast("⏳ جاري تحميل الملف...");try{const s=await withTimeout(getDoc(subDoc(cid,"fil",id)),30000);p=s.exists()?String(s.data().p||""):""}catch(e){p=""}
+    if(/^data:application\/pdf;base64,/.test(p)){FILC.set(cid+"/"+id,p);if(FILC.size>5)FILC.delete(FILC.keys().next().value)}}
+  if(!/^data:application\/pdf;base64,/.test(p)){X.toast("تعذر تحميل الملف",true);return}
+  openPdf(p,m.fn);
+}
 async function sendImages(files){
   files=files.filter(f=>/^image\//.test(f.type||""));if(!files.length){X.toast("اختر صورة فقط");return}
   if(files.length>10){X.toast("الحد الأقصى 10 صور في المرة، سيُرسل أول 10");files=files.slice(0,10)}
