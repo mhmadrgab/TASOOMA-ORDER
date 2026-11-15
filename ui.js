@@ -99,6 +99,10 @@
   return true;
  };
  window.uiReady=()=>{if(ready)return;ready=true;window.__uiOk=1;hide()};
+ // (15 نوفمبر 2026) النت بطيء والدخول لسه بيتأكد: سطر صغير تحت الديب بدل ما الشاشة تبان واقفة (من غير ريفرش ولا شاشة دخول)
+ setTimeout(()=>{if(ready||!boot||!boot.isConnected||document.getElementById("tz-slow"))return;const p=document.createElement("div");p.id="tz-slow";p.setAttribute("role","status");
+  p.style.cssText="position:absolute;inset:auto 0 calc(12% + env(safe-area-inset-bottom,0px)) 0;text-align:center;color:rgba(255,255,255,.78);font:500 14px/1.6 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;padding:0 20px;opacity:0;transition:opacity .4s";
+  p.textContent=navigator.onLine?"جاري الاتصال… الإنترنت بطيء قليلاً":"لا يوجد اتصال بالإنترنت… سنحاول تلقائياً";boot.appendChild(p);setTimeout(()=>{p.style.opacity="1"},30)},4500);
  if(!H.classList.contains("aw"))window.uiReady();// صفحات من غير تسجيل دخول
  // الموبايل: الشريط اللي فوق بيختفي وإنت نازل ويرجع أول ما تطلع لفوق (مساحة أكبر للمحتوى)
  let lastY=scrollY,tick=false;
@@ -140,13 +144,16 @@
   if(direct){if(via)put("tz_via",null);return}
   if(via)return;
   const px=await ping(PX,8000);
-  if(px&&!ss("tz_via_r")){put("tz_via","p");ss("tz_via_r","1");location.reload()}
+  // الريفرش بس لو الصفحة لسه مافتحتش (شاشة البداية لسه موجودة)؛ لو فتحت، الطريق الاحتياطي بيشتغل من الفتحة الجاية من غير ما نقاطع حد
+  if(px&&!ss("tz_via_r")){put("tz_via","p");ss("tz_via_r","1");if(!window.__uiOk)location.reload()}
  },via?10000:800);
  setTimeout(async()=>{
   if(window.__uiOk||document.getElementById("tz-stuck"))return;
   // 🛟 (15 نوفمبر 2026) شبكة أمان: المنصة بتفتح من النسخة المحفوظة على الجهاز (sw.js). لو النسخة دي باظت لأي سبب والصفحة ماعرفتش تفتح،
   // بنمسحها ونحمّل من جديد لوحدنا مرة واحدة (والنت شغّال). لو لسه واقفة بعدها، بتظهر الرسالة اللي تحت عادي.
-  if(navigator.onLine&&navigator.serviceWorker&&navigator.serviceWorker.controller&&!ss("tz_autofix")&&(ss("tz_autofix","1"),ss("tz_autofix")==="1")){// (لو التخزين المؤقت مقفول مانعملش ده، علشان مايحصلش ريفرش ورا ريفرش)
+  // ⚠️ (15 نوفمبر 2026، فيديو محمد: "الصفحة بيضا وبتعمل ريفرش لوحدها") ده بس لو كود الصفحة نفسه ما اشتغلش (__tzMod)،
+  // مش لو الدخول/النت بطيء: المسح والريفرش وقتها كانوا بيعملوا شاشة بيضا طويلة ويبدأ الفتح من الأول.
+  if(!window.__tzMod&&navigator.onLine&&navigator.serviceWorker&&navigator.serviceWorker.controller&&!ss("tz_autofix")&&(ss("tz_autofix","1"),ss("tz_autofix")==="1")){// (لو التخزين المؤقت مقفول مانعملش ده، علشان مايحصلش ريفرش ورا ريفرش)
    try{const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()))}catch(e){}
    try{const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}catch(e){}
    location.replace(location.pathname+"?r="+Date.now()+location.hash);return}
@@ -175,7 +182,9 @@
  const upd=()=>navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});
  setTimeout(upd,1500);document.addEventListener("visibilitychange",()=>{if(!document.hidden)upd()});
  navigator.serviceWorker.addEventListener("controllerchange",()=>{
-  if(!had||busy||Date.now()-t0>25000)return;
+  // (15 نوفمبر 2026) بس لو شاشة البداية لسه مغطية الصفحة (المستخدم لسه ماشافش حاجة). لو الصفحة ظهرت خلاص مابنقاطعهوش:
+  // النسخة الجديدة بتشتغل من الفتحة الجاية. (كان بيعمل ريفرش وهو شايف اللوحة = شاشة بيضا فجأة)
+  if(!had||busy||Date.now()-t0>25000||!document.getElementById("boot")||window.__uiOk)return;
   try{if(sessionStorage.getItem("tz_swr"))return;sessionStorage.setItem("tz_swr","1")}catch(e){return}
   location.reload();
  });
@@ -224,6 +233,9 @@
   const esc=e=>{if(e.key==="Escape")close()};
   d.querySelector(".f button").onclick=close;d.addEventListener("click",e=>{if(e.target===d)close()});document.addEventListener("keydown",esc);
   document.body.appendChild(d);setTimeout(()=>{const b=d.querySelector(".f button");if(b)b.focus({preventScroll:true})},300);
+  // (15 نوفمبر 2026، محمد: "بيظهر كل مرة رغم إنه شافه") كانت بتتسجّل "اتشافت" بس لما يقفلها، فلو الصفحة عملت ريفرش أو اتقفلت
+  // والكارت مفتوح كانت بتطلع تاني. دلوقتي بتتسجّل بعد ما تبان ثانيتين.
+  setTimeout(()=>{if(d.isConnected){try{localStorage.setItem("tz_news",NEWS_ID)}catch(e){}}},2000);
  }
 })();
 // 🎬 (13 نوفمبر 2026، transitions.dev) قفل النوافذ بنعومة: أي نافذة بتتقفل (بيتشال منها "on")، بنسيبها ظاهرة 150ms

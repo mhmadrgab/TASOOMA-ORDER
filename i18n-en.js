@@ -2075,4 +2075,6 @@ export default {
 "أُرسل الملف":"File sent",
 "جاري تحميل الملف...":"Loading the file...",
 "تعذر تحميل الملف":"Could not load the file",
+"جاري الاتصال… الإنترنت بطيء قليلاً":"Connecting… the internet is a little slow",
+"لا يوجد اتصال بالإنترنت… سنحاول تلقائياً":"No internet connection… we will retry automatically",
 };

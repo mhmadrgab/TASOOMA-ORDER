@@ -208,8 +208,17 @@ const mkUser = (c, s) => ({uid: s.user.id, email: s.user.email, _c: c,
 export class Auth {
   constructor(c) {
     this.c = c; this.currentUser = null; this._ls = new Set(); this._fired = false;
+    // (15 نوفمبر 2026، "الصفحة بيضا وبتعمل ريفرش لوحدها"):
+    // 1) تجديد الدخول (TOKEN_REFRESHED) كان بيعمل كائن مستخدم جديد لنفس الشخص، فالصفحة اللي مستنية (auth.currentUser !== u)
+    //    كانت بتفتكر إن الحساب اتغيّر وبتسيب اللوحة فاضية. دلوقتي نفس الشخص = نفس الكائن.
+    // 2) لو الدخول محفوظ على الجهاز وأول رد قال "مفيش حد" (النت بطيء وهو بيجدّد)، مانعرضش شاشة الدخول على طول: نستنى لحد 8 ثواني.
+    let nullT = null;
+    const stored = () => { try { const k = c.auth.storageKey; return !!(k && localStorage.getItem(k)) } catch (e) { return false } };
+    const fire = u => { this._fired = true; this._ls.forEach(f => { try { f(u) } catch (e) { console.error(e) } }) };
     const set = s => { const u = s && s.user ? mkUser(c, s) : null, before = this.currentUser && this.currentUser.uid, after = u && u.uid;
-      this.currentUser = u; if (!this._fired || before !== after) { this._fired = true; this._ls.forEach(f => { try { f(u) } catch (e) { console.error(e) } }) } };
+      if (u) { clearTimeout(nullT); nullT = null; if (before === after && this.currentUser) return; this.currentUser = u; if (!this._fired || before !== after) fire(u); return }
+      if (!this._fired && stored()) { if (!nullT) nullT = setTimeout(() => { nullT = null; if (!this.currentUser && !this._fired) fire(null) }, 8000); return }
+      clearTimeout(nullT); nullT = null; this.currentUser = null; if (!this._fired || before) fire(null) };
     c.auth.onAuthStateChange((ev, s) => set(s));
     c.auth.getSession().then(({data}) => set(data && data.session)).catch(() => set(null));
   }

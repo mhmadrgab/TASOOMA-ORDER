@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <script src="./i18n.js"></script><script src="./icons.js" defer></script>
 <!-- شاشة البداية: خطوط لوجو تاسومة بترسم نفسها. ومحتوى الصفحة مخفي (aw) إلى ما نعرف مين داخل، علشان مايبانش حاجة قبل تسجيل الدخول -->
-<script>(function(){var h=document.documentElement;h.classList.add("aw");var n=navigator,c=n.connection||{},ap=/iPhone|iPad|iPod|Macintosh/.test(n.userAgent),lt=c.saveData||/(^|-)2g$/.test(c.effectiveType||"")||matchMedia("(prefers-reduced-motion: reduce)").matches||(n.deviceMemory&&n.deviceMemory<=2)||(!ap&&n.hardwareConcurrency&&n.hardwareConcurrency<=4);if(lt)h.classList.add("lite");if(navigator.standalone||matchMedia("(display-mode: standalone)").matches)h.classList.add("app");setTimeout(function(){if(!h.classList.contains("aw"))return;var g=document.getElementById("gate");if(g&&!document.body.classList.contains("lock"))g.classList.add("on");h.classList.remove("aw");var b=document.getElementById("boot");if(b)b.remove()},10000)})()</script>
+<script>(function(){var h=document.documentElement;h.classList.add("aw");var n=navigator,c=n.connection||{},ap=/iPhone|iPad|iPod|Macintosh/.test(n.userAgent),lt=c.saveData||/(^|-)2g$/.test(c.effectiveType||"")||matchMedia("(prefers-reduced-motion: reduce)").matches||(n.deviceMemory&&n.deviceMemory<=2)||(!ap&&n.hardwareConcurrency&&n.hardwareConcurrency<=4);if(lt)h.classList.add("lite");if(navigator.standalone||matchMedia("(display-mode: standalone)").matches)h.classList.add("app");setTimeout(function(){if(!h.classList.contains("aw")||window.__tzMod)return;var g=document.getElementById("gate");if(g&&!document.body.classList.contains("lock"))g.classList.add("on");h.classList.remove("aw");var b=document.getElementById("boot");if(b)b.remove()},10000)})()</script>
 <style>
 html.app{background:#2a1d2c}
 #boot{display:none}
@@ -90,6 +90,7 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
 <div class="mdl" id="md"></div>
 <script type="module">
 import {makeFb,pushRegister,pushSave,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,addDoc,updateDoc,setDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
+window.__tzMod=1;// (15 نوفمبر 2026) الكود الأساسي اشتغل: ui.js مايمسحش النسخة المحفوظة ومايعملش ريفرش لو الدخول بطيء بس
 import {wireButtons,regSW,notify,beep,autoPush} from "./notify.js";
 import {shrink} from "./cust.js";
 import {multiPick,saveExtras} from "./att.js";
