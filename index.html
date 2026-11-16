@@ -644,6 +644,8 @@ function deepReq(id){
  if(rq&&/^[A-Za-z0-9_-]{6,40}$/.test(rq))deepReq(rq);
  if(q.get("gift")){let n=0;const iv=setInterval(()=>{n++;const b=document.querySelector('[data-gf="bopen"]');if(b){clearInterval(iv);b.click()}else if(n>40)clearInterval(iv)},500)}
  if(rq||q.get("gift"))try{history.replaceState(null,"",location.pathname)}catch(e){}}
+// كارت التحديث (ui.js) زرار "اعرض طلباتي": ننزل لقايمة الطلبات ونفتح آخر طلب كورقة (لو فيه طلبات)
+window.addEventListener("tz-news-go",()=>{const my=g("my");if(my)my.scrollIntoView({behavior:"smooth",block:"start"});const c=document.querySelector("#ml .mr[data-id]"),b=c&&c.querySelector("[data-osh]");if(b)setTimeout(()=>b.click(),500)});
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
 function gateOn(){B=null;stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};

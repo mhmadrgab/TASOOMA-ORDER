@@ -3,7 +3,7 @@
 // المدير بيقيّم كل يوم: مين نضّف فعلاً + نجوم ١–٥ + ملاحظة. ترتيب شهري و"بطل النظافة". الجدول بيتطبع ويتعلّق في المستودع.
 // البيانات: clean/{YYYY-MM-DD} = {d, as:[المكلّفين], ws?:[اللي نضّفوا], st?:"done"|"miss", r?:1..5, note?, sw?:true (تبديل), by, at}
 //           cleancfg/main = {days:[أرقام getDay], since:"YYYY-MM-DD", by, at}. القواعد: supabase/002_rules.sql (clean_ok).
-import {collection,doc,setDoc,deleteDoc,onSnapshot,withTimeout,failReason,FAIL_MSG} from "./fb.js";
+import {collection,doc,setDoc,deleteDoc,onSnapshot,writeBatch,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {E,N,printStmt,ensurePrintCss} from "./cust.js";
 const g=id=>document.getElementById(id);
 const DAYN=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];// حسب getDay
@@ -95,6 +95,10 @@ const CSS=`
 .cl-m .act button{font:inherit;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:9px 16px;cursor:pointer}
 .cl-m .act button.p{background:#6f7d45;border-color:#6f7d45;color:#fff}.cl-m .act button.r{color:#c4362b}
 .cl-m .act button:disabled{opacity:.6}
+.cl-team{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+.cl-team .cl-tm{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:14px;font-weight:600}
+.cl-team .cl-tm small{color:var(--mut);font-weight:500;font-size:12px}
+.cl-add{display:flex;flex-wrap:wrap;gap:8px}.cl-add input{flex:1;min-width:200px;font:inherit;border:1.5px solid var(--line);background:var(--field,#f2e9dd);color:var(--ink);border-radius:12px;padding:9px 12px}
 .cl-champ{display:flex;align-items:center;gap:12px;border:1.5px solid color-mix(in srgb,#e0a106 45%,var(--line));background:color-mix(in srgb,#e0a106 9%,var(--card));border-radius:14px;padding:12px 16px;margin-bottom:12px}
 .cl-champ .ic{font-size:30px}.cl-champ small{display:block;color:var(--mut)}.cl-champ b{font-size:19px}.cl-champ .sc{margin-inline-start:auto;font-size:26px;font-weight:700}
 `;
@@ -146,6 +150,8 @@ export function cleanView(mo){
   <button class="bt s" data-cl="pr" type="button">🖨 طباعة الجدول</button>${X.admin?`<button class="bt s" data-cl="cfg" type="button">⚙ أيام النظافة</button>`:""}</div>
  <div class="cl-wk">${cells}</div>
  <p class="wnote" style="margin-top:10px">كل يوم عاملان، والأزواج تتغيّر كل أسبوع حتى يعمل كل عامل مع زملاء مختلفين. ${perW(D.length,A.length)} «تبديل» لتغيير من سينظّف في يوم معيّن (غياب أو إجازة).</p></div>
+ <div class="pan" style="margin-top:12px"><h3>👥 فريق النظافة (${A.length})</h3><div class="cl-team">${A.map(w=>`<span class="cl-tm"><bdi data-notr>${E(w.name)}</bdi>${w.cl?` <small>🧹 نظافة فقط</small>`:""}</span>`).join("")}</div>
+ ${X.admin?`<div class="cl-add"><input id="cl-new" maxlength="200" placeholder="أضف عاملاً أو أكثر، افصل بين الأسماء بفاصلة. مثال: عثمان، عبد الوهاب"><button class="bt p" data-cl="addw" type="button">➕ إضافة لفريق النظافة</button></div><p class="wnote" style="margin-top:8px">من يُضاف من هنا يظهر في جدول النظافة فقط، ولا يدخل في تقييم تجهيز الطلبات. يمكنك تغيير ذلك من تبويب «تقييم العمال».</p>`:""}</div>
  <div class="pan" style="margin-top:12px"><h3>🏆 ترتيب النظافة · <bdi dir="ltr">${E(mo)}</bdi></h3>
  ${top?`<div class="cl-champ"><div class="ic">🧹</div><div><small>بطل النظافة لهذا الشهر</small><b>${E(nm(top.id))}</b><small>نظّف ${top.done} يوم · متوسط التقييم ${top.avg.toFixed(1)} من 5</small></div><div class="sc">${top.score}</div></div>`:""}
  <div class="tw"><table><thead><tr><th>#</th><th>العامل</th><th>الدرجة</th><th>متوسط التقييم</th><th>أيام نظّفها</th><th>غاب عن دوره</th><th>ساعد في غير يومه</th></tr></thead><tbody>
@@ -203,6 +209,21 @@ async function swSave(k,reset){
   await withTimeout(setDoc(doc(X.db,"clean",k),{d:k,as,sw:true,by:who(),at:Date.now()}),15000);busy=false;X.toast("✅ حُفظ التبديل");closeM()}
  catch(e){busy=false;err(e)}
 }
+// إضافة عمال نظافة (أكتر من اسم مرة واحدة). الموجود بنفس الاسم مابيتكررش، والموقوف بيتفعّل
+async function addWorkers(){
+ if(busy)return;const inp=g("cl-new");if(!inp)return;
+ const names=[...new Set(String(inp.value||"").split(/[,،;\n]+/).map(x=>x.replace(/\s+/g," ").trim().slice(0,40)).filter(Boolean))].slice(0,12);
+ if(!names.length){X.toast("اكتب اسم عامل واحد على الأقل");return}
+ const all=W(),low=s=>String(s).toLowerCase(),b=writeBatch(X.db);let added=0,woke=0,had=[];
+ names.forEach(n=>{const ex=all.find(w=>low(w.name)===low(n));
+  if(ex){if(ex.active===false){b.set(doc(X.db,"workers",ex.id),{active:true},{merge:true});woke++}else had.push(n)}
+  else{b.set(doc(collection(X.db,"workers")),{name:n,active:true,cl:true,ts:Date.now()});added++}});
+ if(!added&&!woke){X.toast(had.length>1?"هؤلاء موجودون بالفعل في فريق النظافة":"هذا العامل موجود بالفعل في فريق النظافة");return}
+ busy=true;
+ try{await withTimeout(b.commit(),15000);busy=false;inp.value="";
+  X.toast("✅ "+(added?"أُضيف "+added+(added>1?" عمال":" عامل")+" لفريق النظافة":"")+(woke?(added?" · ":"")+"أُعيد تفعيل "+woke:"")+(had.length?" · موجود بالفعل: "+had.join("، "):""))}
+ catch(e){busy=false;err(e)}
+}
 function cfgForm(){
  const D=days();
  openM(`<h3>⚙ أيام النظافة</h3><p class="off" style="margin:0">اختر الأيام التي ينظّف فيها العمال المستودع.</p>
@@ -242,5 +263,6 @@ document.addEventListener("click",e=>{
  if(a==="swreset")return void swSave(k,true);
  if(a==="cfg")return void cfgForm();
  if(a==="cfgsave")return void cfgSave();
+ if(a==="addw")return void addWorkers();
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&g("clm")&&g("clm").classList.contains("on"))closeM()});

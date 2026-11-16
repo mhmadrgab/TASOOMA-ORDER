@@ -193,7 +193,7 @@
 // وأول ما يقفلها مابتظهرش تاني على الجهاز ده (localStorage: tz_news). لرسالة جديدة بعدين: غيّر NEWS_ID والنص.
 (function(){
  if(!/(admin|index|driver)\.html$|\/$/.test(location.pathname))return;
- const NEWS_ID="theme-2026-11";
+ const NEWS_ID="orders-sheet-2026-11-16";// (16 نوفمبر 2026) كارت "ورقة الطلب عند الفرع". لكارت جديد بعدين: غيّر NEWS_ID والنص
  let seen;try{seen=localStorage.getItem("tz_news")}catch(e){return}// مفيش تخزين = مانعرضش (علشان ماتطلعش كل مرة)
  if(seen===NEWS_ID)return;
  const vis=el=>!!(el&&el.offsetParent!==null);
@@ -201,40 +201,79 @@
  const t0=Date.now(),iv=setInterval(()=>{if(Date.now()-t0>15*6e4){clearInterval(iv);return}if(loggedIn()){clearInterval(iv);setTimeout(()=>{if(loggedIn())show()},700)}},800);
  function show(){
   if(document.getElementById("tz-news"))return;
+  // النص بيختلف حسب مين فاتح: فرع (index) / مدير أو موظف (admin) / سائق (driver)
+  const P=location.pathname,role=/driver\.html$/.test(P)?"d":/admin\.html$/.test(P)?"a":"b";
+  const T={
+   b:{k:"تحديث جديد · طلبات الفروع",t:"طلباتكم الآن على ورقة واحدة واضحة",go:"اعرض طلباتي",
+    L:[["📄","كل طلب بطاقة، وبضغطة ورقة كاملة","اضغط على أي طلب لتراه مرتباً: الأصناف والمقاسات والكميات، وما عدّله المستودع واضحاً."],
+       ["🧭","مراحل الطلب بالوقت","من الإرسال حتى الاستلام، مع وقت كل مرحلة واسم السائق."],
+       ["🧾","إيصال الشحن بين يديك","إذا سُلِّم طلبك لشركة الشحن فاعرض الإيصال والصور والتوقيع من داخل الطلب نفسه."]]},
+   a:{k:"تحديث جديد · طلبات الفروع",t:"الفروع ترى طلباتها الآن على ورقة واضحة",
+    L:[["📄","بطاقة ثم ورقة كاملة","يضغط الفرع على طلبه فيرى المراحل بالوقت والأصناف وتعديلات المستودع عليها."],
+       ["🧾","مرفقات الشحن عند الفرع","إيصال شركة الشحن وصور التسليم والتوقيع تظهر للفرع من داخل طلبه، وطلباته فقط."],
+       ["📷","وضوح الصور مهم","ما يُرفع من صور تسليم يراه الفرع مباشرة، فتأكدوا من وضوحها."]]},
+   d:{k:"تحديث جديد · صور التسليم",t:"الفرع يرى صور تسليمك الآن",
+    L:[["📷","صورك تصل إلى الفرع","الصور وإيصال شركة الشحن اللذان تلتقطهما يظهران للفرع داخل طلبه، فاحرص على وضوحهما."],
+       ["📄","ورقة الطلب","يرى الفرع اسمك ووقت خروجك وتسليمك مرتبة على ورقة الطلب."],
+       ["🧭","مراحل بالوقت","كل مرحلة من الطلب تظهر بوقتها الفعلي."]]}
+  }[role];
   if(!document.getElementById("tz-news-css")){const s=document.createElement("style");s.id="tz-news-css";s.textContent=`
-#tz-news{position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(30,18,32,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:tzn-f .25s ease both}
-#tz-news .k{width:100%;max-width:440px;max-height:calc(100vh - 36px);overflow:auto;background:var(--card,#fffaf3);color:var(--ink,#2a1d2c);border-radius:24px;box-shadow:0 30px 80px rgba(30,15,35,.45);text-align:start;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;animation:tzn-u .45s cubic-bezier(.23,1,.32,1) both}
-#tz-news .h{position:relative;background:#2a1d2c;color:#fff;padding:22px 22px 20px;display:flex;align-items:center;gap:14px;border-radius:24px 24px 0 0}
-#tz-news .h::after{content:"";position:absolute;inset-inline:0;bottom:0;height:4px;background:linear-gradient(90deg,#6f7d45,#b48aab 45%,#b48aab 55%,#6f7d45)}
-#tz-news .h img{width:54px;height:54px;border-radius:14px;flex:none;background:#fff}
-#tz-news .h small{display:block;color:#e3c8dd;font-size:13px;font-weight:500}#tz-news .h b{display:block;font-size:21px;line-height:1.35;font-weight:700}
-#tz-news .b{padding:18px 22px 6px;font-size:15px;line-height:1.75}
-#tz-news .b>p{margin:0 0 14px;color:var(--mut,#74687a)}
-#tz-news ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-#tz-news li{display:flex;gap:12px;align-items:flex-start;background:var(--soft,#f6eee3);border-radius:14px;padding:11px 13px}
+#tz-news{position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(30,18,32,.58);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:tzn-f .25s ease both}
+#tz-news .k{position:relative;width:100%;max-width:450px;max-height:calc(100vh - 28px);overflow:auto;background:var(--card,#fffaf3);color:var(--ink,#2a1d2c);border-radius:28px;box-shadow:0 0 0 1px rgba(180,138,171,.25),0 40px 90px rgba(30,15,35,.55);text-align:start;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;animation:tzn-u .5s cubic-bezier(.16,1,.3,1) both;-webkit-overflow-scrolling:touch}
+#tz-news .tn-hero{position:relative;height:208px;overflow:hidden;border-radius:28px 28px 0 0;background:radial-gradient(120% 95% at 82% 6%,#58395f 0%,#2a1d2c 58%,#1c1320 100%)}
+#tz-news .tn-hero::before{content:"";position:absolute;width:260px;height:260px;border-radius:50%;left:-70px;top:-100px;background:radial-gradient(closest-side,rgba(180,138,171,.42),transparent 70%)}
+#tz-news .tn-hero::after{content:"";position:absolute;inset-inline:0;bottom:0;height:4px;background:linear-gradient(90deg,#6f7d45,#b48aab 45%,#b48aab 55%,#6f7d45)}
+#tz-news .tn-hero .tn-dot{position:absolute;border-radius:50%;background:rgba(111,125,69,.35)}
+#tz-news .tn-hero .tn-d1{width:120px;height:120px;right:-34px;bottom:-52px}#tz-news .tn-hero .tn-d2{width:46px;height:46px;left:22px;bottom:30px;background:rgba(180,138,171,.28)}
+#tz-news .tn-lgo{position:absolute;top:16px;inset-inline-start:18px;display:flex;align-items:center;gap:8px;color:#e3c8dd;font-size:12.5px;font-weight:600;z-index:2}
+#tz-news .tn-lgo img{width:28px;height:28px;border-radius:8px;background:#fff}
+#tz-news .tn-nw{position:absolute;top:18px;inset-inline-end:60px;z-index:2;background:#6f7d45;color:#fff;border-radius:999px;padding:3px 11px;font-size:11.5px;font-weight:700;letter-spacing:.2px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+#tz-news .tn-xb{position:absolute;top:12px;inset-inline-end:12px;z-index:3;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:16px;cursor:pointer;line-height:1}
+#tz-news .tn-ps{position:absolute;left:50%;top:44px;width:196px;margin-left:-98px;background:#fffdf8;color:#231a25;border-radius:12px;padding:11px 13px 12px;box-shadow:0 22px 44px rgba(0,0,0,.5);transform:rotate(-4deg);animation:tzn-fl 5.5s ease-in-out infinite}
+#tz-news .tn-ps.tn-bk{top:56px;transform:rotate(6deg);opacity:.5;animation:none;background:#efe6ee;height:150px}
+#tz-news .tn-ps .tn-t{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;font-weight:700}
+#tz-news .tn-ps .tn-t span{background:#e5ecd0;color:#45512a;border-radius:99px;padding:2px 8px;font-size:9.5px;white-space:nowrap}
+#tz-news .tn-ps .tn-tl{display:flex;gap:3px;margin:10px 0 9px}#tz-news .tn-ps .tn-tl i{flex:1;height:4px;border-radius:9px;background:#e7dfe6}#tz-news .tn-ps .tn-tl i.tn-on{background:#6f7d45}
+#tz-news .tn-ps .tn-r{display:flex;gap:6px;margin:6px 0}#tz-news .tn-ps .tn-r u{display:block;height:7px;border-radius:9px;background:#efe6ee}
+#tz-news .tn-ps .tn-r u:nth-child(1){width:30%;background:#e3d6e1}#tz-news .tn-ps .tn-r u:nth-child(2){width:42%}#tz-news .tn-ps .tn-r u:nth-child(3){width:16%;margin-inline-start:auto;background:#e3d6e1}
+#tz-news .tn-ps .tn-at{display:flex;gap:6px;margin-top:10px}#tz-news .tn-ps .tn-at b{font-size:9.5px;border-radius:8px;padding:5px 8px;background:#f2e5ee;color:#5f3a59;font-weight:700}
+#tz-news .tn-hd{padding:20px 24px 0}
+#tz-news .tn-hd small{display:block;color:#8a5a83;font-size:12.5px;font-weight:700;letter-spacing:.3px;margin-bottom:6px}
+#tz-news .tn-hd b{display:block;font-size:23px;line-height:1.4;font-weight:700}
+#tz-news .b{padding:16px 22px 4px;font-size:15px;line-height:1.75}
+#tz-news ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+#tz-news li{display:flex;gap:12px;align-items:flex-start;background:var(--soft,#f6eee3);border-radius:16px;padding:12px 14px}
 #tz-news li i{font-style:normal;font-size:20px;line-height:1.3;flex:none}
 #tz-news li b{display:block;font-size:14.5px}#tz-news li span{display:block;font-size:13px;color:var(--mut,#74687a);line-height:1.6}
-#tz-news .f{padding:16px 22px 20px}
-#tz-news .f button{width:100%;min-height:50px;border:0;border-radius:14px;background:#8a5a83;color:#fff;font:700 16px/1 'IBM Plex Sans Arabic',Tahoma,sans-serif;cursor:pointer;box-shadow:0 8px 22px rgba(138,90,131,.35)}
+#tz-news .tn-lv{display:flex;align-items:center;gap:8px;margin-top:12px;background:color-mix(in srgb,#6f7d45 13%,transparent);border-radius:12px;padding:9px 12px;font-size:13px;color:var(--ink,#2a1d2c)}
+#tz-news .f{padding:16px 22px 20px;display:grid;gap:8px}
+#tz-news .f button{width:100%;min-height:50px;border:0;border-radius:15px;background:#8a5a83;color:#fff;font:700 16px/1 'IBM Plex Sans Arabic',Tahoma,sans-serif;cursor:pointer;box-shadow:0 10px 24px rgba(138,90,131,.38)}
+#tz-news .f button.g{background:transparent;color:var(--mut,#74687a);box-shadow:none;min-height:40px;font-size:14.5px;font-weight:600}
 #tz-news .f button:active{transform:scale(.97)}
-#tz-news .f small{display:block;text-align:center;color:var(--mut,#74687a);font-size:12.5px;margin-top:10px}
-@media (prefers-color-scheme:dark){#tz-news .h{background:#120c14}#tz-news .f button{background:#b48aab;color:#1d1720}}
-@keyframes tzn-f{from{opacity:0}}@keyframes tzn-u{from{opacity:0;transform:translateY(18px) scale(.96)}}
-@media (prefers-reduced-motion:reduce){#tz-news,#tz-news .k{animation:none}}`;document.head.appendChild(s)}
+#tz-news .f small{display:block;text-align:center;color:var(--mut,#74687a);font-size:12.5px;margin-top:2px}
+@media (max-width:420px){#tz-news .tn-hero{height:150px}#tz-news .tn-ps{top:22px;width:178px;margin-left:-89px}#tz-news .tn-ps.tn-bk{top:32px;height:112px}#tz-news .tn-lgo{top:12px}#tz-news .tn-nw{top:14px}#tz-news .tn-xb{top:8px}#tz-news .tn-hd{padding:14px 20px 0}#tz-news .tn-hd b{font-size:20px}#tz-news .b{padding:12px 16px 2px}#tz-news li{padding:9px 12px;gap:10px}#tz-news li span{font-size:12.5px;line-height:1.5}#tz-news .tn-lv{margin-top:9px;padding:8px 11px}#tz-news .f{padding:12px 16px 16px}#tz-news .f small{display:none}}
+@media (max-height:800px){#tz-news .tn-hero{height:172px}#tz-news .tn-ps{top:30px}#tz-news .tn-ps.tn-bk{top:42px;height:128px}#tz-news .tn-hd{padding-top:14px}#tz-news .b{padding-top:12px}#tz-news li{padding:10px 13px}#tz-news .f{padding-top:12px}}
+@media (prefers-color-scheme:dark){#tz-news .f button{background:#b48aab;color:#1d1720}#tz-news .tn-hd small{color:#cfb1c8}}
+@keyframes tzn-f{from{opacity:0}}@keyframes tzn-u{from{opacity:0;transform:translateY(22px) scale(.95)}}
+@keyframes tzn-fl{50%{transform:translateY(-6px) rotate(-4deg)}}
+@media (prefers-reduced-motion:reduce){#tz-news,#tz-news .k,#tz-news .tn-ps{animation:none}}`;document.head.appendChild(s)}
   const d=document.createElement("div");d.id="tz-news";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-labelledby","tz-news-t");
-  d.innerHTML=`<div class="k"><div class="h"><img src="./icon-192.png" alt=""><div><small>تحديث جديد</small><b id="tz-news-t">منصة تاسومة بثوبها الجديد</b></div></div>
-<div class="b"><p>طوّرنا المنصة لتناسب متطلبات عملكم اليومية، وهذا أبرز ما تغيّر:</p><ul>
-<li><i>🎨</i><div><b>تصميم جديد مريح للعين</b><span>ألوان هادئة من الموف والبيج والزيتوني، مناسبة لساعات العمل الطويلة.</span></div></li>
-<li><i>🧭</i><div><b>كل شيء في مكانه</b><span>الأقسام والأزرار كما اعتدتم عليها، فلا حاجة لتعلّم شيء جديد.</span></div></li>
-<li><i>⚡</i><div><b>أسرع وأكثر ثباتاً</b><span>فتح أسرع، وتعمل حتى مع الشبكات الضعيفة.</span></div></li>
-</ul></div>
-<div class="f"><button type="button">ابدأ الاستخدام</button><small>شكراً لكم، فريق تاسومة 🤍</small></div></div>`;
+  d.innerHTML=`<div class="k"><div class="tn-hero"><span class="tn-dot tn-d1"></span><span class="tn-dot tn-d2"></span>
+<div class="tn-lgo"><img src="./icon-192.png" alt=""><span>تاسومة</span></div><span class="tn-nw">جديد</span><button class="tn-xb" type="button" data-n="x" aria-label="إغلاق">✕</button>
+<div class="tn-ps tn-bk"></div><div class="tn-ps"><div class="tn-t"><b>003-EL MALQA</b><span>تم التسليم</span></div><div class="tn-tl"><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i></i></div>
+<div class="tn-r"><u></u><u></u><u></u></div><div class="tn-r"><u></u><u></u><u></u></div><div class="tn-at"><b>🧾 الإيصال</b><b>📷 الصور</b></div></div></div>
+<div class="tn-hd"><small>${T.k}</small><b id="tz-news-t">${T.t}</b></div>
+<div class="b"><ul>${T.L.map(x=>`<li><i>${x[0]}</i><div><b>${x[1]}</b><span>${x[2]}</span></div></li>`).join("")}</ul>
+<div class="tn-lv">⚡ <span style="display:inline;font-size:13px;color:inherit">الطلبات والتغييرات الجديدة تصل لحظياً دون إعادة تحميل الصفحة.</span></div></div>
+<div class="f">${T.go?`<button type="button" data-n="go">${T.go}</button><button type="button" class="g" data-n="x">لاحقاً</button>`:`<button type="button" data-n="x">ابدأ الاستخدام</button>`}<small>شكراً لكم، فريق تاسومة 🤍</small></div></div>`;
   const close=()=>{try{localStorage.setItem("tz_news",NEWS_ID)}catch(e){}d.remove();document.removeEventListener("keydown",esc)};
   const esc=e=>{if(e.key==="Escape")close()};
-  d.querySelector(".f button").onclick=close;d.addEventListener("click",e=>{if(e.target===d)close()});document.addEventListener("keydown",esc);
+  d.addEventListener("click",e=>{if(e.target===d){close();return}const b=e.target.closest&&e.target.closest("[data-n]");if(!b)return;close();
+   // "اعرض طلباتي": الصفحة (index.html) بتسمع وبتفتح آخر طلب
+   if(b.dataset.n==="go"){try{window.dispatchEvent(new CustomEvent("tz-news-go"))}catch(x){}}});
+  document.addEventListener("keydown",esc);
   document.body.appendChild(d);setTimeout(()=>{const b=d.querySelector(".f button");if(b)b.focus({preventScroll:true})},300);
-  // (15 نوفمبر 2026، محمد: "بيظهر كل مرة رغم إنه شافه") كانت بتتسجّل "اتشافت" بس لما يقفلها، فلو الصفحة عملت ريفرش أو اتقفلت
-  // والكارت مفتوح كانت بتطلع تاني. دلوقتي بتتسجّل بعد ما تبان ثانيتين.
+  // (15 نوفمبر 2026، محمد: "بيظهر كل مرة رغم إنه شافه") بتتسجّل "اتشافت" بعد ما تبان ثانيتين، مش بس لما يقفلها
   setTimeout(()=>{if(d.isConnected){try{localStorage.setItem("tz_news",NEWS_ID)}catch(e){}}},2000);
  }
 })();

@@ -29,7 +29,7 @@ const prevM=m=>{const [y,mm]=m.split("-").map(Number);const d=new Date(y,mm-2,1)
 const months=()=>{const out=[],d=new Date();d.setDate(1);for(let i=0;i<12;i++){out.push(d.toLocaleDateString("en-CA").slice(0,7));d.setMonth(d.getMonth()-1)}return out};
 const nm=id=>(W.find(w=>w.id===id)||{}).name||id;
 const hasBy=r=>r&&r.prep&&Array.isArray(r.prep.by)&&r.prep.by.length>0;
-export const has=()=>W.some(w=>w.active!==false);
+export const has=()=>W.some(w=>w.active!==false&&!w.cl);
 // نهاية التجهيز: خروج السيارة، أو التسليم، أو لما المستودع علّم "تم التسليم"
 const endOf=r=>N(r.dep)||N(r.dlv)||((r.st==="done"||r.st==="recv")?N(r.upd):0);
 // الدقة: الفرع استلم كامل = حسناً. استلم بملاحظات = المدير يراجع (خطأ تجهيز ولا لأ)
@@ -73,7 +73,7 @@ export function view(){
  const sub=`<div class="cl-sub" role="tablist"><button type="button" role="tab" data-wk="sub" data-v="rate" class="${SUB==="rate"?"on":""}">👷 تقييم العمال</button><button type="button" role="tab" data-wk="sub" data-v="clean" class="${SUB==="clean"?"on":""}">🧹 النظافة</button></div>`;
  if(SUB==="clean")return sub+`<div class="fl"><h3 style="margin:0">🧹 نظافة المستودع</h3><select id="wmon" style="margin-inline-start:auto">${ms.map(m=>`<option ${m===mo?"selected":""}>${m}</option>`).join("")}</select></div>`+cleanView(mo);
  const rows=stats(mo),pv={};stats(prevM(mo)).forEach(s=>pv[s.id]=s.score);
- const top=rows[0],idle=W.filter(w=>w.active!==false&&!rows.some(s=>s.id===w.id));
+ const top=rows[0],idle=W.filter(w=>w.active!==false&&!w.cl&&!rows.some(s=>s.id===w.id));
  const wait=X.R().filter(r=>hasBy(r)&&verdict(r)==="wait").sort((a,b)=>N(b.rcv&&b.rcv.at)-N(a.rcv&&a.rcv.at));
  const stars=(RT[mo]&&RT[mo].stars)||{};
  // اللي اتراجعت في الشهر ده (للمالك: يغيّر القرار أو يحذف)
@@ -98,7 +98,7 @@ export function view(){
  ${idle.map(w=>`<tr class="off"><td></td><td>${E(w.name)}</td><td colspan="9">لم يجهّز طلبات في هذا الشهر</td></tr>`).join("")}</tbody></table></div>
  <p class="wnote">الدرجة من 100: <b>إنتاجية 40</b> (السطور في اليوم مقارنة بمتوسط الفريق) · <b>دقة 30</b> (الطلبات التي وصلت دون خطأ في التجهيز) · <b>سرعة 15</b> (وقت التجهيز لكل سطر مقارنة بالفريق) · <b>تقييمك 15</b> (دون تقييم = 3 نجوم). الطلب الذي جهّزه أكثر من عامل يُقسَّم عليهم.</p></div>
  ${X.admin?`<div class="pan" style="margin-top:12px"><h3>👥 العمال</h3><div class="fl" style="margin:0 0 10px"><input id="wnew" maxlength="40" placeholder="اسم العامل" style="flex:1;min-width:160px"><button class="bt p" data-wk="add" type="button">➕ إضافة</button></div>
- ${W.length?W.slice().sort((a,b)=>(a.active===false)-(b.active===false)||String(a.name).localeCompare(b.name,"ar")).map(w=>`<div class="bar" style="justify-content:space-between"><span style="width:auto;direction:rtl">${E(w.name)} ${w.active===false?'<span class="pill off2">موقوف</span>':""}</span><span style="width:auto;display:flex;gap:6px"><button class="bt s" data-wk="ren" data-id="${E(w.id)}" type="button">تعديل الاسم</button><button class="bt s" data-wk="tg" data-id="${E(w.id)}" type="button">${w.active===false?"تفعيل":"إيقاف"}</button></span></div>`).join(""):'<div class="off">لا يوجد عمال بعد.</div>'}
+ ${W.length?W.slice().sort((a,b)=>(a.active===false)-(b.active===false)||String(a.name).localeCompare(b.name,"ar")).map(w=>`<div class="bar" style="justify-content:space-between"><span style="width:auto;direction:rtl">${E(w.name)} ${w.active===false?'<span class="pill off2">موقوف</span>':""}${w.cl?' <span class="pill">🧹 نظافة فقط</span>':""}</span><span style="width:auto;display:flex;gap:6px"><button class="bt s" data-wk="ren" data-id="${E(w.id)}" type="button">تعديل الاسم</button><button class="bt s" data-wk="clt" data-id="${E(w.id)}" type="button" title="${w.cl?"يظهر في تقييم التجهيز أيضاً":"يخرج من تقييم التجهيز ويبقى في النظافة فقط"}">${w.cl?"إضافته للتجهيز":"نظافة فقط"}</button><button class="bt s" data-wk="tg" data-id="${E(w.id)}" type="button">${w.active===false?"تفعيل":"إيقاف"}</button></span></div>`).join(""):'<div class="off">لا يوجد عمال بعد.</div>'}
  <p class="wnote" style="margin-top:8px">العامل الذي ترك العمل اختر له "إيقاف" بدل الحذف، حتى تبقى تقييماته القديمة.</p></div>`:""}`;
 }
 // ---------- اختيار مين جهّز الطلب ----------
@@ -106,7 +106,7 @@ function box(){let m=g("wkm");if(!m){m=document.createElement("div");m.id="wkm";
 const close=()=>{const m=box();m.className="wkm";m.innerHTML=""};
 const lastSel=()=>{try{return JSON.parse(localStorage.getItem("wk_last")||"[]")}catch(e){return []}};
 export function pick(r){
- const act=W.filter(w=>w.active!==false).sort((a,b)=>String(a.name).localeCompare(b.name,"ar"));
+ const act=W.filter(w=>w.active!==false&&!w.cl).sort((a,b)=>String(a.name).localeCompare(b.name,"ar"));
  const pre=new Set(hasBy(r)?r.prep.by:lastSel()),start=r.st==="new";
  const m=box();m.className="wkm on";
  m.innerHTML=`<div class="wkk"><h3>👷 من سيجهّز الطلب؟</h3><div class="off" style="font-size:14px"><bdi dir="ltr">${E(r.brn)}</bdi> · <bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف</div>
@@ -154,7 +154,8 @@ async function click(e){
   else if(!X.admin){X.toast("هذه الصلاحية للمدير فقط");return}
   else if(a==="add"){const n=(g("wnew").value||"").trim().slice(0,40);if(!n){X.toast("اكتب اسم العامل");return}if(W.some(w=>w.name===n)){X.toast("هذا الاسم موجود");return}await setDoc(doc(collection(X.db,"workers")),{name:n,active:true,ts:Date.now()});X.toast("تمت الإضافة")}
   else if(a==="ren"){const w=W.find(x=>x.id===id);const n=(prompt("الاسم الجديد:",w?w.name:"")||"").trim().slice(0,40);if(n)await setDoc(doc(X.db,"workers",id),{name:n},{merge:true})}
-  else if(a==="tg"){const w=W.find(x=>x.id===id);if(w)await setDoc(doc(X.db,"workers",id),{active:w.active===false},{merge:true})}
+  else if(a==="clt"){const w=W.find(x=>x.id===id);if(w)await setDoc(doc(X.db,"workers",id),{cl:!w.cl},{merge:true})}
+   else if(a==="tg"){const w=W.find(x=>x.id===id);if(w)await setDoc(doc(X.db,"workers",id),{active:w.active===false},{merge:true})}
   else if(a==="fault"||a==="nofault")await updateDoc(doc(X.db,"requests",id),{qa:{fault:a==="fault",at:Date.now()}});
   else if(a==="qdel"){if(!X.owner){X.toast("هذه الصلاحية للمالك فقط");return}
    if(confirm("حذف ملاحظة الاستلام هذه من مراجعة العمال؟\nلن تُحسب على أي عامل، ويبقى الطلب كما هو.")){await updateDoc(doc(X.db,"requests",id),{qa:{x:true,at:Date.now()}});X.toast("تم الحذف")}}
