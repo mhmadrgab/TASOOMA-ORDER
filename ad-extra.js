@@ -7,6 +7,8 @@ import {multiPick,saveExtras,loadExtras,dropExtras} from "./att.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const WH="المستودع الرئيسي";
+let XC=[];// بنود العهدة اللي اتضافت من المنصة (cfg/cus)
+const allCats=()=>{const o=CATS.filter(c=>c!=="أخرى");XC.forEach(c=>{if(c&&!o.includes(c)&&c!=="عهدة")o.push(c)});o.push("أخرى");return o};
 let X=null,LA=[],SA=[],un=[],mode="",edit=null,img="",imgBusy=false,fc="";
 const CSS=`
 .cm{display:none;position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.55);overflow:auto;padding:18px}.cm.on{display:block}
@@ -34,11 +36,11 @@ export function view(){
  const cats=Object.entries(bycat).sort((a,b)=>b[1]-a[1]),mx=cats.length?cats[0][1]:1;
  let run=k.opening;
  const rows=k.open.filter(e=>!fc||e.cat===fc).map(e=>{if(!fc){run+=e.type==="in"?N(e.amt):-N(e.amt)}return {e,run}});
- return `<div class="bal ${k.bal<0?"neg":""}"><div><small>رصيد العهدة الحالي</small><b>${fmt(k.bal)}</b></div><div><small>الافتتاحي</small><b style="font-size:22px">${fmt(k.opening)}</b></div><div><small>عهدة مستلمة</small><b style="font-size:22px">${fmt(k.ins)}</b></div><div><small>مصروفات</small><b style="font-size:22px">${fmt(k.exps)}</b></div></div>
+ return `<div class="bal ${k.bal<0?"neg":""}"><div><small>رصيد العهدة الحالي</small><b>${fmt(k.bal)}</b></div><div><small>الافتتاحي${k.last&&k.last.adj?" (مُصحَّح)":""}</small><b style="font-size:22px">${fmt(k.opening)}</b>${X.owner&&k.last?`<button class="bt s" data-cx="adj" type="button" style="margin-top:6px">✏️ تصحيح الافتتاحي</button>`:""}</div><div><small>عهدة مستلمة</small><b style="font-size:22px">${fmt(k.ins)}</b></div><div><small>مصروفات</small><b style="font-size:22px">${fmt(k.exps)}</b></div></div>
  <div class="fl"><button class="bt p" data-cx="in" type="button">💵 استلمت عهدة</button><button class="bt g" data-cx="exp" type="button">🧾 تسجيل فاتورة / مصروف</button><button class="bt" data-cx="stmt" type="button">🖨 كشف الحساب</button>${X.admin?`<button class="bt" data-cx="close" type="button" ${k.open.length?"":"disabled"}>🔒 إقفال العهدة وترحيل الرصيد</button>`:""}</div>
  <div class="row2"><div class="pan"><h3>المصروفات حسب البند</h3>${cats.length?cats.map(([n,v])=>`<div class="bar"><span style="direction:rtl">${E(n)}</span><i style="width:${Math.max(4,v/mx*55)}%"></i><em>${fmt(v)}</em></div>`).join(""):'<div class="off">لا توجد مصروفات في الفترة</div>'}</div>
- <div class="pan"><h3>الفترات المغلقة</h3>${pr.length?pr.map(s=>`<div class="bar" style="justify-content:space-between"><span style="direction:ltr;width:auto">${E(s.no)}</span><span style="width:auto;direction:rtl;color:var(--mut)">${E(s.from)} ← ${E(s.to)} · ${fmt(s.bal)}</span><button class="bt s" data-cx="ps" data-id="${E(s.id)}" type="button">🖨</button></div>`).join(""):'<div class="off">لا توجد فترة مغلقة بعد</div>'}</div></div>
- <div class="pan"><div class="fl" style="margin:0 0 10px"><h3 style="margin:0">حركات الفترة الحالية</h3><select id="cfc" style="margin-inline-start:auto"><option value="">كل البنود</option>${CATS.concat(["عهدة"]).concat([...new Set(k.open.map(e=>e.cat).filter(c=>c&&!CATS.includes(c)&&c!=="عهدة"))]).map(c=>`<option ${fc===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
+ <div class="pan"><h3>الفترات المغلقة</h3>${pr.length?pr.map(s=>`<div class="bar" style="justify-content:space-between"><span style="direction:ltr;width:auto">${E(s.no)}</span><span style="width:auto;direction:rtl;color:var(--mut)">${E(s.from)} ← ${E(s.to)} · ${fmt(s.bal)}${s.adj?" · مُصحَّح":""}</span><button class="bt s" data-cx="ps" data-id="${E(s.id)}" type="button">🖨</button></div>`).join(""):'<div class="off">لا توجد فترة مغلقة بعد</div>'}</div></div>
+ <div class="pan"><div class="fl" style="margin:0 0 10px"><h3 style="margin:0">حركات الفترة الحالية</h3><select id="cfc" style="margin-inline-start:auto"><option value="">كل البنود</option>${allCats().concat(["عهدة"]).concat([...new Set(k.open.map(e=>e.cat).filter(c=>c&&!allCats().includes(c)&&c!=="عهدة"))]).map(c=>`<option ${fc===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
  <div class="tw"><table><thead><tr><th>التاريخ</th><th>البند</th><th>البيان / الفاتورة</th><th>عهدة</th><th>مصروف</th><th>الرصيد</th><th></th></tr></thead><tbody>${rows.length?rows.map(({e,run})=>`<tr><td>${E(e.dt)}</td><td><b>${E(e.cat)}</b></td><td>${E([e.note,e.inv?"فاتورة "+e.inv:"",e.carn].filter(Boolean).join(" — "))}</td><td class="am in">${e.type==="in"?fmt(e.amt):""}</td><td class="am ex">${e.type==="exp"?fmt(e.amt):""}</td><td class="am">${fc?"":fmt(run)}</td><td style="white-space:nowrap">${e.img||e.att?`<button class="bt s" data-cx="img" data-id="${E(e.id)}" type="button">📎</button> `:""}<button class="bt s" data-cx="edit" data-id="${E(e.id)}" type="button">تعديل</button>${X.admin?` <button class="bt s" data-cx="del" data-id="${E(e.id)}" type="button">حذف</button>`:""}</td></tr>`).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:26px">لا توجد حركات بعد. ابدأ بـ "استلمت عهدة".</td></tr>'}</tbody></table></div></div>`;
 }
 // ---------- النماذج ----------
@@ -50,7 +52,7 @@ function form(type,e){
  const m=box();m.className="cm on";
  m.innerHTML=`<div class="ck2"><h3>${e?"تعديل":""} ${ex?"فاتورة / مصروف":"استلام عهدة"}</h3>
  <label>المبلغ</label><input id="fa" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${e?E(e.amt):""}">
- ${ex?`<label>البند</label><select id="fcat">${CATS.concat(e&&e.cat&&!CATS.includes(e.cat)&&e.cat!=="عهدة"?[e.cat]:[]).map(c=>`<option ${e&&e.cat===c?"selected":""}>${E(c)}</option>`).join("")}</select>`:""}
+ ${ex?`<label>البند</label><select id="fcat">${allCats().concat(e&&e.cat&&!allCats().includes(e.cat)&&e.cat!=="عهدة"?[e.cat]:[]).map(c=>`<option ${e&&e.cat===c?"selected":""}>${E(c)}</option>`).join("")}<option value="__new">➕ إضافة بند جديد…</option></select><div id="fcatw" hidden><label>اسم البند الجديد</label><input id="fcatn" type="text" maxlength="40" placeholder="مثلاً: صيانة المستودع، أدوات مكتبية"><small class="off">يُحفظ البند ويظهر في القائمة في المرات القادمة.</small></div>`:""}
  <label>التاريخ</label><input id="fdt" type="date" value="${E(e?e.dt:today())}">
  ${ex?`<label>رقم الفاتورة / المورّد (اختياري)</label><input id="finv" type="text" maxlength="60" value="${E(e&&e.inv||"")}">
  <label>مرتبط بسيارة (اختياري — يدخل في تكلفة السيارة)</label><select id="fcar"><option value="">—</option>${cars.map(c=>`<option value="${E(c.id)}" ${e&&e.car===c.id?"selected":""}>${E(c.name)} ${E(c.plate||"")}</option>`).join("")}</select>`:""}
@@ -67,7 +69,15 @@ async function save(type){
  const amt=Math.round(N(toEn(g("fa").value))*100)/100;
  if(!(amt>0)||amt>10000000){X.toast("اكتب مبلغ صحيح");return}
  const ex=type==="exp",car=ex?g("fcar").value:"",c=(X.cars?X.cars():[]).find(x=>x.id===car);
- const d={br:"WH",type,amt,cat:ex?g("fcat").value:"عهدة",dt:g("fdt").value||today(),st:"approved",ts:edit?edit.ts:Date.now()};
+ let cat=ex?g("fcat").value:"عهدة";
+ if(ex&&cat==="__new"){cat=String(g("fcatn").value||"").replace(/\s+/g," ").trim().slice(0,40);
+  if(!cat){X.toast("اكتب اسم البند الجديد");g("fcatn").focus();return}
+  if(cat==="عهدة"){X.toast("اختر اسماً آخر للبند");return}
+  const ex0=allCats().find(x=>x.toLowerCase()===cat.toLowerCase());
+  if(ex0)cat=ex0;
+  else if(XC.length>=40){X.toast("وصلت للحد الأقصى من البنود (40)");return}
+  else{try{await setDoc(doc(X.db,"cfg","cus"),{cats:XC.concat([cat]),at:Date.now()});XC=XC.concat([cat])}catch(x){X.toast("تعذر حفظ البند الجديد. ربما القواعد (Rules) لم تتحدّث بعد","er");return}}}
+ const d={br:"WH",type,amt,cat,dt:g("fdt").value||today(),st:"approved",ts:edit?edit.ts:Date.now()};
  const note=g("fnote").value.trim().slice(0,300);d.note=note;
  if(ex){d.inv=g("finv").value.trim().slice(0,60);d.car=car;d.carn=c?c.name+(c.plate?" "+c.plate:""):""}
  if(replace){if(IMS[0])d.img=IMS[0]}else if(img)d.img=img;
@@ -91,12 +101,40 @@ async function closePeriod(){
  await setDoc(doc(X.db,"settlements",id),s);
  X.toast("تم الإقفال. الرصيد المرحّل "+fmt(s.bal));stmt(k,"كشف حساب العهدة — "+s.no,s.from,s.to,k.open,k.opening);
 }
+// ✏️ تصحيح الرصيد الافتتاحي (16 نوفمبر 2026، طلب محمد: "المبلغ اللي استلمته غلط"): الافتتاحي = رصيد آخر فترة مقفولة،
+// فالتصحيح بيتكتب على الفترة دي نفسها (bal) مع سجل بالقديم والجديد والسبب (adj) علشان يفضل واضح. للمالك بس (القواعد كمان).
+function adjForm(){
+ const k=cur();if(!k.last)return;mode="adj";
+ const m=box();m.className="cm on";
+ m.innerHTML=`<div class="ck2"><h3>✏️ تصحيح الرصيد الافتتاحي</h3>
+ <p class="off" style="margin:0 0 6px">الرصيد الحالي: <b dir="ltr">${fmt(k.opening)}</b> (رصيد الفترة المقفولة <bdi dir="ltr">${E(k.last.no||"")}</bdi>)</p>
+ <label>الرصيد الافتتاحي الصحيح</label><input id="adn" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" value="${E(k.opening)}">
+ <label>سبب التصحيح *</label><input id="adt" type="text" maxlength="200" placeholder="مثلاً: المبلغ المستلم كان 5,000 وليس 50,000">
+ <p class="off" style="margin:8px 0 0;font-size:13px">يُسجَّل التصحيح بالقيمة القديمة والجديدة واسم من صحّحه، ويتغيّر رصيد العهدة الحالي بفرق المبلغ.</p>
+ <div class="fl" style="margin-top:16px"><button class="bt p" data-cx="adjsave" type="button">حفظ التصحيح</button><button class="bt" data-cx="cancel" type="button">رجوع</button></div></div>`;
+ g("adn").focus();g("adn").select&&g("adn").select();
+}
+async function adjSave(){
+ const k=cur(),s=k.last;if(!s)return;
+ const raw=String(g("adn").value||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/٫/g,".").replace(/[,٬\s]/g,"");
+ const nv=Math.round(parseFloat(raw)*100)/100,note=String(g("adt").value||"").trim().slice(0,200);
+ if(!isFinite(nv)||Math.abs(nv)>1e9){X.toast("اكتب الرصيد الصحيح");return}
+ if(nv===Math.round(N(s.bal)*100)/100){X.toast("الرقم نفسه، لا يوجد تغيير");return}
+ if(!note){X.toast("اكتب سبب التصحيح");g("adt").focus();return}
+ const old=Math.round(N(s.bal)*100)/100,adj=(Array.isArray(s.adj)?s.adj:[]).slice(-9).concat([{at:Date.now(),from:old,to:nv,note}]);
+ if(!confirm("تصحيح الرصيد الافتتاحي من "+fmt(old)+" إلى "+fmt(nv)+"؟"))return;
+ await updateDoc(doc(X.db,"settlements",s.id),{bal:nv,adj});
+ closeM();X.toast("✅ اتصحّح الرصيد الافتتاحي إلى "+fmt(nv));
+}
 async function click(e){
  const t=e.target.closest("[data-cx]");if(!t)return;
  const a=t.dataset.cx,id=t.dataset.id;
  try{
   if(!X.admin&&(a==="del"||a==="close")){X.toast("هذه الصلاحية للمدير فقط");return}
+  if((a==="adj"||a==="adjsave")&&!X.owner){X.toast("تصحيح الرصيد الافتتاحي لمالك النظام فقط");return}
   if(a==="in"||a==="exp")form(a);
+  else if(a==="adj")adjForm();
+  else if(a==="adjsave")await adjSave();
   else if(a==="edit"){const en=LA.find(x=>x.id===id);if(en)form(en.type,en)}
   else if(a==="cancel")closeM();
   else if(a==="save")await save(t.dataset.type);
@@ -110,7 +148,7 @@ async function click(e){
 export function initExtra(ctx){
  X=ctx;stop();
  if(!g("ax-css")){const s=document.createElement("style");s.id="ax-css";s.textContent=CSS;document.head.appendChild(s);ensurePrintCss()}
- if(!window.__axc){window.__axc=1;document.addEventListener("click",click);document.addEventListener("change",e=>{if(e.target.id==="cfc"){fc=e.target.value;X.redraw()}})}
+ if(!window.__axc){window.__axc=1;document.addEventListener("click",click);document.addEventListener("change",e=>{if(e.target.id==="cfc"){fc=e.target.value;X.redraw()}if(e.target.id==="fcat"){const w=g("fcatw");if(w){w.hidden=e.target.value!=="__new";if(!w.hidden)g("fcatn").focus()}}})}
  regSW();
 }
 // توفير القراءات (نوفمبر 2026): العهدة كلها (من أول يوم) بتتقري بس لما حد يفتح تبويب العهدة أو السيارات (مصاريف العربيات)،
@@ -120,7 +158,8 @@ export function ledgerOn(){
  if(!X||LON)return;LON=true;
  un.push(onSnapshot(collection(X.db,"ledger"),sn=>{LA=sn.docs.map(d=>({id:d.id,...d.data()}));sync()},()=>X.toast("تعذر قراءة العهدة. تأكد من تحديث القواعد (Rules)")));
  un.push(onSnapshot(collection(X.db,"settlements"),sn=>{SA=sn.docs.map(d=>({id:d.id,...d.data()}));sync()},()=>{}));
+ un.push(onSnapshot(doc(X.db,"cfg","cus"),s=>{const v=s.exists()?s.data():{};XC=Array.isArray(v.cats)?v.cats.filter(c=>typeof c==="string"&&c.trim()):[];sync()},()=>{}));
 }
-export function stop(){un.forEach(f=>f());un=[];LA=[];SA=[];mode="";LON=false;const m=g("cmx");if(m){m.className="cm";m.innerHTML=""}}
+export function stop(){un.forEach(f=>f());un=[];LA=[];SA=[];XC=[];mode="";LON=false;const m=g("cmx");if(m){m.className="cm";m.innerHTML=""}}
 export const ledger=()=>LA;
 export {hdr as adminHdr};

@@ -2505,4 +2505,11 @@ export default {
 "مسح الأصناف":"Clear items",
 "كل سطر صنف: الكود، اللون، المقاس، الكمية، رقم الحاوية (اختياري). انسخ الأعمدة من إكسل والصقها هنا":"One item per line: code, color, size, quantity, container number (optional). Copy the columns from Excel and paste them here",
 "مسح كل الأصناف المكتوبة في هذا الأمر؟":"Clear all items entered in this order?",
+"إضافة بند جديد…":"Add a new category…",
+"اسم البند الجديد":"New category name",
+"يُحفظ البند ويظهر في القائمة في المرات القادمة.":"The category is saved and appears in the list next time.",
+"اكتب اسم البند الجديد":"Enter the new category name",
+"اختر اسماً آخر للبند":"Choose another name for the category",
+"وصلت للحد الأقصى من البنود (40)":"You reached the maximum number of categories (40)",
+"تعذر حفظ البند الجديد. ربما القواعد (Rules) لم تتحدّث بعد":"Could not save the new category. The rules may not be updated yet",
 };
