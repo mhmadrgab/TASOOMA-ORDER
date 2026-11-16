@@ -172,22 +172,71 @@
   const w=setInterval(()=>{if(window.__uiOk){d.remove();clearInterval(w)}},500);
  },12000);
 })();
-// 🔄 (14 نوفمبر 2026) المنصة بتفتح من النسخة اللي على الجهاز (sw.js). لما نسخة جديدة تتنزّل في الخلفية وتشتغل، بنعمل ريفرش مرة واحدة
-// علشان الناس تشوف الجديد على طول — بس لو الصفحة لسه مفتوحة من قريب (أقل من 25 ثانية) والمستخدم مابدأش يكتب أو يدوس، علشان مانضيّعش شغله.
+// 🔄 (16 نوفمبر 2026، محمد: "أي تحديث يوصل لحظي من غير ريفرش ولا قفل المنصة وفتحها")
+// المنصة بتفتح من النسخة اللي على الجهاز (sw.js). دلوقتي:
+//  1) بنسأل "فيه نسخة جديدة؟" كل دقيقة والصفحة قدام المستخدم، وكل ما يرجع للصفحة أو النت يرجع (ملف sw.js صغير).
+//  2) لما النسخة الجديدة تشتغل (controllerchange) بنطبّقها بريفرش واحد في أول لحظة آمنة: مفيش نافذة مفتوحة، ومفيش حد بيكتب في خانة،
+//     ومفيش تسجيل صوت، والمستخدم ساكت 6 ثواني (أو الصفحة في الخلفية 3 ثواني). قبل الريفرش شاشة غامقة "جاري تطبيق التحديث" (مفيش وميض أبيض).
+//  3) لو مش آمن: شريط صغير تحت "وصل تحديث جديد" فيه زرار "حدّث الآن"، ويتطبّق لوحده أول ما الوضع يبقى آمن.
+//  4) حماية من الدوران: بحد أقصى 3 ريفرشات تلقائية في نص ساعة وبينهم دقيقة على الأقل (الباقي بالزرار بس).
+//  5) بعد الريفرش بتظهر رسالة صغيرة "تم تحديث المنصة · النسخة N".
 (function(){
  if(!("serviceWorker" in navigator))return;
- const had=!!navigator.serviceWorker.controller,t0=Date.now();let busy=false;
- const mark=()=>{busy=true};addEventListener("pointerdown",mark,{once:true,capture:true});addEventListener("keydown",mark,{once:true,capture:true});
- // نسأل "فيه نسخة جديدة؟" (sw.js بس، ملف صغير) أول ما الصفحة تفتح، وكل ما المنصة ترجع قدام المستخدم
- const upd=()=>navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});
- setTimeout(upd,1500);document.addEventListener("visibilitychange",()=>{if(!document.hidden)upd()});
+ const ss=(k,v)=>{try{if(v===undefined)return sessionStorage.getItem(k);if(v===null)sessionStorage.removeItem(k);else sessionStorage.setItem(k,v)}catch(e){return null}};
+ let had=!!navigator.serviceWorker.controller,lastAct=Date.now(),pending=false,pendAt=0,applying=false,ver="";
+ ["pointerdown","keydown","touchstart","wheel"].forEach(ev=>addEventListener(ev,()=>{lastAct=Date.now()},{capture:true,passive:true}));
+ // رقم النسخة بيجي من sw.js نفسه
+ navigator.serviceWorker.addEventListener("message",e=>{const d=e&&e.data;if(d&&d.t==="ver"){ver=String(d.v||"").replace(/^tasooma-v/,"");window.__tzVer=ver}});
+ const askVer=()=>{try{if(navigator.serviceWorker.controller)navigator.serviceWorker.controller.postMessage({t:"ver"})}catch(e){}};
+ askVer();
+ // 1) السؤال عن نسخة جديدة
+ const upd=()=>{if(navigator.onLine===false)return;navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{})};
+ setTimeout(upd,1500);
+ setInterval(()=>{if(!document.hidden)upd()},60000);
+ addEventListener("online",upd);addEventListener("focus",upd);
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)upd();tick()});
+ // 2) هل ينفع نعمل ريفرش دلوقتي من غير ما نضيّع شغل؟
+ const MOD="#mtm,#pom,#clm,#osh,#xm,#wkm,#zbx,#bciv,#anniv,#annm,#annp,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,.cm,.fm,.gfm,.mdl,.wkm,.ov";
+ const overlayOpen=()=>{if(document.getElementById("tz-news"))return true;try{return [...document.querySelectorAll(MOD)].some(e=>e.classList.contains("on")&&!e.classList.contains("is-closing"))}catch(x){return false}};
+ const typing=()=>{const a=document.activeElement;if(!a)return false;const t=a.tagName;
+  if(a.isContentEditable)return String(a.textContent||"").length>0;
+  if(t==="TEXTAREA")return String(a.value||"").length>0;
+  if(t==="INPUT"){const ty=String(a.type||"text").toLowerCase();if(/^(checkbox|radio|button|submit|range|file)$/.test(ty))return false;return String(a.value||"").length>0}
+  return false};
+ const recording=()=>{const r=document.getElementById("bcrec");return !!(r&&!r.hidden)};
+ const safe=()=>!overlayOpen()&&!typing()&&!recording()&&Date.now()-lastAct>(document.hidden?3000:6000);
+ const hist=()=>{let a=[];try{a=JSON.parse(ss("tz_hot")||"[]")}catch(e){}return a.filter(t=>Date.now()-t<18e5)};
+ const guard=()=>{const h=hist();return h.length>=3||(h.length>0&&Date.now()-h[h.length-1]<60000)};
+ // 3) الشريط والتطبيق
+ const css=()=>{if(document.getElementById("tz-upd-css"))return;const s=document.createElement("style");s.id="tz-upd-css";s.textContent="@keyframes tzu-in{from{opacity:0;transform:translateY(14px)}}@media (prefers-reduced-motion:reduce){#tz-upd{animation:none!important}}";document.head.appendChild(s)};
+ const banner=()=>{if(document.getElementById("tz-upd")||!document.body)return;css();
+  const b=document.createElement("div");b.id="tz-upd";b.setAttribute("role","status");
+  b.style.cssText="position:fixed;z-index:99989;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));margin:0 auto;max-width:440px;display:flex;align-items:center;gap:10px;background:#2a1d2c;color:#fff;border-radius:16px;padding:8px 8px 8px 14px;box-shadow:0 14px 36px rgba(0,0,0,.4);font:600 13.5px/1.5 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;animation:tzu-in .35s cubic-bezier(.16,1,.3,1) both";
+  b.innerHTML='<span style="flex:1">🔄 وصل تحديث جديد، وسيُطبَّق تلقائياً</span><button type="button" style="flex:none;border:0;border-radius:11px;background:#b48aab;color:#1d1720;font:700 14px/1 \'IBM Plex Sans Arabic\',Tahoma,sans-serif;padding:10px 14px;cursor:pointer">حدّث الآن</button>';
+  b.querySelector("button").onclick=()=>apply(true);document.body.appendChild(b)};
+ const apply=force=>{if(applying||!document.body)return;if(!force&&guard())return;applying=true;
+  const h=hist();h.push(Date.now());ss("tz_hot",JSON.stringify(h));ss("tz_upd_ok",ver||"1");
+  const o=document.createElement("div");o.id="tz-apply";o.setAttribute("role","status");
+  o.style.cssText="position:fixed;inset:0;z-index:99999;background:#2a1d2c;color:#e3c8dd;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;font:600 16px/1.6 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;opacity:0;transition:opacity .25s ease";
+  o.innerHTML='<img src="./icon-192.png" alt="" style="width:64px;height:64px;border-radius:16px;background:#fff"><span>جاري تطبيق التحديث…</span>';
+  document.body.appendChild(o);setTimeout(()=>{o.style.opacity="1"},20);setTimeout(()=>location.reload(),480)};
+ function tick(){if(!pending||applying)return;if(safe()&&!guard()){apply(false);return}if(Date.now()-pendAt>4000)banner()}
+ setInterval(tick,1500);
+ // 4) النسخة الجديدة اشتغلت
  navigator.serviceWorker.addEventListener("controllerchange",()=>{
-  // (15 نوفمبر 2026) بس لو شاشة البداية لسه مغطية الصفحة (المستخدم لسه ماشافش حاجة). لو الصفحة ظهرت خلاص مابنقاطعهوش:
-  // النسخة الجديدة بتشتغل من الفتحة الجاية. (كان بيعمل ريفرش وهو شايف اللوحة = شاشة بيضا فجأة)
-  if(!had||busy||Date.now()-t0>25000||!document.getElementById("boot")||window.__uiOk)return;
-  try{if(sessionStorage.getItem("tz_swr"))return;sessionStorage.setItem("tz_swr","1")}catch(e){return}
-  location.reload();
- });
+  if(!had){had=true;return}// أول تثبيت للخدمة على الجهاز: مش تحديث
+  askVer();pending=true;pendAt=Date.now();
+  // الصفحة لسه ما ظهرتش (شاشة البداية مغطيّاها): ريفرش على طول، مفيش حاجة تتقطع
+  if(document.getElementById("boot")&&!window.__uiOk&&Date.now()-lastAct>1500&&!guard()){const h=hist();h.push(Date.now());ss("tz_hot",JSON.stringify(h));ss("tz_upd_ok",ver||"1");location.reload();return}
+  tick()});
+ // 5) بعد الريفرش: رسالة تأكيد صغيرة لما الصفحة تظهر
+ // (رقم النسخة بيتقرا من الصفحة الجديدة نفسها بعد الريفرش، مش من القديمة)
+ if(ss("tz_upd_ok")!==null){ss("tz_upd_ok",null);let n=0;const iv=setInterval(()=>{n++;if(n>60){clearInterval(iv);return}
+  if(!window.__uiOk||document.getElementById("boot")||document.getElementById("tz-news"))return;clearInterval(iv);const v=ver;
+  const t=document.createElement("div");t.id="tz-updok";t.setAttribute("role","status");
+  t.style.cssText="position:fixed;z-index:99988;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));margin:0 auto;width:max-content;max-width:calc(100% - 24px);background:#6f7d45;color:#fff;border-radius:999px;padding:9px 18px;box-shadow:0 10px 28px rgba(0,0,0,.3);font:600 14px/1.4 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;transition:opacity .4s ease";
+  t.innerHTML='✅ تم تحديث المنصة'+(v&&v!=="1"?' · <span dir="ltr" data-notr>v'+String(v).replace(/[^0-9.]/g,"")+'</span>':"");
+  if(document.body)document.body.appendChild(t);setTimeout(()=>{t.style.opacity="0"},3200);setTimeout(()=>{if(t.parentNode)t.remove()},3700)},500)}
 })();
 // ✨ رسالة "المنصة بثوبها الجديد" (14 نوفمبر 2026، طلب محمد): بتظهر مرة واحدة لكل مستخدم (المديرين والفروع والسواقين) بعد الدخول،
 // وأول ما يقفلها مابتظهرش تاني على الجهاز ده (localStorage: tz_news). لرسالة جديدة بعدين: غيّر NEWS_ID والنص.

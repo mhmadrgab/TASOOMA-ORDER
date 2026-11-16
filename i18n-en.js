@@ -2420,4 +2420,8 @@ export default {
 "موجود بالفعل:":"Already exists:",
 "يظهر في تقييم التجهيز أيضاً":"Also appears in the preparation rating",
 "يخرج من تقييم التجهيز ويبقى في النظافة فقط":"Leaves the preparation rating and stays in cleaning only",
+"وصل تحديث جديد، وسيُطبَّق تلقائياً":"A new update has arrived and will apply automatically",
+"حدّث الآن":"Update now",
+"جاري تطبيق التحديث…":"Applying the update…",
+"تم تحديث المنصة":"The platform has been updated",
 };
