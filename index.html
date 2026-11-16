@@ -503,6 +503,7 @@ import {initAnn,stopAnn} from "./ann.js";
 import {notify,beep,badge,autoPush} from "./notify.js";
 import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.js";
 import {initTrack,stopTrack,trackBtn} from "./track.js";
+import {initSheet,stopSheet} from "./brsheet.js";
 const {app,db,auth}=makeFb("branch");
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام",go:"في الطريق إليك 🚚"};
 const ST=x=>LBL[x]?x:"new";
@@ -605,7 +606,7 @@ function listen(){
  }
  // بنرسم القائمة لوحدها أيضاً لما المحادثة تتقفل (علشان رقم الرسائل الجديدة يتحدّث)
  paint=()=>{const rs=Object.values(REQS).sort((a,b)=>b.ts-a.ts);
-  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.tr?`<span class="ed-tag wh-tag">🔄 تحويل من <bdi dir="ltr">${E(r.tr.frn)}</bdi></span>`:r.by==="wh"?`<span class="ed-tag wh-tag">📋 أنشأ المستودع هذا الطلب</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${r.edn?" ("+E(r.edn)+")":""}${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${lbl(r)}</span>${rqBtn(r)}${r.st==="go"?(isShip(r)?`<span class="gon">🚚 السائق خرج بطلبك متجهاً إلى شركة الشحن (${E(SHIP)})${+r.dep?" · خرج "+ago(+r.dep):""}<br>سيصلك من الشركة بعد تسليمه لها</span>`:`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}</span>${etaHtml(r)}${trackBtn(r)}`):""}${r.st==="done"&&isShip(r)?`<span class="gon">📦 سُلِّم لشركة الشحن (${E(r.pod&&r.pod.co||SHIP)})${r.pod&&r.pod.wb?` · بوليصة <bdi dir="ltr">${E(r.pod.wb)}</bdi>`:""}<br>عند وصول الشحنة إليك اضغط "استلمت" وراجع الكميات</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<details data-id="${E(r.id)}" ${opn.has(r.id)?"open":""}><summary>تفاصيل الطلب</summary><div class="ln">${lines(r.rows)}</div>${rcvInfo(r)}</details></div>`).join(""):'<small style="color:var(--mut)">لم يتم إرسال طلبات بعد.</small>';
+  g("ml").innerHTML=rs.length?rs.map(r=>`<div class="mr" data-id="${E(r.id)}" data-st="${ST(r.st)}"><div><b><bdi dir="ltr">${E(r.no)}</bdi></b>${r.tr?`<span class="ed-tag wh-tag">🔄 تحويل من <bdi dir="ltr">${E(r.tr.frn)}</bdi></span>`:r.by==="wh"?`<span class="ed-tag wh-tag">📋 أنشأ المستودع هذا الطلب</span>`:""}${r.edited?`<span class="ed-tag">عدّله المستودع${r.edn?" ("+E(r.edn)+")":""}${+r.eat?" · "+ago(+r.eat):""}</span>`:""}<small>${+r.codes||0} صنف · ${+r.pcs||0} قطعة · ${ago(+r.ts)}</small></div><span class="chp ${ST(r.st)}">${lbl(r)}</span>${rqBtn(r)}${r.st==="go"?(isShip(r)?`<span class="gon">🚚 السائق خرج بطلبك متجهاً إلى شركة الشحن (${E(SHIP)})${+r.dep?" · خرج "+ago(+r.dep):""}<br>سيصلك من الشركة بعد تسليمه لها</span>`:`<span class="gon">🚚 خرجت السيارة${r.asg&&r.asg.drvn?" مع "+E(r.asg.drvn):""}${+r.dep?" · خرجت "+ago(+r.dep):""}</span>${etaHtml(r)}${trackBtn(r)}`):""}${r.st==="done"&&isShip(r)?`<span class="gon">📦 سُلِّم لشركة الشحن (${E(r.pod&&r.pod.co||SHIP)})${r.pod&&r.pod.wb?` · بوليصة <bdi dir="ltr">${E(r.pod.wb)}</bdi>`:""}<br>عند وصول الشحنة إليك اضغط "استلمت" وراجع الكميات</span>`:""}${r.st==="done"?`<button class="rcvb" data-rcv="${E(r.id)}" type="button">✅ استلمت</button>`:""}${r.st==="recv"&&r.rcv&&r.rcv.ok===false?`<span class="rcn">استلام بملاحظات</span>`:""}<button class="oshb" data-osh="${E(r.id)}" type="button">📄 عرض الطلب</button></div>`).join(""):'<small style="color:var(--mut)">لم يتم إرسال طلبات بعد.</small>';
  }
 }
 function enter(b){
@@ -614,6 +615,8 @@ function enter(b){
  B=b;localStorage.setItem("tb",b);document.body.classList.add("lock");g("gate").className="";
  st.br=b;st.ty="load";save();loadUI();g("mb").innerHTML=`<bdi dir="ltr">${E(b)}</bdi>`;hello(null);listen();
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
+  // 📄 ورقة الطلب (15 نوفمبر 2026): الضغط على كارت الطلب بيفتحه في شكل ورقة، ومعاه صور التسليم/إيصال الشحن
+  initSheet({db,toast,get:id=>REQS[id],lbl,isShip,ship:()=>SHIP,brn:()=>B});
  // 🎁 الهدايا والعينات: زرار فوق جنب "تغيير الفرع"، والفرع يسجّل الهدية بالسند والمستودع بيعتمدها
  // 📢 التعميمات من الإدارة (الفرع بيقرا بس). الزرار في شريط الفرع
  initTrack({db,code:code(b),getReq:id=>REQS[id]});// 📍 "تابع السائق على الخريطة" في الطلب اللي في الطريق
@@ -636,13 +639,13 @@ function deepReq(id){
  let n=0;const iv=setInterval(()=>{n++;if(n>40){clearInterval(iv);return}
   if(!REQS[id])return;clearInterval(iv);
   opn.add(id);paint();
-  setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest(".mr");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
+  setTimeout(()=>{const a=document.querySelector(`#ml .mr[data-id="${CSS.escape(id)}"]`);if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 {const q=new URLSearchParams(location.search),rq=q.get("req");
  if(rq&&/^[A-Za-z0-9_-]{6,40}$/.test(rq))deepReq(rq);
  if(q.get("gift")){let n=0;const iv=setInterval(()=>{n++;const b=document.querySelector('[data-gf="bopen"]');if(b){clearInterval(iv);b.click()}else if(n>40)clearInterval(iv)},500)}
  if(rq||q.get("gift"))try{history.replaceState(null,"",location.pathname)}catch(e){}}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
-function gateOn(){B=null;stopBranch();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");
