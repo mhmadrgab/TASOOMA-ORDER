@@ -81,7 +81,7 @@ function paint(){
   m.innerHTML=`<div class="bx">${avatar(X.me,n,96)}<h3>${E(n)}</h3><div class="k">${E(k)}</div><div class="off" dir="ltr">${E(X.me)}</div>
   ${own?`<label for="pfn">اسمك (يظهر للفروع في الدردشة)</label><input id="pfn" type="text" maxlength="60" value="${E(ME&&ME.n||n)}">
   <label for="pfk">كنيتك (تظهر بجانب اسمك)</label><input id="pfk" type="text" maxlength="40" placeholder="مثلاً: المدير العام" value="${E(ME&&ME.k||"")}">`
-  :`<p class="off" style="margin:12px 0 0">يحدد مالك النظام الاسم والكنية.</p>`}
+  :`<p class="off" style="margin:12px 0 0">يحدد الأدمن الاسم والكنية.</p>`}
   <input id="pff" type="file" accept="image/*" hidden>
   <div class="row"><button class="bt p" data-pf="up" type="button" ${busy?"disabled":""}>${busy?"⏳ جاري الرفع...":photo(X.me)?"📷 غيّر الصورة":"📷 ارفع صورتك"}</button>${photo(X.me)?`<button class="bt" data-pf="rm" type="button">🗑 إزالة الصورة</button>`:""}</div>
   <div class="row">${own?`<button class="bt g" data-pf="save" type="button">حفظ الاسم والكنية</button>`:""}<button class="bt" data-pf="x" type="button">إغلاق</button></div></div>`;
