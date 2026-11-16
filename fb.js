@@ -8,7 +8,7 @@ const {createClient} = self.supabase;
 import {SB_URL, SB_KEY} from "./sb-config.js";
 import * as S from "./sbcore.js";
 const {collection, doc, getDoc, getDocs, onSnapshot, query, where, orderBy, limit, increment, arrayUnion, deleteField,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword} = S;
+  signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword} = S;
 
 // Firebase: للإشعارات بس (FCM)
 const firebaseConfig = {
@@ -34,6 +34,21 @@ export function makeFb(name) {
     realtime: {params: {eventsPerSecond: 10}}});
   const db = {c}, app = {name, sb: c, db};
   return APPS[name] = {app, db, auth: new S.Auth(c)};
+}
+// 👤 (16 نوفمبر 2026) إنشاء حساب دخول: من السيرفر الأول (بمفتاح الخدمة، فالتسجيل في Supabase يفضل مقفول)،
+// ولو السيرفر مش متاح أو رفض لأي سبب غير "الإيميل موجود/كلمة السر ضعيفة" بنرجع للطريقة القديمة (signUp) زي ما كانت.
+async function createUserWithEmailAndPassword(a, email, pw) {
+  const main = Object.keys(APPS).filter(k => k !== "sec").map(k => APPS[k].auth.currentUser).find(Boolean);
+  if (main && PUSH_URL) {
+    let r = null;
+    try { const t = await main.getIdToken(); r = await withTimeout(fetch(PUSH_URL + "/mkuser", {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + t}, body: JSON.stringify({email: String(email).trim(), pw: String(pw)})}), 20000) } catch (e) { r = null }
+    if (r) {
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 200 && j && j.ok) return {user: {uid: String(j.id || ""), email: String(email).trim().toLowerCase()}};
+      if (j && typeof j.code === "string" && /^auth\/(email-already-in-use|weak-password|invalid-email)$/.test(j.code)) { const e = new Error(j.code); e.code = j.code; throw e }
+    }
+  }
+  return S.createUserWithEmailAndPassword(a, email, pw);
 }
 export const withTimeout = (p, ms = 15000) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error("timeout")), ms))]);
 
