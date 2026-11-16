@@ -149,16 +149,29 @@ const CSS=`
 #pom .sl .sp{flex:1;min-width:150px}
 #pom .sl a,#pom .sl button{font:inherit;font-size:13.5px;font-weight:600;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 10px;cursor:pointer;text-decoration:none}
 #pom .warn{background:color-mix(in srgb,#e8740c 14%,transparent);border-radius:12px;padding:8px 12px;font-size:13.5px;margin-top:10px}
-#pom .it{border:1px dashed var(--line);border-radius:14px;padding:4px 10px 10px;margin-top:12px}
-#pom .it-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
-#pom .it-h b{flex:1;font-size:14.5px}
-#pom .it-h button,#pom .it-r button,#pom .it-p button{font:inherit;font-size:13.5px;font-weight:600;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 10px;cursor:pointer}
-#pom .it-r{display:grid;grid-template-columns:1fr 1.7fr 84px 76px 34px;gap:6px;margin-top:6px;align-items:center}
-#pom .it-r input,#pom .it-r select{padding:8px 9px;font-size:14px}
-#pom .it-r.ih{font-size:12px;color:var(--mut);margin-top:10px}
-#pom .it-t{font-size:13px;color:var(--mut);margin-top:8px}
+#pom .it{margin-top:14px}
+#pom .it-tg{width:100%;display:flex;align-items:center;gap:10px;font:inherit;font-weight:700;font-size:15px;border:1.5px dashed #8a5a83;background:color-mix(in srgb,#8a5a83 7%,var(--card));color:var(--ink);border-radius:14px;padding:12px 14px;cursor:pointer;text-align:start}
+#pom .it-tg small{flex:1;color:var(--mut);font-weight:600;font-size:13px}
+#pom .it-tg .ar{font-style:normal;font-size:14px;transition:transform .2s ease}
+#pom .it-tg[aria-expanded="true"]{border-style:solid;border-radius:14px 14px 0 0}#pom .it-tg[aria-expanded="true"] .ar{transform:rotate(180deg)}
+#pom .it-bx{border:1.5px solid #8a5a83;border-top:0;border-radius:0 0 14px 14px;padding:10px 8px}
+#pom .it-tw{overflow-x:auto}
+#pom .it-tb{width:100%;border-collapse:collapse;font-size:14px}
+#pom .it-tb th{font-size:12px;color:var(--mut);font-weight:600;text-align:start;padding:2px 3px 6px;white-space:nowrap}
+#pom .it-tb td{padding:3px}
+#pom .it-tb td.n{color:var(--mut);font-size:12px;text-align:center;width:22px}
+#pom .it-tb td.iq{width:84px}#pom .it-tb td.iz{width:78px}#pom .it-tb td.it-k{width:76px}#pom .it-tb td.ix{width:28px}
+#pom .it-tb input,#pom .it-tb select{padding:7px 8px;font-size:14px;border-radius:9px}
+#pom .it-tb.nok .it-k,#pom .it-tb.nok .it-kh{display:none}
+#pom .it-tb .ix button{font:inherit;border:0;background:none;color:#c4362b;font-size:20px;line-height:1;cursor:pointer;padding:4px}
+#pom .it-h{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+#pom .it-h button,#pom .it-p button{font:inherit;font-size:13.5px;font-weight:600;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 12px;cursor:pointer}
 #pom .it-p{margin-top:8px}#pom .it-p textarea{min-height:90px;direction:ltr;text-align:left}
-@media (max-width:520px){#pom .it-r{grid-template-columns:1fr 1fr 1fr;border:1px solid var(--line);border-radius:12px;padding:8px}#pom .it-r .nm{grid-column:1/-1;order:-1}#pom .it-r button{grid-column:1/-1;justify-self:end}#pom .it-r.ih{display:none}}
+@media (max-width:560px){#pom .it-tb thead{display:none}#pom .it-tb,#pom .it-tb tbody{display:block}
+ #pom .it-tb tr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;position:relative}
+ #pom .it-tb td{padding:0;width:auto!important}#pom .it-tb td.n{display:none}
+ #pom .it-tb td.ic{grid-column:1/3}#pom .it-tb td.in{grid-column:1/-1}#pom .it-tb.nok td.iq{grid-column:2/-1}
+ #pom .it-tb td.ix{position:absolute;top:2px;inset-inline-end:2px}#pom .it-tb td.icl{margin-inline-end:26px}}
 `;
 function css(){if(!g("po-css")){const s=document.createElement("style");s.id="po-css";s.textContent=CSS;document.head.appendChild(s)}}
 
@@ -191,7 +204,7 @@ function listView(L){
  const sups=[...S.values()].sort((a,b)=>String(a.n).localeCompare(String(b.n),"ar"));
  const q=F.q.trim().toLowerCase();
  const fk=K.find(k=>k[0]===F.st);
- const Vv=L.filter(r=>(F.st==="all"||(fk?fk[3](r):r.st===F.st))&&(!F.sup||r.sup===F.sup)&&(!F.cty||r.cty===F.cty)&&(!q||[r.no,r.supn,r.desc,r.ref,r.bl,r.cnos,r.line,Array.isArray(r.it)?r.it.map(x=>(x.c||"")+" "+(x.n||"")).join(" "):""].join(" ").toLowerCase().includes(q)));
+ const Vv=L.filter(r=>(F.st==="all"||(fk?fk[3](r):r.st===F.st))&&(!F.sup||r.sup===F.sup)&&(!F.cty||r.cty===F.cty)&&(!q||[r.no,r.supn,r.desc,r.ref,r.bl,r.cnos,r.line,Array.isArray(r.it)?r.it.map(x=>[x.c,x.cl,x.z,x.n].filter(Boolean).join(" ")).join(" "):""].join(" ").toLowerCase().includes(q)));
  return `<div class="po-k">${K.map(([k,l,c,f])=>`<button type="button" data-po="fst" data-v="${k}" class="${F.st===k?"on":""}" style="--c:${c}"><b>${cnt(f)}</b><small>${l}</small></button>`).join("")}</div>
  <div class="po-f">${[["open","المفتوحة"],["all","الكل"],["wh","المستلمة"],["x","الملغاة"]].map(([k,l])=>`<button type="button" class="ch ${F.st===k?"on":""}" data-po="fst" data-v="${k}">${l}</button>`).join("")}
  <select id="po-fs" aria-label="المورد"><option value="">كل الموردين</option>${sups.map(s=>`<option value="${E(s.id)}" ${F.sup===s.id?"selected":""}>${E(s.n)}</option>`).join("")}</select>
@@ -282,7 +295,7 @@ function form(id){
  const r=id?A.get(id):null;if(id&&!r)return;
  const sups=[...S.values()].sort((a,b)=>String(a.n).localeCompare(String(b.n),"ar"));
  const o=r||{dt:Date.now(),cn:1,ctype:"40HC",cur:"USD",pod:"الدمام"};
- if(!KEEP)IT=(r&&Array.isArray(r.it)?r.it:[]).map(x=>({c:x.c||"",n:x.n||"",q:String(x.q||""),k:x.k?String(x.k):""}));KEEP=false;
+ if(!KEEP){IT=(r&&Array.isArray(r.it)?r.it:[]).map(x=>({c:x.c||"",cl:x.cl||"",z:x.z||"",q:String(x.q||""),k:x.k?String(x.k):"",n:x.n||""}));ITO=false}KEEP=false;
  openM(`<h3>${r?"✏️ تعديل أمر الشراء":"➕ أمر شراء جديد"}</h3>
  <label>المورد *</label><div style="display:flex;gap:8px"><select id="po-su" style="flex:1"><option value="">اختر المورد</option>${sups.map(s=>`<option value="${E(s.id)}" ${o.sup===s.id?"selected":""}>${E(s.n)} (${ctyOf(s.cty)[1]})</option>`).join("")}</select><button type="button" class="bt" data-po="supnew" style="white-space:nowrap">➕ مورد</button></div>
  ${sups.length?"":`<div class="warn">أضف المورد أولاً من زر «مورد» بجانب القائمة (الاسم والدولة ورقم الجوال).</div>`}
@@ -291,9 +304,10 @@ function form(id){
  <label>وصف البضاعة * (يُكتب تلقائياً إن أضفت أصنافاً وتركته فارغاً)</label><textarea id="po-ds" maxlength="1000" placeholder="مثلاً: أحذية رجالي شتوي، 4,800 زوج">${E(o.desc||"")}</textarea>
  <div class="row"><div><label>عدد الحاويات *</label><input id="po-cn" inputmode="numeric" value="${E(o.cn||1)}"></div>
  <div><label>نوع الحاوية</label><select id="po-ct">${CTYPE.map(([k,l])=>`<option value="${k}" ${o.ctype===k?"selected":""}>${l}</option>`).join("")}</select></div></div>
- <div class="it"><div class="it-h"><b>📦 الأصناف (اختياري)</b><button type="button" data-po="itpaste">📋 لصق من إكسل</button><button type="button" data-po="itadd">➕ صنف</button></div>
- <div class="it-p" id="po-itpw" hidden><label>كل سطر صنف: الكود، البيان، الكمية، رقم الحاوية (اختياري). انسخها من إكسل والصقها هنا</label><textarea id="po-itp" placeholder="A1023&#9;حذاء رجالي أسود 42&#9;120&#9;1"></textarea><button type="button" data-po="itparse">إضافة الأسطر</button></div>
- <div id="po-itb"></div><div class="it-t" id="po-itt"></div></div>
+ <div class="it"><button type="button" class="it-tg" data-po="ittog" aria-expanded="false" aria-controls="po-itbx"><span>📦 إضافة أصناف</span><small id="po-itt"></small><i class="ar">▾</i></button>
+ <div class="it-bx" id="po-itbx" hidden><div class="it-tw"><table class="it-tb"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th><th class="it-kh">الحاوية</th><th>ملاحظات</th><th></th></tr></thead><tbody id="po-itb"></tbody></table></div>
+ <div class="it-h"><button type="button" data-po="itadd">＋ سطر</button><button type="button" data-po="itpaste">📋 لصق من إكسل</button><button type="button" data-po="itclr">مسح الأصناف</button></div>
+ <div class="it-p" id="po-itpw" hidden><label>كل سطر صنف: الكود، اللون، المقاس، الكمية، رقم الحاوية (اختياري). انسخ الأعمدة من إكسل والصقها هنا</label><textarea id="po-itp" placeholder="A1023&#9;أسود&#9;42&#9;120&#9;1"></textarea><button type="button" data-po="itparse">إضافة الأسطر</button></div></div></div>
  <div class="row"><div><label>قيمة الأمر (اختياري)</label><input id="po-val" inputmode="decimal" dir="ltr" value="${N(o.val)?E(o.val):""}"></div>
  <div><label>العملة</label><select id="po-cur">${CUR.map(c=>`<option ${o.cur===c?"selected":""}>${c}</option>`).join("")}</select></div></div>
  <div class="row"><div><label>شرط التسليم (Incoterm)</label><select id="po-inc"><option value="">—</option>${INC.map(c=>`<option ${o.inc===c?"selected":""}>${c}</option>`).join("")}</select></div>
@@ -474,36 +488,64 @@ function stash(){FS={};const m=g("pom");if(m)m.querySelectorAll("input[id],selec
 function backToForm(sel){KEEP=true;form(SUPBACK_ID||undefined);if(FS)Object.keys(FS).forEach(k=>{const el=g(k);if(el&&el.type!=="file")el.value=FS[k]});FS=null;if(sel&&g("po-su"))g("po-su").value=sel;itRender()}
 
 
-// ---------- الأصناف داخل أمر الشراء (16 نوفمبر 2026، طلب محمد) ----------
-// po/{id}.it = [{c:الكود, n:البيان, q:الكمية, k?:رقم الحاوية}] لحد 200 صنف. بتتكتب في نفس نموذج الأمر (صفوف + لصق من إكسل).
-let IT=[],KEEP=false;const MAXIT=200;
-function itRender(){const b=g("po-itb");if(!b)return;const cn=Math.max(1,Math.min(50,Math.round(N(toEn((g("po-cn")||{value:"1"}).value)))||1));
- b.innerHTML=IT.length?`<div class="it-r ih"><span>الكود</span><span>البيان (الصنف / اللون / المقاس)</span><span>الكمية</span><span>${cn>1?"الحاوية":""}</span><span></span></div>`+IT.map((x,i)=>`<div class="it-r" data-i="${i}"><input data-f="c" maxlength="40" dir="ltr" placeholder="الكود" value="${E(x.c)}"><input class="nm" data-f="n" maxlength="100" placeholder="البيان (الصنف / اللون / المقاس)" value="${E(x.n)}"><input data-f="q" inputmode="numeric" placeholder="الكمية" value="${E(x.q)}">${cn>1?`<select data-f="k"><option value="">الحاوية</option>${Array.from({length:cn},(_,j)=>`<option value="${j+1}" ${String(x.k)===String(j+1)?"selected":""}>${j+1}</option>`).join("")}</select>`:"<span></span>"}<button type="button" data-po="itdel" data-i="${i}" aria-label="حذف الصنف">✕</button></div>`).join(""):"";
+// ---------- الأصناف داخل أمر الشراء (16 نوفمبر 2026، طلب محمد: "إضافة أصناف وتفتح في قايمة منسدلة زي ورقة نواقص الفروع") ----------
+// po/{id}.it = [{c:الكود, cl?:اللون, z?:المقاس, q:الكمية, k?:رقم الحاوية, n?:ملاحظات}] لحد 200 صنف.
+// زرار "📦 إضافة أصناف" بيفتح جدول تحته (زي ورقة الفرع): # · الكود · اللون · المقاس · الكمية · الحاوية · ملاحظات · ×.
+// الكتابة في آخر سطر بتزوّد سطر فاضي لوحدها، وEnter بينزل للسطر اللي تحته. "لصق من إكسل" للكميات الكبيرة.
+let IT=[],KEEP=false,ITO=false;const MAXIT=200;
+const ITF=["c","cl","z","q","k","n"];
+const itEmpty=x=>!x||!(String(x.c||"").trim()||String(x.cl||"").trim()||String(x.z||"").trim()||String(x.q||"").trim()||String(x.n||"").trim()||x.k);
+const itCn=()=>Math.max(1,Math.min(50,Math.round(N(toEn((g("po-cn")||{value:"1"}).value)))||1));
+function itRow(x,i,cn){
+ return `<tr data-i="${i}"><td class="n">${i+1}</td>`
+ +`<td class="ic"><input data-f="c" maxlength="40" dir="ltr" placeholder="الكود" aria-label="الكود" value="${E(x.c)}"></td>`
+ +`<td class="icl"><input data-f="cl" maxlength="40" placeholder="اللون" aria-label="اللون" value="${E(x.cl)}"></td>`
+ +`<td class="iz"><input data-f="z" maxlength="20" dir="ltr" placeholder="المقاس" aria-label="المقاس" value="${E(x.z)}"></td>`
+ +`<td class="iq"><input data-f="q" inputmode="numeric" placeholder="الكمية" aria-label="الكمية" value="${E(x.q)}"></td>`
+ +`<td class="it-k">${cn>1?`<select data-f="k" aria-label="الحاوية"><option value="">الحاوية</option>${Array.from({length:cn},(_,j)=>`<option value="${j+1}" ${String(x.k)===String(j+1)?"selected":""}>${j+1}</option>`).join("")}</select>`:""}</td>`
+ +`<td class="in"><input data-f="n" maxlength="100" placeholder="ملاحظات" aria-label="ملاحظات" value="${E(x.n)}"></td>`
+ +`<td class="ix"><button type="button" data-po="itdel" data-i="${i}" aria-label="حذف السطر" title="حذف السطر">×</button></td></tr>`}
+function itPad(){if(!ITO)return;while(IT.length<5)IT.push({c:"",cl:"",z:"",q:"",k:"",n:""});if(!itEmpty(IT[IT.length-1])&&IT.length<MAXIT)IT.push({c:"",cl:"",z:"",q:"",k:"",n:""})}
+function itRender(){const b=g("po-itb");if(!b)return;const cn=itCn();itPad();
+ b.innerHTML=IT.map((x,i)=>itRow(x,i,cn)).join("");
+ const tb=b.closest("table");if(tb)tb.classList.toggle("nok",cn<2);
+ const bx=g("po-itbx"),tg=document.querySelector('[data-po="ittog"]');if(bx)bx.hidden=!ITO;if(tg)tg.setAttribute("aria-expanded",ITO?"true":"false");
  itTot()}
-function itTot(){const t=g("po-itt");if(!t)return;const n=IT.filter(x=>x.c||x.n||x.q).length,q=IT.reduce((s,x)=>s+Math.round(N(toEn(x.q))),0);t.textContent=n?`${n} صنف · إجمالي ${q.toLocaleString("en-US")} قطعة`:""}
-function itRead(cn){const out=[];for(let i=0;i<IT.length;i++){const x=IT[i],c=String(x.c||"").trim().slice(0,40),n=String(x.n||"").trim().slice(0,100),qs=toEn(x.q).replace(/,/g,"").trim();
-  if(!c&&!n&&!qs&&!x.k)continue;
-  if(!c&&!n){X.toast("الصنف رقم "+(i+1)+": اكتب الكود أو البيان");return false}
-  const q=Math.round(N(qs));if(!(q>=1)||q>1e7){X.toast("الصنف رقم "+(i+1)+": اكتب الكمية");return false}
-  const o={q};if(c)o.c=c;if(n)o.n=n;
-  if(x.k){const k=Math.round(N(toEn(x.k)));if(k<1||k>cn){X.toast("الصنف رقم "+(i+1)+": رقم الحاوية أكبر من عدد الحاويات");return false}o.k=k}
+function itTot(){const t=g("po-itt");if(!t)return;const L=IT.filter(x=>!itEmpty(x)),q=L.reduce((s,x)=>s+Math.round(N(toEn(x.q))),0);t.textContent=L.length?`${L.length} صنف · إجمالي ${q.toLocaleString("en-US")} قطعة`:(ITO?"اكتب الأصناف في الجدول":"اضغط لكتابة الأصناف")}
+function itRead(cn){const out=[];for(let i=0;i<IT.length;i++){const x=IT[i];if(itEmpty(x))continue;
+  const c=String(x.c||"").trim().slice(0,40),cl=String(x.cl||"").trim().slice(0,40),z=String(x.z||"").trim().slice(0,20),n=String(x.n||"").trim().slice(0,100),qs=toEn(x.q).replace(/,/g,"").trim();
+  if(!c&&!n){ITO=true;itRender();X.toast("السطر رقم "+(i+1)+" في الأصناف: اكتب الكود");return false}
+  const q=Math.round(N(qs));if(!(q>=1)||q>1e7){ITO=true;itRender();X.toast("السطر رقم "+(i+1)+" في الأصناف: اكتب الكمية");return false}
+  const o={q};if(c)o.c=c;if(cl)o.cl=cl;if(z)o.z=z;if(n)o.n=n;
+  if(x.k){const k=Math.round(N(toEn(x.k)));if(k<1||k>cn){X.toast("السطر رقم "+(i+1)+": رقم الحاوية أكبر من عدد الحاويات");return false}o.k=k}
   out.push(o)}
  if(out.length>MAXIT){X.toast("الحد الأقصى "+MAXIT+" صنف في الأمر الواحد");return false}
  return out}
 function itParse(){const t=g("po-itp");if(!t)return;const lines=t.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);let add=0;
- for(const ln of lines){if(IT.length>=MAXIT)break;const cols=ln.split(/\t|;|,|،/).map(s=>s.trim());const isN=s=>/^[\d٠-٩۰-۹,]+$/.test(s);let o;
-  if(cols.length>=3)o={c:cols[0],n:cols[1],q:cols[2],k:cols[3]||""};
-  else if(cols.length===2)o=isN(cols[1])?{c:"",n:cols[0],q:cols[1],k:""}:{c:cols[0],n:cols[1],q:"",k:""};
-  else o={c:"",n:cols[0],q:"",k:""};
-  IT.push({c:String(o.c||"").slice(0,40),n:String(o.n||"").slice(0,100),q:String(o.q||""),k:String(o.k||"")});add++}
- t.value="";if(g("po-itpw"))g("po-itpw").hidden=true;itRender();X.toast(add?"أُضيف "+add+" سطر. راجع الكميات ثم احفظ":"لا يوجد أسطر")}
-function showItems(id){const r=A.get(id);if(!r||!Array.isArray(r.it)||!r.it.length)return;const L=r.it,tot=L.reduce((s,x)=>s+N(x.q),0),hk=L.some(x=>x.k);
+ IT=IT.filter(x=>!itEmpty(x));
+ const isN=s=>/^[\d٠-٩۰-۹,]+$/.test(String(s||"").trim());
+ for(const ln of lines){if(IT.length>=MAXIT)break;const C=ln.split(/\t|;|,|،/).map(s=>s.trim());let o;
+  if(C.length>=4)o={c:C[0],cl:C[1],z:C[2],q:C[3],k:isN(C[4])?C[4]:"",n:isN(C[4])?(C[5]||""):(C[4]||"")};
+  else if(C.length===3)o=isN(C[2])?{c:C[0],cl:C[1],z:"",q:C[2]}:{c:C[0],cl:C[1],z:C[2],q:""};
+  else if(C.length===2)o=isN(C[1])?{c:C[0],q:C[1]}:{c:C[0],cl:C[1],q:""};
+  else o={c:C[0],q:""};
+  IT.push({c:String(o.c||"").slice(0,40),cl:String(o.cl||"").slice(0,40),z:String(o.z||"").slice(0,20),q:String(o.q||""),k:String(o.k||""),n:String(o.n||"").slice(0,100)});add++}
+ t.value="";if(g("po-itpw"))g("po-itpw").hidden=true;ITO=true;itRender();X.toast(add?"أُضيف "+add+" سطر. راجع الكميات ثم احفظ":"لا يوجد أسطر")}
+function showItems(id){const r=A.get(id);if(!r||!Array.isArray(r.it)||!r.it.length)return;const L=r.it,tot=L.reduce((s,x)=>s+N(x.q),0),hk=L.some(x=>x.k),hn=L.some(x=>x.n);
  openM(`<h3>📋 أصناف الأمر</h3><p style="margin:0 0 10px;color:var(--mut)"><bdi dir="ltr">${E(r.no)}</bdi> · 🏭 <bdi data-notr>${E(r.supn)}</bdi> · ${L.length} صنف · ${tot.toLocaleString("en-US")} قطعة</p>
- <div class="po-tw"><table class="po-t" style="min-width:0"><thead><tr><th>#</th><th>الكود</th><th>البيان</th><th>الكمية</th>${hk?"<th>الحاوية</th>":""}</tr></thead><tbody>${L.map((x,i)=>`<tr><td>${i+1}</td><td><bdi dir="ltr" data-notr>${E(x.c||"")}</bdi></td><td style="white-space:normal" data-notr>${E(x.n||"")}</td><td class="n">${N(x.q).toLocaleString("en-US")}</td>${hk?`<td>${x.k?E(x.k):""}</td>`:""}</tr>`).join("")}</tbody></table></div>
+ <div class="po-tw"><table class="po-t" style="min-width:0"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th>${hk?"<th>الحاوية</th>":""}${hn?"<th>ملاحظات</th>":""}</tr></thead><tbody>${L.map((x,i)=>`<tr><td>${i+1}</td><td><bdi dir="ltr" data-notr>${E(x.c||"")}</bdi></td><td data-notr>${E(x.cl||"")}</td><td><bdi dir="ltr" data-notr>${E(x.z||"")}</bdi></td><td class="n">${N(x.q).toLocaleString("en-US")}</td>${hk?`<td>${x.k?E(x.k):""}</td>`:""}${hn?`<td style="white-space:normal" data-notr>${E(x.n||"")}</td>`:""}</tr>`).join("")}</tbody></table></div>
  <div class="act"><button data-po="close" type="button">رجوع</button></div>`,"items")}
 document.addEventListener("input",e=>{if(!X)return;const t=e.target;if(!t||!t.closest)return;
  if(t.id==="po-cn"&&g("po-itb")){itRender();return}
- const row=t.closest("#po-itb .it-r");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(IT[i])IT[i][t.dataset.f]=t.value;itTot()});
+ const row=t.closest("#po-itb tr");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(!IT[i])return;IT[i][t.dataset.f]=t.value;
+ // الكتابة في آخر سطر: سطر فاضي جديد تحته (من غير ما نرسم الجدول من الأول علشان التركيز مايضيعش)
+ if(i===IT.length-1&&!itEmpty(IT[i])&&IT.length<MAXIT){IT.push({c:"",cl:"",z:"",q:"",k:"",n:""});row.insertAdjacentHTML("afterend",itRow(IT[IT.length-1],IT.length-1,itCn()))}
+ itTot()});
+document.addEventListener("change",e=>{if(!X)return;const t=e.target;if(!t||!t.closest||t.tagName!=="SELECT")return;const row=t.closest("#po-itb tr");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(IT[i]){IT[i][t.dataset.f]=t.value;itTot()}});
+// Enter: نفس الخانة في السطر اللي تحته (زي ورقة الفرع)
+document.addEventListener("keydown",e=>{if(!X||e.key!=="Enter")return;const t=e.target;if(!t||!t.closest||t.tagName!=="INPUT")return;const row=t.closest("#po-itb tr");if(!row)return;e.preventDefault();
+ let nx=row.nextElementSibling;if(!nx&&IT.length<MAXIT){IT.push({c:"",cl:"",z:"",q:"",k:"",n:""});row.insertAdjacentHTML("afterend",itRow(IT[IT.length-1],IT.length-1,itCn()));nx=row.nextElementSibling}
+ if(nx){const f=nx.querySelector(`[data-f="${t.dataset.f}"]`)||nx.querySelector("input");if(f)f.focus()}});
 
 // ---------- الضغطات ----------
 document.addEventListener("click",e=>{
@@ -525,8 +567,10 @@ document.addEventListener("click",e=>{
  if(a==="attsave"){if(canEdit()||canRcv())attSave(id);return}
  if(a==="del"){if(X.owner)del(id);return}
  if(!canEdit())return;
- if(a==="itadd"){if(IT.length>=MAXIT){X.toast("الحد الأقصى "+MAXIT+" صنف");return}IT.push({c:"",n:"",q:"",k:""});itRender();const rs=document.querySelectorAll("#po-itb .it-r:not(.ih)"),l=rs[rs.length-1];if(l){const f=l.querySelector("input");if(f)f.focus()}return}
+ if(a==="ittog"){ITO=!ITO;itRender();if(ITO){const rs=[...document.querySelectorAll("#po-itb tr")],r0=rs.find(r=>{const i=+r.dataset.i;return itEmpty(IT[i])})||rs[0];const f=r0&&r0.querySelector("input");if(f)f.focus()}return}
+ if(a==="itadd"){if(IT.length>=MAXIT){X.toast("الحد الأقصى "+MAXIT+" صنف");return}ITO=true;IT.push({c:"",cl:"",z:"",q:"",k:"",n:""});itRender();const rs=document.querySelectorAll("#po-itb tr"),l=rs[rs.length-1];if(l){const f=l.querySelector("input");if(f)f.focus()}return}
  if(a==="itdel"){IT.splice(+t.dataset.i,1);itRender();return}
+ if(a==="itclr"){if(IT.some(x=>!itEmpty(x))&&!confirm("مسح كل الأصناف المكتوبة في هذا الأمر؟"))return;IT=[];itRender();return}
  if(a==="itpaste"){const w=g("po-itpw");if(w){w.hidden=!w.hidden;if(!w.hidden)g("po-itp").focus()}return}
  if(a==="itparse")return void itParse();
  if(a==="new")return void form();
