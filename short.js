@@ -82,7 +82,7 @@ export function openWeek(){
 function printWeek(){const w=weekData();printStmt(`<div class="st"><div class="ph"><h2>التقرير الأسبوعي</h2><div>${dd(w.a)} ← ${dd(w.now)}</div></div>${weekBody(w,true)}<div class="sg"><span>مسؤول المستودع</span><span>المدير</span></div></div>`)}
 // ---------- مين يوصله التقرير (المالك، تبويب الموظفين) ----------
 export function weeklyCfgView(){
-  if(!X||!X.owner)return "";const ppl=[{e:X.ownerEmail,n:"أنت (المالك)"},...STF.filter(s=>s.enabled&&(s.admin||s.v)).map(s=>({e:s.id,n:s.name||s.id}))];
+  if(!X||!X.owner)return "";const ppl=[{e:X.ownerEmail,n:X.root===false?"المالك":"أنت (المالك)"},...STF.filter(s=>s.enabled&&(s.admin||s.v)).map(s=>({e:s.id,n:s.name||s.id}))];
   return `<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 4px">📊 التقرير الأسبوعي</h3><p class="off" style="margin:0 0 10px;font-size:13px">كل خميس الساعة 7 مساءً يصل إشعار "التقرير الأسبوعي جاهز" للأشخاص المحدّدين فقط، ويفتح التقرير ويقدر يحفظه PDF.</p>
   <div style="display:flex;flex-wrap:wrap;gap:10px">${ppl.map(p=>`<label style="display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;cursor:pointer"><input type="checkbox" data-wkto="${E(p.e)}" ${WK.includes(p.e)?"checked":""}> <b>${E(p.n)}</b> <small class="off" dir="ltr">${E(p.e)}</small></label>`).join("")}</div>
   <button class="bt s" type="button" data-wropen style="margin-top:10px">👁 معاينة التقرير</button></div>`;

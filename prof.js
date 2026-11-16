@@ -117,6 +117,6 @@ export function initProf(ctx){
   if(!document.getElementById("pf-css")){const s=document.createElement("style");s.id="pf-css";s.textContent=STYLE+CSTYLE;document.head.appendChild(s)}
   if(!window.__pfc){window.__pfc=1;document.addEventListener("click",click);document.addEventListener("change",pick)}
   un.push(onSnapshot(collection(X.db,"ava"),sn=>{AV={};sn.docs.forEach(d=>{const p=d.data().ph;if(typeof p==="string"&&/^data:image\/jpeg;base64,/.test(p))AV[d.id]=p});paint();X.redraw()},()=>{}));
-  if(X.owner)un.push(onSnapshot(doc(X.db,"meta","me"),d=>{ME=d.exists()?d.data():{};if(X.onMe)X.onMe(ME);paint()},()=>{}));
+  if(X.owner||X.readMe)un.push(onSnapshot(doc(X.db,"meta","me"),d=>{ME=d.exists()?d.data():{};if(X.onMe)X.onMe(ME);paint()},()=>{}));
 }
 export function stopProf(){un.forEach(f=>f());un=[];AV={};ME=null;X=null;const m=document.getElementById("pfm");if(m)m.remove()}
