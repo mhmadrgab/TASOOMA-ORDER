@@ -2481,4 +2481,9 @@ export default {
 "رقم الحاوية أكبر من عدد الحاويات":"Container number exceeds the number of containers",
 "اكتب الكمية":"Enter the quantity",
 "لا يوجد أسطر":"No lines",
+"الجهة *":"Party *",
+"اختر الفرع أو المستودع":"Choose the branch or the warehouse",
+"فُتح طلب صيانة باسم المستودع":"Maintenance request opened for the warehouse",
+"أُكِّد":"Confirmed",
+"أُكِّد الإصلاح":"Repair confirmed",
 };

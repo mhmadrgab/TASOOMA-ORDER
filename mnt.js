@@ -120,15 +120,15 @@ function card(r){
   else if(r.st==="ok")ac=`<button class="b" data-mt="go" data-id="${E(r.id)}" type="button">🔧 بدء التنفيذ</button><button class="p" data-mt="fin" data-id="${E(r.id)}" type="button">✅ تم الإصلاح</button><button data-mt="ap" data-id="${E(r.id)}" type="button">✏️ تعديل الموعد</button><button class="r" data-mt="rj" data-id="${E(r.id)}" type="button">❌ رفض</button>`;
   else if(r.st==="go")ac=`<button class="p" data-mt="fin" data-id="${E(r.id)}" type="button">✅ تم الإصلاح</button><button data-mt="ap" data-id="${E(r.id)}" type="button">✏️ تعديل الموعد</button>`;
  }
- if(!wh&&r.st==="done")ac=`<button class="p" data-mt="cok" data-id="${E(r.id)}" type="button">✅ نعم، تم الإصلاح</button><button class="r" data-mt="cno" data-id="${E(r.id)}" type="button">↩️ لم يُصلح</button>`;
+ if((!wh||(r.br==="WH"&&canAct()))&&r.st==="done")ac=`<button class="p" data-mt="cok" data-id="${E(r.id)}" type="button">✅ نعم، تم الإصلاح</button><button class="r" data-mt="cno" data-id="${E(r.id)}" type="button">↩️ لم يُصلح</button>`;
  const pic=r.img?`<button data-mt="img" data-id="${E(r.id)}" type="button">📷 الصور</button>`:"";
- return `<div class="mt-c" style="--c:${s[1]}"><div class="m-hd"><div><b><bdi dir="ltr">${E(r.brn||r.br)}</bdi></b><small><bdi dir="ltr">${E(r.no||"")}</bdi> · ${ago(r.ts)}${r.src==="eng"?" · 🧑‍🔧 فتحه المهندس":""}</small></div><span class="m-st">${s[2]} ${s[0]}</span></div>
+ return `<div class="mt-c" style="--c:${s[1]}"><div class="m-hd"><div><b>${r.br==="WH"?"🏭 ":""}<bdi dir="ltr">${E(r.brn||r.br)}</bdi></b><small><bdi dir="ltr">${E(r.no||"")}</bdi> · ${ago(r.ts)}${r.src==="eng"?" · 🧑‍🔧 فتحه المهندس":""}</small></div><span class="m-st">${s[2]} ${r.br==="WH"&&r.st==="conf"?"أُكِّد":s[0]}</span></div>
  <div class="m-bd"><div class="m-it">${CI(r.cat)} ${E(r.item||"")}</div>${r.desc?`<div class="m-ds" data-notr>${E(r.desc)}</div>`:""}
  <div class="m-tg"><span class="m-pri" style="background:${p[1]}">${p[0]}</span><span>${E(r.cat||"")}</span>${pl.vd?`<span>🗓 الموعد: <bdi dir="ltr">${E(pl.vd)}</bdi></span>`:""}${pl.tech?`<span>👷 ${E(pl.tech)}</span>`:""}${N(fn.cost)?`<span>💵 ${N(fn.cost)} ريال</span>`:""}</div>
  ${pl.note?`<div class="m-nt" data-notr>🗒 ${E(pl.note)}</div>`:""}${r.st==="no"&&rj.note?`<div class="m-nt bad" data-notr>❌ سبب الرفض: ${E(rj.note)}</div>`:""}
  ${fn.at?`<div class="m-nt ok"><b>✅ تم الإصلاح ${dts(fn.at)}</b>${fn.note?`<div data-notr>${E(fn.note)}</div>`:""}</div>`:""}
  ${cf.at&&cf.ok===false?`<div class="m-nt bad"><b>↩️ الفرع أفاد بأن المشكلة لم تُحل</b>${cf.note?`<div data-notr>${E(cf.note)}</div>`:""}</div>`:""}
- ${r.st==="conf"?`<div class="m-nt ok">✔ أكّد الفرع الإصلاح ${dts(cf.at)}</div>`:""}</div>
+ ${r.st==="conf"?`<div class="m-nt ok">✔ ${r.br==="WH"?"أُكِّد":"أكّد الفرع"} الإصلاح ${dts(cf.at)}</div>`:""}</div>
  ${ac||pic?`<div class="m-ac">${ac}${pic}</div>`:""}</div>`;
 }
 
@@ -149,7 +149,7 @@ function form(){
  let cat="",pri="n";
  const wh=isWh(),brs=wh?(X.branches||[]):[];
  openM(`<h3>➕ طلب صيانة جديد</h3>
- ${wh?`<label>الفرع *</label><select id="mt-fb">${brs.map(b=>`<option>${E(b)}</option>`).join("")}</select>`:""}
+ ${wh?`<label>الجهة *</label><select id="mt-fb"><option value="المستودع">🏭 المستودع</option>${brs.map(b=>`<option>${E(b)}</option>`).join("")}</select>`:""}
  <label>نوع العطل *</label><div class="cats" id="mt-cats">${CATS.map(([c,i])=>`<button type="button" data-c="${E(c)}" class="${c===cat?"on":""}">${i} ${E(c)}</button>`).join("")}</div>
  <label>الشيء المطلوب صيانته *</label><input id="mt-it" maxlength="100" placeholder="مثلاً: مكيف الصالة، باب المخزن، لمبة الواجهة">
  <label>وصف المشكلة</label><textarea id="mt-ds" maxlength="1000" placeholder="اكتب ما الذي يحدث بالضبط"></textarea>
@@ -166,8 +166,8 @@ async function save(){
  if(busy)return;if(PK&&PK.busy()){X.toast("انتظر حتى تنتهي الصور");return}
  const {cat,pri}=form.get();if(!cat){X.toast("اختر نوع العطل");return}const item=g("mt-it").value.trim().slice(0,100),desc=g("mt-ds").value.trim().slice(0,1000),IMS=PK?PK.imgs():[],PDFS=PK?PK.files():[],EXTRA=IMS.slice(1).concat(PDFS);
  if(!item){X.toast("اكتب الشيء المطلوب صيانته");g("mt-it").focus();return}
- const wh=isWh(),brn=wh?String(g("mt-fb").value||""):String(X.brn||X.code),br=brn.split("-")[0];
- if(!/^\d{3}$/.test(br)){X.toast("اختر الفرع");return}
+ const wh=isWh(),brn=wh?String(g("mt-fb").value||""):String(X.brn||X.code),br=brn==="المستودع"?"WH":brn.split("-")[0];
+ if(!/^(\d{3}|WH)$/.test(br)){X.toast("اختر الفرع أو المستودع");return}
  const ts=Date.now(),dd=new Date(ts),p=n=>String(n).padStart(2,"0");
  const ref=doc(collection(X.db,"mnt"));
  const d={br,brn:brn.slice(0,40),no:`M-${br}-${p(dd.getMonth()+1)}${p(dd.getDate())}-${p(dd.getHours())}${p(dd.getMinutes())}`,ts,dt:dd.toLocaleDateString("en-CA"),cat,item,pri,st:wh?"ok":"new",by:{e:X.me.e,n:String(X.me.n||X.me.e).slice(0,60)},src:wh?"eng":"br"};
@@ -176,7 +176,7 @@ async function save(){
  try{const b=writeBatch(X.db);b.set(ref,d);if(IMS[0])b.set(doc(X.db,"mntimg",ref.id),{img:IMS[0]});await withTimeout(b.commit(),20000);
   let bad=0;if(EXTRA.length){if(btn)btn.textContent=`⏳ رفع المرفقات (${IMS.length+PDFS.length})...`;bad=await saveExtras(X.db,"mntimg",ref.id,EXTRA)}
   if(X.ping)X.ping([ref.id]);busy=false;
-  X.toast(bad?`أُرسل الطلب، لكن تعذّر رفع ${bad} من الصور`:wh?"✅ فُتح طلب الصيانة للفرع":"✅ أُرسل طلب الصيانة للمهندس",bad?"er":undefined);
+  X.toast(bad?`أُرسل الطلب، لكن تعذّر رفع ${bad} من الصور`:wh?(br==="WH"?"✅ فُتح طلب صيانة باسم المستودع":"✅ فُتح طلب الصيانة للفرع"):"✅ أُرسل طلب الصيانة للمهندس",bad?"er":undefined);
   if(wh)closeM();else openBranch();
  }catch(e){busy=false;if(btn){btn.disabled=false;btn.textContent="إرسال الطلب"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
 }
@@ -209,7 +209,7 @@ function finForm(id){const r=A.get(id);if(!r)return;
  <label>ما الذي تم؟</label><textarea id="mt-fn" maxlength="500" placeholder="مثلاً: تم تغيير الكمبروسر وتنظيف الفلاتر"></textarea>
  <label>التكلفة بالريال (اختياري)</label><input id="mt-fc" inputmode="decimal" placeholder="0">
  <label>صور بعد الإصلاح أو فاتورة PDF (اختياري)</label><div id="mt-fp"></div>
- <div class="act"><button class="p" data-mt="finsave" data-id="${E(id)}" type="button">تم، أبلغ الفرع</button><button data-mt="close" type="button">رجوع</button></div>`,"fin");
+ <div class="act"><button class="p" data-mt="finsave" data-id="${E(id)}" type="button">${r.br==="WH"?"تم الإصلاح":"تم، أبلغ الفرع"}</button><button data-mt="close" type="button">رجوع</button></div>`,"fin");
  PK=multiPick(g("mt-fp"),{w:1400,cap:230000,toast:X.toast})}
 async function finSave(id){const r=A.get(id);if(!r)return;if(PK&&PK.busy()){X.toast("انتظر حتى تنتهي الصور");return}
  const note=g("mt-fn").value.trim().slice(0,500),cost=Math.round(N(toEn(g("mt-fc").value))*100)/100,IMS=PK?PK.imgs():[],PDFS=PK?PK.files():[];
@@ -224,10 +224,10 @@ async function finSave(id){const r=A.get(id);if(!r)return;if(PK&&PK.busy()){X.to
 function cnoForm(id){const r=A.get(id);if(!r)return;
  openM(`<h3>↩️ لم يُصلح؟</h3><p style="margin:0;color:var(--mut)">${CI(r.cat)} ${E(r.item)}</p>
  <label>ما المشكلة الآن؟ *</label><textarea id="mt-cn" maxlength="300" placeholder="سيصل للمهندس"></textarea>
- <div class="act"><button class="r" data-mt="cnosave" data-id="${E(id)}" type="button">إرجاع للمهندس</button><button data-mt="bopen" type="button">رجوع</button></div>`,"cno");g("mt-cn").focus()}
+ <div class="act"><button class="r" data-mt="cnosave" data-id="${E(id)}" type="button">إرجاع للمهندس</button><button data-mt="${isWh()?"close":"bopen"}" type="button">رجوع</button></div>`,"cno");g("mt-cn").focus()}
 async function conf(id,ok,note){
  const c={at:Date.now(),ok,n:String(X.me.n||X.brn||X.code||"").slice(0,60)};if(note)c.note=note;
- if(await upd(id,{st:ok?"conf":"ok",conf:c},ok?"✔ شكراً، تم تأكيد الإصلاح":"↩️ أُرجع الطلب للمهندس"))openBranch()}
+ if(await upd(id,{st:ok?"conf":"ok",conf:c},ok?"✔ شكراً، تم تأكيد الإصلاح":"↩️ أُرجع الطلب للمهندس")){if(isWh())closeM();else openBranch()}}
 async function showImgs(id){
  try{const [s,ex]=await Promise.all([getDoc(doc(X.db,"mntimg",id)),loadExtras(X.db,"mntimg",id)]);const L=[];const im=s.exists()?s.data().img:"";
   if(im)L.push({src:im,del:`mntimg/${id}/img`});ex.forEach(x=>L.push({src:x.src,nm:x.nm,del:"doc:"+x.path}));
