@@ -243,15 +243,17 @@
 (function(){
  if(!/(admin|index|driver)\.html$|\/$/.test(location.pathname))return;
  const NEWS_ID="orders-sheet-2026-11-16";// (16 نوفمبر 2026) كارت "ورقة الطلب عند الفرع". لكارت جديد بعدين: غيّر NEWS_ID والنص
- let seen;try{seen=localStorage.getItem("tz_news")}catch(e){return}// مفيش تخزين = مانعرضش (علشان ماتطلعش كل مرة)
- if(seen===NEWS_ID)return;
+ try{localStorage.getItem("tz_news")}catch(e){return}// مفيش تخزين = مانعرضش (علشان ماتطلعش كل مرة)
+ 
  const vis=el=>!!(el&&el.offsetParent!==null);
  const loggedIn=()=>window.__uiOk&&!document.getElementById("boot")&&![...document.querySelectorAll('input[type="password"]')].some(vis)&&!document.getElementById("tz-stuck");
  const t0=Date.now(),iv=setInterval(()=>{if(Date.now()-t0>15*6e4){clearInterval(iv);return}if(loggedIn()){clearInterval(iv);setTimeout(()=>{if(loggedIn())show()},700)}},800);
  function show(){
   if(document.getElementById("tz-news"))return;
   // النص بيختلف حسب مين فاتح: فرع (index) / مدير أو موظف (admin) / سائق (driver)
-  const P=location.pathname,role=/driver\.html$/.test(P)?"d":/admin\.html$/.test(P)?"a":"b";
+  const P=location.pathname,co=window.__tzCo===true&&/admin\.html$/.test(P),role=co?"c":/driver\.html$/.test(P)?"d":/admin\.html$/.test(P)?"a":"b";
+   // (16 نوفمبر 2026) كارت خاص بمالك النظام (حساب مدير عليه co) بس: مفتاح تخزين مستقل، وبيظهر له بدل الكارت العام
+   const KEY=co?"tz_news_co":"tz_news",ID=co?"coowner-2026-11-16":NEWS_ID;let seen;try{seen=localStorage.getItem(KEY)}catch(e){return}if(seen===ID)return;
   const T={
    b:{k:"تحديث جديد · طلبات الفروع",t:"طلباتكم الآن على ورقة واحدة واضحة",go:"اعرض طلباتي",
     L:[["📄","كل طلب بطاقة، وبضغطة ورقة كاملة","اضغط على أي طلب لتراه مرتباً: الأصناف والمقاسات والكميات، وما عدّله المستودع واضحاً."],
@@ -261,6 +263,10 @@
     L:[["📄","بطاقة ثم ورقة كاملة","يضغط الفرع على طلبه فيرى المراحل بالوقت والأصناف وتعديلات المستودع عليها."],
        ["🧾","مرفقات الشحن عند الفرع","إيصال شركة الشحن وصور التسليم والتوقيع تظهر للفرع من داخل طلبه، وطلباته فقط."],
        ["📷","وضوح الصور مهم","ما يُرفع من صور تسليم يراه الفرع مباشرة، فتأكدوا من وضوحها."]]},
+   c:{k:"ترقية حسابك",t:"أصبحت الآن مالك النظام",go:"افتح الإعدادات",
+     L:[["👑","كل الصلاحيات بين يديك","الطلبات والعهدة والسيارات والموظفين والصيانة وأوامر الشراء والإعدادات، كلها متاحة لك الآن."],
+        ["⚙️","الإعدادات في مكان واحد","تبويب ⚙ الإعدادات يجمع الصلاحيات والموظفين وحسابات الفروع والتقارير."],
+        ["🔔","إشعارات المالك تصلك","تصلك إشعارات الطلبات والصيانة والحاويات المتجهة للمستودع كما تصل للأدمن."]]},
    d:{k:"تحديث جديد · صور التسليم",t:"الفرع يرى صور تسليمك الآن",
     L:[["📷","صورك تصل إلى الفرع","الصور وإيصال شركة الشحن اللذان تلتقطهما يظهران للفرع داخل طلبه، فاحرص على وضوحهما."],
        ["📄","ورقة الطلب","يرى الفرع اسمك ووقت خروجك وتسليمك مرتبة على ورقة الطلب."],
@@ -309,13 +315,13 @@
   const d=document.createElement("div");d.id="tz-news";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-labelledby","tz-news-t");
   d.innerHTML=`<div class="k"><div class="tn-hero"><span class="tn-dot tn-d1"></span><span class="tn-dot tn-d2"></span>
 <div class="tn-lgo"><img src="./icon-192.png" alt=""><span>تاسومة</span></div><span class="tn-nw">جديد</span><button class="tn-xb" type="button" data-n="x" aria-label="إغلاق">✕</button>
-<div class="tn-ps tn-bk"></div><div class="tn-ps"><div class="tn-t"><b>003-EL MALQA</b><span>تم التسليم</span></div><div class="tn-tl"><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i></i></div>
-<div class="tn-r"><u></u><u></u><u></u></div><div class="tn-r"><u></u><u></u><u></u></div><div class="tn-at"><b>🧾 الإيصال</b><b>📷 الصور</b></div></div></div>
+<div class="tn-ps tn-bk"></div>${role==="c"?`<div class="tn-ps"><div class="tn-t"><b>مالك النظام</b><span>مفعّل</span></div><div style="font-size:46px;text-align:center;margin:8px 0 6px">👑</div><div class="tn-at"><b>📦 الطلبات</b><b>👥 الموظفين</b><b>⚙ الإعدادات</b></div></div>`:`<div class="tn-ps"><div class="tn-t"><b>003-EL MALQA</b><span>تم التسليم</span></div><div class="tn-tl"><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i></i></div>
+<div class="tn-r"><u></u><u></u><u></u></div><div class="tn-r"><u></u><u></u><u></u></div><div class="tn-at"><b>🧾 الإيصال</b><b>📷 الصور</b></div></div>`}</div>
 <div class="tn-hd"><small>${T.k}</small><b id="tz-news-t">${T.t}</b></div>
 <div class="b"><ul>${T.L.map(x=>`<li><i>${x[0]}</i><div><b>${x[1]}</b><span>${x[2]}</span></div></li>`).join("")}</ul>
 <div class="tn-lv">⚡ <span style="display:inline;font-size:13px;color:inherit">الطلبات والتغييرات الجديدة تصل لحظياً دون إعادة تحميل الصفحة.</span></div></div>
 <div class="f">${T.go?`<button type="button" data-n="go">${T.go}</button><button type="button" class="g" data-n="x">لاحقاً</button>`:`<button type="button" data-n="x">ابدأ الاستخدام</button>`}<small>شكراً لكم، فريق تاسومة 🤍</small></div></div>`;
-  const close=()=>{try{localStorage.setItem("tz_news",NEWS_ID)}catch(e){}d.remove();document.removeEventListener("keydown",esc)};
+  const close=()=>{try{localStorage.setItem(KEY,ID)}catch(e){}d.remove();document.removeEventListener("keydown",esc)};
   const esc=e=>{if(e.key==="Escape")close()};
   d.addEventListener("click",e=>{if(e.target===d){close();return}const b=e.target.closest&&e.target.closest("[data-n]");if(!b)return;close();
    // "اعرض طلباتي": الصفحة (index.html) بتسمع وبتفتح آخر طلب
@@ -323,7 +329,7 @@
   document.addEventListener("keydown",esc);
   document.body.appendChild(d);setTimeout(()=>{const b=d.querySelector(".f button");if(b)b.focus({preventScroll:true})},300);
   // (15 نوفمبر 2026، محمد: "بيظهر كل مرة رغم إنه شافه") بتتسجّل "اتشافت" بعد ما تبان ثانيتين، مش بس لما يقفلها
-  setTimeout(()=>{if(d.isConnected){try{localStorage.setItem("tz_news",NEWS_ID)}catch(e){}}},2000);
+  setTimeout(()=>{if(d.isConnected){try{localStorage.setItem(KEY,ID)}catch(e){}}},2000);
  }
 })();
 // 🎬 (13 نوفمبر 2026، transitions.dev) قفل النوافذ بنعومة: أي نافذة بتتقفل (بيتشال منها "on")، بنسيبها ظاهرة 150ms

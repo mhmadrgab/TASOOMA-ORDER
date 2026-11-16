@@ -372,6 +372,7 @@ function reqView(){
 }
 // ⚙ الإعدادات: كل الصلاحيات والإعدادات في مكان واحد (16 نوفمبر 2026)
 let sub="perm";try{const q=localStorage.getItem("st_sub");if(q==="perm"||q==="br"||q==="rep")sub=q}catch(x){}
+window.addEventListener("tz-news-go",()=>{if(ROLE.co&&okTab("set")){tab="set";draw()}});
 function setView(){
  const S=[["perm","👥 الصلاحيات والموظفين"],["br","🏬 حسابات الفروع"],["rep","📊 التقارير والإشعارات"]];
  if(!S.some(a=>a[0]===sub))sub="perm";
@@ -555,7 +556,7 @@ document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)document.title="لوحة المستودع - تاسومة"});
 const deny=async m=>{lastErr=m;stop();login(m);try{await signOut(auth)}catch(e){}};
 // صلاحيات الحساب من staff/{email}. المتابع (v) مالوش أي صلاحية تعديل حتى لو اتعلّم غلط
-const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,p:v?{}:(s.p||{}),name:s.name||"",k:s.k||""}};
+const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;window.__tzCo=co;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,p:v?{}:(s.p||{}),name:s.name||"",k:s.k||""}};
 async function enterStaff(u){
  const em=String(u.email||"").toLowerCase();
  try{
@@ -568,7 +569,7 @@ async function enterStaff(u){
    if(!d.exists()||d.data().enabled!==true){if(stW){stW();stW=null}deny("تم إيقاف حسابك");return}
    if(first2){first2=false;return}
    const nr=roleOf(d.data());
-   if(JSON.stringify(nr.p)!==JSON.stringify(ROLE.p)||nr.name!==ROLE.name||nr.admin!==ROLE.admin||nr.v!==ROLE.v){ROLE=nr;stop();start()}
+   if(JSON.stringify(nr.p)!==JSON.stringify(ROLE.p)||nr.name!==ROLE.name||nr.admin!==ROLE.admin||nr.v!==ROLE.v||nr.owner!==ROLE.owner){ROLE=nr;stop();start()}
    else if((d.data().k||"")!==ROLE.k){ROLE.k=d.data().k||"";draw()}// الكنية اتغيّرت بس
   },()=>{});
  }catch(e){
