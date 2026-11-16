@@ -149,6 +149,16 @@ const CSS=`
 #pom .sl .sp{flex:1;min-width:150px}
 #pom .sl a,#pom .sl button{font:inherit;font-size:13.5px;font-weight:600;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 10px;cursor:pointer;text-decoration:none}
 #pom .warn{background:color-mix(in srgb,#e8740c 14%,transparent);border-radius:12px;padding:8px 12px;font-size:13.5px;margin-top:10px}
+#pom .it{border:1px dashed var(--line);border-radius:14px;padding:4px 10px 10px;margin-top:12px}
+#pom .it-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+#pom .it-h b{flex:1;font-size:14.5px}
+#pom .it-h button,#pom .it-r button,#pom .it-p button{font:inherit;font-size:13.5px;font-weight:600;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 10px;cursor:pointer}
+#pom .it-r{display:grid;grid-template-columns:1fr 1.7fr 84px 76px 34px;gap:6px;margin-top:6px;align-items:center}
+#pom .it-r input,#pom .it-r select{padding:8px 9px;font-size:14px}
+#pom .it-r.ih{font-size:12px;color:var(--mut);margin-top:10px}
+#pom .it-t{font-size:13px;color:var(--mut);margin-top:8px}
+#pom .it-p{margin-top:8px}#pom .it-p textarea{min-height:90px;direction:ltr;text-align:left}
+@media (max-width:520px){#pom .it-r{grid-template-columns:1fr 1fr 1fr;border:1px solid var(--line);border-radius:12px;padding:8px}#pom .it-r .nm{grid-column:1/-1;order:-1}#pom .it-r button{grid-column:1/-1;justify-self:end}#pom .it-r.ih{display:none}}
 `;
 function css(){if(!g("po-css")){const s=document.createElement("style");s.id="po-css";s.textContent=CSS;document.head.appendChild(s)}}
 
@@ -181,7 +191,7 @@ function listView(L){
  const sups=[...S.values()].sort((a,b)=>String(a.n).localeCompare(String(b.n),"ar"));
  const q=F.q.trim().toLowerCase();
  const fk=K.find(k=>k[0]===F.st);
- const Vv=L.filter(r=>(F.st==="all"||(fk?fk[3](r):r.st===F.st))&&(!F.sup||r.sup===F.sup)&&(!F.cty||r.cty===F.cty)&&(!q||[r.no,r.supn,r.desc,r.ref,r.bl,r.cnos,r.line].join(" ").toLowerCase().includes(q)));
+ const Vv=L.filter(r=>(F.st==="all"||(fk?fk[3](r):r.st===F.st))&&(!F.sup||r.sup===F.sup)&&(!F.cty||r.cty===F.cty)&&(!q||[r.no,r.supn,r.desc,r.ref,r.bl,r.cnos,r.line,Array.isArray(r.it)?r.it.map(x=>(x.c||"")+" "+(x.n||"")).join(" "):""].join(" ").toLowerCase().includes(q)));
  return `<div class="po-k">${K.map(([k,l,c,f])=>`<button type="button" data-po="fst" data-v="${k}" class="${F.st===k?"on":""}" style="--c:${c}"><b>${cnt(f)}</b><small>${l}</small></button>`).join("")}</div>
  <div class="po-f">${[["open","المفتوحة"],["all","الكل"],["wh","المستلمة"],["x","الملغاة"]].map(([k,l])=>`<button type="button" class="ch ${F.st===k?"on":""}" data-po="fst" data-v="${k}">${l}</button>`).join("")}
  <select id="po-fs" aria-label="المورد"><option value="">كل الموردين</option>${sups.map(s=>`<option value="${E(s.id)}" ${F.sup===s.id?"selected":""}>${E(s.n)}</option>`).join("")}</select>
@@ -200,6 +210,7 @@ function card(r){
  if(r.eta)tags.push(`🗓 الوصول المتوقع للميناء: <bdi dir="ltr">${E(r.eta)}</bdi>`);
  if(r.line)tags.push(`🚢 ${E(r.line)}${r.ves?` · ${E(r.ves)}`:""}`);
  if(r.bl)tags.push(`🧾 البوليصة: <bdi dir="ltr">${E(r.bl)}</bdi>`);
+ if(Array.isArray(r.it)&&r.it.length)tags.push(`📋 ${r.it.length} صنف · ${r.it.reduce((s,x)=>s+N(x.q),0).toLocaleString("en-US")} قطعة`);
  if(r.cnos)tags.push(`📦 الحاويات: <bdi dir="ltr">${E(r.cnos)}</bdi>`);
  if(r.ref)tags.push(`📋 فاتورة المورد: <bdi dir="ltr">${E(r.ref)}</bdi>`);
  let ac="";
@@ -207,6 +218,7 @@ function card(r){
  if(open&&canRcv())ac+=`<button class="g" data-po="rcv" data-id="${E(r.id)}" type="button">✅ تأكيد الاستلام في المستودع</button>`;
  const sup=S.get(r.sup),ph=sup&&sup.ph?String(sup.ph).replace(/[^\d+]/g,""):"";
  if(ph)ac+=`<a href="tel:${E(ph)}">📞 المورد</a><a href="https://wa.me/${E(ph.replace(/^\+/,""))}" target="_blank" rel="noopener">💬 واتساب</a>`;
+ if(Array.isArray(r.it)&&r.it.length)ac+=`<button data-po="items" data-id="${E(r.id)}" type="button">📋 الأصناف</button>`;
  ac+=`<button data-po="att" data-id="${E(r.id)}" type="button">📎 المرفقات</button>`;
  if(open&&canEdit())ac+=`<button class="r" data-po="cx" data-id="${E(r.id)}" type="button">إلغاء الأمر</button>`;
  if(X.owner)ac+=`<button class="r" data-po="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`;
@@ -270,14 +282,18 @@ function form(id){
  const r=id?A.get(id):null;if(id&&!r)return;
  const sups=[...S.values()].sort((a,b)=>String(a.n).localeCompare(String(b.n),"ar"));
  const o=r||{dt:Date.now(),cn:1,ctype:"40HC",cur:"USD",pod:"الدمام"};
+ if(!KEEP)IT=(r&&Array.isArray(r.it)?r.it:[]).map(x=>({c:x.c||"",n:x.n||"",q:String(x.q||""),k:x.k?String(x.k):""}));KEEP=false;
  openM(`<h3>${r?"✏️ تعديل أمر الشراء":"➕ أمر شراء جديد"}</h3>
  <label>المورد *</label><div style="display:flex;gap:8px"><select id="po-su" style="flex:1"><option value="">اختر المورد</option>${sups.map(s=>`<option value="${E(s.id)}" ${o.sup===s.id?"selected":""}>${E(s.n)} (${ctyOf(s.cty)[1]})</option>`).join("")}</select><button type="button" class="bt" data-po="supnew" style="white-space:nowrap">➕ مورد</button></div>
  ${sups.length?"":`<div class="warn">أضف المورد أولاً من زر «مورد» بجانب القائمة (الاسم والدولة ورقم الجوال).</div>`}
  <div class="row"><div><label>تاريخ أمر الشراء *</label><input id="po-dt" type="date" value="${E(dstr(o.dt||o.ts))}" max="${today()}"></div>
  <div><label>رقم فاتورة المورد (PI)</label><input id="po-ref" maxlength="60" dir="ltr" value="${E(o.ref||"")}"></div></div>
- <label>البضاعة *</label><textarea id="po-ds" maxlength="1000" placeholder="مثلاً: أحذية رجالي شتوي، 4,800 زوج">${E(o.desc||"")}</textarea>
+ <label>وصف البضاعة * (يُكتب تلقائياً إن أضفت أصنافاً وتركته فارغاً)</label><textarea id="po-ds" maxlength="1000" placeholder="مثلاً: أحذية رجالي شتوي، 4,800 زوج">${E(o.desc||"")}</textarea>
  <div class="row"><div><label>عدد الحاويات *</label><input id="po-cn" inputmode="numeric" value="${E(o.cn||1)}"></div>
  <div><label>نوع الحاوية</label><select id="po-ct">${CTYPE.map(([k,l])=>`<option value="${k}" ${o.ctype===k?"selected":""}>${l}</option>`).join("")}</select></div></div>
+ <div class="it"><div class="it-h"><b>📦 الأصناف (اختياري)</b><button type="button" data-po="itpaste">📋 لصق من إكسل</button><button type="button" data-po="itadd">➕ صنف</button></div>
+ <div class="it-p" id="po-itpw" hidden><label>كل سطر صنف: الكود، البيان، الكمية، رقم الحاوية (اختياري). انسخها من إكسل والصقها هنا</label><textarea id="po-itp" placeholder="A1023&#9;حذاء رجالي أسود 42&#9;120&#9;1"></textarea><button type="button" data-po="itparse">إضافة الأسطر</button></div>
+ <div id="po-itb"></div><div class="it-t" id="po-itt"></div></div>
  <div class="row"><div><label>قيمة الأمر (اختياري)</label><input id="po-val" inputmode="decimal" dir="ltr" value="${N(o.val)?E(o.val):""}"></div>
  <div><label>العملة</label><select id="po-cur">${CUR.map(c=>`<option ${o.cur===c?"selected":""}>${c}</option>`).join("")}</select></div></div>
  <div class="row"><div><label>شرط التسليم (Incoterm)</label><select id="po-inc"><option value="">—</option>${INC.map(c=>`<option ${o.inc===c?"selected":""}>${c}</option>`).join("")}</select></div>
@@ -290,18 +306,23 @@ function form(id){
  ${r?"":`<label>مرفقات: فاتورة المورد أو صور (اختياري)</label><div id="po-mp"></div>`}
  <div class="act"><button class="p" data-po="save" ${r?`data-id="${E(r.id)}"`:""} type="button">${r?"حفظ التعديل":"إنشاء أمر الشراء"}</button><button data-po="close" type="button">رجوع</button></div>`,"form");
  if(!r)PK=multiPick(g("po-mp"),{w:1600,cap:280000,max:9,toast:X.toast});
+ itRender();
 }
 function readForm(){
  const sid=g("po-su").value,s=S.get(sid);if(!s){X.toast("اختر المورد");return null}
  const dt=dms(g("po-dt").value);if(!dt||dt>Date.now()+DAY){X.toast("اكتب تاريخ أمر الشراء");return null}
- const desc=g("po-ds").value.trim().slice(0,1000);if(!desc){X.toast("اكتب البضاعة");g("po-ds").focus();return null}
  const cn=Math.round(N(toEn(g("po-cn").value)));if(cn<1||cn>50){X.toast("عدد الحاويات من 1 إلى 50");return null}
+ const its=itRead(cn);if(its===false)return null;
+ let desc=g("po-ds").value.trim().slice(0,1000);
+ if(!desc&&its.length)desc=`${its.length} صنف · إجمالي ${its.reduce((s,x)=>s+x.q,0).toLocaleString("en-US")} قطعة`;
+ if(!desc){X.toast("اكتب البضاعة أو أضف أصنافاً");g("po-ds").focus();return null}
  const val=Math.round(N(toEn(g("po-val").value).replace(/,/g,""))*100)/100;
  const d={sup:sid,supn:String(s.n).slice(0,80),cty:CTY.some(c=>c[0]===s.cty)?s.cty:"ot",dt,desc,cn,ctype:g("po-ct").value,cur:g("po-cur").value,pod:g("po-pod").value};
  const opt=(k,id,mx)=>{const el=g(id);if(!el)return;const v=el.value.trim().slice(0,mx);if(v)d[k]=v;else d[k]=null};
  opt("ref","po-ref",60);opt("pol","po-pol",60);opt("note","po-nt",500);opt("inc","po-inc",10);
  opt("line","po-line",60);opt("ves","po-ves",60);opt("bl","po-bl",60);opt("cnos","po-cnos",200);opt("etd","po-etd",10);opt("eta","po-eta",10);
  if(val>0)d.val=val;else d.val=null;
+ d.it=its.length?its:null;
  return d;
 }
 const clean=d=>{const o={};Object.keys(d).forEach(k=>{if(d[k]!=null&&d[k]!=="")o[k]=d[k]});return o};
@@ -450,13 +471,45 @@ async function supSave(id){if(busy)return;
 // الرجوع لنموذج أمر الشراء بنفس اللي كان مكتوب (FS)، والمورد الجديد مختار
 let SUPBACK_ID="",FS=null;
 function stash(){FS={};const m=g("pom");if(m)m.querySelectorAll("input[id],select[id],textarea[id]").forEach(el=>{if(el.type!=="file")FS[el.id]=el.value})}
-function backToForm(sel){form(SUPBACK_ID||undefined);if(FS)Object.keys(FS).forEach(k=>{const el=g(k);if(el&&el.type!=="file")el.value=FS[k]});FS=null;if(sel&&g("po-su"))g("po-su").value=sel}
+function backToForm(sel){KEEP=true;form(SUPBACK_ID||undefined);if(FS)Object.keys(FS).forEach(k=>{const el=g(k);if(el&&el.type!=="file")el.value=FS[k]});FS=null;if(sel&&g("po-su"))g("po-su").value=sel;itRender()}
+
+
+// ---------- الأصناف داخل أمر الشراء (16 نوفمبر 2026، طلب محمد) ----------
+// po/{id}.it = [{c:الكود, n:البيان, q:الكمية, k?:رقم الحاوية}] لحد 200 صنف. بتتكتب في نفس نموذج الأمر (صفوف + لصق من إكسل).
+let IT=[],KEEP=false;const MAXIT=200;
+function itRender(){const b=g("po-itb");if(!b)return;const cn=Math.max(1,Math.min(50,Math.round(N(toEn((g("po-cn")||{value:"1"}).value)))||1));
+ b.innerHTML=IT.length?`<div class="it-r ih"><span>الكود</span><span>البيان (الصنف / اللون / المقاس)</span><span>الكمية</span><span>${cn>1?"الحاوية":""}</span><span></span></div>`+IT.map((x,i)=>`<div class="it-r" data-i="${i}"><input data-f="c" maxlength="40" dir="ltr" placeholder="الكود" value="${E(x.c)}"><input class="nm" data-f="n" maxlength="100" placeholder="البيان (الصنف / اللون / المقاس)" value="${E(x.n)}"><input data-f="q" inputmode="numeric" placeholder="الكمية" value="${E(x.q)}">${cn>1?`<select data-f="k"><option value="">الحاوية</option>${Array.from({length:cn},(_,j)=>`<option value="${j+1}" ${String(x.k)===String(j+1)?"selected":""}>${j+1}</option>`).join("")}</select>`:"<span></span>"}<button type="button" data-po="itdel" data-i="${i}" aria-label="حذف الصنف">✕</button></div>`).join(""):"";
+ itTot()}
+function itTot(){const t=g("po-itt");if(!t)return;const n=IT.filter(x=>x.c||x.n||x.q).length,q=IT.reduce((s,x)=>s+Math.round(N(toEn(x.q))),0);t.textContent=n?`${n} صنف · إجمالي ${q.toLocaleString("en-US")} قطعة`:""}
+function itRead(cn){const out=[];for(let i=0;i<IT.length;i++){const x=IT[i],c=String(x.c||"").trim().slice(0,40),n=String(x.n||"").trim().slice(0,100),qs=toEn(x.q).replace(/,/g,"").trim();
+  if(!c&&!n&&!qs&&!x.k)continue;
+  if(!c&&!n){X.toast("الصنف رقم "+(i+1)+": اكتب الكود أو البيان");return false}
+  const q=Math.round(N(qs));if(!(q>=1)||q>1e7){X.toast("الصنف رقم "+(i+1)+": اكتب الكمية");return false}
+  const o={q};if(c)o.c=c;if(n)o.n=n;
+  if(x.k){const k=Math.round(N(toEn(x.k)));if(k<1||k>cn){X.toast("الصنف رقم "+(i+1)+": رقم الحاوية أكبر من عدد الحاويات");return false}o.k=k}
+  out.push(o)}
+ if(out.length>MAXIT){X.toast("الحد الأقصى "+MAXIT+" صنف في الأمر الواحد");return false}
+ return out}
+function itParse(){const t=g("po-itp");if(!t)return;const lines=t.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);let add=0;
+ for(const ln of lines){if(IT.length>=MAXIT)break;const cols=ln.split(/\t|;|,|،/).map(s=>s.trim());const isN=s=>/^[\d٠-٩۰-۹,]+$/.test(s);let o;
+  if(cols.length>=3)o={c:cols[0],n:cols[1],q:cols[2],k:cols[3]||""};
+  else if(cols.length===2)o=isN(cols[1])?{c:"",n:cols[0],q:cols[1],k:""}:{c:cols[0],n:cols[1],q:"",k:""};
+  else o={c:"",n:cols[0],q:"",k:""};
+  IT.push({c:String(o.c||"").slice(0,40),n:String(o.n||"").slice(0,100),q:String(o.q||""),k:String(o.k||"")});add++}
+ t.value="";if(g("po-itpw"))g("po-itpw").hidden=true;itRender();X.toast(add?"أُضيف "+add+" سطر. راجع الكميات ثم احفظ":"لا يوجد أسطر")}
+function showItems(id){const r=A.get(id);if(!r||!Array.isArray(r.it)||!r.it.length)return;const L=r.it,tot=L.reduce((s,x)=>s+N(x.q),0),hk=L.some(x=>x.k);
+ openM(`<h3>📋 أصناف الأمر</h3><p style="margin:0 0 10px;color:var(--mut)"><bdi dir="ltr">${E(r.no)}</bdi> · 🏭 <bdi data-notr>${E(r.supn)}</bdi> · ${L.length} صنف · ${tot.toLocaleString("en-US")} قطعة</p>
+ <div class="po-tw"><table class="po-t" style="min-width:0"><thead><tr><th>#</th><th>الكود</th><th>البيان</th><th>الكمية</th>${hk?"<th>الحاوية</th>":""}</tr></thead><tbody>${L.map((x,i)=>`<tr><td>${i+1}</td><td><bdi dir="ltr" data-notr>${E(x.c||"")}</bdi></td><td style="white-space:normal" data-notr>${E(x.n||"")}</td><td class="n">${N(x.q).toLocaleString("en-US")}</td>${hk?`<td>${x.k?E(x.k):""}</td>`:""}</tr>`).join("")}</tbody></table></div>
+ <div class="act"><button data-po="close" type="button">رجوع</button></div>`,"items")}
+document.addEventListener("input",e=>{if(!X)return;const t=e.target;if(!t||!t.closest)return;
+ if(t.id==="po-cn"&&g("po-itb")){itRender();return}
+ const row=t.closest("#po-itb .it-r");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(IT[i])IT[i][t.dataset.f]=t.value;itTot()});
 
 // ---------- الضغطات ----------
 document.addEventListener("click",e=>{
  if(!X)return;const t=e.target.closest&&e.target.closest("[data-po]");if(!t)return;
  const a=t.dataset.po,id=t.dataset.id;
- const RO=["fst","v","sups","att","gal","close","csv","supback"];
+ const RO=["fst","v","sups","att","gal","close","csv","supback","items"];
  if(!canEdit()&&!canRcv()&&!X.owner&&!RO.includes(a))return;
  if(a==="close")return void closeM();
  if(a==="v"){V=t.dataset.v==="stats"?"stats":"list";if(X.redraw)X.redraw();return}
@@ -465,12 +518,17 @@ document.addEventListener("click",e=>{
  if(a==="sups")return void supList();
  if(a==="att")return void showAtt(id);
  if(a==="gal")return void gallery(id);
+ if(a==="items")return void showItems(id);
  if(a==="supback"){if(SUPBACK==="form")return void backToForm("");return void supList()}
  if(a==="rcv"){if(canRcv())rcvForm(id);return}
  if(a==="rcvsave"){if(canRcv())rcvSave(id);return}
  if(a==="attsave"){if(canEdit()||canRcv())attSave(id);return}
  if(a==="del"){if(X.owner)del(id);return}
  if(!canEdit())return;
+ if(a==="itadd"){if(IT.length>=MAXIT){X.toast("الحد الأقصى "+MAXIT+" صنف");return}IT.push({c:"",n:"",q:"",k:""});itRender();const rs=document.querySelectorAll("#po-itb .it-r:not(.ih)"),l=rs[rs.length-1];if(l){const f=l.querySelector("input");if(f)f.focus()}return}
+ if(a==="itdel"){IT.splice(+t.dataset.i,1);itRender();return}
+ if(a==="itpaste"){const w=g("po-itpw");if(w){w.hidden=!w.hidden;if(!w.hidden)g("po-itp").focus()}return}
+ if(a==="itparse")return void itParse();
  if(a==="new")return void form();
  if(a==="edit")return void form(id);
  if(a==="save")return void save(id);
