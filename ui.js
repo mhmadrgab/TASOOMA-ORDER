@@ -248,6 +248,7 @@
  const vis=el=>!!(el&&el.offsetParent!==null);
  const loggedIn=()=>window.__uiOk&&!document.getElementById("boot")&&![...document.querySelectorAll('input[type="password"]')].some(vis)&&!document.getElementById("tz-stuck");
  const t0=Date.now(),iv=setInterval(()=>{if(Date.now()-t0>15*6e4){clearInterval(iv);return}if(loggedIn()){clearInterval(iv);setTimeout(()=>{if(loggedIn())show()},700)}},800);
+ addEventListener("tz-news-check",()=>{setTimeout(()=>{if(loggedIn())show()},900)});// لو الحساب اترقّى وهو فاتح المنصة: admin.html بيبعت الحدث ده فنعيد المحاولة من غير ريفرش
  function show(){
   if(document.getElementById("tz-news"))return;
   // النص بيختلف حسب مين فاتح: فرع (index) / مدير أو موظف (admin) / سائق (driver)

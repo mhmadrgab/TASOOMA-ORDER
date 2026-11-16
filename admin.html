@@ -569,7 +569,7 @@ async function enterStaff(u){
    if(!d.exists()||d.data().enabled!==true){if(stW){stW();stW=null}deny("تم إيقاف حسابك");return}
    if(first2){first2=false;return}
    const nr=roleOf(d.data());
-   if(JSON.stringify(nr.p)!==JSON.stringify(ROLE.p)||nr.name!==ROLE.name||nr.admin!==ROLE.admin||nr.v!==ROLE.v||nr.owner!==ROLE.owner){ROLE=nr;stop();start()}
+   if(JSON.stringify(nr.p)!==JSON.stringify(ROLE.p)||nr.name!==ROLE.name||nr.admin!==ROLE.admin||nr.v!==ROLE.v||nr.owner!==ROLE.owner){const wasCo=ROLE.co===true;ROLE=nr;stop();start();if(nr.co&&!wasCo)try{window.dispatchEvent(new CustomEvent("tz-news-check"))}catch(x){}}
    else if((d.data().k||"")!==ROLE.k){ROLE.k=d.data().k||"";draw()}// الكنية اتغيّرت بس
   },()=>{});
  }catch(e){
