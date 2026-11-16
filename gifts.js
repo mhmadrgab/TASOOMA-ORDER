@@ -75,6 +75,17 @@ const CSS=`
 .gs-ac{display:flex;gap:8px;flex-wrap:wrap;padding:14px 22px 18px;border-top:1px solid var(--line);background:var(--soft,#f6eee3);margin:12px -22px 0}
 .gs-ac .bt{flex:1;min-width:120px}
 .gf-card h4{cursor:pointer}
+.gc{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;background:var(--card);border:1px solid var(--line);border-inline-start:5px solid #b48aab;border-radius:16px;padding:12px 14px;margin-bottom:10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:transform .15s ease,box-shadow .15s ease}
+.gc:hover{box-shadow:0 6px 16px rgba(42,29,44,.12)}.gc:active{transform:scale(.99)}
+.gc.ok{border-inline-start-color:#6f7d45}.gc.set{border-inline-start-color:#2a78d6}.gc.no{border-inline-start-color:#c4362b}.gc.pend{border-inline-start-color:#e8a317}
+.gc-ic{width:42px;height:42px;border-radius:13px;background:var(--soft,#f6eee3);display:grid;place-items:center;font-size:21px}
+.gc-m{min-width:0}.gc-m b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gc-m small{display:block;color:var(--mut);font-size:13px}
+.gc-m .gc-rj{color:#c4362b;white-space:normal}
+.gc-e{text-align:end}.gc-e b{font-size:20px;font-variant-numeric:tabular-nums;display:block;line-height:1.2}.gc-e b small{font-size:12px;color:var(--mut);font-weight:500}
+.gc-st{display:inline-block;margin-top:4px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#f2e5ee;color:#5f3a59}
+.gc.ok .gc-st{background:#e5ecd0;color:#45512a}.gc.set .gc-st{background:#dde9f7;color:#1c4f86}.gc.no .gc-st{background:#fbe3e0;color:#a2271d}.gc.pend .gc-st{background:#fdf0cf;color:#7a5200}
+.gc-ret{grid-column:1/-1;font:inherit;font-weight:700;font-size:14px;border:0;border-radius:11px;padding:9px;background:#6f7d45;color:#fff;cursor:pointer}
+@media (prefers-color-scheme:dark){.gc-st{background:#3d2b40;color:#e3c8dd}.gc.ok .gc-st{background:#2a301b;color:#b9c68a}.gc.set .gc-st{background:#1c2d44;color:#9cc2ee}.gc.no .gc-st{background:#40191a;color:#f1a5a0}.gc.pend .gc-st{background:#3a2d0f;color:#f0cf7a}}
 @media (max-width:560px){.gs-mt{grid-template-columns:1fr 1fr}.gs-bd{padding:14px 14px 0}.gs-ac{margin:12px -14px 0;padding:12px 14px 16px}.gs-ac .bt{min-width:calc(50% - 4px)}.gs-hd{padding:14px}.gs-rt b{font-size:15px}.gs-tb{font-size:14px}.gs-tb td.k{font-size:15px}}
 @media (prefers-color-scheme:dark){.gs-nt{background:#2b2210}.gs-rt>div.to{background:#000}}
 .gf-ret{margin-top:8px;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8;background:#f3efe6;color:#4e2f4a}.gf-ret.w{background:#fff1d6;color:#8a5a00;font-weight:700}.gf-ret.ok{background:#e7f4ec;color:#45512a}.gf-ret.no{background:#f1f1f1;color:#666}
@@ -321,22 +332,18 @@ function paintBranch(){
  openM(`<div class="gf-hero"><span class="ic">🎁</span><div><h3>الهدايا والعينات</h3><p>أي هدية أو عينة تخرج من الفرع يجب تسجيلها هنا (ويمكنك إرفاق صورة السند)، ويعتمدها مدير التسويق.</p></div></div>
  <div class="gf-stats"><div><b>${c("pend")}</b><small>⏳ بانتظار الاعتماد</small></div><div><b>${c("ok")+c("set")}</b><small>✅ معتمدة</small></div><div><b>${c("no")}</b><small>❌ مرفوضة</small></div></div>
  <button class="gf-new" data-gf="new" type="button">➕ تسجيل هدية / عينة جديدة</button>
- <div style="margin-top:14px">${BL.length?BL.slice(0,40).map(r=>card(r,false)).join(""):'<div class="m" style="text-align:center;padding:20px;color:var(--mut)">لا توجد هدايا مسجّلة بعد</div>'}</div>
+ <div style="margin-top:14px">${BL.length?BL.slice(0,40).map(r=>card(r)).join(""):'<div class="m" style="text-align:center;padding:20px;color:var(--mut)">لا توجد هدايا مسجّلة بعد</div>'}</div>
  <div class="gf-act"><button class="b" data-gf="close" type="button">إغلاق</button></div>`,"list");
 }
 // ---------- الكارت ----------
-function card(r,wh,setUi){// setUi = خانة مرجع السند (في قسم "بانتظار التسوية" بس، علشان ماتتكررش)
+function card(r){// (16 نوفمبر 2026، طلب محمد) كارت هادي زي كروت الطلبات: المستلم والسبب والعدد والحالة بس، والتفاصيل في السند اللي بيتفتح بالضغط
  const st=r.st||"pend",ap=r.ap||{};
- return `<div class="gf-card ${st}"><h4 data-gf="view" data-id="${E(r.id)}" title="فتح الهدية">${wh?`<bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi>`:""}<span class="gf-st ${st}">${STL[st]||st}</span><small class="m"><bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.dt||"")}</small></h4>
- <div class="m">👤 ${E(r.to&&r.to.n||"")}${r.to&&r.to.ph?` · <bdi dir="ltr">${E(r.to.ph)}</bdi>`:""} · 🏷 ${E(r.why||"")}${r.note?` · ${E(r.note)}`:""}</div>
- <div class="gf-it">${(Array.isArray(r.rows)?r.rows:[]).map(x=>`<span><bdi dir="ltr">${E([x.k,x.c,x.z].filter(Boolean).join(" "))}</bdi> × <b>${N(x.q)}</b></span>`).join("")}</div>
- <div class="m">سجّلها: <bdi>${E(r.by&&r.by.n||"")}</bdi> · ${hm(r.ts)} · ${N(r.pcs)} قطعة${st!=="pend"&&ap.n?` · ${st==="no"?"رفضها":"اعتمدها"}: ${E(ap.n)} ${hm(ap.at)}`:""}${st==="no"&&ap.note?`<br><b style="color:#c4362b">سبب الرفض: ${E(ap.note)}</b>`:""}</div>
- ${retHtml(r)}
- ${st==="set"&&r.sa?`<div class="gf-set">🧾 تمت التسوية${wh?` بواسطة ${E(r.sa.n||"")}`:""} · ${hm(r.sa.at)} · مرجع السند: <b dir="ltr">${E(r.sa.ref||"")}</b>${r.sa.net!=null&&N(r.sa.net)!==N(r.pcs)?` · الصافي المسوّى ${N(r.sa.net)} قطعة`:""}${wh?"":`<br><small>خصم المحاسب هذه الهدية من مخزون الفرع في النظام</small>`}</div>`:""}
- ${wh&&setUi&&canSettle()&&st==="ok"?`${waitRet(r)?'<div class="gf-ret w" style="margin-top:10px">⏳ انتظر رجوع العينة قبل التسوية، فالصافي قد يتغيّر</div>':""}${r.rb?`<div class="gf-ret ok" style="margin-top:10px">🧮 سوِّ الصافي فقط: <b>${net(r)} قطعة</b> (طلع ${N(r.pcs)} − رجع ${retQ(r)})</div>`:""}<div class="gf-ref"><input data-gfref="${E(r.id)}" maxlength="60" dir="ltr" placeholder="رقم / مرجع السند في النظام"><button class="bt s g" data-gf="set" data-id="${E(r.id)}" type="button">✔ تمت التسوية</button></div>`:""}
- <div class="gf-b"><button class="bt s p" data-gf="view" data-id="${E(r.id)}" type="button">📄 ${wh?"فتح السند":"فتح الهدية"}</button>${canRet(r)?`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}${r.img?`<button class="bt s" data-gf="img" data-id="${E(r.id)}" type="button">📎 السند</button>`:'<span class="m">بدون مرفق</span>'}
- ${wh&&canApprove()&&st==="pend"?`<button class="bt s g" data-gf="ok" data-id="${E(r.id)}" type="button">✅ اعتماد</button><button class="bt s r" data-gf="no" data-id="${E(r.id)}" type="button">❌ رفض</button>`:""}
- ${isOwner()?`<button class="bt s" data-gf="edit" data-id="${E(r.id)}" type="button">✏️ تعديل</button><button class="bt s" data-gf="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`:""}</div></div>`;
+ const lab={pend:["⏳","بانتظار الاعتماد"],ok:["✅","معتمدة"],set:["🧾","تمت التسوية"],no:["❌","مرفوضة"]}[st]||["",st];
+ return `<div class="gc ${st}" data-gf="view" data-id="${E(r.id)}" role="button" tabindex="0">
+ <span class="gc-ic">${isSample(r)?"🧪":"🎁"}</span>
+ <div class="gc-m"><b>${E(r.to&&r.to.n||"")}</b><small>🏷 ${E(r.why||"")} · <bdi dir="ltr">${E(r.dt||"")}</bdi></small>${st==="no"&&ap.note?`<small class="gc-rj">سبب الرفض: ${E(ap.note)}</small>`:""}</div>
+ <div class="gc-e"><b>${r.rb?net(r):N(r.pcs)}<small> قطعة</small></b><span class="gc-st">${lab[0]} ${lab[1]}</span></div>
+ ${canRet(r)?`<button class="gc-ret" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}</div>`;
 }
 // ---------- تبويب المستودع (التصميم الرابع، 12 نوفمبر 2026: "ابسط وأجمل، ولسه هتكتر") ----------
 // الفكرة: صفحة هادية تتقري في ثانية، وتفضل مرتبة لما الهدايا تبقى بالمئات:
@@ -387,7 +394,7 @@ const ST4={pend:["⏳","بانتظار الاعتماد","w"],ok:["✅","معت�
 const stTag=r=>{const s=accOnly()&&r.st==="ok"?["⏳","بانتظار التسوية","w"]:(ST4[r.st]||ST4.pend);return `<span class="g4-st ${s[2]}">${s[0]} ${s[1]}</span>${byMe(r)&&X.mode!=="branch"?`<span class="g4-st me">👤 ${canEditMine(r)?"سجّلتَها · يمكنك تعديلها":"سجّلتَها"}</span>`:""}${r.st==="pend"&&X.mode!=="branch"?repTag(r):""}${r.rt===true&&!r.rb&&isAp(r)?'<span class="g4-st w">↩️ لم ترجع</span>':""}${r.rb?`<span class="g4-st ok">↩️ صافي ${net(r)}</span>`:""}`};
 // سطر في القايمة
 const line=(r,i)=>`<div class="g4-ln" data-gf="view" data-id="${E(r.id)}" data-s="${E(sText(r))}" ${sOk(r)?"":"hidden"} style="--i:${Math.min(i,12)}">
- ${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${tShort(r.ts)}</small><small class="g4-it">${short(r)}</small></div>
+ ${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${tShort(r.ts)}</small></div>
  <div class="g4-end"><b>${r.rb?net(r):N(r.pcs)}<small> قطعة</small></b><div class="g4-tags">${stTag(r)}</div></div>${r.img?`<button class="g4-clip" data-gf="img" data-id="${E(r.id)}" type="button" title="صورة السند">📎</button>`:""}</div>`;
 // كارت "مطلوب منك"
 function todoCard(r,k,i){
@@ -417,7 +424,7 @@ function wkRow(r,k,i){
   :`<button class="bt s g" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`;
  const age=Math.max(0,Math.floor((Date.now()-N(k==="ap"?r.ts:(r.ap&&r.ap.at)||r.ts))/864e5));
  const tags=`${k==="ap"?repTag(r):""}${age>=3?`<span class="g4-st r">⏰ منذ ${age} يوم</span>`:age>=1?`<span class="g4-st">منذ ${age} يوم</span>`:`<span class="g4-st ok">جديدة</span>`}${k==="set"&&waitRet(r)?'<span class="g4-st w">↩️ لم ترجع بعد</span>':""}${k==="set"&&r.rb?`<span class="g4-st ok">صافي ${net(r)} من ${N(r.pcs)}</span>`:""}`;
- return `<div class="g4-td" data-gf="view" data-id="${E(r.id)}" style="--i:${Math.min(i,10)}">${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${r.rb?net(r):N(r.pcs)} قطعة</small><small class="g4-it">${short(r)}</small><div class="g4-tags">${tags}</div></div><div class="g4-act" data-gf="noop">${act}</div></div>`;
+ return `<div class="g4-td" data-gf="view" data-id="${E(r.id)}" style="--i:${Math.min(i,10)}">${av(r)}<div class="g4-mid"><b>${E(r.to&&r.to.n||"")}</b><small><bdi dir="ltr">${E(r.brn||brName(r.br))}</bdi> · <span class="g4-why">${E(r.why||"")}</span> · ${r.rb?net(r):N(r.pcs)} قطعة</small><div class="g4-tags">${tags}</div></div><div class="g4-act" data-gf="noop">${act}</div></div>`;
 }
 function workPanel(per,pw,ok,pcs){
  if(!WK)return "";
