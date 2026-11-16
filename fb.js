@@ -107,7 +107,9 @@ export const FAIL_MSG = {
 };
 // ---------- سجل "مين عمل إيه" (نفس القديم بالظبط) ----------
 let AUD = null;
-export function setAudit(a) { AUD = a && a.db && a.e ? a : null }
+// 🔏 (16 نوفمبر 2026) السجل بقى بيتكتب من السيرفر نفسه جوه w() (supabase/002_rules.sql) والمتصفح مالوش دخل، فمحدش يقدر يزوّره أو يتخطّاه.
+// الدالة فاضلة علشان admin.html بينادي عليها، بس مابتعملش حاجة (AUD يفضل null فمفيش كتابة من المتصفح).
+export function setAudit(a) { AUD = null }
 const NOLOG = new Set(["dm", "whdir", "ddir", "push", "geo", "meta", "log", "ava", "pushlog", "chats", "pods", "giftimg", "seen"]);
 function note(op, r, d) {
   if (!AUD || !r || !r.path) return null; const p = String(r.path).split("/"); if (p.length !== 2 || NOLOG.has(p[0])) return null;

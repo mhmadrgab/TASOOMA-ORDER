@@ -1,5 +1,5 @@
 // خدمة بسيطة: شبكة أولاً، ولو النت قطع تفتح آخر نسخة من الصفحة. مفيش تخزين لبيانات Firebase.
-const V="tasooma-v129";
+const V="tasooma-v130";
 const SHELL=["./index.html","./admin.html","./ui.css","./ui.js","./icons.js","./mnt.js","./i18n.js","./i18n-en.js","./workers.js","./clean.js","./bchat.js","./prof.js","./audit.js","./backup.js","./dash.js","./fb.js","./sb-lib.js","./sbcore.js","./sb-config.js","./cust.js","./notify.js","./br-extra.js","./ad-extra.js","./fleet.js","./map.js","./zoom.js","./att.js","./gifts.js","./brsheet.js","./po.js","./staff.js","./ann.js","./short.js","./pres.js","./track.js","./driver.html","./ext.html","./manifest-driver.json","./icon-192.png"];
 // (15 نوفمبر 2026) لو التنزيل فشل (نت ضعيف) التثبيت بيفشل والنسخة القديمة الكاملة بتفضل شغّالة، والمتصفح بيحاول تاني بعدين.
 // (كان الفشل بيتبلع فالنسخة الجديدة تشتغل بكاش ناقص وتمسح القديم ← كل ملف من النت ← شاشة بيضا طويلة)
