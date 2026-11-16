@@ -2486,4 +2486,5 @@ export default {
 "فُتح طلب صيانة باسم المستودع":"Maintenance request opened for the warehouse",
 "أُكِّد":"Confirmed",
 "أُكِّد الإصلاح":"Repair confirmed",
+"فتحه":"Opened by",
 };

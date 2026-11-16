@@ -122,7 +122,7 @@ function card(r){
  }
  if((!wh||(r.br==="WH"&&canAct()))&&r.st==="done")ac=`<button class="p" data-mt="cok" data-id="${E(r.id)}" type="button">✅ نعم، تم الإصلاح</button><button class="r" data-mt="cno" data-id="${E(r.id)}" type="button">↩️ لم يُصلح</button>`;
  const pic=r.img?`<button data-mt="img" data-id="${E(r.id)}" type="button">📷 الصور</button>`:"";
- return `<div class="mt-c" style="--c:${s[1]}"><div class="m-hd"><div><b>${r.br==="WH"?"🏭 ":""}<bdi dir="ltr">${E(r.brn||r.br)}</bdi></b><small><bdi dir="ltr">${E(r.no||"")}</bdi> · ${ago(r.ts)}${r.src==="eng"?" · 🧑‍🔧 فتحه المهندس":""}</small></div><span class="m-st">${s[2]} ${r.br==="WH"&&r.st==="conf"?"أُكِّد":s[0]}</span></div>
+ return `<div class="mt-c" style="--c:${s[1]}"><div class="m-hd"><div><b>${r.br==="WH"?"🏭 ":""}<bdi dir="ltr">${E(r.brn||r.br)}</bdi></b><small><bdi dir="ltr">${E(r.no||"")}</bdi> · ${ago(r.ts)}${r.src==="eng"?` · 🧑‍💼 فتحه <bdi data-notr>${E((r.by&&r.by.n)||"المستودع")}</bdi>`:""}</small></div><span class="m-st">${s[2]} ${r.br==="WH"&&r.st==="conf"?"أُكِّد":s[0]}</span></div>
  <div class="m-bd"><div class="m-it">${CI(r.cat)} ${E(r.item||"")}</div>${r.desc?`<div class="m-ds" data-notr>${E(r.desc)}</div>`:""}
  <div class="m-tg"><span class="m-pri" style="background:${p[1]}">${p[0]}</span><span>${E(r.cat||"")}</span>${pl.vd?`<span>🗓 الموعد: <bdi dir="ltr">${E(pl.vd)}</bdi></span>`:""}${pl.tech?`<span>👷 ${E(pl.tech)}</span>`:""}${N(fn.cost)?`<span>💵 ${N(fn.cost)} ريال</span>`:""}</div>
  ${pl.note?`<div class="m-nt" data-notr>🗒 ${E(pl.note)}</div>`:""}${r.st==="no"&&rj.note?`<div class="m-nt bad" data-notr>❌ سبب الرفض: ${E(rj.note)}</div>`:""}
