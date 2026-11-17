@@ -504,6 +504,7 @@ import {notify,beep,badge,autoPush} from "./notify.js";
 import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.js";
 import {initTrack,stopTrack,trackBtn} from "./track.js";
 import {initSheet,stopSheet} from "./brsheet.js";
+import {catLoad,catSheet} from "./cat.js";
 const {app,db,auth}=makeFb("branch");
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام",go:"في الطريق إليك 🚚"};
 const ST=x=>LBL[x]?x:"new";
@@ -615,6 +616,8 @@ function enter(b){
  B=b;localStorage.setItem("tb",b);document.body.classList.add("lock");g("gate").className="";
  st.br=b;st.ty="load";save();loadUI();g("mb").innerHTML=`<bdi dir="ltr">${E(b)}</bdi>`;hello(null);listen();
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
+ // 📦 كتالوج الأصناف: اقتراحات الكود ← ألوانه ← مقاساته في ورقة النواقص (لو مفيش كتالوج مرفوع الورقة زي ما هي)
+ catLoad(db).then(c=>{if(c)catSheet()}).catch(()=>{});
   // 📄 ورقة الطلب (15 نوفمبر 2026): الضغط على كارت الطلب بيفتحه في شكل ورقة، ومعاه صور التسليم/إيصال الشحن
   initSheet({db,toast,get:id=>REQS[id],lbl,isShip,ship:()=>SHIP,brn:()=>B});
  // 🎁 الهدايا والعينات: زرار فوق جنب "تغيير الفرع"، والفرع يسجّل الهدية بالسند والمستودع بيعتمدها
