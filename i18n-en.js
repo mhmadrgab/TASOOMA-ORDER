@@ -2609,4 +2609,8 @@ export default {
 "سطر فيه لون أو مقاس غير مسجّل لهذا الكود":"row has a color or size not registered for this code",
 "أسطر فيها لون أو مقاس غير مسجّل لهذا الكود":"rows have a color or size not registered for this code",
 "مُعلَّمة بالأصفر، ويمكنك الحفظ.":"Marked in yellow; you can still save.",
+"تم تغيير كلمة المرور. اضغط «إظهار» لنسخها":"Password changed. Press “Show” to copy it",
+"الآن، لأن المديرين كانوا يستطيعون رؤية كلمته الحالية قبل الترقية.":"now, because managers could see the current password before the promotion.",
+"يُنصح بتغيير كلمة مرور":"It is recommended to change the password of",
+"هل تريد تغييرها الآن؟ بعدها اضغط «إظهار» لنسخ الكلمة الجديدة وإرسالها له.":"Change it now? Then press “Show” to copy the new password and send it to them.",
 };

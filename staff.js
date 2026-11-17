@@ -110,7 +110,12 @@ async function click(e){
  try{
   if(a==="add")await add();
   else if(a==="chat"&&s){const off=!(s.p&&s.p.nc===true);if(!off||confirm(`قفل الدردشة لـ ${s.name}؟\nلن يرى المحادثات ولا يستطيع المراسلة حتى تفتحها له مرة أخرى.`)){await updateDoc(doc(X.db,"staff",id),{"p.nc":off});X.toast(off?"🔒 قُفلت الدردشة لـ "+s.name:"💬 فُتحت الدردشة لـ "+s.name)}}
-   else if(a==="tocoo"&&s){if(confirm(`ترقية ${s.name} لمالك نظام؟\n\nسيحصل على كل صلاحياتك تقريباً: الموظفين والعهدة والطلبات والإعدادات وغيرها. ولن يستطيع لمس حساب الأدمن ولا تعيين ملّاك آخرين.`)){await updateDoc(doc(X.db,"staff",id),{co:true,admin:true});X.toast("👑 أصبح مالك نظام")}}
+   else if(a==="tocoo"&&s){if(confirm(`ترقية ${s.name} لمالك نظام؟\n\nسيحصل على كل صلاحياتك تقريباً: الموظفين والعهدة والطلبات والإعدادات وغيرها. ولن يستطيع لمس حساب الأدمن ولا تعيين ملّاك آخرين.`)){await updateDoc(doc(X.db,"staff",id),{co:true,admin:true});X.toast("👑 أصبح مالك نظام");
+    // 🛡 (17 نوفمبر 2026) كلمة مروره الحالية كان أي مدير يقدر يشوفها قبل الترقية، فبنعرض على الأدمن تغييرها فوراً
+    const old=PW()[id];
+    if(old&&confirm(`يُنصح بتغيير كلمة مرور ${s.name} الآن، لأن المديرين كانوا يستطيعون رؤية كلمته الحالية قبل الترقية.\n\nهل تريد تغييرها الآن؟ بعدها اضغط «إظهار» لنسخ الكلمة الجديدة وإرسالها له.`)){
+     const nw=genPw(),au=makeFb("sec").auth;try{const cr=await signInWithEmailAndPassword(au,id,old);await updatePassword(cr.user,nw)}finally{try{await signOut(au)}catch(x){}}
+     await setDoc(doc(X.db,"secrets",id),{pw:nw});X.toast("تم تغيير كلمة المرور. اضغط «إظهار» لنسخها")}}}
    else if(a==="unco"&&s){if(confirm(`إزالة صلاحية مالك النظام من ${s.name}؟\nسيرجع مديراً عادياً.`)){await updateDoc(doc(X.db,"staff",id),{co:false});X.toast("رجع مديراً عادياً")}}
    else if((a==="toadm"||a==="toacc")&&s){const up=a==="toadm";
    if(confirm(up?`ترقية ${s.name} لمدير؟`:`تحويل ${s.name} لمحاسب؟`)){await updateDoc(doc(X.db,"staff",id),{admin:up});X.toast(up?"أصبح مديراً 🛡":"أصبح محاسباً")}}

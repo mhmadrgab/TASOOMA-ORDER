@@ -233,6 +233,11 @@ function incoming(id,d){
  if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="rej"){PEND_ACT=null;updateDoc(doc(X.db,"call",id),{st:"rej"}).catch(()=>{});return}
  if(C){updateDoc(doc(X.db,"call",id),{st:"busy"}).catch(()=>{});return}
  const c={id,inc:true,to:d.fr,name:String(d.frn||(String(d.fr||"").slice(0,1)==="b"?"فرع "+String(d.fr).slice(2):"مكالمة")),st:"ring",of:d.of,mute:false};C=c;
+ // 🛡 (17 نوفمبر 2026) الاسم اللي المتصل بعته (frn) ممكن يتزوّر، فالاسم الحقيقي من الدليل (الموظف من whdir، السائق من ddir)، وكود الفرع بيظهر دايماً
+ {const fr=String(d.fr||""),k=fr.slice(0,1),idp=fr.slice(2);
+  if(k==="b"&&idp&&c.name.indexOf(idp)<0)c.name=(c.name+" · "+idp).slice(0,70);
+  else if((k==="w"||k==="d")&&idp)getDoc(doc(X.db,k==="w"?"whdir":"ddir",idp)).then(s=>{if(C!==c||!s.exists())return;const n=String((s.data()||{}).n||"").trim().slice(0,60);
+   if(n&&n!==c.name){c.name=n;const el=g("tzc-n"),av=g("tzc-av"),pn=g("tzcp-n");if(el)el.textContent=n;if(av)av.textContent=initial(n);if(pn)pn.textContent=n}}).catch(()=>{})}
  paint();status("مكالمة واردة",true);tone("in");c.iv=setInterval(tick,500);c.prep=prep(c);
  c.rt=setTimeout(()=>{if(C===c&&c.st==="ring"){cleanup();closeUi("مكالمة فائتة")}},RING_MS+5000);
  c.un=onSnapshot(doc(X.db,"call",id),s=>{if(C!==c||!s.exists())return;const x=s.data();
@@ -286,8 +291,12 @@ export function initCall(ctx){
  UN=onSnapshot(query(collection(X.db,"call"),where("to","==",X.party),where("ts",">=",Date.now()-WIN)),sn=>{
   sn.docs.forEach(s=>{const d=s.data();if(d&&d.st==="ring"&&d.of&&Math.abs(Date.now()-N(d.ts))<WIN)incoming(s.id,d)})},()=>{});
  setTimeout(()=>{if(X)iceServers()},2500);// نجهّز خوادم الاتصال قبل أول مكالمة
- try{const u=new URL(location.href);const cid=u.searchParams.get("call"),act=u.searchParams.get("act");if(cid&&(act==="acc"||act==="rej"))PEND_ACT={id:cid,act};
+ // 🛡 (17 نوفمبر 2026) الرد التلقائي من الرابط (act=acc) كان يخلّي أي حد يبعت رابط "…?call=رقم&act=acc" ثم يتصل، فالمكالمة تترد لوحدها والمايك يفتح.
+ // دلوقتي: الرابط بيتقبل جوه تطبيق تاسومة بس ولما التطبيق نفسه هو اللي فتح الصفحة (من غير referrer؛ الضغط على رابط جوه الصفحة له referrer).
+ // في المتصفح: "رد/رفض" من الإشعار بيوصل من الـ SW نفسه (call-pend) مش من الرابط.
+ try{const u=new URL(location.href);const cid=u.searchParams.get("call"),act=u.searchParams.get("act");if(cid&&(act==="acc"||act==="rej")&&window.TasoomaApp&&!document.referrer)PEND_ACT={id:cid,act};
   if(u.searchParams.has("call")||u.searchParams.has("act")){u.searchParams.delete("call");u.searchParams.delete("act");history.replaceState(null,"",u.pathname+(u.search||"")+u.hash)}}catch(e){}
+ try{const sw=navigator.serviceWorker;if(sw&&sw.controller)sw.controller.postMessage({t:"call-pend"})}catch(e){}
 }
 export const callState=()=>C?{id:C.id,st:C.st,inc:C.inc,conn:C.pc?C.pc.connectionState:"",t0:!!C.t0,ready:!!C.ready}:null;// للتشخيص والاختبار
 export function stopCall(){if(C)hang("end");if(UN){try{UN()}catch(e){}UN=null}X=null;window.__tzCall=false}

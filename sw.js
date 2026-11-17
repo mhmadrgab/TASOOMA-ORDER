@@ -1,11 +1,13 @@
 // Ø®Ø¯Ù…Ø© Ø¨Ø³ÙŠØ·Ø©: Ø´Ø¨ÙƒØ© Ø£ÙˆÙ„Ø§Ù‹ØŒ ÙˆÙ„Ùˆ Ø§Ù„Ù†Øª Ù‚Ø·Ø¹ ØªÙØªØ­ Ø¢Ø®Ø± Ù†Ø³Ø®Ø© Ù…Ù† Ø§Ù„ØµÙØ­Ø©. Ù…ÙÙŠØ´ ØªØ®Ø²ÙŠÙ† Ù„Ø¨ÙŠØ§Ù†Ø§Øª Firebase.
-const V="tasooma-v152";
+const V="tasooma-v153";
 const SHELL=["./index.html","./admin.html","./ui.css","./ui.js","./icons.js","./mnt.js","./i18n.js","./i18n-en.js","./workers.js","./clean.js","./bchat.js","./prof.js","./audit.js","./backup.js","./dash.js","./fb.js","./sb-lib.js","./sbcore.js","./sb-config.js","./cust.js","./notify.js","./br-extra.js","./ad-extra.js","./fleet.js","./map.js","./zoom.js","./att.js","./gifts.js","./brsheet.js","./po.js","./cat.js","./call.js","./staff.js","./ann.js","./short.js","./pres.js","./track.js","./driver.html","./ext.html","./manifest-driver.json","./icon-192.png"];
 // (15 Ù†ÙˆÙÙ…Ø¨Ø± 2026) Ù„Ùˆ Ø§Ù„ØªÙ†Ø²ÙŠÙ„ ÙØ´Ù„ (Ù†Øª Ø¶Ø¹ÙŠÙ) Ø§Ù„ØªØ«Ø¨ÙŠØª Ø¨ÙŠÙØ´Ù„ ÙˆØ§Ù„Ù†Ø³Ø®Ø© Ø§Ù„Ù‚Ø¯ÙŠÙ…Ø© Ø§Ù„ÙƒØ§Ù…Ù„Ø© Ø¨ØªÙØ¶Ù„ Ø´ØºÙ‘Ø§Ù„Ø©ØŒ ÙˆØ§Ù„Ù…ØªØµÙØ­ Ø¨ÙŠØ­Ø§ÙˆÙ„ ØªØ§Ù†ÙŠ Ø¨Ø¹Ø¯ÙŠÙ†.
 // (ÙƒØ§Ù† Ø§Ù„ÙØ´Ù„ Ø¨ÙŠØªØ¨Ù„Ø¹ ÙØ§Ù„Ù†Ø³Ø®Ø© Ø§Ù„Ø¬Ø¯ÙŠØ¯Ø© ØªØ´ØªØºÙ„ Ø¨ÙƒØ§Ø´ Ù†Ø§Ù‚Øµ ÙˆØªÙ…Ø³Ø­ Ø§Ù„Ù‚Ø¯ÙŠÙ… â† ÙƒÙ„ Ù…Ù„Ù Ù…Ù† Ø§Ù„Ù†Øª â† Ø´Ø§Ø´Ø© Ø¨ÙŠØ¶Ø§ Ø·ÙˆÙŠÙ„Ø©)
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL.map(u=>new Request(u,{cache:"reload"})))).then(()=>self.skipWaiting()))});
 // (16 Ù†ÙˆÙÙ…Ø¨Ø± 2026) Ø§Ù„ØµÙØ­Ø© Ø¨ØªØ³Ø£Ù„ "Ø¥Ù†Øª Ø£Ù†Ù‡ÙŠ Ù†Ø³Ø®Ø©ØŸ" Ø¹Ù„Ø´Ø§Ù† ØªØ¹Ø±Ø¶ Ø±Ù‚Ù… Ø§Ù„Ù†Ø³Ø®Ø© Ø¨Ø¹Ø¯ Ø§Ù„ØªØ­Ø¯ÙŠØ«
-self.addEventListener("message",e=>{const d=e.data;if(d&&d.t==="ver"&&e.source)e.source.postMessage({t:"ver",v:V})});
+let PENDC=null;// {id,act,ts}: ضغطة "رد/رفض" على إشعار مكالمة والمنصة مقفولة (17 نوفمبر 2026)
+self.addEventListener("message",e=>{const d=e.data;if(d&&d.t==="ver"&&e.source)e.source.postMessage({t:"ver",v:V});
+ if(d&&d.t==="call-pend"&&e.source&&PENDC){const p=PENDC;PENDC=null;if(Date.now()-p.ts<60000)e.source.postMessage({t:"tz-call",id:p.id,act:p.act})}});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",e=>{
  const r=e.request;if(r.method!=="GET")return;
@@ -31,7 +33,7 @@ self.addEventListener("notificationclick",e=>{
   e.waitUntil(clients.matchAll({type:"window",includeUncontrolled:true}).then(cs=>{
    const c=cs.find(w=>w.url.split("?")[0]===l.split("?")[0]);
    if(c){c.postMessage({t:"tz-call",act,id});return act==="rej"?null:c.focus().catch(()=>{})}
-   return clients.openWindow(l+(l.indexOf("?")>=0?"&":"?")+"act="+act);
+   PENDC={id,act,ts:Date.now()};return clients.openWindow(l);
   }));
   return;
  }
