@@ -2714,4 +2714,7 @@ export default {
 "آخرها":"last",
 "التطبيق":"app",
 "لا توجد أخطاء مسجّلة 👌":"No errors recorded 👌",
+"ستأخذ نسخة كاملة من كل بيانات المنصة (كل الأقسام والصور)، وستُحمَّل كملف على هذا الجهاز. قد تستغرق دقيقة أو أكثر.\n\nلا تشمل الدردشة الخاصة ولا كلمات المرور.\n\nهل تريد المتابعة؟":"A full copy of all platform data (every section and the photos) will be taken and downloaded as a file to this device. It may take a minute or more.\n\nIt does not include private chat or passwords.\n\nContinue?",
+"جاري النسخ...":"Copying...",
+"تم تحميل النسخة الكاملة":"Full backup downloaded",
 };

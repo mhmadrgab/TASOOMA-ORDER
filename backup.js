@@ -3,6 +3,11 @@
 // من 60 يوم قبل آخر نسخة + الطلبات المفتوحة، وباقي البيانات (الفروع، العهدة، الموظفين، العربيات...) كاملة كل مرة.
 // علشان كده لازم كل الملفات تتحفظ مع بعض. مش بتشمل: كلمات السر، وتسجيلات الإشعارات، والصوت نفسه.
 // meta/backup = {at, n}: آخر نسخة إمتى وكام سجل (للتنبيه لو عدّى أسبوع).
+// 💾 (18 نوفمبر 2026) النسخة بقت كاملة: من دالة backup_page في القواعد (كل المستندات بترتيب المسار، صفحة صفحة)، مش 15 مجموعة بس.
+//   قبل كده الهدايا والصيانة وأوامر الشراء والكتالوج والتعميمات والصور الإضافية ماكانتش في النسخة خالص (اتضافوا بعد ما backup.js اتكتب).
+//   الشكل الجديد v2 = {app,v:2,at,full:true,n,docs:{المسار:البيانات}}، وكل ملف كامل لوحده (مفيش "من آخر نسخة" تاني).
+//   مش في النسخة: الدردشة الخاصة والمجموعات (خصوصية)، وحسابات الدخول وكلمات المرور (دي من نسخ Supabase اليومية بس).
+//   الاسترجاع: supabase\restore.mjs (check / missing / overwrite). لو القواعد لسه قديمة: الطريقة القديمة (run1) زي ما هي.
 import {collection,doc,getDoc,getDocs,setDoc,query,where,withTimeout} from "./fb.js";
 // (الدردشة القديم "chats" اتمسح. الدردشة الخاص dm مش في النسخة: القواعد مش بتسمح إلى يقرا محادثات غيره، ولا حتى المالك)
 const ALL=["branches","staff","ledger","settlements","drivers","workers","wrate","geo","cars","whdir"];
@@ -29,9 +34,37 @@ export const backupBtn=()=>X&&X.owner?`<button id="bkp" type="button" title="ن�
 // تنبيه فوق الصفحة لو عدّى أسبوع من غير نسخة
 export const backupNag=()=>late()?`<div class="bkn"><span>💾 ${N(META.at)?`آخر نسخة احتياطية من ${Math.floor((Date.now()-N(META.at))/864e5)} يوم`:"لم تأخذ أي نسخة احتياطية من بيانات المنصة بعد"}</span><button data-bkp type="button">📥 خذ نسخة الآن</button></div>`:"";
 
+// النسخة الكاملة: بنجمّع الملف أجزاء (Blob) علشان مانعملش نص واحد بحجم القاعدة كلها في الذاكرة
+async function runAll(ctx){
+  const c=ctx.db&&ctx.db.c;if(!c||!c.rpc)return false;
+  const first=await withTimeout(c.rpc("backup_page",{p_after:"",p_max:4000000}),120000);
+  if(first.error||!first.data||!Array.isArray(first.data.rows))return false;// القواعد القديمة ← الطريقة القديمة
+  if(!confirm("ستأخذ نسخة كاملة من كل بيانات المنصة (كل الأقسام والصور)، وستُحمَّل كملف على هذا الجهاز. قد تستغرق دقيقة أو أكثر.\n\nلا تشمل الدردشة الخاصة ولا كلمات المرور.\n\nهل تريد المتابعة؟"))return true;
+  busy=true;ctx.toast("⏳ جاري تجهيز النسخة الاحتياطية...");
+  try{
+    const at=Date.now(),parts=[`{"app":"tasooma","v":2,"at":${at},"full":true,"docs":{`];let n=0,r=first,sep="";
+    for(let i=0;i<20000;i++){
+      const rows=r.data.rows;
+      if(rows.length){parts.push(sep+rows.map(x=>JSON.stringify(String(x[0]))+":"+JSON.stringify(x[1])).join(","));sep=",";n+=rows.length}
+      if(!r.data.next)break;
+      if(n%2000<rows.length)ctx.toast(`⏳ جاري النسخ... ${n} سجل`);
+      r=await withTimeout(c.rpc("backup_page",{p_after:r.data.next,p_max:4000000}),120000);
+      if(r.error||!r.data||!Array.isArray(r.data.rows))throw new Error("page");
+    }
+    parts.push(`},"n":${n}}`);
+    const blob=new Blob(parts,{type:"application/json"});
+    save(blob,`tasooma-backup-${new Date(at).toLocaleDateString("en-CA")}-full.json`);
+    await withTimeout(setDoc(doc(ctx.db,"meta","backup"),{at,n}),15000).catch(()=>{});
+    if(X===ctx){META={at,n};ctx.redraw()}
+    ctx.toast(`✅ تم تحميل النسخة الكاملة (${n} سجل · ${blob.size<1048576?Math.max(1,Math.round(blob.size/1024))+" كيلو":(blob.size/1048576).toFixed(1)+" ميجا"}). احفظ الملف في Google Drive أو ذاكرة فلاش`);
+  }catch(e){ctx.toast("تعذر أخذ النسخة. تأكد من الإنترنت وحاول مجدداً")}
+  finally{busy=false}
+  return true;
+}
 async function run(){
   if(busy||!X||!X.owner)return;
   const ctx=X;
+  try{if(await runAll(ctx))return}catch(e){busy=false}
   if(!META){try{const s=await withTimeout(getDoc(doc(ctx.db,"meta","backup")),15000);META=s.exists()?s.data():{}}catch(e){return void ctx.toast("تعذر الاتصال. تأكد من الإنترنت وحاول مجدداً")}}
   const full=!N(META.at),from=full?0:N(META.at)-OVERLAP;
   if(!confirm(full?"ستأخذ نسخة كاملة من كل بيانات المنصة، وستُحمَّل كملف على هذا الجهاز. قد تستغرق دقيقة.\n\nهل تريد المتابعة؟"
