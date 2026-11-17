@@ -71,6 +71,7 @@ export async function pushRegister(app, db, info) {
     if (!window.__fgm) { window.__fgm = 1; m.onMessage(msg, p => {
       const n = (p && p.notification) || {}, d = (p && p.data) || {};
       if (!(document.hidden || !document.hasFocus()) && d.tag !== "test") return;
+      if (String(d.tag || "").indexOf("call") === 0) return;// 📞 المكالمة: شاشة الرد في call.js
       reg.showNotification(n.title || d.t || "تاسومة", {body: n.body || d.b || "", tag: d.tag || undefined, icon: "./icon-192.png", dir: document.documentElement.dir || "rtl", lang: document.documentElement.lang || "ar", data: {link: (p.fcmOptions && p.fcmOptions.link) || d.link || ""}}).catch(() => {});
     }) }
     await pushSave(db, info, tok);

@@ -2576,4 +2576,6 @@ export default {
 "الاتصال ضعيف… جارٍ إعادة الاتصال":"Weak connection… reconnecting",
 "تعذّر توصيل الصوت بسبب ضعف الإنترنت عند أحد الطرفين. حاول مرة أخرى":"Could not connect audio due to a weak internet connection on one side. Try again",
 "تعذّر توصيل الصوت: شبكة أحد الطرفين تمنع الاتصال المباشر":"Could not connect audio: one side's network blocks direct connections",
+"اضغط على الشاشة لتشغيل الصوت":"Tap the screen to play audio",
+"مكالمة صوتية واردة":"Incoming voice call",
 };

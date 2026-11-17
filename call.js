@@ -39,7 +39,7 @@ const failMsg=()=>ICE.turn?"تعذّر توصيل الصوت بسبب ضعف ا�
 async function mkPc(){
  const servers=await iceServers();
  const pc=new RTCPeerConnection({iceServers:servers,bundlePolicy:"max-bundle",iceTransportPolicy:ICE.turn?"relay":"all"});
- pc.ontrack=e=>{const a=g("tzc-au");if(!a)return;const st=e.streams&&e.streams[0]?e.streams[0]:new MediaStream([e.track]);a.srcObject=st;const p=a.play();if(p&&p.catch)p.catch(()=>{});level(st)};
+ pc.ontrack=e=>{const a=g("tzc-au");if(!a)return;const st=e.streams&&e.streams[0]?e.streams[0]:new MediaStream([e.track]);a.srcObject=st;const p=a.play();if(p&&p.catch)p.catch(()=>{if(C){C.tap=true;status("اضغط على الشاشة لتشغيل الصوت")}});level(st)};
  pc.onconnectionstatechange=()=>{if(!C||C.pc!==pc)return;const s=pc.connectionState;
   if(s==="connected"&&C.inc&&C.st==="ring")return;// اتجهّز قبل الرد: مانبدأش العداد إلا بعد ما يرد
   if(s==="connected"){clearTimeout(C.dropT);C.dropT=0;clearTimeout(C.ct);if(!C.t0){C.t0=Date.now();tone(null);paint()}status("")}
@@ -57,15 +57,27 @@ function level(st){
 function levelStop(){if(LV){clearInterval(LV.iv);try{LV.src.disconnect()}catch(e){}LV=null;const el=g("tzc");if(el)el.style.setProperty("--lv","0")}}
 // ---------- الرنة (من غير ملفات صوت) ----------
 function ac(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume().catch(()=>{});return AC}catch(e){return null}}
+// 🎵 رنة تاسومة (17 نوفمبر 2026، طلب محمد "رنة خاصة"): لحن ماريمبا قصير (مي-صول-سي-مي…) بيتولّد بالصوت من غير ملفات،
+// ونغمة انتظار هادية للمتصل (425 هرتز زي شبكات السعودية).
+const RING=[[659.25,0,.55],[783.99,.16,.55],[987.77,.32,.55],[1318.51,.48,.9],[987.77,.92,.45],[1318.51,1.08,1.1]];
+function pluck(a,out,f,t,dur,vol){
+ const g1=a.createGain(),o1=a.createOscillator(),o2=a.createOscillator(),g2=a.createGain();
+ o1.type="sine";o1.frequency.value=f;o2.type="sine";o2.frequency.value=f*3.99;g2.gain.value=.12;
+ o1.connect(g1);o2.connect(g2);g2.connect(g1);g1.connect(out);
+ g1.gain.setValueAtTime(0,t);g1.gain.linearRampToValueAtTime(vol,t+.006);g1.gain.exponentialRampToValueAtTime(.0006,t+dur);
+ g2.gain.setValueAtTime(.12,t);g2.gain.exponentialRampToValueAtTime(.0005,t+.18);
+ o1.start(t);o2.start(t);o1.stop(t+dur+.05);o2.stop(t+dur+.05);
+}
 function tone(kind){
- if(TONE){clearInterval(TONE.iv);TONE.o.forEach(x=>{try{x.stop()}catch(e){}});try{TONE.g.disconnect()}catch(e){}TONE=null}
+ if(TONE){clearInterval(TONE.iv);try{TONE.out.gain.setValueAtTime(0,TONE.a.currentTime)}catch(e){}try{TONE.out.disconnect()}catch(e){}TONE=null}
  if(!kind){try{canVib()&&navigator.vibrate(0)}catch(e){}return}
- const a=ac();if(!a)return;const gn=a.createGain();gn.gain.value=0;gn.connect(a.destination);
- const fr=kind==="in"?[660,880]:[425],o=fr.map(f=>{const x=a.createOscillator();x.type="sine";x.frequency.value=f;x.connect(gn);x.start();return x});
- const beat=()=>{const t=a.currentTime,v=kind==="in"?.2:.1;gn.gain.cancelScheduledValues(t);gn.gain.setValueAtTime(0,t);
-  if(kind==="in"){gn.gain.linearRampToValueAtTime(v,t+.03);gn.gain.setValueAtTime(v,t+.8);gn.gain.linearRampToValueAtTime(0,t+.85);gn.gain.linearRampToValueAtTime(v,t+1.05);gn.gain.setValueAtTime(v,t+1.8);gn.gain.linearRampToValueAtTime(0,t+1.85);try{canVib()&&navigator.vibrate([700,300,700])}catch(e){}}
-  else{gn.gain.linearRampToValueAtTime(v,t+.03);gn.gain.setValueAtTime(v,t+1);gn.gain.linearRampToValueAtTime(0,t+1.05)}};
- beat();TONE={g:gn,iv:setInterval(beat,kind==="in"?3000:4000),o};
+ const a=ac();if(!a)return;const out=a.createGain();out.gain.value=1;
+ // ضغط خفيف علشان الرنة تبقى واضحة من غير ما تخرّف على سماعة الموبايل
+ let dest=out;try{const cp=a.createDynamicsCompressor();cp.threshold.value=-18;cp.ratio.value=4;out.connect(cp);cp.connect(a.destination)}catch(e){out.connect(a.destination)}
+ const beat=()=>{const t=a.currentTime+.05;
+  if(kind==="in"){RING.forEach(([f,d,len])=>pluck(a,dest,f,t+d,len,.32));try{canVib()&&navigator.vibrate([400,200,400,200,900])}catch(e){}}
+  else{const o=a.createOscillator(),gn=a.createGain();o.type="sine";o.frequency.value=425;o.connect(gn);gn.connect(dest);gn.gain.setValueAtTime(0,t);gn.gain.linearRampToValueAtTime(.09,t+.04);gn.gain.setValueAtTime(.09,t+1.2);gn.gain.linearRampToValueAtTime(0,t+1.25);o.start(t);o.stop(t+1.3)}};
+ beat();TONE={a,out,iv:setInterval(beat,kind==="in"?2600:4500)};
 }
 // ---------- الشاشة ----------
 const SV=(w,p)=>`<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="currentColor" aria-hidden="true"><path d="${p}"/></svg>`;
@@ -214,8 +226,10 @@ async function prep(c){
   if(C===c)c.ready=pc.localDescription.sdp;
  }catch(e){c.prepErr=e}
 }
+let PEND_ACT=null;// {id, act:"acc"|"rej"} من إشعار المكالمة
 function incoming(id,d){
  if(SEEN.has(id))return;SEEN.add(id);
+ if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="rej"){PEND_ACT=null;updateDoc(doc(X.db,"call",id),{st:"rej"}).catch(()=>{});return}
  if(C){updateDoc(doc(X.db,"call",id),{st:"busy"}).catch(()=>{});return}
  const c={id,inc:true,to:d.fr,name:String(d.frn||(String(d.fr||"").slice(0,1)==="b"?"فرع "+String(d.fr).slice(2):"مكالمة")),st:"ring",of:d.of,mute:false};C=c;
  paint();status("مكالمة واردة",true);tone("in");c.iv=setInterval(tick,500);c.prep=prep(c);
@@ -225,7 +239,11 @@ function incoming(id,d){
   else if(c.st==="ring"&&(x.st==="acc"||x.st==="rej")){cleanup();closeUi(x.st==="acc"?"تم الرد من جهاز آخر":"تم الرفض من جهاز آخر")}
   else if((c.st==="acc"||c.st==="conn")&&x.st==="end"&&x.by!==X.party){const t0=c.t0;cleanup();closeUi(t0?"انتهت المكالمة · "+mmss(Date.now()-t0):"انتهت المكالمة")}},()=>{});
  if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){try{new Notification("📞 "+c.name+" يتصل بك",{body:"اضغط للرد",tag:"call"+id})}catch(e){}}
+ if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="acc"){PEND_ACT=null;setTimeout(()=>{if(C===c&&c.st==="ring")accept()},150)}
 }
+// رسالة من الـ SW (المنصة مفتوحة وضغط رد/رفض من الإشعار)
+if(navigator.serviceWorker)navigator.serviceWorker.addEventListener("message",e=>{const m=e.data;if(!m||m.t!=="tz-call"||!X)return;
+ if(C&&C.id===m.id&&C.st==="ring"){if(m.act==="rej")hang("rej");else accept()}else PEND_ACT={id:m.id,act:m.act}});
 async function accept(){
  const c=C;if(!c||!c.inc||c.st!=="ring")return;tone(null);c.st="conn";paint();status("جارٍ توصيل الصوت",true);
  try{c.stream=await mic()}catch(e){hang("rej");closeUi("اسمح للمنصة باستخدام الميكروفون للرد");return}
@@ -244,7 +262,7 @@ async function accept(){
  }catch(e){cleanup();closeUi("تعذّر الرد على المكالمة")}
 }
 // ---------- الضغطات ----------
-document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-tzc]");if(!t||!X)return;const a=t.dataset.tzc;
+document.addEventListener("click",e=>{if(C&&C.tap){C.tap=false;const au=g("tzc-au");if(au){const p=au.play();if(p&&p.catch)p.catch(()=>{})}ac();status("")}const t=e.target.closest&&e.target.closest("[data-tzc]");if(!t||!X)return;const a=t.dataset.tzc;
  if(a==="acc")accept();else if(a==="rej")hang("rej");else if(a==="end")hang("end");
  else if(a==="mute"&&C&&C.stream){C.mute=!C.mute;C.stream.getAudioTracks().forEach(x=>x.enabled=!C.mute);buttons()}
  else if(a==="min"){if(C){g("tzc").className="";g("tzcp-n").textContent=C.name;g("tzcp").className="on"+(C.mute?" muted":"")}else closeUi()}
@@ -262,7 +280,8 @@ export function initCall(ctx){
  UN=onSnapshot(query(collection(X.db,"call"),where("to","==",X.party),where("ts",">=",Date.now()-WIN)),sn=>{
   sn.docs.forEach(s=>{const d=s.data();if(d&&d.st==="ring"&&d.of&&Math.abs(Date.now()-N(d.ts))<WIN)incoming(s.id,d)})},()=>{});
  setTimeout(()=>{if(X)iceServers()},2500);// نجهّز خوادم الاتصال قبل أول مكالمة
- try{const u=new URL(location.href);if(u.searchParams.has("call")){u.searchParams.delete("call");history.replaceState(null,"",u.pathname+(u.search||"")+u.hash)}}catch(e){}
+ try{const u=new URL(location.href);const cid=u.searchParams.get("call"),act=u.searchParams.get("act");if(cid&&(act==="acc"||act==="rej"))PEND_ACT={id:cid,act};
+  if(u.searchParams.has("call")||u.searchParams.has("act")){u.searchParams.delete("call");u.searchParams.delete("act");history.replaceState(null,"",u.pathname+(u.search||"")+u.hash)}}catch(e){}
 }
 export const callState=()=>C?{id:C.id,st:C.st,inc:C.inc,conn:C.pc?C.pc.connectionState:"",t0:!!C.t0,ready:!!C.ready}:null;// للتشخيص والاختبار
 export function stopCall(){if(C)hang("end");if(UN){try{UN()}catch(e){}UN=null}X=null;window.__tzCall=false}

@@ -1,5 +1,5 @@
 // Ø®Ø¯Ù…Ø© Ø¨Ø³ÙŠØ·Ø©: Ø´Ø¨ÙƒØ© Ø£ÙˆÙ„Ø§Ù‹ØŒ ÙˆÙ„Ùˆ Ø§Ù„Ù†Øª Ù‚Ø·Ø¹ ØªÙØªØ­ Ø¢Ø®Ø± Ù†Ø³Ø®Ø© Ù…Ù† Ø§Ù„ØµÙØ­Ø©. Ù…ÙÙŠØ´ ØªØ®Ø²ÙŠÙ† Ù„Ø¨ÙŠØ§Ù†Ø§Øª Firebase.
-const V="tasooma-v148";
+const V="tasooma-v149";
 const SHELL=["./index.html","./admin.html","./ui.css","./ui.js","./icons.js","./mnt.js","./i18n.js","./i18n-en.js","./workers.js","./clean.js","./bchat.js","./prof.js","./audit.js","./backup.js","./dash.js","./fb.js","./sb-lib.js","./sbcore.js","./sb-config.js","./cust.js","./notify.js","./br-extra.js","./ad-extra.js","./fleet.js","./map.js","./zoom.js","./att.js","./gifts.js","./brsheet.js","./po.js","./cat.js","./call.js","./staff.js","./ann.js","./short.js","./pres.js","./track.js","./driver.html","./ext.html","./manifest-driver.json","./icon-192.png"];
 // (15 Ù†ÙˆÙÙ…Ø¨Ø± 2026) Ù„Ùˆ Ø§Ù„ØªÙ†Ø²ÙŠÙ„ ÙØ´Ù„ (Ù†Øª Ø¶Ø¹ÙŠÙ) Ø§Ù„ØªØ«Ø¨ÙŠØª Ø¨ÙŠÙØ´Ù„ ÙˆØ§Ù„Ù†Ø³Ø®Ø© Ø§Ù„Ù‚Ø¯ÙŠÙ…Ø© Ø§Ù„ÙƒØ§Ù…Ù„Ø© Ø¨ØªÙØ¶Ù„ Ø´ØºÙ‘Ø§Ù„Ø©ØŒ ÙˆØ§Ù„Ù…ØªØµÙØ­ Ø¨ÙŠØ­Ø§ÙˆÙ„ ØªØ§Ù†ÙŠ Ø¨Ø¹Ø¯ÙŠÙ†.
 // (ÙƒØ§Ù† Ø§Ù„ÙØ´Ù„ Ø¨ÙŠØªØ¨Ù„Ø¹ ÙØ§Ù„Ù†Ø³Ø®Ø© Ø§Ù„Ø¬Ø¯ÙŠØ¯Ø© ØªØ´ØªØºÙ„ Ø¨ÙƒØ§Ø´ Ù†Ø§Ù‚Øµ ÙˆØªÙ…Ø³Ø­ Ø§Ù„Ù‚Ø¯ÙŠÙ… â† ÙƒÙ„ Ù…Ù„Ù Ù…Ù† Ø§Ù„Ù†Øª â† Ø´Ø§Ø´Ø© Ø¨ÙŠØ¶Ø§ Ø·ÙˆÙŠÙ„Ø©)
@@ -19,8 +19,23 @@ self.addEventListener("fetch",e=>{
   .catch(()=>caches.match(key,{ignoreSearch:true}).then(h=>h||fetch(r))));
 });
 // Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª Ø§Ù„Ù„ÙŠ Ø§Ù„ØµÙØ­Ø© Ù†ÙØ³Ù‡Ø§ Ø¨ØªØ¹Ø±Ø¶Ù‡Ø§ (Ù„Ù…Ø§ ØªÙƒÙˆÙ† Ù…ÙØªÙˆØ­Ø© ÙˆÙ…Ø´ Ù‚Ø¯Ø§Ù…Ù‡): Ø§Ù„Ø¶ØºØ· Ø¹Ù„ÙŠÙ‡Ø§ Ø¨ÙŠÙØªØ­ Ø§Ù„Ø±Ø§Ø¨Ø·
+// 📞 (17 نوفمبر 2026) إشعار المكالمة: "رد" بيفتح المنصة ويرد على طول، "رفض" بيرفض (لو المنصة مفتوحة من غير ما تظهر قدامه)
+// إشعارات Firebase نفسها شايلة الرابط جوه FCM_MSG، فبنقراه من هناك ونوقف معالج Firebase علشان مايفتحش مرتين
 self.addEventListener("notificationclick",e=>{
- const l=e.notification.data&&e.notification.data.link;if(!l||typeof l!=="string")return;
+ const nd=e.notification.data||{},fm=nd.FCM_MSG||null;
+ let l=nd.link||(fm&&((fm.data&&fm.data.link)||(fm.fcmOptions&&fm.fcmOptions.link)||(fm.notification&&fm.notification.click_action)))||"";
+ if(!l||typeof l!=="string")return;
+ if(/[?&]call=/.test(l)){
+  e.notification.close();if(fm)e.stopImmediatePropagation();
+  const act=e.action==="reject"?"rej":"acc",id=(l.match(/[?&]call=([^&#]+)/)||[])[1]||"";
+  e.waitUntil(clients.matchAll({type:"window",includeUncontrolled:true}).then(cs=>{
+   const c=cs.find(w=>w.url.split("?")[0]===l.split("?")[0]);
+   if(c){c.postMessage({t:"tz-call",act,id});return act==="rej"?null:c.focus().catch(()=>{})}
+   return clients.openWindow(l+(l.indexOf("?")>=0?"&":"?")+"act="+act);
+  }));
+  return;
+ }
+ if(fm){e.notification.close();e.stopImmediatePropagation();e.waitUntil(clients.matchAll({type:"window",includeUncontrolled:true}).then(cs=>{const c=cs.find(w=>w.url.split("?")[0]===l.split("?")[0]);return c?c.focus().then(w=>w&&w.navigate?w.navigate(l):w).catch(()=>clients.openWindow(l)):clients.openWindow(l)}));return}
  e.notification.close();
  e.waitUntil(clients.matchAll({type:"window",includeUncontrolled:true}).then(cs=>{const c=cs.find(w=>w.url.split("?")[0]===l.split("?")[0]);return c?c.focus().then(w=>w&&w.navigate?w.navigate(l):w).catch(()=>clients.openWindow(l)):clients.openWindow(l)}));
 });
