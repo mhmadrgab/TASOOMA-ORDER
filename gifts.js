@@ -75,17 +75,17 @@ const CSS=`
 .gs-ac{display:flex;gap:8px;flex-wrap:wrap;padding:14px 22px 18px;border-top:1px solid var(--line);background:var(--soft,#f6eee3);margin:12px -22px 0}
 .gs-ac .bt{flex:1;min-width:120px}
 .gf-card h4{cursor:pointer}
-.gc{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;background:var(--card);border:1px solid var(--line);border-inline-start:5px solid #b48aab;border-radius:16px;padding:12px 14px;margin-bottom:10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:transform .15s ease,box-shadow .15s ease}
-.gc:hover{box-shadow:0 6px 16px rgba(42,29,44,.12)}.gc:active{transform:scale(.99)}
-.gc.ok{border-inline-start-color:#6f7d45}.gc.set{border-inline-start-color:#2a78d6}.gc.no{border-inline-start-color:#c4362b}.gc.pend{border-inline-start-color:#e8a317}
-.gc-ic{width:42px;height:42px;border-radius:13px;background:var(--soft,#f6eee3);display:grid;place-items:center;font-size:21px}
-.gc-m{min-width:0}.gc-m b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gc-m small{display:block;color:var(--mut);font-size:13px}
-.gc-m .gc-rj{color:#c4362b;white-space:normal}
-.gc-e{text-align:end}.gc-e b{font-size:20px;font-variant-numeric:tabular-nums;display:block;line-height:1.2}.gc-e b small{font-size:12px;color:var(--mut);font-weight:500}
-.gc-st{display:inline-block;margin-top:4px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#f2e5ee;color:#5f3a59}
-.gc.ok .gc-st{background:#e5ecd0;color:#45512a}.gc.set .gc-st{background:#dde9f7;color:#1c4f86}.gc.no .gc-st{background:#fbe3e0;color:#a2271d}.gc.pend .gc-st{background:#fdf0cf;color:#7a5200}
-.gc-ret{grid-column:1/-1;font:inherit;font-weight:700;font-size:14px;border:0;border-radius:11px;padding:9px;background:#6f7d45;color:#fff;cursor:pointer}
-@media (prefers-color-scheme:dark){.gc-st{background:#3d2b40;color:#e3c8dd}.gc.ok .gc-st{background:#2a301b;color:#b9c68a}.gc.set .gc-st{background:#1c2d44;color:#9cc2ee}.gc.no .gc-st{background:#40191a;color:#f1a5a0}.gc.pend .gc-st{background:#3a2d0f;color:#f0cf7a}}
+.gfc{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;background:var(--card);border:1px solid var(--line);border-inline-start:5px solid #b48aab;border-radius:16px;padding:12px 14px;margin-bottom:10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:transform .15s ease,box-shadow .15s ease}
+.gfc:hover{box-shadow:0 6px 16px rgba(42,29,44,.12)}.gfc:active{transform:scale(.99)}
+.gfc.ok{border-inline-start-color:#6f7d45}.gfc.set{border-inline-start-color:#2a78d6}.gfc.no{border-inline-start-color:#c4362b}.gfc.pend{border-inline-start-color:#e8a317}
+.gfc{color:var(--ink);text-align:start;width:auto;max-width:none}.gfc-ic{width:42px;height:42px;border-radius:13px;background:rgba(138,90,131,.12);color:var(--acc,#8a5a83);display:grid;place-items:center}.gfc-ic svg{width:22px;height:22px;display:block}
+.gfc-m{min-width:0}.gfc-m b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gfc-m small{display:block;color:var(--mut);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gfc-m .gfc-rj{color:#c4362b;white-space:normal}
+.gfc-e{text-align:end}.gfc-e b{font-size:20px;font-variant-numeric:tabular-nums;display:block;line-height:1.2}.gfc-e b small{font-size:12px;color:var(--mut);font-weight:500}
+.gfc-st{display:inline-block;margin-top:4px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#f2e5ee;color:#5f3a59}
+.gfc.ok .gfc-st{background:#e5ecd0;color:#45512a}.gfc.set .gfc-st{background:#dde9f7;color:#1c4f86}.gfc.no .gfc-st{background:#fbe3e0;color:#a2271d}.gfc.pend .gfc-st{background:#fdf0cf;color:#7a5200}
+.gfc-ret{grid-column:1/-1;font:inherit;font-weight:700;font-size:14px;border:0;border-radius:11px;padding:9px;background:#6f7d45;color:#fff;cursor:pointer}
+@media (prefers-color-scheme:dark){.gfc-st{background:#3d2b40;color:#e3c8dd}.gfc.ok .gfc-st{background:#2a301b;color:#b9c68a}.gfc.set .gfc-st{background:#1c2d44;color:#9cc2ee}.gfc.no .gfc-st{background:#40191a;color:#f1a5a0}.gfc.pend .gfc-st{background:#3a2d0f;color:#f0cf7a}}
 @media (max-width:560px){.gs-mt{grid-template-columns:1fr 1fr}.gs-bd{padding:14px 14px 0}.gs-ac{margin:12px -14px 0;padding:12px 14px 16px}.gs-ac .bt{min-width:calc(50% - 4px)}.gs-hd{padding:14px}.gs-rt b{font-size:15px}.gs-tb{font-size:14px}.gs-tb td.k{font-size:15px}}
 @media (prefers-color-scheme:dark){.gs-nt{background:#2b2210}.gs-rt>div.to{background:#000}}
 .gf-ret{margin-top:8px;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8;background:#f3efe6;color:#4e2f4a}.gf-ret.w{background:#fff1d6;color:#8a5a00;font-weight:700}.gf-ret.ok{background:#e7f4ec;color:#45512a}.gf-ret.no{background:#f1f1f1;color:#666}
@@ -285,11 +285,11 @@ function paintBranch(){
 function card(r){// (16 نوفمبر 2026، طلب محمد) كارت هادي زي كروت الطلبات: المستلم والسبب والعدد والحالة بس، والتفاصيل في السند اللي بيتفتح بالضغط
  const st=r.st||"pend",ap=r.ap||{};
  const lab={pend:["⏳","بانتظار الاعتماد"],ok:["✅","معتمدة"],set:["🧾","تمت التسوية"],no:["❌","مرفوضة"]}[st]||["",st];
- return `<div class="gc ${st}" data-gf="view" data-id="${E(r.id)}" role="button" tabindex="0">
- <span class="gc-ic">${isSample(r)?"🧪":"🎁"}</span>
- <div class="gc-m"><b>${E(r.to&&r.to.n||"")}</b><small>🏷 ${E(r.why||"")} · <bdi dir="ltr">${E(r.dt||"")}</bdi></small>${st==="no"&&ap.note?`<small class="gc-rj">سبب الرفض: ${E(ap.note)}</small>`:""}</div>
- <div class="gc-e"><b>${r.rb?net(r):N(r.pcs)}<small> قطعة</small></b><span class="gc-st">${lab[0]} ${lab[1]}</span></div>
- ${canRet(r)?`<button class="gc-ret" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}</div>`;
+ return `<div class="gfc ${st}" data-gf="view" data-id="${E(r.id)}" role="button" tabindex="0">
+ <span class="gfc-ic" data-noico>${KIC[kindOf(r)]}</span>
+ <div class="gfc-m"><b>${E(r.to&&r.to.n||"")}</b><small>🏷 ${E(r.why||"")} · <bdi dir="ltr">${E(r.dt||"")}</bdi></small>${st==="no"&&ap.note?`<small class="gfc-rj">سبب الرفض: ${E(ap.note)}</small>`:""}</div>
+ <div class="gfc-e"><b>${r.rb?net(r):N(r.pcs)}<small> قطعة</small></b><span class="gfc-st">${lab[0]} ${lab[1]}</span></div>
+ ${canRet(r)?`<button class="gfc-ret" data-gf="ret" data-id="${E(r.id)}" type="button">↩️ رجعت العينة</button>`:""}</div>`;
 }
 // ---------- تبويب المستودع (التصميم الخامس، 17 نوفمبر 2026، طلب محمد: "افصل بين الهدية والعينة، وشكل سلس بدل الزحمة") ----------
 //   1) مفتاح فوق: 🎁 الهدايا | 🧪 العينات. كل نوع لوحده تماماً (القوايم والأرقام والتقارير). العينة = السبب "عينة"، وأي سبب تاني = هدية.
