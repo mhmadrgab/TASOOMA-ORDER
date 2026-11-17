@@ -2603,4 +2603,10 @@ export default {
 "انسخ رابط التطبيق للموظفين":"Copy the app link for staff",
 "تصلك المكالمات كاتصال حقيقي والإشعارات فوراً، حتى والجوال مقفول.":"Calls reach you as real calls and notifications arrive instantly, even when the phone is locked.",
 "✅ تم نسخ رابط التطبيق. أرسله للموظفين والفروع":"✅ App link copied. Send it to staff and branches",
+"الكود غير موجود في سيستم الشركة (ربما صنف جديد)":"Code not found in the company system (maybe a new item)",
+"كود غير موجود في سيستم الشركة (صنف جديد؟)":"code not found in the company system (new item?)",
+"أكواد غير موجودة في سيستم الشركة (صنف جديد؟)":"codes not found in the company system (new items?)",
+"سطر فيه لون أو مقاس غير مسجّل لهذا الكود":"row has a color or size not registered for this code",
+"أسطر فيها لون أو مقاس غير مسجّل لهذا الكود":"rows have a color or size not registered for this code",
+"مُعلَّمة بالأصفر، ويمكنك الحفظ.":"Marked in yellow; you can still save.",
 };

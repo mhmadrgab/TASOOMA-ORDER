@@ -7,6 +7,7 @@
 import {collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {multiPick,saveExtras,loadExtras,dropExtras} from "./att.js";
 import {zoomGallery} from "./zoom.js";
+import {catLoad,catNow,catCode,catColors,catSizes,catUpc,catColorKey,catCodes,catCheck} from "./cat.js";
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
@@ -125,7 +126,10 @@ const CSS=`
 .po-lg{display:flex;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--mut);margin-top:8px}.po-lg span{display:inline-flex;align-items:center;gap:5px}.po-lg i{width:10px;height:10px;border-radius:3px;display:inline-block}
 #pom{display:none;position:fixed;inset:0;z-index:82;background:rgba(0,0,0,.55);overflow:auto;padding:16px}
 #pom.on{display:block}
-#pom>.mk{max-width:600px;margin:4vh auto;background:var(--card);color:var(--ink);border-radius:20px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+#pom>.mk.wide{max-width:860px}
+#pom .it-tb input.catw{box-shadow:inset 0 0 0 2px #e8a317;background:color-mix(in srgb,#e8a317 12%,var(--field,#f2e9dd))}
+#pom .it-w{margin-top:8px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,#e8a317 14%,transparent);font-size:13px;line-height:1.6}#pom .it-w[hidden]{display:none}
+#pom>.mk{max-width:600px;margin:4vh auto;transition:max-width .25s ease;background:var(--card);color:var(--ink);border-radius:20px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
 #pom h3{margin:0 0 12px;font-size:19px}
 #pom label{display:block;font-size:13.5px;color:var(--mut);margin:12px 0 5px}
 #pom input,#pom textarea,#pom select{font:inherit;width:100%;border:1.5px solid var(--line);background:var(--field,#f2e9dd);color:var(--ink);border-radius:12px;padding:10px 12px;min-width:0}
@@ -160,18 +164,21 @@ const CSS=`
 #pom .it-tb th{font-size:12px;color:var(--mut);font-weight:600;text-align:start;padding:2px 3px 6px;white-space:nowrap}
 #pom .it-tb td{padding:3px}
 #pom .it-tb td.n{color:var(--mut);font-size:12px;text-align:center;width:22px}
-#pom .it-tb td.iq{width:84px}#pom .it-tb td.iz{width:78px}#pom .it-tb td.it-k{width:76px}#pom .it-tb td.ix{width:28px}
+#pom .it-tb td.iq{width:84px}#pom .it-tb td.iz{width:78px}#pom .it-tb td.it-k{width:76px}#pom .it-tb td.ix{width:58px;white-space:nowrap}
 #pom .it-tb input,#pom .it-tb select{padding:7px 8px;font-size:14px;border-radius:9px}
 #pom .it-tb.nok .it-k,#pom .it-tb.nok .it-kh{display:none}
-#pom .it-tb .ix button{font:inherit;border:0;background:none;color:#c4362b;font-size:20px;line-height:1;cursor:pointer;padding:4px}
+#pom .it-tb .ix button{font:inherit;border:0;background:none;color:#c4362b;font-size:20px;line-height:1;cursor:pointer;padding:4px}#pom .it-tb .ix button.dup{color:#8a5a83;font-size:18px}
+#pom .it-tb tr.nw td{background:color-mix(in srgb,#6f7d45 16%,transparent);transition:background .8s ease}
 #pom .it-h{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 #pom .it-h button,#pom .it-p button{font:inherit;font-size:13.5px;font-weight:600;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 12px;cursor:pointer}
 #pom .it-p{margin-top:8px}#pom .it-p textarea{min-height:90px;direction:ltr;text-align:left}
 @media (max-width:560px){#pom .it-tb thead{display:none}#pom .it-tb,#pom .it-tb tbody{display:block}
- #pom .it-tb tr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;position:relative}
+ #pom .it-tb tr{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;position:relative}
  #pom .it-tb td{padding:0;width:auto!important}#pom .it-tb td.n{display:none}
- #pom .it-tb td.ic{grid-column:1/3}#pom .it-tb td.in{grid-column:1/-1}#pom .it-tb.nok td.iq{grid-column:2/-1}
- #pom .it-tb td.ix{position:absolute;top:2px;inset-inline-end:2px}#pom .it-tb td.icl{margin-inline-end:26px}}
+ #pom .it-tb td.ic{grid-column:1/-1;margin-inline-end:64px}
+ #pom .it-tb td.icl{grid-column:1}#pom .it-tb td.iz{grid-column:2}#pom .it-tb td.iq{grid-column:3}
+ #pom .it-tb td.it-k{grid-column:1}#pom .it-tb td.in{grid-column:2/-1}#pom .it-tb.nok td.in{grid-column:1/-1}
+ #pom .it-tb td.ix{position:absolute;top:2px;inset-inline-end:2px}}
 `;
 function css(){if(!g("po-css")){const s=document.createElement("style");s.id="po-css";s.textContent=CSS;document.head.appendChild(s)}}
 
@@ -179,6 +186,7 @@ function css(){if(!g("po-css")){const s=document.createElement("style");s.id="po
 // ctx: {db, toast, me:{e,n}, owner, edit (مسؤول المشتريات/المالك), rcv (يستلم في المستودع), redraw(), active(), ping(ids), badge()}
 export function initPo(ctx){
  stopPo();X=ctx;css();
+ catLoad(X.db).then(()=>{if(g("po-itb"))itRender()}).catch(()=>{});// 📦 كتالوج الأصناف (من الكاش غالباً)
  const err=()=>{if(X&&X.toast)X.toast("تعذر قراءة أوامر الشراء")};
  const re=()=>{if(!X)return;if(X.badge)X.badge();if(X.redraw&&X.active&&X.active())X.redraw()};
  un.push(onSnapshot(collection(X.db,"po"),sn=>{A=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));re()},err));
@@ -305,7 +313,7 @@ function form(id){
  <div class="row"><div><label>عدد الحاويات *</label><input id="po-cn" inputmode="numeric" value="${E(o.cn||1)}"></div>
  <div><label>نوع الحاوية</label><select id="po-ct">${CTYPE.map(([k,l])=>`<option value="${k}" ${o.ctype===k?"selected":""}>${l}</option>`).join("")}</select></div></div>
  <div class="it"><button type="button" class="it-tg" data-po="ittog" aria-expanded="false" aria-controls="po-itbx"><span>📦 إضافة أصناف</span><small id="po-itt"></small><i class="ar">▾</i></button>
- <div class="it-bx" id="po-itbx" hidden><div class="it-tw"><table class="it-tb"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th><th class="it-kh">الحاوية</th><th>ملاحظات</th><th></th></tr></thead><tbody id="po-itb"></tbody></table></div>
+ <div class="it-bx" id="po-itbx" hidden><div class="it-tw"><table class="it-tb"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th><th class="it-kh">الحاوية</th><th>ملاحظات</th><th></th></tr></thead><tbody id="po-itb"></tbody></table><datalist id="po-dk"></datalist><datalist id="po-dc"></datalist><datalist id="po-dz"></datalist></div>
  <div class="it-h"><button type="button" data-po="itadd">＋ سطر</button><button type="button" data-po="itpaste">📋 لصق من إكسل</button><button type="button" data-po="itclr">مسح الأصناف</button></div>
  <div class="it-p" id="po-itpw" hidden><label>كل سطر صنف: الكود، اللون، المقاس، الكمية، رقم الحاوية (اختياري). انسخ الأعمدة من إكسل والصقها هنا</label><textarea id="po-itp" placeholder="A1023&#9;أسود&#9;42&#9;120&#9;1"></textarea><button type="button" data-po="itparse">إضافة الأسطر</button></div></div></div>
  <div class="row"><div><label>قيمة الأمر (اختياري)</label><input id="po-val" inputmode="decimal" dir="ltr" value="${N(o.val)?E(o.val):""}"></div>
@@ -494,23 +502,59 @@ function backToForm(sel){KEEP=true;form(SUPBACK_ID||undefined);if(FS)Object.keys
 // الكتابة في آخر سطر بتزوّد سطر فاضي لوحدها، وEnter بينزل للسطر اللي تحته. "لصق من إكسل" للكميات الكبيرة.
 let IT=[],KEEP=false,ITO=false;const MAXIT=200;
 const ITF=["c","cl","z","q","k","n"];
+// اختيارات زي ورقة الفرع (16 نوفمبر 2026): الألوان والمقاسات نفس قايمة ورقة النواقص + اللي اتكتب قبل كده في أوامر الشراء، والأكواد من الأوامر القديمة
+const PO_COL=["Black","Brown","Blue","Green","BEIGE","White","CAMEL","Grey","D.BLUE","GRAY","D Brown","Navy","Olive","Bordo","Khaki","D Blue","L Brown","RED","BEIG","Havan","D.BROWN","CUOIO","PINK","L.BROWN","OF White","L Grey","D Grey","Yellow","LT.GREY","TURQUOIS","CRÈME","L.GRAY","STONE","BLACK+BL","TAN","BEGE.PIN","اسود","Coffee","D.GRAY","NAVY MAT","DK.BROWN","ابيض","BROWEN","زيتي","CAMAL","LINEN","BLACK-GR","أبيض","NUEZ","GR PLUE","L Blue","L.BEIGE","B LBROWN","L Beige","D GRAY","L.GREEN","زيتى","Jeans","TAUPE.GR","كحلي","Kakhi","NAVY/B","كريمى","BLUE-BL","WHITE.LT","بني","BEIGE-W","KHAKI-BG","GREY-BL","BRWON","BEIGE.PN","NAVY NU","D GREEN","WHITE/G","GRAY/W","D.GREEN","GREY.BLU","كريمي","كحلى","D. Blue","SAND WOL","KHAKI-B","NAVY-W","KHAKI-W","BLACK-W","Honey","WHIET","بيج","B Grey","BEIEGE","W Green","KAHKI","BLACK-K","S Blue","O Green","بنى","orange","B Brown","WAHITE","BLUE.M","BLACK.M","عنابي","TAUPE","NAVY-K","O BROWN","MOSS","R BLACK","NAVY-G","G Orange","GRAY-K","BLACK-G","G Green","GRAY-M","DK GREY","B Orange","BROWN-M","رمادي","تيتانيوم","DBLUE","فضي","رصاصى","اصفر","L-GRAY","YE Brown","Kaky","جملى","WHITEE","برتقالى","سماوى","احمر","Bige","SKY BLUE","OFF WHIT","BEGE","هافان","Ice","D.ORANGE","Br Brown","أسود","L.YELLOW","4BLUE-BR","5GRY-BIG","1GREN-BR","3BLUE-GR","6BIG-BLU","2BLCK-BR","1","رمادي كا","F","3","2","هافان z","رمادي غ","رمادي ف","بنى منقش","2-1","2-3","5-2","1-3","2-2","1-1","3-2","5-1","4-2","1-2","3-3","4-4","5-3","3-1","4-1","3-4","D Blu Gr","4-3","BROWN- B","اسود كار","Flands","أزرق-بنى","ازرق-اسو","اصفر-ابي","اصفر ش","Bordo CR","Blak Gry","اصفرغامق","رصاصى غ","بنى غامق","اسود ش","Bordo LO","Black CR","هافان كا","جملي","بترولي","BABY BLU","D GRY","PURPLE","B D Grey","READ","WAIHT","Black LO","Blue CR","Blue LO","B Green","GERY","عودى","L PINK","R BLUE","Beige CR","Green LO","رمادى","BA POWDR","L GREEN","N COLOR","Lodo","SUOIO","Forest","Black Bo","y Green","POWDER","KAHIKE","H POWDER","BO Black","B Red","فضى","CREME","SO Brown","DK BEIGE","LT BEIGE","CU Brown","D BL Blk","BLACK/WH","LT GREY","رصاصي","BBrown *","B Grey *","OLIV","NIGER","BLUE/W","GREEN-GR","تركواز","بني/اصفر","أزرق","ازرق","MAROON","L GRAY"],PO_SZ=["40","41","43","45","44","42","46","58","60","48","F","37","38","47","36","39","M","55","XL","2XL","L","3.5","35","S","3XL","54","56","50","52","1","75 ML","75ML","طويل","62","80ML","قصير","75","34","2","52/5","51/5","21","21.5","22","23","22.5","53/5","54/5","50/5","100ML","51/4.5","28 K","52/4.5","54/4.5","26 K","30 K","53/4.5","22 K","24 K","50/4.5","49","20.5","18 K","20 K","18 R","20 R","30 R","22 R","24 R","28 R","26 R","63","20","XXL","61","52/5.5","53/5.5","50/5.5","51/5.5","0","54/5.5"];
+let DC0="",DZ0="";// القايمة العامة (كود مش في السيستم)
+function itLists(){const dk=g("po-dk"),dc=g("po-dc"),dz=g("po-dz");if(!dk||dk.dataset.ok===String(catNow()?catNow().v:0))return;dk.dataset.ok=String(catNow()?catNow().v:0);
+ const K=new Set(),C=new Set(),Z=new Set();[...A.values()].forEach(r=>(Array.isArray(r.it)?r.it:[]).forEach(x=>{if(x.c)K.add(String(x.c));if(x.cl)C.add(String(x.cl));if(x.z)Z.add(String(x.z))}));
+ PO_COL.forEach(x=>C.add(x));PO_SZ.forEach(x=>Z.add(x));
+ const op=S=>[...S].slice(0,1500).map(x=>`<option value="${E(x)}">`).join("");DC0=op(C);DZ0=op(Z);dc.innerHTML=DC0;dz.innerHTML=DZ0;
+ // 📦 كتالوج الشركة: كل الأكواد باسم الصنف، وبعدها أكواد الأوامر القديمة اللي مش في الكتالوج
+ const CC=catCodes(),seen=new Set(CC.map(x=>String(x[0]).toUpperCase()));
+ dk.innerHTML=CC.map(x=>`<option value="${E(x[0])}"${x[1]?` label="${E(x[1])}"`:""}>`).join("")+op([...K].filter(k=>!seen.has(String(k).toUpperCase())))}
+// 📦 الربط بالكتالوج (17 نوفمبر 2026، محمد: "ورقة أوامر الشراء ماوصلهاش ربط الأصناف بالألوان والمقاسات"):
+// اللون = ألوان الكود ده بس، والمقاس = مقاسات الكود واللون دول بس، والـ UPC بيملّى الصنف، واللي مش في السيستم بيتعلّم بالأصفر (تحذير بس: ممكن يبقى صنف جديد)
+const itEl=(i,f)=>document.querySelector(`#po-itb tr[data-i="${i}"] [data-f="${f}"]`);
+const itSet=(i,f,v)=>{if(!IT[i])return;IT[i][f]=v;const el=itEl(i,f);if(el&&el.value!==v)el.value=v};
+let MKT=0;
+function itMark(){
+ const b=g("po-itb");if(!b)return;let bad=0,nw=0;const has=!!catNow();
+ IT.forEach((x,i)=>{const K=itEl(i,"c"),C=itEl(i,"cl"),Z=itEl(i,"z");if(!K)return;
+  const r=has?catCheck(x.c,x.cl,x.z):{k:false,c:false,z:false,o:null};
+  const w=(el,on,t)=>{if(!el)return;el.classList.toggle("catw",!!on);if(on)el.title=t;else if(el===K)el.title=r.o&&r.o.n?r.o.n:"";else el.removeAttribute("title")};
+  w(K,r.k,"الكود غير موجود في سيستم الشركة (ربما صنف جديد)");w(C,r.c,"هذا اللون غير موجود لهذا الكود في السيستم");w(Z,r.z,"هذا المقاس غير موجود لهذا الكود واللون في السيستم");
+  if(r.k)nw++;else if(r.c||r.z)bad++});
+ let n=g("po-itw");const bx=g("po-itbx");if(!n&&bx){n=document.createElement("div");n.id="po-itw";n.className="it-w";n.setAttribute("role","status");const tw=bx.querySelector(".it-tw");if(tw)tw.insertAdjacentElement("afterend",n)}
+ if(n){const P=[];if(nw)P.push(`${nw} ${nw===1?"كود غير موجود":"أكواد غير موجودة"} في سيستم الشركة (صنف جديد؟)`);if(bad)P.push(`${bad} ${bad===1?"سطر فيه":"أسطر فيها"} لون أو مقاس غير مسجّل لهذا الكود`);n.hidden=!P.length;n.textContent=P.length?"⚠️ "+P.join(" · ")+". مُعلَّمة بالأصفر، ويمكنك الحفظ.":""}
+}
+const itMarkLater=()=>{clearTimeout(MKT);MKT=setTimeout(itMark,150)};
+// الكود اتكتب/اتغيّر: نكتبه زي السيستم، ولو ليه لون واحد أو مقاس واحد والخانة فاضية نملاها
+function itAuto(i,f){
+ const x=IT[i];if(!x||!catNow())return;const o=catCode(x.c);if(!o)return;
+ if(f==="c"&&o.c!==x.c)itSet(i,"c",o.c);
+ const cols=catColors(x.c)||[];
+ if(!String(x.cl||"").trim()&&cols.length===1)itSet(i,"cl",cols[0]);
+ else if(String(x.cl||"").trim()){const k=catColorKey(x.c,x.cl);if(k&&k!==x.cl)itSet(i,"cl",k)}
+ const S=catSizes(x.c,IT[i].cl)||[];if(!String(x.z||"").trim()&&S.length===1)itSet(i,"z",S[0]);
+}
 const itEmpty=x=>!x||!(String(x.c||"").trim()||String(x.cl||"").trim()||String(x.z||"").trim()||String(x.q||"").trim()||String(x.n||"").trim()||x.k);
 const itCn=()=>Math.max(1,Math.min(50,Math.round(N(toEn((g("po-cn")||{value:"1"}).value)))||1));
 function itRow(x,i,cn){
  return `<tr data-i="${i}"><td class="n">${i+1}</td>`
- +`<td class="ic"><input data-f="c" maxlength="40" dir="ltr" placeholder="الكود" aria-label="الكود" value="${E(x.c)}"></td>`
- +`<td class="icl"><input data-f="cl" maxlength="40" placeholder="اللون" aria-label="اللون" value="${E(x.cl)}"></td>`
- +`<td class="iz"><input data-f="z" maxlength="20" dir="ltr" placeholder="المقاس" aria-label="المقاس" value="${E(x.z)}"></td>`
+ +`<td class="ic"><input data-f="c" list="po-dk" autocomplete="off" maxlength="40" dir="ltr" placeholder="الكود" aria-label="الكود" value="${E(x.c)}"></td>`
+ +`<td class="icl"><input data-f="cl" list="po-dc" autocomplete="off" maxlength="40" placeholder="اللون" aria-label="اللون" value="${E(x.cl)}"></td>`
+ +`<td class="iz"><input data-f="z" list="po-dz" autocomplete="off" maxlength="20" dir="ltr" placeholder="المقاس" aria-label="المقاس" value="${E(x.z)}"></td>`
  +`<td class="iq"><input data-f="q" inputmode="numeric" placeholder="الكمية" aria-label="الكمية" value="${E(x.q)}"></td>`
  +`<td class="it-k">${cn>1?`<select data-f="k" aria-label="الحاوية"><option value="">الحاوية</option>${Array.from({length:cn},(_,j)=>`<option value="${j+1}" ${String(x.k)===String(j+1)?"selected":""}>${j+1}</option>`).join("")}</select>`:""}</td>`
- +`<td class="in"><input data-f="n" maxlength="100" placeholder="ملاحظات" aria-label="ملاحظات" value="${E(x.n)}"></td>`
- +`<td class="ix"><button type="button" data-po="itdel" data-i="${i}" aria-label="حذف السطر" title="حذف السطر">×</button></td></tr>`}
+ +`<td class="in"><input data-f="n" autocomplete="off" maxlength="100" placeholder="ملاحظات" aria-label="ملاحظات" value="${E(x.n)}"></td>`
+ +`<td class="ix"><button type="button" class="dup" data-po="itdup" data-i="${i}" aria-label="تكرار السطر" title="سطر مشابه (نفس الكود واللون والمقاس والكمية)">⧉</button><button type="button" data-po="itdel" data-i="${i}" aria-label="حذف السطر" title="حذف السطر">×</button></td></tr>`}
 function itPad(){if(!ITO)return;while(IT.length<5)IT.push({c:"",cl:"",z:"",q:"",k:"",n:""});if(!itEmpty(IT[IT.length-1])&&IT.length<MAXIT)IT.push({c:"",cl:"",z:"",q:"",k:"",n:""})}
-function itRender(){const b=g("po-itb");if(!b)return;const cn=itCn();itPad();
+function itRender(){const b=g("po-itb");if(!b)return;const cn=itCn();itPad();if(ITO)itLists();
  b.innerHTML=IT.map((x,i)=>itRow(x,i,cn)).join("");
  const tb=b.closest("table");if(tb)tb.classList.toggle("nok",cn<2);
  const bx=g("po-itbx"),tg=document.querySelector('[data-po="ittog"]');if(bx)bx.hidden=!ITO;if(tg)tg.setAttribute("aria-expanded",ITO?"true":"false");
- itTot()}
+ const mk=b.closest(".mk");if(mk)mk.classList.toggle("wide",ITO);
+ itTot();itMark()}
 function itTot(){const t=g("po-itt");if(!t)return;const L=IT.filter(x=>!itEmpty(x)),q=L.reduce((s,x)=>s+Math.round(N(toEn(x.q))),0);t.textContent=L.length?`${L.length} صنف · إجمالي ${q.toLocaleString("en-US")} قطعة`:(ITO?"اكتب الأصناف في الجدول":"اضغط لكتابة الأصناف")}
 function itRead(cn){const out=[];for(let i=0;i<IT.length;i++){const x=IT[i];if(itEmpty(x))continue;
   const c=String(x.c||"").trim().slice(0,40),cl=String(x.cl||"").trim().slice(0,40),z=String(x.z||"").trim().slice(0,20),n=String(x.n||"").trim().slice(0,100),qs=toEn(x.q).replace(/,/g,"").trim();
@@ -538,10 +582,20 @@ function showItems(id){const r=A.get(id);if(!r||!Array.isArray(r.it)||!r.it.leng
 document.addEventListener("input",e=>{if(!X)return;const t=e.target;if(!t||!t.closest)return;
  if(t.id==="po-cn"&&g("po-itb")){itRender();return}
  const row=t.closest("#po-itb tr");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(!IT[i])return;IT[i][t.dataset.f]=t.value;
+ // UPC (مسدس الباركود أو كتابة) في خانة الكود ← الكود واللون والمقاس، وننزل على الكمية
+ if(t.dataset.f==="c"&&/^\d{8,20}$/.test(t.value.trim())){const h=catUpc(t.value);if(h){itSet(i,"c",h.c);itSet(i,"cl",h.cl||"");itSet(i,"z",h.z||"");const q=itEl(i,"q");if(q)q.focus()}}
+ itMarkLater();
  // الكتابة في آخر سطر: سطر فاضي جديد تحته (من غير ما نرسم الجدول من الأول علشان التركيز مايضيعش)
  if(i===IT.length-1&&!itEmpty(IT[i])&&IT.length<MAXIT){IT.push({c:"",cl:"",z:"",q:"",k:"",n:""});row.insertAdjacentHTML("afterend",itRow(IT[IT.length-1],IT.length-1,itCn()))}
  itTot()});
-document.addEventListener("change",e=>{if(!X)return;const t=e.target;if(!t||!t.closest||t.tagName!=="SELECT")return;const row=t.closest("#po-itb tr");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(IT[i]){IT[i][t.dataset.f]=t.value;itTot()}});
+document.addEventListener("change",e=>{if(!X)return;const t=e.target;if(!t||!t.closest)return;const row=t.closest("#po-itb tr");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(!IT[i])return;
+ if(t.tagName==="SELECT"){IT[i][t.dataset.f]=t.value;itTot();return}
+ if(t.dataset.f==="c"||t.dataset.f==="cl"){itAuto(i,t.dataset.f);itTot();itMarkLater()}});
+// التركيز على اللون/المقاس: اختيارات الكود ده بس (كود مش في السيستم ← القايمة العامة)
+document.addEventListener("focusin",e=>{if(!X)return;const t=e.target;if(!t||!t.closest||!t.dataset||!t.dataset.f)return;const row=t.closest("#po-itb tr");if(!row)return;const x=IT[+row.dataset.i];if(!x)return;
+ const op=L=>L.map(v=>`<option value="${E(v)}">`).join("");
+ if(t.dataset.f==="cl"){const dc=g("po-dc"),L=catColors(x.c);if(dc)dc.innerHTML=L?op(L):DC0}
+ if(t.dataset.f==="z"){const dz=g("po-dz"),L=catSizes(x.c,x.cl);if(dz)dz.innerHTML=L?op(L):DZ0}},true);
 // Enter: نفس الخانة في السطر اللي تحته (زي ورقة الفرع)
 document.addEventListener("keydown",e=>{if(!X||e.key!=="Enter")return;const t=e.target;if(!t||!t.closest||t.tagName!=="INPUT")return;const row=t.closest("#po-itb tr");if(!row)return;e.preventDefault();
  let nx=row.nextElementSibling;if(!nx&&IT.length<MAXIT){IT.push({c:"",cl:"",z:"",q:"",k:"",n:""});row.insertAdjacentHTML("afterend",itRow(IT[IT.length-1],IT.length-1,itCn()));nx=row.nextElementSibling}
@@ -570,6 +624,7 @@ document.addEventListener("click",e=>{
  if(a==="ittog"){ITO=!ITO;itRender();if(ITO){const rs=[...document.querySelectorAll("#po-itb tr")],r0=rs.find(r=>{const i=+r.dataset.i;return itEmpty(IT[i])})||rs[0];const f=r0&&r0.querySelector("input");if(f)f.focus()}return}
  if(a==="itadd"){if(IT.length>=MAXIT){X.toast("الحد الأقصى "+MAXIT+" صنف");return}ITO=true;IT.push({c:"",cl:"",z:"",q:"",k:"",n:""});itRender();const rs=document.querySelectorAll("#po-itb tr"),l=rs[rs.length-1];if(l){const f=l.querySelector("input");if(f)f.focus()}return}
  if(a==="itdel"){IT.splice(+t.dataset.i,1);itRender();return}
+ if(a==="itdup"){const i=+t.dataset.i;if(!IT[i])return;if(IT.filter(x=>!itEmpty(x)).length>=MAXIT){X.toast("الحد الأقصى "+MAXIT+" صنف");return}IT.splice(i+1,0,{...IT[i]});itRender();const r=document.querySelector(`#po-itb tr[data-i="${i+1}"]`),z=r&&r.querySelector('[data-f="z"]');if(z){z.focus();z.select&&z.select()}if(r){r.classList.add("nw");setTimeout(()=>r.classList.remove("nw"),900)}return}
  if(a==="itclr"){if(IT.some(x=>!itEmpty(x))&&!confirm("مسح كل الأصناف المكتوبة في هذا الأمر؟"))return;IT=[];itRender();return}
  if(a==="itpaste"){const w=g("po-itpw");if(w){w.hidden=!w.hidden;if(!w.hidden)g("po-itp").focus()}return}
  if(a==="itparse")return void itParse();

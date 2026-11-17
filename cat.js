@@ -49,6 +49,12 @@ export const catCode=c=>CAT&&c?CAT.codes.get(nk(c))||null:null;
 function colorKey(o,cl){if(!o||!cl)return null;if(o.cols.has(cl))return cl;const l=lc(cl);for(const k of o.cols.keys())if(lc(k)===l)return k;return null}
 function sizesFor(o,cl){if(!o)return [];const k=colorKey(o,cl),S=k&&o.cols.get(k).size?o.cols.get(k):o.all;return [...S]}
 function zSort(a,b){const x=parseFloat(a),y=parseFloat(b);if(!isNaN(x)&&!isNaN(y)&&x!==y)return x-y;const O=["XS","S","M","L","XL","XXL","2XL","3XL"];const i=O.indexOf(String(a).toUpperCase()),j=O.indexOf(String(b).toUpperCase());if(i>=0&&j>=0)return i-j;return String(a).localeCompare(String(b))}
+// للاستخدام من ملفات تانية (أوامر الشراء): ألوان الكود، مقاسات الكود+اللون (مترتبة)، الصنف من الـ UPC، وكتابة اللون زي السيستم
+export const catColors=c=>{const o=catCode(c);return o?[...o.cols.keys()]:null};
+export const catSizes=(c,cl)=>{const o=catCode(c);return o?sizesFor(o,cl).sort(zSort):null};
+export const catUpc=u=>CAT?CAT.upc.get(String(u==null?"":u).trim())||null:null;
+export const catColorKey=(c,cl)=>colorKey(catCode(c),String(cl||"").trim());
+export const catCodes=()=>CAT?[...CAT.codes.values()].map(o=>[o.c,o.n]):[];
 // تحقق سطر: {k:مش موجود, c:اللون مش من ألوان الكود, z:المقاس مش من مقاساته}
 export function catCheck(k,cl,z){
  const r={k:false,c:false,z:false,o:null};if(!CAT||!String(k||"").trim())return r;
