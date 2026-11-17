@@ -236,9 +236,15 @@ async function hubPoll(h) {
     if (paths.length) ors.push(`path.in.(${paths.map(qv).join(",")})`);
     const base = () => h.c.from("docs").select("path,col,data,updated_at").or(ors.join(","));
     if (!h.cur) {
-      const r = await base().order("updated_at", {ascending: false}).limit(1);
-      if (r.error) return;
-      const t = r.data && r.data[0] ? msOf(r.data[0].updated_at) : 0;
+      // ⚡ (18 نوفمبر 2026) ساعة السيرفر من tnow() (في القواعد). الطريقة القديمة (آخر مستند اتغيّر) كانت بتعدّي على كل صفوف
+      // المجموعات مع كل فتحة صفحة (5 ثواني على 60 ألف طلب)، فبقت احتياطي بس لو القواعد لسه ما اتلصقتش، ومن غير عمود البيانات.
+      let t = 0;
+      try { const k = await h.c.rpc("tnow"); if (k && !k.error && k.data) t = msOf(k.data) || 0 } catch (e) {}
+      if (!t) {
+        const r = await h.c.from("docs").select("updated_at").or(ors.join(",")).order("updated_at", {ascending: false}).limit(1);
+        if (r.error) return;
+        t = r.data && r.data[0] ? msOf(r.data[0].updated_at) : 0;
+      }
       h.cur = new Date(Math.max(0, t - 120000)).toISOString();// دقيقتين لورا: اللي حصل وإحنا بنفتح
     }
     const r = await base().gt("updated_at", h.cur).order("updated_at", {ascending: true}).limit(150);
