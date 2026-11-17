@@ -42,7 +42,7 @@ async function mkPc(){
  pc.ontrack=e=>{const a=g("tzc-au");if(!a)return;const st=e.streams&&e.streams[0]?e.streams[0]:new MediaStream([e.track]);a.srcObject=st;const p=a.play();if(p&&p.catch)p.catch(()=>{if(C){C.tap=true;status("اضغط على الشاشة لتشغيل الصوت")}});level(st)};
  pc.onconnectionstatechange=()=>{if(!C||C.pc!==pc)return;const s=pc.connectionState;
   if(s==="connected"&&C.inc&&C.st==="ring")return;// اتجهّز قبل الرد: مانبدأش العداد إلا بعد ما يرد
-  if(s==="connected"){clearTimeout(C.dropT);C.dropT=0;clearTimeout(C.ct);if(!C.t0){C.t0=Date.now();tone(null);paint()}status("")}
+  if(s==="connected"){clearTimeout(C.dropT);C.dropT=0;clearTimeout(C.ct);if(!C.t0){C.t0=Date.now();tone(null);paint();try{const A=NAT();if(A&&A.callOn)A.callOn(String(C.name||""))}catch(e){}}status("")}
   else if(s==="disconnected"){status("الاتصال ضعيف… جارٍ إعادة الاتصال");if(!C.dropT)C.dropT=setTimeout(()=>{if(C&&C.pc===pc&&pc.connectionState!=="connected")hang("drop")},12000)}
   else if(s==="failed")hang(C.t0?"drop":"fail")};
  return pc;
@@ -171,6 +171,7 @@ function cleanup(){
  if(c.stream)c.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});
  if(c.pc)try{c.pc.close()}catch(e){}
  const a=g("tzc-au");if(a)a.srcObject=null;tone(null);levelStop();
+ try{const A=NAT();if(A&&A.callOff)A.callOff()}catch(e){}
 }
 async function hang(why){
  if(!C)return;const c=C,id=c.id,st=c.st;let msg="انتهت المكالمة",up=null;
@@ -183,7 +184,7 @@ async function hang(why){
  if(c.t0&&why==="end")msg="انتهت المكالمة · "+mmss(Date.now()-c.t0);
  if(why==="fail"||why==="drop")try{console.warn("📞 call",why,{turn:ICE.turn,ice:c.pc&&c.pc.iceConnectionState,conn:c.pc&&c.pc.connectionState})}catch(e){}
  cleanup();closeUi(msg);
- if(up&&id&&X)try{await updateDoc(doc(X.db,"call",id),up)}catch(e){}
+ if(up&&id&&X){try{await updateDoc(doc(X.db,"call",id),up)}catch(e){}if(st==="ring"&&!c.inc)pushEnd(id)}
 }
 // ---------- مكالمة صادرة ----------
 function onOut(id,d){
@@ -241,9 +242,14 @@ function incoming(id,d){
  if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){try{new Notification("📞 "+c.name+" يتصل بك",{body:"اضغط للرد",tag:"call"+id})}catch(e){}}
  if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="acc"){PEND_ACT=null;setTimeout(()=>{if(C===c&&c.st==="ring")accept()},150)}
 }
+// 📱 تطبيق تاسومة: "رد" من شاشة الاتصال على القفل بينادي دي (لو الصفحة مفتوحة أصلاً)، ونفس المسار لرسالة الـ SW
+const callAct=(id,act)=>{if(!X||!id)return;if(C&&C.id===id&&C.st==="ring"){if(act==="rej")hang("rej");else accept()}else if(!C)PEND_ACT={id,act}};
+window.__tzCallAct=callAct;
+const NAT=()=>window.TasoomaApp||null;
+// نوقّف الرنة على أجهزة التطبيق عند الطرف التاني (اتلغت / اترد عليها / خلصت)
+const pushEnd=id=>{if(!X||!id)return;token().then(t=>fetch(PUSH_URL+"/call",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({id,end:true})})).catch(()=>{})};
 // رسالة من الـ SW (المنصة مفتوحة وضغط رد/رفض من الإشعار)
-if(navigator.serviceWorker)navigator.serviceWorker.addEventListener("message",e=>{const m=e.data;if(!m||m.t!=="tz-call"||!X)return;
- if(C&&C.id===m.id&&C.st==="ring"){if(m.act==="rej")hang("rej");else accept()}else PEND_ACT={id:m.id,act:m.act}});
+if(navigator.serviceWorker)navigator.serviceWorker.addEventListener("message",e=>{const m=e.data;if(m&&m.t==="tz-call")callAct(m.id,m.act)});
 async function accept(){
  const c=C;if(!c||!c.inc||c.st!=="ring")return;tone(null);c.st="conn";paint();status("جارٍ توصيل الصوت",true);
  try{c.stream=await mic()}catch(e){hang("rej");closeUi("اسمح للمنصة باستخدام الميكروفون للرد");return}
@@ -257,7 +263,7 @@ async function accept(){
    const pc=await mkPc();c.pc=pc;c.stream.getTracks().forEach(t=>pc.addTrack(t,c.stream));
    await pc.setRemoteDescription({type:"offer",sdp:hiq(c.of.s)});const an=await pc.createAnswer();await pc.setLocalDescription({type:"answer",sdp:hiq(an.sdp)});await gathered(pc);sdp=pc.localDescription.sdp}
   if(C!==c)return;
-  await updateDoc(doc(X.db,"call",c.id),{st:"acc",an:{t:"answer",s:sdp},at:Date.now()});if(C!==c)return;c.st="acc";clearTimeout(c.rt);connectWatch();
+  await updateDoc(doc(X.db,"call",c.id),{st:"acc",an:{t:"answer",s:sdp},at:Date.now()});if(C!==c)return;c.st="acc";clearTimeout(c.rt);connectWatch();pushEnd(c.id);
   if(c.pc&&c.pc.connectionState==="connected"&&!c.t0){c.t0=Date.now();status("")}
  }catch(e){cleanup();closeUi("تعذّر الرد على المكالمة")}
 }

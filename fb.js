@@ -78,11 +78,18 @@ export async function pushRegister(app, db, info) {
     return true;
   } catch (e) { console.warn("push", e); return false }
 }
-export async function pushSave(db, info, tok) {
+// 📱 تطبيق تاسومة (أندرويد): رقم الإشعارات بييجي من التطبيق نفسه (window.TasoomaApp)، وبيتسجّل dv:"app" علشان السيرفر يبعتله المكالمة كاتصال
+export function nativePush(db, info) {
+  const A = window.TasoomaApp; if (!A || !A.pushToken) return false;
+  const save = t => { if (t) pushSave(db, info, String(t), true).catch(() => {}) };
+  window.__natTok = save; try { save(A.pushToken()) } catch (e) {}
+  return true;
+}
+export async function pushSave(db, info, tok, native) {
   const mob = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent) || (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   const rec = {role: info.role, key: String(info.key), email: String(info.email || "").toLowerCase(), tok, ts: Date.now()}, ref = doc(db, "push", info.role + "__" + tok);
   const en = window.TZL && TZL.lang === "en";
-  await setDoc(ref, {...rec, dv: mob ? "m" : "pc", ...(en ? {lg: "en"} : {})});
+  await setDoc(ref, {...rec, dv: native ? "app" : mob ? "m" : "pc", ...(en ? {lg: "en"} : {})}).catch(e => native ? setDoc(ref, {...rec, dv: "m", ...(en ? {lg: "en"} : {})}) : Promise.reject(e));// قواعد قديمة مابتقبلش app ← m
 }
 // ---------- سيرفر الإشعارات (Cloudflare) ----------
 export const PUSH_URL = "https://tasooma-push.tasooma.workers.dev";

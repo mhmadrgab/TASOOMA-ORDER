@@ -306,7 +306,7 @@ async function check(u){
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))}});
  {const qc=(q=>/^g_/.test(q)?q:q.toLowerCase())(String(new URLSearchParams(location.search).get("chat")||""));if(/^([bdw]-.|g_.)/.test(qc)){setTimeout(()=>openBr(qc),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}}
  if(NAT){// جوه تطبيق TASOOMA: الإشعارات من التطبيق نفسه (رقمه بيتسجّل باسم السائق)
-  const save=t=>{if(t&&me&&auth.currentUser)pushSave(db,{role:"driver",key:me.id,email:auth.currentUser.email},String(t)).catch(()=>{})};
+  const save=t=>{if(t&&me&&auth.currentUser)pushSave(db,{role:"driver",key:me.id,email:auth.currentUser.email},String(t),true).catch(()=>{})};
   window.__natTok=save;try{save(NAT.pushToken())}catch(e){}
  }else{window.__push=()=>pushRegister(app,db,{role:"driver",key:me.id,email:u.email});autoPush()}// إشعارات الجوال للسائق
 }

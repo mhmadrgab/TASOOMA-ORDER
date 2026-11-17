@@ -139,7 +139,7 @@ a.bt{text-decoration:none;display:inline-block;color:inherit}.tg{background:#f2e
 <div id="em"></div>
 <div id="pa"></div>
 <script type="module">
-import {makeFb,pushRegister,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,withTimeout,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
+import {makeFb,pushRegister,nativePush,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,withTimeout,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
 window.__tzMod=1;// (15 نوفمبر 2026) الكود الأساسي اشتغل: ui.js مايمسحش النسخة المحفوظة ومايعملش ريفرش لو الدخول بطيء بس
 const {app,db,auth}=makeFb("admin");
 import {initExtra,view as cusView,stop as stopExtra,adminHdr,ledger} from "./ad-extra.js";
@@ -598,7 +598,7 @@ onAuthStateChanged(auth,async u=>{
  else{stop();const m=lastErr;lastErr="";login(m)}
  window.uiReady&&uiReady();// حالياً بس نعرض الصفحة (دخول أو لوحة)
  // إشعارات الجوال: الجهاز يسجّل نفسه (السيرفر بيتأكد من الصلاحية الحقيقية قبل ما يبعت)
- if(u&&u.email){const em=u.email.toLowerCase();window.__push=()=>pushRegister(app,db,{role:"staff",key:em,email:em});window.__pushTest=()=>pushTest(auth);autoPush()}else{window.__push=null;window.__pushTest=null}
+ if(u&&u.email){const em=u.email.toLowerCase();window.__push=()=>pushRegister(app,db,{role:"staff",key:em,email:em});window.__pushTest=()=>pushTest(auth);autoPush();nativePush(db,{role:"staff",key:em,email:em})}else{window.__push=null;window.__pushTest=null}
 });
 </script>
 </body>
