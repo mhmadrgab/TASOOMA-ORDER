@@ -149,6 +149,7 @@ import {initGifts,stopGifts,giftsView,pendingCount as giftPend} from "./gifts.js
 import {initMnt,stopMnt,mntView,mntCount} from "./mnt.js";
 import {initPo,stopPo,poView,poCount} from "./po.js";
 import {initCat,catAdminView,catLoad} from "./cat.js";
+import {initHealth,stopHealth,healthView} from "./health.js";
 import {initCall,stopCall} from "./call.js";
 import {initAnn,stopAnn,annBtn} from "./ann.js";
 import {initShort,stopShort,shortView,weeklyCfgView} from "./short.js";
@@ -234,7 +235,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){stopCall();stopGifts();stopMnt();stopPo();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -322,6 +323,7 @@ function start(){
    ping:ids=>ping(auth,[],[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="mnt"]');if(b)b.innerHTML=mntLbl()}});
   // 🚢 أوامر الشراء: مسؤول المشتريات (p.po) بيعمل الأمر ويحدّث المراحل، والاستلام للمالك و p.rcv بس، والمديرين والمتابع بيشوفوا
   if(ROLE.owner===true)initCat({db,toast,me:{e:me,get n(){return ROLE.name||me}},redraw:()=>{if(tab==="set"&&sub==="cat")draw()}});
+  if(ROLE.owner===true)initHealth({db,toast,me,redraw:()=>{if(tab==="set"&&sub==="hl")draw()}});// 📏 صحة المنصة: للأدمن ومالك النظام
   else catLoad(db).catch(()=>{});// الورقة اليدوية بتقرا الكتالوج من الكاش ده
   if(adm||ROLE.p.po===true||ROLE.p.rcv===true||vw)initPo({db,toast,me:{e:me,get n(){return ROLE.name||me}},owner:ROLE.owner===true,
    edit:!vw&&(ROLE.owner===true||ROLE.p.po===true),rcv:!vw&&(ROLE.owner===true||ROLE.p.rcv===true),redraw:draw,active:()=>tab==="po",
@@ -377,13 +379,13 @@ function reqView(){
  (L.length?L.map(r=>`<article class="rq ${ST(r.st)}"><div class="rh"><div><b>${r.tr?trHead(r):E(r.brn)}</b>${r.tr?`<span class="tg" style="background:#e3f0fb;color:#1c4f86">🔄 تحويل${trWhere(r)?" · "+trWhere(r):""}</span>`:r.by==="wh"?`<span class="tg">📋 من المستودع${r.byn?" · "+E(r.byn):""}</span>`:""}${r.edited?`<span class="tg">✏️ عدّله ${E(r.edn||"المستودع")}</span>`:""}${(()=>{const n=(Array.isArray(r.rows)?r.rows:[]).filter(x=>x&&x.na).length;return n?`<span class="tg" style="background:#fdecea;color:#8a2218">🚫 ${n} غير متوفر</span>`:""})()}<small>${r.tr?"تحويل":"طلب"} <bdi dir="ltr">${E(r.no)}</bdi> · ${ago(NUM(r.ts))}</small></div><span class="chp">${stLbl(r)}</span></div><div class="kp"><span><b>${NUM(r.codes)}</b> صنف</span><span><b>${NUM(r.pcs)}</b> قطعة</span>${r.dr?`<span>المسؤول: ${E(r.dr)}</span>`:""}${r.asg&&r.asg.drvn?`<span>🚚 ${E(r.asg.drvn)} · ${E(r.asg.carn||"")}</span>`:""}${r.prep&&Array.isArray(r.prep.names)&&r.prep.names.length?`<span>👷 ${E(r.prep.names.join("، "))} <button class="bt s" data-a="wk" data-id="${E(r.id)}" type="button" style="padding:1px 8px;font-size:12px">تعديل</button></span>`:(r.st!=="new"&&!r.tr&&hasWorkers()?`<span><button class="bt s" data-a="wk" data-id="${E(r.id)}" type="button" style="padding:1px 8px;font-size:12px">👷 من الذي جهّز؟</button></span>`:"")}${r.st==="go"&&NUM(r.eta)?`<span>${NUM(r.near)>NUM(r.dep)?"🔔 اقترب من الوصول":"🕒 متوقع"} ~${new Date(NUM(r.eta)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</span>`:""}${NUM(r.dlv)?`<span>وصل${new Date(NUM(r.dlv)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</span>`:""}</div>${rcvHtml(r)}${podHtml(r)}<details data-id="${E(r.id)}" ${openSet.has(r.id)||(r.st==="new"&&!openSet.has("-"+r.id))?"open":""}><summary>تفاصيل الطلب</summary>${r.gn?`<div class="gn">ملاحظات: ${E(r.gn)}</div>`:""}<div class="grp">${gHtml(r.rows)}</div></details><div class="rf">${rqBtn(r,"bt")}${r.st==="new"&&!r.tr?`<button class="bt g" data-a="prep" data-id="${E(r.id)}">بدء التجهيز</button>`:""}${r.st==="prep"&&!r.tr&&!NUM(r.pdn)?`<button class="bt g" data-a="pdn" data-id="${E(r.id)}">✅ تم التجهيز</button>`:""}${!isDn(r)?`<button class="bt p" data-a="done" data-id="${E(r.id)}">تم التسليم</button>`:r.st==="recv"?`<span class="off" style="align-self:center">🔒 الفرع أكّد الاستلام</span>`:`<button class="bt" data-a="new" data-id="${E(r.id)}">إعادة فتح</button>`}<button class="bt" data-a="edit" data-id="${E(r.id)}">✏️ تعديل</button><button class="bt" data-a="print" data-id="${E(r.id)}">🖨 طباعة</button>${ROLE.admin&&(r.st!=="recv"||ROLE.owner)?`<button class="bt r" data-a="del" data-id="${E(r.id)}">حذف</button>`:""}</div></article>`).join(""):'<div class="em">لا توجد طلبات مطابقة</div>');
 }
 // ⚙ الإعدادات: كل الصلاحيات والإعدادات في مكان واحد (16 نوفمبر 2026)
-let sub="perm";try{const q=localStorage.getItem("st_sub");if(q==="perm"||q==="br"||q==="rep"||q==="cat")sub=q}catch(x){}
+let sub="perm";try{const q=localStorage.getItem("st_sub");if(q==="perm"||q==="br"||q==="rep"||q==="cat"||q==="hl")sub=q}catch(x){}
 window.addEventListener("tz-news-go",()=>{if(ROLE.co&&okTab("set")){tab="set";draw()}});
 function setView(){
- const S=[["perm","👥 الصلاحيات والموظفين"],["br","🏬 حسابات الفروع"],["rep","📊 التقارير والإشعارات"]].concat(ROLE.owner===true?[["cat","📦 كتالوج الأصناف"]]:[]);
+ const S=[["perm","👥 الصلاحيات والموظفين"],["br","🏬 حسابات الفروع"],["rep","📊 التقارير والإشعارات"]].concat(ROLE.owner===true?[["cat","📦 كتالوج الأصناف"],["hl","📏 صحة المنصة"]]:[]);
  if(!S.some(a=>a[0]===sub))sub="perm";
  const who=ROLE.root?"👑 الأدمن":ROLE.co?"👑 مالك النظام":ROLE.owner?"👑 مالك النظام":"🛡 مدير";
- return `<div class="stg"><nav class="stg-nav"><div class="stg-who">${who}</div>${S.map(a=>`<button type="button" class="${sub===a[0]?"on":""}" data-ss="${a[0]}">${a[1]}</button>`).join("")}</nav><section class="stg-body">${sub==="perm"?staffView():sub==="br"?brView():sub==="cat"?catAdminView():weeklyCfgView()}</section></div>`
+ return `<div class="stg"><nav class="stg-nav"><div class="stg-who">${who}</div>${S.map(a=>`<button type="button" class="${sub===a[0]?"on":""}" data-ss="${a[0]}">${a[1]}</button>`).join("")}</nav><section class="stg-body">${sub==="perm"?staffView():sub==="br"?brView():sub==="cat"?catAdminView():sub==="hl"?healthView():weeklyCfgView()}</section></div>`
 }
 function brView(){
  const info={};BR.forEach(b=>info[code(b)]={n:0,p:0,t:0});
