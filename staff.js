@@ -34,7 +34,7 @@ export function syncDir(){
  Object.keys(WD).forEach(id=>{if(!want[id])deleteDoc(doc(X.db,"whdir",id)).catch(()=>{})});
 }
 export const staffName=id=>{const s=S.find(x=>x.id===id);return s?s.name||id:id};
-const AERR=e=>({"auth/email-already-in-use":"هذا البريد لديه حساب في Firebase بالفعل. اكتب كلمة مروره الحالية لنربطه.","auth/operation-not-allowed":"فعّل Email/Password من Authentication في Firebase","auth/weak-password":"كلمة المرور ضعيفة (6 أحرف على الأقل)","auth/network-request-failed":"لا يوجد اتصال بالإنترنت","auth/invalid-credential":"كلمة المرور غير صحيحة","x/exists-wrong-pw":"هذا البريد لديه حساب بالفعل وكلمة المرور المكتوبة ليست كلمته الحالية. اكتب كلمته الحالية أو استخدم بريداً آخر.","auth/invalid-email":"البريد الإلكتروني غير صحيح","auth/too-many-requests":"محاولات كثيرة، انتظر قليلاً","auth/admin-restricted-operation":"التسجيل متوقف في Firebase. فعّله مؤقتاً من Authentication ← Settings ← User actions"}[e&&e.code]||("خطأ: "+(e&&e.code||e&&e.message)));
+const AERR=e=>({"auth/email-already-in-use":"هذا البريد لديه حساب في Firebase بالفعل. اكتب كلمة مروره الحالية لنربطه.","auth/operation-not-allowed":"فعّل Email/Password من Authentication في Firebase","auth/weak-password":"كلمة المرور ضعيفة (6 أحرف على الأقل)","auth/network-request-failed":"لا يوجد اتصال بالإنترنت","auth/invalid-credential":"كلمة المرور غير صحيحة","x/exists-wrong-pw":"هذا البريد لديه حساب بالفعل وكلمة المرور المكتوبة ليست كلمته الحالية. اكتب كلمته الحالية أو استخدم بريداً آخر.","auth/invalid-email":"البريد الإلكتروني غير صحيح","auth/too-many-requests":"محاولات كثيرة، انتظر قليلاً","x/not-allowed":"غير مسموح لك بتغيير كلمة مرور هذا الحساب","x/no-user":"لا يوجد حساب دخول لهذا المستخدم","x/server":"تعذّر تغيير كلمة المرور. تأكد من تحديث الخادم (wrangler deploy) وأن الإنترنت يعمل","auth/admin-restricted-operation":"التسجيل متوقف في Firebase. فعّله مؤقتاً من Authentication ← Settings ← User actions"}[e&&e.code]||("خطأ: "+(e&&e.code||e&&e.message)));
 const msg=s=>`أهلاً ${s.name||""}\nلوحة المستودع:\n${new URL("./admin.html",location.href).href}\nالبريد الإلكتروني: ${s.id}\nكلمة المرور: ${PW()[s.id]||""}`;
 const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم النسخ")}catch(e){prompt("انسخ الرسالة:",t)}};
 // الصفحة مقسومة: مالك النظام، المديرين، المحاسبين. المالك بس اللي بيعدّل؛ المدير بيشوف بس (ويلاقي نفسه في قسم المديرين)
@@ -43,7 +43,7 @@ export function view(){
  const pw=PW(),own=X.owner,me=X.me,V=S.filter(s=>s.v===true),M=S.filter(s=>s.v!==true&&s.admin===true&&s.co!==true),C=S.filter(s=>s.v!==true&&s.admin===true&&s.co===true),G=S.filter(s=>isMkt(s)),T=S.filter(s=>isEng(s)),U=S.filter(s=>isPur(s)),A=S.filter(s=>s.v!==true&&s.admin!==true&&!isMkt(s)&&!isEng(s)&&!isPur(s));
  const you=id=>id===me?' <span class="pill go">أنت</span>':"";
  const st=s=>`<span class="pill ${s.enabled?"":"off2"}">${s.enabled?"مفعّل":"معطّل"}</span>`;
- const pwc=s=>`<td>${pw[s.id]?`<span class="pin" data-spc="${E(s.id)}">••••••••</span> <button class="bt s" data-sf="show" data-id="${E(s.id)}" type="button">إظهار</button>`:'<span class="off">—</span>'}</td>`;
+ const pwc=s=>`<td>${pw[s.id]?`<span class="pin" data-spc="${E(s.id)}">••••••••</span> <button class="bt s" data-sf="show" data-id="${E(s.id)}" type="button">إظهار</button>`:'<span class="off" title="كلمة المرور لا تُحفظ: تظهر مرة واحدة بعد الإنشاء أو التغيير">لا تُحفظ</span>'}</td>`;
  const acts=(s,role)=>s.co&&!X.root?'<td></td>':`<td style="white-space:nowrap">${role}${s.co?"":`<button class="bt s ${s.p&&s.p.nc===true?"r":""}" data-sf="chat" data-id="${E(s.id)}" type="button" title="فتح أو قفل الدردشة لهذا الموظف">${s.p&&s.p.nc===true?"💬 الدردشة مقفولة":"💬 الدردشة مفتوحة"}</button> `}<button class="bt s" data-sf="tg" data-id="${E(s.id)}" type="button">${s.enabled?"تعطيل":"تفعيل"}</button> <button class="bt s" data-sf="pw" data-id="${E(s.id)}" type="button">كلمة مرور جديدة</button> <button class="bt s" data-sf="cp" data-id="${E(s.id)}" type="button">نسخ رسالة</button> <button class="bt s r" data-sf="del" data-id="${E(s.id)}" type="button">حذف</button></td>`;
  const empty=(n,t)=>`<tr><td colspan="${n}" class="off" style="text-align:center;padding:18px">${t}</td></tr>`;
  // قسم مالك النظام وخانة الإضافة بيظهروا للمالك بس؛ المديرين بيشوفوا المديرين والمحاسبين بس
@@ -93,7 +93,7 @@ async function add(){
    finally{try{await signOut(a)}catch(x){}}
   }
   else{pw=genPw();try{await createUserWithEmailAndPassword(a,e,pw)}finally{try{await signOut(a)}catch(x){}}}
-  await setDoc(doc(X.db,"secrets",e),{pw});
+  X.tmpPw[e]=pw;// 🔑 لا تُحفظ في القاعدة: تظهر في فتحة الصفحة هذه فقط
   const adm=f.r==="adm",vw=f.r==="view",mk=f.r==="mkt",eg=f.r==="eng",pu=f.r==="pur",co=f.r==="co"&&X.root===true;
   // المتابع: من غير أي صلاحية تعديل (v = يشوف بس)
   await setDoc(doc(X.db,"staff",e),co?{name:n,enabled:true,admin:true,co:true,p:{}}:vw?{name:n,enabled:true,admin:false,v:true,p:{}}:mk?{name:n,enabled:true,admin:false,p:{gm:true}}:eg?{name:n,enabled:true,admin:false,p:{mt:true}}:pu?{name:n,enabled:true,admin:false,p:{po:true}}:{name:n,enabled:true,admin:adm,p:{req:true,cus:true,fl:true}});
@@ -112,20 +112,16 @@ async function click(e){
   else if(a==="chat"&&s){const off=!(s.p&&s.p.nc===true);if(!off||confirm(`قفل الدردشة لـ ${s.name}؟\nلن يرى المحادثات ولا يستطيع المراسلة حتى تفتحها له مرة أخرى.`)){await updateDoc(doc(X.db,"staff",id),{"p.nc":off});X.toast(off?"🔒 قُفلت الدردشة لـ "+s.name:"💬 فُتحت الدردشة لـ "+s.name)}}
    else if(a==="tocoo"&&s){if(confirm(`ترقية ${s.name} لمالك نظام؟\n\nسيحصل على كل صلاحياتك تقريباً: الموظفين والعهدة والطلبات والإعدادات وغيرها. ولن يستطيع لمس حساب الأدمن ولا تعيين ملّاك آخرين.`)){await updateDoc(doc(X.db,"staff",id),{co:true,admin:true});X.toast("👑 أصبح مالك نظام");
     // 🛡 (17 نوفمبر 2026) كلمة مروره الحالية كان أي مدير يقدر يشوفها قبل الترقية، فبنعرض على الأدمن تغييرها فوراً
-    const old=PW()[id];
-    if(old&&confirm(`يُنصح بتغيير كلمة مرور ${s.name} الآن، لأن المديرين كانوا يستطيعون رؤية كلمته الحالية قبل الترقية.\n\nهل تريد تغييرها الآن؟ بعدها اضغط «إظهار» لنسخ الكلمة الجديدة وإرسالها له.`)){
-     const nw=genPw(),au=makeFb("sec").auth;try{const cr=await signInWithEmailAndPassword(au,id,old);await updatePassword(cr.user,nw)}finally{try{await signOut(au)}catch(x){}}
-     await setDoc(doc(X.db,"secrets",id),{pw:nw});X.toast("تم تغيير كلمة المرور. اضغط «إظهار» لنسخها")}}}
+    if(confirm(`يُنصح بتغيير كلمة مرور ${s.name} الآن، فقد تكون معروفة لغيره.\n\nهل تريد تغييرها الآن؟ بعدها اضغط «إظهار» لنسخ الكلمة الجديدة وإرسالها له.`)){
+     const nw=genPw();await X.setPw(id,nw);X.tmpPw[id]=nw;X.toast("تم تغيير كلمة المرور. اضغط «إظهار» لنسخها");X.redraw()}}}
    else if(a==="unco"&&s){if(confirm(`إزالة صلاحية مالك النظام من ${s.name}؟\nسيرجع مديراً عادياً.`)){await updateDoc(doc(X.db,"staff",id),{co:false});X.toast("رجع مديراً عادياً")}}
    else if((a==="toadm"||a==="toacc")&&s){const up=a==="toadm";
    if(confirm(up?`ترقية ${s.name} لمدير؟`:`تحويل ${s.name} لمحاسب؟`)){await updateDoc(doc(X.db,"staff",id),{admin:up});X.toast(up?"أصبح مديراً 🛡":"أصبح محاسباً")}}
   else if(a==="show"){const el=document.querySelector(`[data-spc="${id}"]`);if(el){const sh=el.dataset.v==="1";el.textContent=sh?"••••••••":PW()[id];el.dataset.v=sh?"0":"1";t.textContent=sh?"إظهار":"إخفاء"}}
   else if(a==="tg"&&s){if(!s.enabled||confirm(`تعطيل ${s.name}؟ سيتم فصله فوراً ولن يتمكن من الدخول.`)){await updateDoc(doc(X.db,"staff",id),{enabled:!s.enabled});X.toast(s.enabled?"تم التعطيل":"تم التفعيل")}}
   else if(a==="pw"&&s){
-   const old=PW()[id];if(!old){X.toast("كلمة المرور الحالية غير مسجلة");return}
-   const nw=(prompt("كلمة المرور الجديدة (6 أحرف على الأقل). اتركها فارغة لتوليد واحدة:","")||"").trim()||genPw();
-   const au=makeFb("sec").auth;try{const cr=await signInWithEmailAndPassword(au,id,old);await updatePassword(cr.user,nw)}finally{try{await signOut(au)}catch(x){}}
-   await setDoc(doc(X.db,"secrets",id),{pw:nw});X.toast("تم تغيير كلمة المرور");
+   const q=prompt("كلمة المرور الجديدة (6 أحرف على الأقل). اتركها فارغة لتوليد واحدة:","");if(q===null)return;
+   const nw=q.trim()||genPw();await X.setPw(id,nw);X.tmpPw[id]=nw;X.toast("تم تغيير كلمة المرور ✅ انسخ الرسالة الآن: الكلمة لا تُحفظ ولن تظهر بعد إغلاق الصفحة");X.redraw();
   }
   // إشعار تجربة لأجهزة الشخص ده، ونقول وصل لأنهي جهاز
   else if(a==="ntest"&&X.test){
@@ -136,8 +132,8 @@ async function click(e){
    catch(x){X.toast("تعذر الإرسال. تأكد من تحديث الخادم (wrangler deploy) وأن الإنترنت يعمل")}
    testing="";X.redraw();return;
   }
-  else if(a==="cp"&&s){if(!PW()[id]){X.toast("كلمة المرور غير مسجلة");return}cpy(msg(s))}
-  else if(a==="del"&&s){if(confirm(`حذف المحاسب ${s.name}؟ سيفقد كل الصلاحيات.`)){await deleteDoc(doc(X.db,"staff",id));await deleteDoc(doc(X.db,"secrets",id));X.toast("تم الحذف")}}
+  else if(a==="cp"&&s){if(!PW()[id]){X.toast("كلمة المرور لا تُحفظ. غيّرها أولاً ثم انسخ الرسالة");return}cpy(msg(s))}
+  else if(a==="del"&&s){if(confirm(`حذف المحاسب ${s.name}؟ سيفقد كل الصلاحيات.`)){await deleteDoc(doc(X.db,"staff",id));delete X.tmpPw[id];X.toast("تم الحذف")}}
  }catch(x){X.toast(AERR(x))}
 }
 export function initStaff(ctx){

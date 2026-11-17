@@ -50,6 +50,21 @@ async function createUserWithEmailAndPassword(a, email, pw) {
   }
   return S.createUserWithEmailAndPassword(a, email, pw);
 }
+// 🔑 (18 نوفمبر 2026، مراجعة الأمان) كلمات المرور لم تعد تُحفظ في القاعدة (كانت نصاً صريحاً في secrets وأي مدير يقرؤها).
+// tmpPw = الكلمات التي أُنشئت أو تغيّرت في فتحة الصفحة هذه فقط (في الذاكرة) ليَنسخ المدير الرسالة مرة واحدة.
+// adminSetPw = تغيير كلمة مرور حساب من السيرفر (/setpw بمفتاح الخدمة) بدون الكلمة القديمة، والصلاحيات يتحقق منها السيرفر.
+export const tmpPw = {};
+export async function adminSetPw(email, pw) {
+  const fail = c => { const e = new Error(c); e.code = c; return e };
+  const main = Object.keys(APPS).filter(k => k !== "sec").map(k => APPS[k].auth.currentUser).find(Boolean);
+  if (!main || !PUSH_URL) throw fail("x/server");
+  let r;
+  try { const t = await main.getIdToken(); r = await withTimeout(fetch(PUSH_URL + "/setpw", {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + t}, body: JSON.stringify({email: String(email).trim(), pw: String(pw)})}), 20000) }
+  catch (e) { throw fail("auth/network-request-failed") }
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 200 && j && j.ok) return true;
+  throw fail(j && typeof j.code === "string" ? j.code : r.status === 403 ? "x/not-allowed" : "x/server");
+}
 export const withTimeout = (p, ms = 15000) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error("timeout")), ms))]);
 
 // ---------- إشعارات الجوال (FCM) ----------

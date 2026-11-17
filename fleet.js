@@ -1,5 +1,5 @@
 // لوحة المستودع: السيارات والسائقين والرحلات والبنزين
-import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,getDocs,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut,PUSH_URL} from "./fb.js";
+import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,getDocs,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut,PUSH_URL,adminSetPw,tmpPw} from "./fb.js";
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep,pushOn} from "./notify.js";
 import {ledger,ledgerOn} from "./ad-extra.js";
@@ -377,7 +377,7 @@ export function view(){
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🚗 السيارات</h3>${X.admin?'<button class="bt s g" data-fl="car" type="button" style="margin-inline-start:auto">➕ إضافة سيارة</button>':""}<button class="bt s" data-fl="fuel" type="button" ${X.admin?"":'style="margin-inline-start:auto"'}>⛽ تسجيل بنزين</button></div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السيارة</th><th>العداد</th><th>كم الشهر</th><th>بنزين الشهر</th><th>كم/لتر</th><th>تكلفة/كم</th><th>الزيت</th><th>التأمين / الرخصة</th><th></th></tr></thead><tbody>${CARS.length?CARS.map(c=>{const s=carStat(c),due=N(c.oilLast)+N(c.oilEvery||5000);return `<tr><td class="l" style="direction:rtl">${E(c.name)}<small class="off" style="display:block;direction:ltr">${E(c.plate||"")}</small></td><td>${s.odo?fmt(s.odo):"—"}</td><td>${fmt(s.km)}</td><td>${fmt(s.fl)} لتر<small class="off" style="display:block">${fmt(s.fc)}</small></td><td>${s.kmpl?s.kmpl.toFixed(1):"—"}</td><td>${s.cpk!==null?s.cpk.toFixed(2):"—"}</td><td>${c.oilEvery&&s.odo?(due-s.odo<=0?`<span style="color:#c4362b;font-weight:700">متأخر</span>`:`باقي ${fmt(due-s.odo)} كم`):"—"}</td><td style="font-size:13px">${E(c.insExp||"—")}<br>${E(c.licExp||"—")}</td><td>${X.admin?`<button class="bt s" data-fl="car" data-id="${E(c.id)}" type="button">تعديل</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="9" class="off" style="text-align:center;padding:20px">أضف السيارات من زر "إضافة سيارة"</td></tr>'}</tbody></table></div></div>
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">👷 السائقين</h3>${X.admin?'<button class="bt s g" data-fl="drv" type="button" style="margin-inline-start:auto">➕ إضافة سائق</button>':""}</div>
- <div class="pan"><div class="tw"><table><thead><tr><th>السائق</th><th>اسم الدخول</th><th>الحالة</th><th>رحلات الشهر</th><th>كم الشهر</th><th>كلمة المرور</th><th></th></tr></thead><tbody>${DRV.length?DRV.map(d=>{const m=dk(Date.now()).slice(0,7),t=TR.filter(x=>x.drv===d.id&&x.st==="done"&&monthOf(x.start)===m);return `<tr><td><b>${E(d.name)}</b>${d.phone?`<small class="off" style="display:block;direction:ltr;text-align:right">${E(d.phone)}</small>`:""}</td><td class="l">${E(d.id)}</td><td><span class="pill ${d.enabled?"":"off2"}">${d.enabled?"مفعّل":"معطّل"}</span></td><td>${t.length}</td><td>${fmt(t.reduce((a,x)=>a+Math.max(0,N(x.odo1)-N(x.odo0)),0))}</td><td>${PW[d.id]?`<span class="pin" data-fpw="${E(d.id)}">••••••••</span> <button class="bt s" data-fl="spw" data-id="${E(d.id)}" type="button">إظهار</button>`:'<span class="off">—</span>'}</td><td style="white-space:nowrap">${telBtn(d)} ${X.admin?`<button class="bt s ${d.gps?"g":""}" data-fl="gps" data-id="${E(d.id)}" type="button" title="تتبع السائق في الخلفية">📡 التتبع${d.gps?" ✓":""}</button> <button class="bt s" data-fl="dwa" data-id="${E(d.id)}" type="button">📲 واتساب</button> <button class="bt s" data-fl="dedit" data-id="${E(d.id)}" type="button">تعديل</button> <button class="bt s" data-fl="dtg" data-id="${E(d.id)}" type="button">${d.enabled?"تعطيل":"تفعيل"}</button> <button class="bt s" data-fl="dpw" data-id="${E(d.id)}" type="button">كلمة مرور جديدة</button> <button class="bt s" data-fl="dcp" data-id="${E(d.id)}" type="button">نسخ رسالة</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">لا يوجد سائقون بعد</td></tr>'}</tbody></table></div></div>
+ <div class="pan"><div class="tw"><table><thead><tr><th>السائق</th><th>اسم الدخول</th><th>الحالة</th><th>رحلات الشهر</th><th>كم الشهر</th><th>كلمة المرور</th><th></th></tr></thead><tbody>${DRV.length?DRV.map(d=>{const m=dk(Date.now()).slice(0,7),t=TR.filter(x=>x.drv===d.id&&x.st==="done"&&monthOf(x.start)===m);return `<tr><td><b>${E(d.name)}</b>${d.phone?`<small class="off" style="display:block;direction:ltr;text-align:right">${E(d.phone)}</small>`:""}</td><td class="l">${E(d.id)}</td><td><span class="pill ${d.enabled?"":"off2"}">${d.enabled?"مفعّل":"معطّل"}</span></td><td>${t.length}</td><td>${fmt(t.reduce((a,x)=>a+Math.max(0,N(x.odo1)-N(x.odo0)),0))}</td><td>${PW[d.id]?`<span class="pin" data-fpw="${E(d.id)}">••••••••</span> <button class="bt s" data-fl="spw" data-id="${E(d.id)}" type="button">إظهار</button>`:'<span class="off" title="كلمة المرور لا تُحفظ: تظهر مرة واحدة بعد الإنشاء أو التغيير">لا تُحفظ</span>'}</td><td style="white-space:nowrap">${telBtn(d)} ${X.admin?`<button class="bt s ${d.gps?"g":""}" data-fl="gps" data-id="${E(d.id)}" type="button" title="تتبع السائق في الخلفية">📡 التتبع${d.gps?" ✓":""}</button> <button class="bt s" data-fl="dwa" data-id="${E(d.id)}" type="button">📲 واتساب</button> <button class="bt s" data-fl="dedit" data-id="${E(d.id)}" type="button">تعديل</button> <button class="bt s" data-fl="dtg" data-id="${E(d.id)}" type="button">${d.enabled?"تعطيل":"تفعيل"}</button> <button class="bt s" data-fl="dpw" data-id="${E(d.id)}" type="button">كلمة مرور جديدة</button> <button class="bt s" data-fl="dcp" data-id="${E(d.id)}" type="button">نسخ رسالة</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">لا يوجد سائقون بعد</td></tr>'}</tbody></table></div></div>
 ${evalView()}
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🗓 سجل الرحلات</h3><select id="fday" style="margin-inline-start:auto">${days.length?days.map(d=>`<option ${d===fday?"selected":""}>${d}</option>`).join(""):`<option>${today()}</option>`}${oldMonth()?`<option value="__older">⬅ أيام أقدم (${oldMonth()})</option>`:""}</select><button class="bt s" data-fl="rep" type="button">🖨 تقرير اليوم</button></div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السائق / السيارة</th><th>من ← إلى</th><th>المدة</th><th>كم</th><th>التسليمات</th><th></th></tr></thead><tbody>${dTr.length?dTr.map(t=>{const st=Array.isArray(t.stops)?t.stops:[];return `<tr><td><b>${E(t.drvn)}</b><small class="off" style="display:block">${E(t.carn)}</small></td><td>${hm(t.start)} ← ${t.end?hm(t.end):'<span class="pill go">شغّال</span>'}</td><td>${t.end?dur(N(t.end)-N(t.start)):dur(Date.now()-N(t.start))}</td><td>${t.st==="done"?fmt(Math.max(0,N(t.odo1)-N(t.odo0))):"—"}</td><td>${st.filter(s=>s.arr).length}/${st.length} · ${st.reduce((a,s)=>a+N(s.pcs),0)} قطعة</td><td style="white-space:nowrap"><button class="bt s" data-fl="trd" data-id="${E(t.id)}" type="button">تفاصيل</button> ${X.admin?`<button class="bt s" data-fl="trx" data-id="${E(t.id)}" type="button">حذف</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="6" class="off" style="text-align:center;padding:20px">لا توجد رحلات في هذا اليوم</td></tr>'}</tbody></table></div></div>
@@ -528,10 +528,16 @@ function report(){
 }
 // ---------- حسابات السائقين ----------
 async function mkDriver(name,phone){
- let n=1;while(DRV.some(d=>d.id==="drv"+n)||PW["drv"+n])n++;if(n>99)throw new Error("max");
- const code="drv"+n,pw=genPw(),a=makeFb("sec").auth;
- try{await createUserWithEmailAndPassword(a,emailOf(code),pw)}finally{try{await signOut(a)}catch(e){}}
- await setDoc(doc(X.db,"secrets",code),{pw});await setDoc(doc(X.db,"drivers",code),phone?{name,phone,enabled:true}:{name,enabled:true});return code;
+ let n=1;const pw=genPw(),a=makeFb("sec").auth;
+ for(;;){
+  while(DRV.some(d=>d.id==="drv"+n))n++;if(n>99)throw new Error("max");
+  // (18 نوفمبر 2026) رقم له حساب دخول قديم بدون ملف سائق ← نجرّب الرقم التالي (كنا نعرف ذلك من secrets قبل إلغائها)
+  try{await createUserWithEmailAndPassword(a,emailOf("drv"+n),pw);break}
+  catch(e){if(e&&e.code==="auth/email-already-in-use"&&n<99){n++;continue}throw e}
+  finally{try{await signOut(a)}catch(e){}}
+ }
+ const code="drv"+n;tmpPw[code]=pw;// 🔑 لا تُحفظ في القاعدة
+ await setDoc(doc(X.db,"drivers",code),phone?{name,phone,enabled:true}:{name,enabled:true});return code;
 }
 const dmsg=d=>`أهلاً ${d.name}\nتطبيق السائق:\n${new URL("./driver.html",location.href).href}\nاسم المستخدم: ${d.id}\nكلمة المرور: ${PW[d.id]}`;
 const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم النسخ")}catch(e){prompt("انسخ الرسالة:",t)}};
@@ -629,10 +635,11 @@ async function click(e){
   else if(a==="spw"){const el=document.querySelector(`[data-fpw="${id}"]`);if(el){const sh=el.dataset.v==="1";el.textContent=sh?"••••••••":PW[id];el.dataset.v=sh?"0":"1";t.textContent=sh?"إظهار":"إخفاء"}}
   else if(a==="dtg"){const d=DRV.find(x=>x.id===id);if(d&&(!d.enabled||confirm("تعطيل السائق؟")))await setDoc(doc(X.db,"drivers",id),{enabled:!d.enabled},{merge:true})}
   else if(a==="dpw"){
-   const d=DRV.find(x=>x.id===id);if(!d||!PW[id]){X.toast("كلمة المرور الحالية غير مسجلة");return}
-   const nw=(prompt("كلمة المرور الجديدة (6 أحرف على الأقل). اتركها فارغة لتوليد واحدة:","")||"").trim()||genPw();
-   const au=makeFb("sec").auth;try{const cr=await signInWithEmailAndPassword(au,emailOf(id),PW[id]);await updatePassword(cr.user,nw)}finally{try{await signOut(au)}catch(x){}}
-   await setDoc(doc(X.db,"secrets",id),{pw:nw});X.toast("تم تغيير كلمة المرور");
+   const d=DRV.find(x=>x.id===id);if(!d)return;
+   const q=prompt("كلمة المرور الجديدة (6 أحرف على الأقل). اتركها فارغة لتوليد واحدة:","");if(q===null)return;
+   const nw=q.trim()||genPw();
+   try{await adminSetPw(emailOf(id),nw)}catch(x){X.toast(x&&x.code==="x/not-allowed"?"غير مسموح لك بتغيير كلمة مرور هذا الحساب":x&&x.code==="x/no-user"?"لا يوجد حساب دخول لهذا المستخدم":x&&x.code==="auth/weak-password"?"كلمة المرور ضعيفة (6 أحرف على الأقل)":"تعذّر تغيير كلمة المرور. تأكد من تحديث الخادم (wrangler deploy) وأن الإنترنت يعمل","er");return}
+   tmpPw[id]=nw;X.toast("تم تغيير كلمة المرور ✅ انسخ الرسالة الآن: الكلمة لا تُحفظ ولن تظهر بعد إغلاق الصفحة");if(X.redraw)X.redraw();
   }
   else if(a==="gps"||a==="gnew"){
    const d=DRV.find(x=>x.id===id);if(!d)return;
@@ -664,7 +671,7 @@ export function initFleet(ctx){
  un.push(onSnapshot(collection(X.db,"drivers"),sn=>{DRV=sn.docs.map(d=>({id:d.id,...d.data()}));draw();syncDdir()},()=>{}));
  // أسماء السائقين للشات (ddir): الفروع والموظفين بيختاروا منها يكلّموا مين. بتتظبط لوحدها هنا (المدير بس)
  if(X.admin)un.push(onSnapshot(collection(X.db,"ddir"),sn=>{DDR={};sn.docs.forEach(d=>{DDR[d.id]=d.data()});syncDdir()},()=>{}));
- if(X.admin)un.push(onSnapshot(collection(X.db,"secrets"),sn=>{PW={};sn.docs.forEach(d=>{if(/^drv\d+$/.test(d.id))PW[d.id]=d.data().pw});draw()},()=>{}));
+ PW=tmpPw;// 🔑 (18 نوفمبر 2026) كلمات المرور لا تُحفظ: ما أُنشئ أو تغيّر في فتحة الصفحة هذه فقط
  // توفير القراءات: بنسمع لايف الشهر ده واللي قبله بس (كانت سنة كاملة، وده كان هيخلّص حصة القراءة اليومية مع الوقت:
  // كل فتحة للوحة = كل رحلات السنة). الشهور الأقدم بتتحمّل مرة واحدة لما حد يختارها (loadMonth).
  const since=liveSince();

@@ -139,7 +139,7 @@ a.bt{text-decoration:none;display:inline-block;color:inherit}.tg{background:#f2e
 <div id="em"></div>
 <div id="pa"></div>
 <script type="module">
-import {makeFb,pushRegister,nativePush,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,withTimeout,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword} from "./fb.js";
+import {makeFb,pushRegister,nativePush,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,withTimeout,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,adminSetPw,tmpPw} from "./fb.js";
 window.__tzMod=1;// (15 نوفمبر 2026) الكود الأساسي اشتغل: ui.js مايمسحش النسخة المحفوظة ومايعملش ريفرش لو الدخول بطيء بس
 const {app,db,auth}=makeFb("admin");
 import {initExtra,view as cusView,stop as stopExtra,adminHdr,ledger} from "./ad-extra.js";
@@ -235,7 +235,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -308,7 +308,7 @@ function start(){
  if(ROLE.admin||can("req")||can("fl")||vw)listenReqs();
  unsubs.push(onSnapshot(doc(db,"ship","main"),d=>{const v=d.exists()&&d.data().c;SH=v&&typeof v==="object"?v:{};draw()},()=>{}));
  if(ROLE.admin)unsubs.push(onSnapshot(collection(db,"branches"),sn=>{B={};sn.docs.forEach(d=>B[d.id]=d.data().enabled===true);if(tab==="set"&&sub==="br")draw()}));
- if(ROLE.admin)unsubs.push(onSnapshot(collection(db,"secrets"),sn=>{P={};sn.docs.forEach(d=>P[d.id]=d.data().pw);if(tab==="set"&&(sub==="br"||sub==="perm"))draw()}));
+ P=tmpPw;// 🔑 (18 نوفمبر 2026) كلمات المرور لا تُحفظ: P = ما أُنشئ أو تغيّر في فتحة الصفحة هذه فقط (fb.js tmpPw)
  const adm=ROLE.admin;
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك فقط
@@ -323,14 +323,14 @@ function start(){
    ping:ids=>ping(auth,[],[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="mnt"]');if(b)b.innerHTML=mntLbl()}});
   // 🚢 أوامر الشراء: مسؤول المشتريات (p.po) بيعمل الأمر ويحدّث المراحل، والاستلام للمالك و p.rcv بس، والمديرين والمتابع بيشوفوا
   if(ROLE.owner===true)initCat({db,toast,me:{e:me,get n(){return ROLE.name||me}},redraw:()=>{if(tab==="set"&&sub==="cat")draw()}});
-  if(ROLE.owner===true)initHealth({db,toast,me,redraw:()=>{if(tab==="set"&&sub==="hl")draw()}});// 📏 صحة المنصة: للأدمن ومالك النظام
+  if(ROLE.owner===true)initHealth({root:ROLE.root===true,db,toast,me,redraw:()=>{if(tab==="set"&&sub==="hl")draw()}});// 📏 صحة المنصة: للأدمن ومالك النظام
   else catLoad(db).catch(()=>{});// الورقة اليدوية بتقرا الكتالوج من الكاش ده
   if(adm||ROLE.p.po===true||ROLE.p.rcv===true||vw)initPo({db,toast,me:{e:me,get n(){return ROLE.name||me}},owner:ROLE.owner===true,
    edit:!vw&&(ROLE.owner===true||ROLE.p.po===true),rcv:!vw&&(ROLE.owner===true||ROLE.p.rcv===true),redraw:draw,active:()=>tab==="po",
    ping:ids=>ping(auth,[],[],[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="po"]');if(b)b.innerHTML=poLbl()}});
  if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
- if(adm)initStaff({db,toast,tab:()=>tab==="set"&&sub==="perm"?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
+ if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&sub==="perm"?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
  // النسخة الاحتياطية: لمالك النظام بس
  initBackup({db,toast,owner:ROLE.owner===true,redraw:draw});
@@ -390,7 +390,7 @@ function setView(){
 function brView(){
  const info={};BR.forEach(b=>info[code(b)]={n:0,p:0,t:0});
  R.forEach(r=>{const i=info[r.br];if(i){i.n++;i.p+=NUM(r.pcs);i.t=Math.max(i.t,NUM(r.ts))}});
- return `<div class="pan"><div class="fl" style="margin:0 0 12px"><h3 style="margin:0">حسابات الفروع</h3><button class="bt g s" id="genall" style="margin-inline-start:auto">إنشاء حسابات كل الفروع</button><button class="bt s" id="cpall">نسخ رسائل الكل</button></div><div class="tw"><table><thead><tr><th>الفرع</th><th>طلبات</th><th>قطع</th><th>آخر طلب</th><th>الحالة</th><th>🚚 شحن</th><th>كلمة المرور</th><th></th></tr></thead><tbody>${BR.map(b=>{const c=code(b),i=info[c],has=c in B;return `<tr><td class="l">${E(b)}</td><td>${i.n}</td><td>${i.p}</td><td>${i.t?ago(i.t):"—"}</td><td>${has?(B[c]?'<span style="color:var(--done);font-weight:700">مفعّل</span>':'<span style="color:#c4362b;font-weight:700">معطّل</span>'):'<span class="off">غير منشأ</span>'}</td><td>${SH[c]?`<b>${E(SH[c])}</b> `:`<span class="off">—</span> `}<button class="bt s" data-shp="${c}" title="هذا الفرع خارج الرياض والسائق يسلّم طلباته لشركة شحن">${SH[c]?"تعديل":"فرع شحن"}</button></td><td>${P[c]?`<span class="pin" data-pw-cell="${c}">••••••••</span> <button class="bt s" data-sp="${c}">إظهار</button>`:'<span class="off">—</span>'}</td><td style="white-space:nowrap">${has?`<button class="bt s" data-tg="${c}">${B[c]?"تعطيل":"تفعيل"}</button> <button class="bt s" data-pw="${c}">تغيير كلمة المرور</button> ${P[c]?`<button class="bt s" data-cp="${c}">نسخ الرسالة</button>`:""}`:`<button class="bt s g" data-mk="${c}">إنشاء الحساب</button> <button class="bt s" data-ad="${c}">ربط حساب موجود</button>`}</td></tr>`}).join("")}</tbody></table></div><p class="off" style="font-size:13px;margin:12px 0 0">بعد إنشاء كل الحسابات: من Supabase افتح Authentication ثم Sign In / Providers، وأوقف "Allow new users to sign up" ثم Save، حتى لا يسجّل أحد حساباً جديداً.</p></div>`;
+ return `<div class="pan"><div class="fl" style="margin:0 0 12px"><h3 style="margin:0">حسابات الفروع</h3><button class="bt g s" id="genall" style="margin-inline-start:auto">إنشاء حسابات كل الفروع</button><button class="bt s" id="cpall">نسخ رسائل الكل</button></div><div class="tw"><table><thead><tr><th>الفرع</th><th>طلبات</th><th>قطع</th><th>آخر طلب</th><th>الحالة</th><th>🚚 شحن</th><th>كلمة المرور</th><th></th></tr></thead><tbody>${BR.map(b=>{const c=code(b),i=info[c],has=c in B;return `<tr><td class="l">${E(b)}</td><td>${i.n}</td><td>${i.p}</td><td>${i.t?ago(i.t):"—"}</td><td>${has?(B[c]?'<span style="color:var(--done);font-weight:700">مفعّل</span>':'<span style="color:#c4362b;font-weight:700">معطّل</span>'):'<span class="off">غير منشأ</span>'}</td><td>${SH[c]?`<b>${E(SH[c])}</b> `:`<span class="off">—</span> `}<button class="bt s" data-shp="${c}" title="هذا الفرع خارج الرياض والسائق يسلّم طلباته لشركة شحن">${SH[c]?"تعديل":"فرع شحن"}</button></td><td>${P[c]?`<span class="pin" data-pw-cell="${c}">••••••••</span> <button class="bt s" data-sp="${c}">إظهار</button>`:'<span class="off" title="كلمة المرور لا تُحفظ: تظهر مرة واحدة بعد الإنشاء أو التغيير">لا تُحفظ</span>'}</td><td style="white-space:nowrap">${has?`<button class="bt s" data-tg="${c}">${B[c]?"تعطيل":"تفعيل"}</button> <button class="bt s" data-pw="${c}">تغيير كلمة المرور</button> ${P[c]?`<button class="bt s" data-cp="${c}">نسخ الرسالة</button>`:""}`:`<button class="bt s g" data-mk="${c}">إنشاء الحساب</button> <button class="bt s" data-ad="${c}">ربط حساب موجود</button>`}</td></tr>`}).join("")}</tbody></table></div><p class="off" style="font-size:13px;margin:12px 0 0">بعد إنشاء كل الحسابات: من Supabase افتح Authentication ثم Sign In / Providers، وأوقف "Allow new users to sign up" ثم Save، حتى لا يسجّل أحد حساباً جديداً.</p></div>`;
 }
 // 🚀 (15 نوفمبر 2026) رسم واحد لكل فريم: أول الفتح البيانات بتوصل على ~15 دفعة وكل دفعة كانت بترسم الصفحة كلها من الأول.
 // دلوقتي أي طلبات رسم ورا بعض بتتجمّع في رسمة واحدة قبل الفريم الجاي (~16ms)، ووقت ما الديب بيرسم نفسه بتستنى (tzBootHold في ui.js).
@@ -466,21 +466,20 @@ const msg=c=>{const b=BR.find(x=>code(x)===c);return `أهلاً فرع ${b}\nر
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
 const sec=()=>makeFb("sec").auth;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const AERR=e=>({"auth/email-already-in-use":"الحساب موجود في Firebase بالفعل (استخدم: ربط حساب موجود)","auth/operation-not-allowed":"فعّل Email/Password من Authentication في Firebase","auth/weak-password":"كلمة المرور ضعيفة","auth/network-request-failed":"لا يوجد اتصال بالإنترنت","auth/invalid-credential":"كلمة المرور الحالية غير صحيحة","auth/too-many-requests":"محاولات كثيرة، انتظر قليلاً","auth/admin-restricted-operation":"التسجيل متوقف في Firebase. فعّله مؤقتاً من User actions"}[e&&e.code]||("خطأ: "+(e&&e.code||e&&e.message)));
+const AERR=e=>({"auth/email-already-in-use":"الحساب موجود في Firebase بالفعل (استخدم: ربط حساب موجود)","auth/operation-not-allowed":"فعّل Email/Password من Authentication في Firebase","auth/weak-password":"كلمة المرور ضعيفة","auth/network-request-failed":"لا يوجد اتصال بالإنترنت","auth/invalid-credential":"كلمة المرور الحالية غير صحيحة","auth/too-many-requests":"محاولات كثيرة، انتظر قليلاً","x/not-allowed":"غير مسموح لك بتغيير كلمة مرور هذا الحساب","x/no-user":"لا يوجد حساب دخول لهذا المستخدم","x/server":"تعذّر تغيير كلمة المرور. تأكد من تحديث الخادم (wrangler deploy) وأن الإنترنت يعمل","auth/admin-restricted-operation":"التسجيل متوقف في Firebase. فعّله مؤقتاً من User actions"}[e&&e.code]||("خطأ: "+(e&&e.code||e&&e.message)));
 async function mkBranch(c){
  const pw=genPw(),a=sec();
  try{await createUserWithEmailAndPassword(a,emailOf(c),pw)}finally{try{await signOut(a)}catch(e){}}
- await setDoc(doc(db,"secrets",c),{pw});await setDoc(doc(db,"branches",c),{enabled:true});
+ tmpPw[c]=pw;await setDoc(doc(db,"branches",c),{enabled:true});
 }
-async function setPw(c,old,nw){
- const a=sec();
- try{const cr=await signInWithEmailAndPassword(a,emailOf(c),old);await updatePassword(cr.user,nw)}finally{try{await signOut(a)}catch(e){}}
- await setDoc(doc(db,"secrets",c),{pw:nw});
+// 🔑 التغيير من السيرفر (بدون الكلمة القديمة)، والكلمة الجديدة في الذاكرة فقط
+async function setPw(c,nw){
+ await adminSetPw(emailOf(c),nw);tmpPw[c]=nw;
 }
 async function adopt(c,pw){
  const a=sec();
  try{await signInWithEmailAndPassword(a,emailOf(c),pw)}finally{try{await signOut(a)}catch(e){}}
- await setDoc(doc(db,"secrets",c),{pw});await setDoc(doc(db,"branches",c),{enabled:true});
+ tmpPw[c]=pw;await setDoc(doc(db,"branches",c),{enabled:true});
 }
 const cpy=async t=>{try{await navigator.clipboard.writeText(t);toast("تم النسخ")}catch(e){prompt("انسخ الرسالة:",t)}};
 function printReq(r){
@@ -545,8 +544,8 @@ document.addEventListener("click",async e=>{
    if(v===null)return;const nv=String(v).trim().slice(0,60),c2={...SH};if(nv)c2[c]=nv;else delete c2[c];
    await setDoc(doc(db,"ship","main"),{c:c2});toast(nv?`فرع ${c}: شحن عن طريق ${nv}`:`فرع ${c}: عاد فرعاً عادياً`)}
  else if(t.dataset.tg){const c=t.dataset.tg,on=!B[c];if(on||confirm(`تعطيل فرع ${c}؟ لن يتمكن من الدخول أو إرسال الطلبات.`)){await setDoc(doc(db,"branches",c),{enabled:on});toast(on?"تم التفعيل":"تم التعطيل")}}
- else if(t.dataset.pw){const c=t.dataset.pw;if(!P[c]){toast("كلمة المرور الحالية غير مسجلة. استخدم ربط حساب موجود.");return}const nw=prompt("كلمة المرور الجديدة (6 أحرف على الأقل). اتركها فارغة لتوليد كلمة عشوائية:","");if(nw===null)return;await setPw(c,P[c],nw.trim()||genPw());toast("تم تغيير كلمة المرور")}
- else if(t.dataset.ad){const c=t.dataset.ad,pw=prompt(`اكتب كلمة مرور حساب ${emailOf(c)} الموجود في Firebase:`,"");if(!pw)return;await adopt(c,pw.trim());toast("تم الربط")}
+ else if(t.dataset.pw){const c=t.dataset.pw;const nw=prompt("كلمة المرور الجديدة (6 أحرف على الأقل). اتركها فارغة لتوليد كلمة عشوائية:","");if(nw===null)return;await setPw(c,nw.trim()||genPw());toast("تم تغيير كلمة المرور ✅ انسخ الرسالة الآن: الكلمة لا تُحفظ ولن تظهر بعد إغلاق الصفحة");draw()}
+ else if(t.dataset.ad){const c=t.dataset.ad,pw=prompt(`اكتب كلمة مرور حساب ${emailOf(c)} الموجود في Firebase:`,"");if(!pw)return;await adopt(c,pw.trim());toast("تم الربط");draw()}
  else if(t.dataset.cp)cpy(msg(t.dataset.cp));
  else if(t.id==="genall"){
   const todo=BR.map(code).filter(c=>!(c in B));if(!todo.length){toast("كل الحسابات منشأة");return}

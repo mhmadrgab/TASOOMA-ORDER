@@ -378,3 +378,21 @@
  const go=()=>mo.observe(document.body,{subtree:true,attributes:true,attributeFilter:["class"],attributeOldValue:true});
  if(document.body)go();else document.addEventListener("DOMContentLoaded",go);
 })();
+
+// 🐞 (18 نوفمبر 2026) تبليغ تلقائي بأخطاء الصفحات. قبل ذلك كنا نعرف العيب فقط حين يشتكي أحد (مثال: كروت هدايا الفرع بقيت يومين).
+// أي خطأ JavaScript يُرسل للخادم (/err) بدون أي بيانات شخصية ولا هوية المستخدم: نص الخطأ، الملف والسطر، اسم الصفحة،
+// رقم النسخة ونوع المتصفح. بحد أقصى 4 بلاغات لكل فتحة صفحة، ونفس الخطأ مرة واحدة. الأدمن يراها في ⚙ الإعدادات ← صحة المنصة.
+(function(){
+ if(!/(admin|index|driver|ext)\.html$|\/$/.test(location.pathname))return;
+ if(location.origin!=="https://mhmadrgab.github.io")return;// المنصة الحقيقية فقط (لا نسخة التجربة ولا ملف محلي)
+ var seen={},n=0,U="https://tasooma-push.tasooma.workers.dev/err";
+ var skip=/ResizeObserver loop|^Script error\.?$|Load failed|Failed to fetch|NetworkError|AbortError|timeout|permission-denied|operation was aborted|Importing a module script failed|not-found|auth\//i;
+ function send(m,s){
+  m=String(m||"").slice(0,300);if(!m||skip.test(m)||seen[m]||n>=4)return;seen[m]=1;n++;
+  var b=JSON.stringify({m:m,s:String(s||"").slice(0,120),p:(location.pathname.split("/").pop()||"index.html").slice(0,40),v:String(window.__tzVer||"").slice(0,20),ua:String(navigator.userAgent||"").slice(0,160),app:window.TasoomaApp?1:0});
+  try{fetch(U,{method:"POST",headers:{"Content-Type":"application/json"},body:b,keepalive:true}).catch(function(){})}catch(e){}
+ }
+ function at(t){var x=/([\w.\-]+\.(?:js|html))(?:\?[^:\s)]*)?:(\d+):(\d+)/.exec(String(t||""));return x?x[1]+":"+x[2]+":"+x[3]:""}
+ addEventListener("error",function(e){if(e&&e.message)send(e.message,at((e.filename||"")+":"+(e.lineno||0)+":"+(e.colno||0)))});
+ addEventListener("unhandledrejection",function(e){var r=e&&e.reason;if(r==null)return;send(typeof r==="string"?r:(r.message||r.code||""),at(r&&r.stack))});
+})();

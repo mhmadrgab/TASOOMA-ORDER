@@ -2,10 +2,10 @@
 // للأدمن ومالك النظام فقط (⚙ الإعدادات ← صحة المنصة). القياس من دالة db_health() في القواعد (بترجّع null لغيرهم)،
 // وبيتحفظ على الجهاز 6 ساعات. حد الخطة في cfg/plan = {mb} (500 المجاني، 8192 للخطة المدفوعة)، والسيرفر بيقراه
 // وبيبعت إشعاراً يومياً لما المساحة تعدّي 80%. لو القاعدة امتلأت في الخطة المجانية: المنصة تتوقف عن الحفظ.
-import {doc,getDoc,setDoc} from "./fb.js";
+import {doc,getDoc,setDoc,getDocs,collection,query,where} from "./fb.js";
 import {E} from "./cust.js";
 const MB=1048576,KEY="tz_health",TTL=6*36e5;
-let X=null,H=null,PLAN=500,busy=false,err="";
+let X=null,H=null,PLAN=500,busy=false,err="",ER=null;// ER = أخطاء الصفحات آخر 7 أيام (للأدمن فقط)
 const NAMES={pods:"صور التسليم",dm:"الدردشة (رسائل وصور وصوت)",grp:"مجموعات الدردشة",mntimg:"صور الصيانة",giftimg:"سندات الهدايا",requests:"الطلبات",log:"سجل العمليات",cat:"كتالوج الأصناف",pushlog:"سجل الإشعارات",trips:"الرحلات",ann:"التعميمات",ledger:"العهدة والفواتير",poatt:"مرفقات أوامر الشراء",gifts:"الهدايا والعينات",ava:"الصور الشخصية",push:"أجهزة الإشعارات",mnt:"طلبات الصيانة",po:"أوامر الشراء",fuel:"الوقود",call:"المكالمات",staff:"الموظفون",secrets:"كلمات المرور",branches:"الفروع",whdir:"دليل الدردشة",seen:"آخر ظهور",live:"مواقع السائقين",geo:"مواقع الفروع",clean:"جدول النظافة",settlements:"إقفال العهدة",workers:"العمال",chats:"دردشة قديمة"};
 const sz=b=>{b=+b||0;return b>=MB*1024?(b/MB/1024).toFixed(1)+" جيجا":b>=MB?(b/MB).toFixed(b>=10*MB?0:1)+" ميجا":Math.max(1,Math.round(b/1024))+" كيلو"};
 const pctOf=()=>H?Math.min(100,(+H.db||0)/(PLAN*MB)*100):0;
@@ -28,6 +28,7 @@ const CSS=`
 .tzh-row em{font-style:normal;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
 .tzh-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--mut);font-size:13px}.tzh-foot button{font:inherit;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:8px 14px;cursor:pointer}.tzh-foot button:disabled{opacity:.6}
 .tzh-err{color:#9b2a1f;font-weight:700}
+.tzh-er{padding:9px 0;font-size:13px}.tzh-er+.tzh-er{border-top:1px solid var(--line)}.tzh-er b{display:block;font-size:13.5px;font-family:ui-monospace,Consolas,monospace;word-break:break-word;text-align:left;user-select:all}.tzh-er span{display:block;color:var(--mut);margin-top:3px;line-height:1.7}
 @media (max-width:640px){.tzh-row{grid-template-columns:1fr auto}.tzh-row i{display:none}.tzh-top b{font-size:26px}}
 @media (prefers-color-scheme:dark){.tzh-top em{background:#2a301b;color:#b9c68a}.tzh-card.w .tzh-top em{background:#3a2a08;color:#f6c770}.tzh-card.r .tzh-top em{background:#40191a;color:#f1a5a0}.tzh-card.r .tzh-msg,.tzh-err{color:#f1a5a0}}
 `;
@@ -35,11 +36,20 @@ export function initHealth(ctx){
  X=ctx;H=null;err="";busy=false;PLAN=500;
  if(!document.getElementById("tzh-css")){const s=document.createElement("style");s.id="tzh-css";s.textContent=CSS;document.head.appendChild(s)}
  try{const c=JSON.parse(localStorage.getItem(KEY)||"null");if(c&&c.h&&c.e===ctx.me)H=c.h}catch(e){}
- const next=()=>{if(!X)return;if(!H||Date.now()-(+H.at||0)>TTL)load(false);else{paint();warn()}};
+ const next=()=>{if(!X)return;if(!H||Date.now()-(+H.at||0)>TTL)load(false);else{paint();warn();loadErrs()}};
  getDoc(doc(X.db,"cfg","plan")).then(s=>{const v=s.exists()?+s.data().mb:0;if(v>0)PLAN=v}).catch(()=>{}).then(next);
  if(!window.__tzhc){window.__tzhc=1;document.addEventListener("click",click)}
 }
-export function stopHealth(){X=null;H=null;busy=false;err=""}
+export function stopHealth(){X=null;H=null;busy=false;err="";ER=null}
+// 🐞 أخطاء الصفحات (ui.js يبلّغ الخادم بها تلقائياً): للأدمن فقط، آخر 7 أيام، الأكثر تكراراً أولاً
+async function loadErrs(){
+ if(!X||!X.root)return;
+ try{const sn=await getDocs(query(collection(X.db,"errlog"),where("ts",">=",Date.now()-7*864e5)));if(!X)return;ER=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(+b.ts||0)-(+a.ts||0))}
+ catch(e){ER=ER||[]}
+ paint();
+}
+const errsHtml=()=>!X.root||!ER?"":`<div class="tzh-card"><h3>🐞 أخطاء الصفحات (آخر 7 أيام)</h3><small>تُسجَّل تلقائياً من أجهزة المستخدمين دون أي بيانات شخصية. انسخ السطر وأرسله للمبرمج.</small>
+ ${ER.length?ER.slice(0,25).map(x=>`<div class="tzh-er"><b dir="ltr" data-notr>${E(x.m||"")}</b><span><bdi dir="ltr" data-notr>${E([x.p,x.s,x.v].filter(Boolean).join(" · "))}</bdi> · ${(+x.n||1).toLocaleString("en-US")} مرة · آخرها <bdi dir="ltr">${new Date(+x.ts||0).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</bdi>${x.app?" · التطبيق":""}</span></div>`).join(""):'<div class="tzh-foot">لا توجد أخطاء مسجّلة 👌</div>'}</div>`;
 async function load(manual){
  if(!X||busy)return;busy=true;err="";paint();
  try{
@@ -49,7 +59,7 @@ async function load(manual){
   H=r.data;try{localStorage.setItem(KEY,JSON.stringify({e:X.me,h:H}))}catch(e){}
   if(manual&&X.toast)X.toast("تم تحديث القياس ✅");
  }catch(e){err=H?"تعذّر تحديث القياس، تأكد من الإنترنت":"تعذّر قياس المساحة. تأكد من لصق القواعد الجديدة في Supabase"}
- busy=false;if(!X)return;paint();warn();
+ busy=false;if(!X)return;paint();warn();loadErrs();
 }
 // تحذير عند فتح اللوحة (مرة في اليوم) لو المساحة عدّت 80%
 function warn(){
@@ -71,6 +81,7 @@ export function healthView(){
  <div class="tzh-plan">${[[500,"المجانية","500 ميجا · بدون نسخ احتياطي تلقائي"],[8192,"Pro","8 جيجا · نسخة احتياطية يومية"]].map(p=>`<button type="button" class="${PLAN===p[0]?"on":""}" data-hl="plan" data-id="${p[0]}" aria-pressed="${PLAN===p[0]}"><b>${p[1]}</b><small>${p[2]}</small></button>`).join("")}</div></div>
  <div class="tzh-card"><h3>ما الذي يملأ المساحة</h3><small>الصور والمرفقات هي الأكبر دائماً. الأرقام للبيانات نفسها دون الفهارس.</small>
  ${top.map(t=>`<div class="tzh-row"><span>${E(NAMES[t.c]||t.c)}<small>${(+t.n||0).toLocaleString("en-US")} مستند</small></span><i><u style="width:${Math.max(2,(+t.b||0)/mx*100).toFixed(1)}%"></u></i><em>${sz(t.b)}</em></div>`).join("")||'<div class="tzh-foot">لا توجد بيانات</div>'}</div>
+ ${errsHtml()}
  <div class="tzh-foot"><span>آخر قياس: <bdi dir="ltr">${new Date(+H.at||Date.now()).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</bdi></span><button type="button" data-hl="refresh" ${busy?"disabled":""}>${busy?"⏳ جاري القياس...":"🔄 قِس الآن"}</button>${err?`<span class="tzh-err">${E(err)}</span>`:""}</div></div>`;
 }
 async function click(e){
