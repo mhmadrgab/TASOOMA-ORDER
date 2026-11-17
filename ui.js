@@ -242,7 +242,8 @@
 // وأول ما يقفلها مابتظهرش تاني على الجهاز ده (localStorage: tz_news). لرسالة جديدة بعدين: غيّر NEWS_ID والنص.
 (function(){
  if(!/(admin|index|driver)\.html$|\/$/.test(location.pathname))return;
- const NEWS_ID="orders-sheet-2026-11-16";// (16 نوفمبر 2026) كارت "ورقة الطلب عند الفرع". لكارت جديد بعدين: غيّر NEWS_ID والنص
+ const NEWS_ID="calls-app-2026-11-17";// (17 نوفمبر 2026) كارت "المكالمات + تطبيق تاسومة". لكارت جديد بعدين: غيّر NEWS_ID والنص (T) والرسمة (HERO)
+ const APK_URL="https://github.com/mhmadrgab/TASOOMA-ORDER/releases/latest/download/tasooma-driver.apk",UA=navigator.userAgent,DROID=/android/i.test(UA),IOS=/iphone|ipad|ipod/i.test(UA),INAPP=!!window.TasoomaApp;
  try{localStorage.getItem("tz_news")}catch(e){return}// مفيش تخزين = مانعرضش (علشان ماتطلعش كل مرة)
  
  const vis=el=>!!(el&&el.offsetParent!==null);
@@ -256,23 +257,26 @@
    // (16 نوفمبر 2026) كارت خاص بمالك النظام (حساب مدير عليه co) بس: مفتاح تخزين مستقل، وبيظهر له بدل الكارت العام
    const KEY=co?"tz_news_co":"tz_news",ID=co?"coowner-2026-11-16":NEWS_ID;let seen;try{seen=localStorage.getItem(KEY)}catch(e){return}if(seen===ID)return;
   const T={
-   b:{k:"تحديث جديد · طلبات الفروع",t:"طلباتكم الآن على ورقة واحدة واضحة",go:"اعرض طلباتي",
-    L:[["📄","كل طلب بطاقة، وبضغطة ورقة كاملة","اضغط على أي طلب لتراه مرتباً: الأصناف والمقاسات والكميات، وما عدّله المستودع واضحاً."],
-       ["🧭","مراحل الطلب بالوقت","من الإرسال حتى الاستلام، مع وقت كل مرحلة واسم السائق."],
-       ["🧾","إيصال الشحن بين يديك","إذا سُلِّم طلبك لشركة الشحن فاعرض الإيصال والصور والتوقيع من داخل الطلب نفسه."]]},
-   a:{k:"تحديث جديد · طلبات الفروع",t:"الفروع ترى طلباتها الآن على ورقة واضحة",
-    L:[["📄","بطاقة ثم ورقة كاملة","يضغط الفرع على طلبه فيرى المراحل بالوقت والأصناف وتعديلات المستودع عليها."],
-       ["🧾","مرفقات الشحن عند الفرع","إيصال شركة الشحن وصور التسليم والتوقيع تظهر للفرع من داخل طلبه، وطلباته فقط."],
-       ["📷","وضوح الصور مهم","ما يُرفع من صور تسليم يراه الفرع مباشرة، فتأكدوا من وضوحها."]]},
+   b:{k:"تحديث جديد · المكالمات",t:"اتصل بالمستودع من داخل المنصة",
+    L:[["📞","مكالمات صوتية بجودة عالية","افتح أي محادثة في الدردشة واضغط 📞 لتتصل مباشرة، برنّة تاسومة الخاصة."],
+       ["📱","تطبيق تاسومة للأندرويد","بعد تثبيته تصلك المكالمة كاتصال حقيقي يرنّ ويضيء الشاشة حتى والجوال مقفول."],
+       ["📦","الكود يقترح ألوانه ومقاساته","في ورقة النواقص: اكتب الكود فتظهر ألوانه ومقاساته من سيستم الشركة فقط."]]},
+   a:{k:"تحديث جديد · المكالمات",t:"المكالمات الصوتية أصبحت داخل المنصة",
+    L:[["📞","اتصل بأي فرع أو موظف أو سائق","من الدردشة: افتح المحادثة واضغط 📞. جودة عالية، وكتم وتصغير أثناء المكالمة."],
+       ["📱","تطبيق تاسومة للأندرويد","بعد تثبيته تصلك المكالمة كاتصال حقيقي يرنّ ويضيء الشاشة حتى والجوال مقفول."],
+       ["📦","كتالوج الأصناف","الورقة اليدوية وورقة الفروع تقترحان ألوان الكود ومقاساته من سيستم الشركة فقط."]]},
    c:{k:"ترقية حسابك",t:"أصبحت الآن مالك النظام",go:"افتح الإعدادات",
      L:[["👑","كل الصلاحيات بين يديك","الطلبات والعهدة والسيارات والموظفين والصيانة وأوامر الشراء والإعدادات، كلها متاحة لك الآن."],
         ["⚙️","الإعدادات في مكان واحد","تبويب ⚙ الإعدادات يجمع الصلاحيات والموظفين وحسابات الفروع والتقارير."],
         ["🔔","إشعارات المالك تصلك","تصلك إشعارات الطلبات والصيانة والحاويات المتجهة للمستودع كما تصل للأدمن."]]},
-   d:{k:"تحديث جديد · صور التسليم",t:"الفرع يرى صور تسليمك الآن",
-    L:[["📷","صورك تصل إلى الفرع","الصور وإيصال شركة الشحن اللذان تلتقطهما يظهران للفرع داخل طلبه، فاحرص على وضوحهما."],
-       ["📄","ورقة الطلب","يرى الفرع اسمك ووقت خروجك وتسليمك مرتبة على ورقة الطلب."],
-       ["🧭","مراحل بالوقت","كل مرحلة من الطلب تظهر بوقتها الفعلي."]]}
+   d:{k:"تحديث جديد · المكالمات",t:"المستودع والفروع يتصلون بك من المنصة",
+    L:[["📞","مكالمات صوتية داخل المنصة","من الدردشة: افتح المحادثة واضغط 📞 لتتصل بالمستودع أو بالفرع."],
+       ["📱","حدّث التطبيق","بالنسخة الجديدة تصلك المكالمة كاتصال حقيقي يرنّ حتى والجوال مقفول."],
+       ["🔔","رنّة تاسومة","رنّة خاصة بالمنصة لتعرف أن الاتصال للعمل."]]}
   }[role];
+  if(role!=="c"){T.lv=IOS?"📱 تطبيق تاسومة متاح لأجهزة أندرويد حالياً. على الآيفون تصلك المكالمة إشعاراً فيه «رد» و«رفض».":"🔒 المكالمات مشفّرة بين الطرفين، ولا يسمعها أحد غيركما.";
+   if(DROID&&!INAPP){T.go=role==="d"?"⬇️ حدّث التطبيق":"⬇️ ثبّت تطبيق تاسومة";T.url=APK_URL}
+   else if(!DROID&&!IOS&&role==="a"){T.go="📋 انسخ رابط التطبيق للموظفين";T.copy=APK_URL}}
   if(!document.getElementById("tz-news-css")){const s=document.createElement("style");s.id="tz-news-css";s.textContent=`
 #tz-news{position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(30,18,32,.58);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:tzn-f .25s ease both}
 #tz-news .k{position:relative;width:100%;max-width:450px;max-height:calc(100vh - 28px);overflow:auto;background:var(--card,#fffaf3);color:var(--ink,#2a1d2c);border-radius:28px;box-shadow:0 0 0 1px rgba(180,138,171,.25),0 40px 90px rgba(30,15,35,.55);text-align:start;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;animation:tzn-u .5s cubic-bezier(.16,1,.3,1) both;-webkit-overflow-scrolling:touch}
@@ -316,21 +320,46 @@
   const d=document.createElement("div");d.id="tz-news";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-labelledby","tz-news-t");
   d.innerHTML=`<div class="k"><div class="tn-hero"><span class="tn-dot tn-d1"></span><span class="tn-dot tn-d2"></span>
 <div class="tn-lgo"><img src="./icon-192.png" alt=""><span>تاسومة</span></div><span class="tn-nw">جديد</span><button class="tn-xb" type="button" data-n="x" aria-label="إغلاق">✕</button>
-<div class="tn-ps tn-bk"></div>${role==="c"?`<div class="tn-ps"><div class="tn-t"><b>مالك النظام</b><span>مفعّل</span></div><div style="font-size:46px;text-align:center;margin:8px 0 6px">👑</div><div class="tn-at"><b>📦 الطلبات</b><b>👥 الموظفين</b><b>⚙ الإعدادات</b></div></div>`:`<div class="tn-ps"><div class="tn-t"><b>003-EL MALQA</b><span>تم التسليم</span></div><div class="tn-tl"><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i class="tn-on"></i><i></i></div>
-<div class="tn-r"><u></u><u></u><u></u></div><div class="tn-r"><u></u><u></u><u></u></div><div class="tn-at"><b>🧾 الإيصال</b><b>📷 الصور</b></div></div>`}</div>
+<div class="tn-ps tn-bk"></div>${role==="c"?`<div class="tn-ps"><div class="tn-t"><b>مالك النظام</b><span>مفعّل</span></div><div style="font-size:46px;text-align:center;margin:8px 0 6px">👑</div><div class="tn-at"><b>📦 الطلبات</b><b>👥 الموظفين</b><b>⚙ الإعدادات</b></div></div>`:`<div class="tn-ps" style="text-align:center"><div class="tn-t"><b>مكالمة واردة</b><span>تاسومة</span></div><div style="width:48px;height:48px;border-radius:50%;margin:12px auto 10px;background:linear-gradient(150deg,#c9a3c0,#8a5a83);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:21px">ت</div><div style="display:flex;justify-content:center;gap:26px"><span style="width:32px;height:32px;border-radius:50%;background:#e5372b;display:block"></span><span style="width:32px;height:32px;border-radius:50%;background:#34c759;display:block"></span></div></div>`}</div>
 <div class="tn-hd"><small>${T.k}</small><b id="tz-news-t">${T.t}</b></div>
 <div class="b"><ul>${T.L.map(x=>`<li><i>${x[0]}</i><div><b>${x[1]}</b><span>${x[2]}</span></div></li>`).join("")}</ul>
-<div class="tn-lv">⚡ <span style="display:inline;font-size:13px;color:inherit">الطلبات والتغييرات الجديدة تصل لحظياً دون إعادة تحميل الصفحة.</span></div></div>
+<div class="tn-lv"><span style="display:inline;font-size:13px;color:inherit">${T.lv||"⚡ الطلبات والتغييرات الجديدة تصل لحظياً دون إعادة تحميل الصفحة."}</span></div></div>
 <div class="f">${T.go?`<button type="button" data-n="go">${T.go}</button><button type="button" class="g" data-n="x">لاحقاً</button>`:`<button type="button" data-n="x">ابدأ الاستخدام</button>`}<small>شكراً لكم، فريق تاسومة 🤍</small></div></div>`;
   const close=()=>{try{localStorage.setItem(KEY,ID)}catch(e){}d.remove();document.removeEventListener("keydown",esc)};
   const esc=e=>{if(e.key==="Escape")close()};
   d.addEventListener("click",e=>{if(e.target===d){close();return}const b=e.target.closest&&e.target.closest("[data-n]");if(!b)return;close();
    // "اعرض طلباتي": الصفحة (index.html) بتسمع وبتفتح آخر طلب
-   if(b.dataset.n==="go"){try{window.dispatchEvent(new CustomEvent("tz-news-go"))}catch(x){}}});
+   if(b.dataset.n==="go"){
+    if(T.url){try{location.href=T.url}catch(x){}}
+    else if(T.copy){const say=m=>{const o=document.createElement("div");o.textContent=m;o.style.cssText="position:fixed;z-index:99991;left:50%;bottom:24px;transform:translateX(-50%);background:#2a1d2c;color:#fff;border-radius:999px;padding:10px 18px;font:600 14px/1.4 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;box-shadow:0 10px 28px rgba(0,0,0,.3)";document.body.appendChild(o);setTimeout(()=>o.remove(),2600)};
+     try{navigator.clipboard.writeText(T.copy).then(()=>say("✅ تم نسخ رابط التطبيق. أرسله للموظفين والفروع"),()=>prompt("انسخ رابط التطبيق:",T.copy))}catch(x){prompt("انسخ رابط التطبيق:",T.copy)}}
+    else{try{window.dispatchEvent(new CustomEvent("tz-news-go"))}catch(x){}}}});
   document.addEventListener("keydown",esc);
   document.body.appendChild(d);setTimeout(()=>{const b=d.querySelector(".f button");if(b)b.focus({preventScroll:true})},300);
   // (15 نوفمبر 2026، محمد: "بيظهر كل مرة رغم إنه شافه") بتتسجّل "اتشافت" بعد ما تبان ثانيتين، مش بس لما يقفلها
   setTimeout(()=>{if(d.isConnected){try{localStorage.setItem(KEY,ID)}catch(e){}}},2000);
+ }
+})();
+// 📱 كارت "ثبّت تطبيق تاسومة" (17 نوفمبر 2026، طلب محمد "لجميع الحسابات"): شريط فوق الصفحة بعد الدخول، على أندرويد من المتصفح بس
+// (جوه التطبيق مابيظهرش، والآيفون/الكمبيوتر مالهمش تطبيق). ✕ بيخفيه أسبوع، وبعد 3 مرات مابيظهرش تاني على الجهاز ده.
+(function(){
+ if(!/(admin|index)\.html$|\/$/.test(location.pathname))return;// صفحة السائق فيها كارت التطبيق بتاعها
+ if(!/android/i.test(navigator.userAgent)||window.TasoomaApp)return;
+ const APK="https://github.com/mhmadrgab/TASOOMA-ORDER/releases/latest/download/tasooma-driver.apk";
+ let st={t:0,n:0};try{st=Object.assign(st,JSON.parse(localStorage.getItem("tz_appcard")||"{}"))}catch(e){return}
+ if(st.n>=3||Date.now()-st.t<7*864e5)return;
+ const vis=el=>!!(el&&el.offsetParent!==null);
+ const ok=()=>window.__uiOk&&!document.getElementById("boot")&&![...document.querySelectorAll('input[type="password"]')].some(vis);
+ const t0=Date.now(),iv=setInterval(()=>{if(Date.now()-t0>15*6e4){clearInterval(iv);return}if(ok()&&!document.getElementById("tz-news")){clearInterval(iv);show()}},1200);
+ function show(){
+  if(document.getElementById("tz-app"))return;
+  const s=document.createElement("style");s.textContent="#tz-app{display:flex;align-items:center;gap:12px;margin:10px 12px 0;padding:12px 14px;border-radius:18px;background:linear-gradient(120deg,#3a2540,#2a1d2c);color:#fff;direction:rtl;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;box-shadow:0 10px 26px rgba(42,29,44,.28);animation:tzapp-in .35s cubic-bezier(.16,1,.3,1) both}@keyframes tzapp-in{from{opacity:0;transform:translateY(-10px)}}#tz-app img{width:44px;height:44px;border-radius:12px;background:#fff;flex:none}#tz-app .tx{flex:1;min-width:0}#tz-app b{display:block;font-size:15.5px}#tz-app small{display:block;color:#e3c8dd;font-size:12.5px;line-height:1.5}#tz-app a{flex:none;background:#b48aab;color:#1d1720;text-decoration:none;font-weight:700;font-size:14.5px;border-radius:12px;padding:10px 14px;white-space:nowrap}#tz-app button{flex:none;width:32px;height:32px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:15px;cursor:pointer;line-height:1}@media (prefers-reduced-motion:reduce){#tz-app{animation:none}}@media print{#tz-app{display:none}}";
+  document.head.appendChild(s);
+  const d=document.createElement("div");d.id="tz-app";d.setAttribute("role","region");d.setAttribute("aria-label","تطبيق تاسومة");
+  d.innerHTML='<img src="./icon-192.png" alt=""><div class="tx"><b>ثبّت تطبيق تاسومة</b><small>تصلك المكالمات كاتصال حقيقي والإشعارات فوراً، حتى والجوال مقفول.</small></div><a href="'+APK+'">⬇️ تثبيت</a><button type="button" aria-label="إخفاء">✕</button>';
+  d.querySelector("button").onclick=()=>{try{localStorage.setItem("tz_appcard",JSON.stringify({t:Date.now(),n:(st.n||0)+1}))}catch(e){}d.remove()};
+  d.querySelector("a").onclick=()=>{try{localStorage.setItem("tz_appcard",JSON.stringify({t:Date.now(),n:st.n||0}))}catch(e){}setTimeout(()=>d.remove(),400)};
+  document.body.insertBefore(d,document.body.firstChild);
  }
 })();
 // 🎬 (13 نوفمبر 2026، transitions.dev) قفل النوافذ بنعومة: أي نافذة بتتقفل (بيتشال منها "on")، بنسيبها ظاهرة 150ms
