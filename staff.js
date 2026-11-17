@@ -29,7 +29,7 @@ export function syncDir(){
  // كل الموظفين المفعّلين (ما عدا المتابع): r = admin/req بيكلّموا الفروع، و staff بيكلّموا السائقين والموظفين بس (نوفمبر 2026)
  // نوفمبر 2026 (طلب محمد): مدير التسويق (gm) وصاحب الشركة (v) بقوا في الشات، في قسم "الإدارة" مع المديرين، وظاهرين لكل الفروع
  // w = يظهر للفروع في قسم "المستودع" بالشات (المالك بيختاره من تبويب الموظفين، staff.cw). المالك ظاهر دايماً
- S.forEach(s=>{const id=String(s.id).toLowerCase();if(id!==X.me&&s.enabled){want[id]={n:String(s.name||id.split("@")[0]).slice(0,60),k:String(s.k||"").slice(0,40),r:s.v===true?"v":s.admin===true?"admin":(s.p&&s.p.gm)?"gm":(s.p&&s.p.req)?"req":"staff"};if(s.cw===true)want[id].w=true}});
+ S.forEach(s=>{const id=String(s.id).toLowerCase();if(id!==X.me&&s.enabled&&!(s.p&&s.p.nc===true&&s.co!==true)){want[id]={n:String(s.name||id.split("@")[0]).slice(0,60),k:String(s.k||"").slice(0,40),r:s.v===true?"v":s.admin===true?"admin":(s.p&&s.p.gm)?"gm":(s.p&&s.p.req)?"req":"staff"};if(s.cw===true)want[id].w=true}});
  Object.entries(want).forEach(([id,v])=>{const o=WD[id];if(!o||o.n!==v.n||(o.k||"")!==v.k||o.r!==v.r||!!o.w!==!!v.w)setDoc(doc(X.db,"whdir",id),v).catch(()=>{})});
  Object.keys(WD).forEach(id=>{if(!want[id])deleteDoc(doc(X.db,"whdir",id)).catch(()=>{})});
 }
@@ -44,7 +44,7 @@ export function view(){
  const you=id=>id===me?' <span class="pill go">أنت</span>':"";
  const st=s=>`<span class="pill ${s.enabled?"":"off2"}">${s.enabled?"مفعّل":"معطّل"}</span>`;
  const pwc=s=>`<td>${pw[s.id]?`<span class="pin" data-spc="${E(s.id)}">••••••••</span> <button class="bt s" data-sf="show" data-id="${E(s.id)}" type="button">إظهار</button>`:'<span class="off">—</span>'}</td>`;
- const acts=(s,role)=>s.co&&!X.root?'<td></td>':`<td style="white-space:nowrap">${role}<button class="bt s" data-sf="tg" data-id="${E(s.id)}" type="button">${s.enabled?"تعطيل":"تفعيل"}</button> <button class="bt s" data-sf="pw" data-id="${E(s.id)}" type="button">كلمة مرور جديدة</button> <button class="bt s" data-sf="cp" data-id="${E(s.id)}" type="button">نسخ رسالة</button> <button class="bt s r" data-sf="del" data-id="${E(s.id)}" type="button">حذف</button></td>`;
+ const acts=(s,role)=>s.co&&!X.root?'<td></td>':`<td style="white-space:nowrap">${role}${s.co?"":`<button class="bt s ${s.p&&s.p.nc===true?"r":""}" data-sf="chat" data-id="${E(s.id)}" type="button" title="فتح أو قفل الدردشة لهذا الموظف">${s.p&&s.p.nc===true?"💬 الدردشة مقفولة":"💬 الدردشة مفتوحة"}</button> `}<button class="bt s" data-sf="tg" data-id="${E(s.id)}" type="button">${s.enabled?"تعطيل":"تفعيل"}</button> <button class="bt s" data-sf="pw" data-id="${E(s.id)}" type="button">كلمة مرور جديدة</button> <button class="bt s" data-sf="cp" data-id="${E(s.id)}" type="button">نسخ رسالة</button> <button class="bt s r" data-sf="del" data-id="${E(s.id)}" type="button">حذف</button></td>`;
  const empty=(n,t)=>`<tr><td colspan="${n}" class="off" style="text-align:center;padding:18px">${t}</td></tr>`;
  // قسم مالك النظام وخانة الإضافة بيظهروا للمالك بس؛ المديرين بيشوفوا المديرين والمحاسبين بس
  // الاسم بالصورة + الكنية (المالك بيكتبها، وبتظهر جنب الاسم في الدردشة)
@@ -109,7 +109,8 @@ async function click(e){
   if((a==="tocoo"||a==="unco")&&!X.root){X.toast("تعيين ملّاك النظام وإزالتهم للأدمن فقط");return}
  try{
   if(a==="add")await add();
-  else if(a==="tocoo"&&s){if(confirm(`ترقية ${s.name} لمالك نظام؟\n\nسيحصل على كل صلاحياتك تقريباً: الموظفين والعهدة والطلبات والإعدادات وغيرها. ولن يستطيع لمس حساب الأدمن ولا تعيين ملّاك آخرين.`)){await updateDoc(doc(X.db,"staff",id),{co:true,admin:true});X.toast("👑 أصبح مالك نظام")}}
+  else if(a==="chat"&&s){const off=!(s.p&&s.p.nc===true);if(!off||confirm(`قفل الدردشة لـ ${s.name}؟\nلن يرى المحادثات ولا يستطيع المراسلة حتى تفتحها له مرة أخرى.`)){await updateDoc(doc(X.db,"staff",id),{"p.nc":off});X.toast(off?"🔒 قُفلت الدردشة لـ "+s.name:"💬 فُتحت الدردشة لـ "+s.name)}}
+   else if(a==="tocoo"&&s){if(confirm(`ترقية ${s.name} لمالك نظام؟\n\nسيحصل على كل صلاحياتك تقريباً: الموظفين والعهدة والطلبات والإعدادات وغيرها. ولن يستطيع لمس حساب الأدمن ولا تعيين ملّاك آخرين.`)){await updateDoc(doc(X.db,"staff",id),{co:true,admin:true});X.toast("👑 أصبح مالك نظام")}}
    else if(a==="unco"&&s){if(confirm(`إزالة صلاحية مالك النظام من ${s.name}؟\nسيرجع مديراً عادياً.`)){await updateDoc(doc(X.db,"staff",id),{co:false});X.toast("رجع مديراً عادياً")}}
    else if((a==="toadm"||a==="toacc")&&s){const up=a==="toadm";
    if(confirm(up?`ترقية ${s.name} لمدير؟`:`تحويل ${s.name} لمحاسب؟`)){await updateDoc(doc(X.db,"staff",id),{admin:up});X.toast(up?"أصبح مديراً 🛡":"أصبح محاسباً")}}

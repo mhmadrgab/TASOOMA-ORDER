@@ -505,6 +505,7 @@ import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.
 import {initTrack,stopTrack,trackBtn} from "./track.js";
 import {initSheet,stopSheet} from "./brsheet.js";
 import {catLoad,catSheet} from "./cat.js";
+import {initCall,stopCall} from "./call.js";
 const {app,db,auth}=makeFb("branch");
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام",go:"في الطريق إليك 🚚"};
 const ST=x=>LBL[x]?x:"new";
@@ -630,7 +631,7 @@ function enter(b){
   mount:btn=>{const a=document.getElementById("gfbtn")||document.getElementById("me");if(a)a.parentNode.insertBefore(btn,a.nextSibling)}});
  // الدردشة الخاص مع المستودع (زرار عائم 💬 + زرار "تواصل مع المستودع" فوق + زرار على كل طلب): الفرع بيختار يكلّم مين،
  // وكل محادثة خاصة بين الفرع والشخص ده بس
- initBChat({db,app,party:"b-"+code(b),codes:BR,name:()=>String(st&&st.dr||"").trim(),myLabel:()=>b,brn:c=>BR.find(x=>code(x)===c)||(c===code(b)?b:c),toast,beep,notify,ping:c=>ping(auth,[],[c]),
+ initCall({db,auth,party:"b-"+code(b),name:()=>"فرع "+b,toast});initBChat({db,app,party:"b-"+code(b),codes:BR,name:()=>String(st&&st.dr||"").trim(),myLabel:()=>b,brn:c=>BR.find(x=>code(x)===c)||(c===code(b)?b:c),toast,beep,notify,ping:c=>ping(auth,[],[c]),
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))},onBadge:setBadge});
  // فتح من الإشعار: index.html?chat=إيميل الشخص (بيفتح محادثته على طول بعد ما الأسماء تتحمّل)
  const qc=new URLSearchParams(location.search).get("chat");if(qc!==null){setTimeout(()=>openBr((q=>/^g_/.test(q)?q:q.toLowerCase())(qc)),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}
@@ -650,7 +651,7 @@ function deepReq(id){
 // كارت التحديث (ui.js) زرار "اعرض طلباتي": ننزل لقايمة الطلبات ونفتح آخر طلب كورقة (لو فيه طلبات)
 window.addEventListener("tz-news-go",()=>{const my=g("my");if(my)my.scrollIntoView({behavior:"smooth",block:"start"});const c=document.querySelector("#ml .mr[data-id]"),b=c&&c.querySelector("[data-osh]");if(b)setTimeout(()=>b.click(),500)});
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
-function gateOn(){B=null;stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopCall();stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("mx").onclick=()=>{signOut(auth)};
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");

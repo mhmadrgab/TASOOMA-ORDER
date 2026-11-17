@@ -270,7 +270,7 @@ const GRP={w:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإد�
 const IMG_IC=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
 // ---------- المحادثة نفسها (مشتركة بين اللوحة والفرع والسائق) ----------
 function convHtml(){
-  return `<div class="bch"><button class="bcback" data-bcback type="button" aria-label="رجوع">→</button><span id="bcav"></span><div><b id="bct"></b><small id="bcsub"></small></div>${modal()?`<button data-bcclose type="button" aria-label="إغلاق">✕</button>`:""}</div>
+  return `<div class="bch"><button class="bcback" data-bcback type="button" aria-label="رجوع">→</button><span id="bcav"></span><div><b id="bct"></b><small id="bcsub"></small></div><button id="bccall" data-bccall type="button" aria-label="مكالمة صوتية" title="مكالمة صوتية" hidden>📞</button>${modal()?`<button data-bcclose type="button" aria-label="إغلاق">✕</button>`:""}</div>
   <div class="bcms" id="bcms"></div>
   <button class="bcdown" id="bcdown" data-bcdown type="button" aria-label="آخر رسالة" title="آخر رسالة" hidden>${IC.down}</button>
   <div class="bcrq" id="bcrq" hidden></div>
@@ -304,6 +304,7 @@ function wire(el){
     if(t.closest("[data-bcrqx]")){if(CUR)delete CTX[CUR];paintCtx();return}
     if(t.closest("[data-bcdown]")){const b=g("bcms");if(b)b.scrollTo({top:b.scrollHeight,behavior:"smooth"});return}
     if(t.closest("[data-bcmore]")){keepTop={h:g("bcms").scrollHeight,t:g("bcms").scrollTop};LIM+=PAGE;listen(GEN);return}
+    if(t.closest("[data-bccall]")){if(CUR&&!isG(CUR)){const p=peerOf(CUR);dispatchEvent(new CustomEvent("tz-call-start",{detail:{to:p,name:pname(p,CUR)}}))}return}
     if(t.closest("[data-bcback]")){if(ROOT)ROOT.classList.remove("open");setCode(null);paintList();return}
     if(t.closest("[data-bcclose]"))return void closeBr();
     const f=t.closest("[data-bcf]");if(f){FILT=f.dataset.bcf;el.querySelectorAll("[data-bcf]").forEach(b=>b.classList.toggle("on",b.dataset.bcf===FILT));paintList();return}
@@ -322,6 +323,7 @@ function paintDown(){const b=g("bcdown"),m=g("bcms");if(b&&m)b.hidden=!CUR||m.sc
 function paintHead(){
   if(!g("bct"))return;
   const av=g("bcav");if(av)av.innerHTML="";
+  {const cb=g("bccall");if(cb)cb.hidden=!CUR||!window.__tzCall||isG(CUR)}
   if(!CUR){g("bct").textContent="";g("bcsub").textContent="";return}
   const p=peerOf(CUR),k=pk(p),n=pname(p,CUR);
   if(isG(CUR)){const G=SUMS[CUR]||{},ms=Array.isArray(G.ms)?G.ms:[];
