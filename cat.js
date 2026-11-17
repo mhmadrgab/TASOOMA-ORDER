@@ -4,7 +4,7 @@
 // - كل جهاز بينزّل الكتالوج مرة واحدة لكل نسخة (v) ويحتفظ بيه في localStorage (tz_cat)، فالكتابة فورية ومن غير قراءات زيادة.
 // - ورقة نواقص الفرع (catSheet): اقتراحات الكود من الكتالوج، واللون = ألوان الكود ده بس، والمقاس = مقاسات الكود واللون دول بس،
 //   والـ UPC (مسدس باركود أو كتابة) بيملّى الكود واللون والمقاس لوحده. الكود/اللون/المقاس اللي مش في السيستم بيتعلّم بالأصفر (تحذير بس، مش منع).
-import {doc,getDoc,writeBatch} from "./fb.js";
+const FB=()=>import("./fb.js");// وقت الحاجة بس: الورقة اليدوية (sheet.html) بتستورد الملف ده من غير Supabase
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
@@ -26,10 +26,13 @@ function index(raw){
  return {v:N(raw.v),at:N(raw.at),src:raw.src||"",by:raw.by||null,n:codes.size,rows:raw.r.length,codes,upc,raw};
 }
 export const catNow=()=>CAT;
+// الورقة اليدوية (iframe): الكتالوج من الكاش اللي اللوحة نزّلته
+export function catFromCache(){const r=readCache();if(r&&(!CAT||N(CAT.v)!==N(r.v)))CAT=index(r);return CAT}
 export function catLoad(db,force){
  if(LOADING&&!force)return LOADING;
  LOADING=(async()=>{
   const cached=readCache();
+  const {doc,getDoc}=await FB();
   let m=null;try{const s=await getDoc(doc(db,"cat","meta"));m=s.exists()?s.data():null}catch(e){m=null}
   if(!m){if(cached)CAT=index(cached);return CAT}
   if(cached&&N(cached.v)===N(m.v)){CAT=index(cached);return CAT}
@@ -57,12 +60,13 @@ export function catCheck(k,cl,z){
 
 // ---------- ورقة نواقص الفرع ----------
 const opts=L=>L.map(x=>`<option value="${E(x)}">`).join("");
-let SHEETON=false;
+let SHEETON=false,REFRESH=null;
 export function catSheet(){
- if(SHEETON||!CAT||!g("rs"))return;SHEETON=true;
+ if(SHEETON){if(REFRESH)REFRESH();return}
+ if(!CAT||!g("rs"))return;SHEETON=true;
  const dc=g("dc"),dz=g("dz"),DC0=dc?dc.innerHTML:"",DZ0=dz?dz.innerHTML:"";
  let dk=g("dk");if(!dk){dk=document.createElement("datalist");dk.id="dk";document.body.appendChild(dk)}
- dk.innerHTML=[...CAT.codes.values()].map(o=>`<option value="${E(o.c)}"${o.n?` label="${E(o.n)}"`:""}>`).join("");
+ const fillDk=()=>{dk.innerHTML=[...CAT.codes.values()].map(o=>`<option value="${E(o.c)}"${o.n?` label="${E(o.n)}"`:""}>`).join("")};fillDk();
  if(!g("cat-css")){const s=document.createElement("style");s.id="cat-css";s.textContent=`#rs input.catw{box-shadow:inset 0 0 0 2px #e8a317!important;background:color-mix(in srgb,#e8a317 12%,var(--field,#fff))!important}
 #catn{margin:8px 0 0;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,#e8a317 14%,transparent);color:var(--ink,#2a1d2c);font-size:13.5px;line-height:1.6}
 #catn[hidden]{display:none}`;document.head.appendChild(s)}
@@ -94,6 +98,7 @@ export function catSheet(){
    const S=sizesFor(o,C&&C.value);if(Z&&!Z.value.trim()&&S.length===1)set(Z,S[0])}}
   later()});
  const mo=new MutationObserver(later);mo.observe(g("rs"),{childList:true});
+ REFRESH=()=>{fillDk();markAll()};
  markAll();
 }
 
@@ -198,6 +203,7 @@ async function publish(){
  if(!confirm(`نشر الكتالوج الجديد؟\n${PREV.codes} كود · ${PREV.rows.length} صنف\nسيحل محل الكتالوج الحالي عند كل الفروع.`))return;
  BUSY=true;redraw();
  try{
+  const {doc,writeBatch}=await FB();
   const v=Date.now(),R=PREV.rows,parts=Math.max(1,Math.ceil(R.length/PART)),old=CAT?Math.max(0,N(CAT.raw&&CAT.raw.parts)||Math.ceil(CAT.rows/PART)):0;
   const b=writeBatch(X.db);
   for(let i=0;i<parts;i++){const r=R.slice(i*PART,(i+1)*PART),nm={};r.forEach(a=>{if(PREV.nm[a[0]])nm[a[0]]=PREV.nm[a[0]]});b.set(doc(X.db,"cat","p"+i),{v,r,nm})}

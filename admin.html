@@ -148,7 +148,7 @@ import {initZoom} from "./zoom.js";
 import {initGifts,stopGifts,giftsView,pendingCount as giftPend} from "./gifts.js";
 import {initMnt,stopMnt,mntView,mntCount} from "./mnt.js";
 import {initPo,stopPo,poView,poCount} from "./po.js";
-import {initCat,catAdminView} from "./cat.js";
+import {initCat,catAdminView,catLoad} from "./cat.js";
 import {initAnn,stopAnn,annBtn} from "./ann.js";
 import {initShort,stopShort,shortView,weeklyCfgView} from "./short.js";
 import {initStaff,view as staffView,stop as stopStaff,syncDir,staffName,OWNER_NAME} from "./staff.js";
@@ -321,6 +321,7 @@ function start(){
    ping:ids=>ping(auth,[],[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="mnt"]');if(b)b.innerHTML=mntLbl()}});
   // 🚢 أوامر الشراء: مسؤول المشتريات (p.po) بيعمل الأمر ويحدّث المراحل، والاستلام للمالك و p.rcv بس، والمديرين والمتابع بيشوفوا
   if(ROLE.owner===true)initCat({db,toast,me:{e:me,get n(){return ROLE.name||me}},redraw:()=>{if(tab==="set"&&sub==="cat")draw()}});
+  else catLoad(db).catch(()=>{});// الورقة اليدوية بتقرا الكتالوج من الكاش ده
   if(adm||ROLE.p.po===true||ROLE.p.rcv===true||vw)initPo({db,toast,me:{e:me,get n(){return ROLE.name||me}},owner:ROLE.owner===true,
    edit:!vw&&(ROLE.owner===true||ROLE.p.po===true),rcv:!vw&&(ROLE.owner===true||ROLE.p.rcv===true),redraw:draw,active:()=>tab==="po",
    ping:ids=>ping(auth,[],[],[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="po"]');if(b)b.innerHTML=poLbl()}});

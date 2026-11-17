@@ -240,6 +240,10 @@ body[data-ty="tr"] .rc:not(.to) small{color:#7fd0dc}
 <datalist id="dc"></datalist><datalist id="dz"></datalist><div class="toq" id="toq" hidden></div><div class="act"><button class="b p" id="tr2" type="button" hidden>📤 أرسلها طلباً للفرع</button><button class="b p" id="pr" type="button">طباعة الورقة</button><button class="b" id="add" type="button">+ سطر</button><button class="b" id="cp" type="button">نسخ كنص</button><button class="b" id="so" type="button">رتّب حسب الكود</button><button class="b" id="sh" type="button">وضع الصورة</button><button class="b" id="clr" type="button">+ ورقة جديدة</button></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script type="module">/* 📦 كتالوج الأصناف (17 نوفمبر 2026): الكود ← ألوانه بس ← مقاساته بس، من الكاش اللي اللوحة نزّلته */
+import {catFromCache,catSheet} from "./cat.js";
+const go=()=>{try{if(catFromCache())catSheet()}catch(e){}};go();
+addEventListener("storage",e=>{if(e.key==="tz_cat")go()});</script>
 <script>
 const BR=["002-BAHA","003-EL MALQA","004-GERNATA","005-EL MADAR","006-KING ABDALLA","007-EL RABYE","008-ELEZDHAR","009-Z LABAN","010-EL ROWPY","011-EL SADA","012-BRANCH","013-ABHA CITY","014-RAFAL PLAZA","015-ONLINE","017-ELQASEEM","019-EL AQEQ","021-HAMDANIA","022-HAFAR AL BATIN","023-Al Ahsa","024-JED-AlSamer","027-HAIL","028-KHAMIS MUSHAIT","029-ALAJAWEED","030-TABUK","031-KHOBAR","032-JIZAN","033-SUWAIDI","034-DAREEN MALL"];
 const $=s=>document.querySelector(s),K=["k","c","z","q","n"];
