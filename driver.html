@@ -98,6 +98,8 @@ import {initBChat,stopBChat,openBr} from "./bchat.js";
 import {initCall,stopCall} from "./call.js";
 // قائمة الفروع (نفس اللي في admin.html و index.html و sheet.html): للشات مع الفروع
 const BRL=["002-BAHA","003-EL MALQA","004-GERNATA","005-EL MADAR","006-KING ABDALLA","007-EL RABYE","008-ELEZDHAR","009-Z LABAN","010-EL ROWPY","011-EL SADA","012-BRANCH","013-ABHA CITY","014-RAFAL PLAZA","015-ONLINE","017-ELQASEEM","019-EL AQEQ","021-HAMDANIA","022-HAFAR AL BATIN","023-Al Ahsa","024-JED-AlSamer","027-HAIL","028-KHAMIS MUSHAIT","029-ALAJAWEED","030-TABUK","031-KHOBAR","032-JIZAN","033-SUWAIDI","034-DAREEN MALL"];
+// ➕ (18 نوفمبر 2026) الفروع المضافة من إعدادات المستودع (brx/main)
+const BRL0=BRL.length,brxApply=l=>{BRL.length=BRL0;const s=new Set(BRL.map(b=>b.split("-")[0]));(Array.isArray(l)?l:[]).forEach(b=>{b=String(b);const c=b.split("-")[0];if(/^\d{3}-[^<>"'&\\\/]{2,40}$/.test(b)&&!s.has(c)){s.add(c);BRL.push(b)}});BRL.sort((a,b)=>a.split("-")[0]<b.split("-")[0]?-1:1)};try{brxApply(JSON.parse(localStorage.getItem("tz_brx")||"[]"))}catch(x){}
 const {app,db,auth}=makeFb("drv");
 const g=id=>document.getElementById(id);
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -316,6 +318,7 @@ function startAll(){
  un.push(onSnapshot(collection(db,"cars"),sn=>{CARS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(c=>c.active!==false);draw()},()=>toast("تعذر قراءة السيارات","er")));
  // الفروع اللي خارج الرياض (ship/main = {c:{كود الفرع: اسم شركة الشحن}}): السائق بيسلّمها لشركة الشحن مش للفرع
  un.push(onSnapshot(doc(db,"ship","main"),d=>{const v=d.exists()&&d.data().c;SHIPS=v&&typeof v==="object"?v:{};draw()},()=>{}));
+ un.push(onSnapshot(doc(db,"brx","main"),d=>{const l=d.exists()&&Array.isArray(d.data().l)?d.data().l.map(String):[];brxApply(l);try{localStorage.setItem("tz_brx",JSON.stringify(l))}catch(x){}},()=>{}));
  un.push(onSnapshot(doc(db,"geo","main"),d=>{const v=d.exists()?d.data():null;GEO={br:(v&&v.br&&typeof v.br==="object")?v.br:{},wh:v&&v.wh||null,pairs:(v&&v.pairs&&typeof v.pairs==="object")?v.pairs:{}};draw()},()=>{}));
  // توفير القراءات: السائق محتاج بس الطلبات اللي لا يزال عنده (قيد التجهيز / في الطريق)، مش كل اللي سلّمه من أول يوم
  un.push(onSnapshot(query(collection(db,"requests"),where("asg.drv","==",me.id),where("st","in",["prep","go"])),sn=>{
