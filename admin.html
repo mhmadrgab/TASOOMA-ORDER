@@ -150,6 +150,7 @@ import {initMnt,stopMnt,mntView,mntCount} from "./mnt.js";
 import {initPo,stopPo,poView,poCount} from "./po.js";
 import {initCat,catAdminView,catLoad} from "./cat.js";
 import {initHealth,stopHealth,healthView} from "./health.js";
+import {initPwSelf,stopPwSelf} from "./pwself.js";
 import {initCall,stopCall} from "./call.js";
 import {initAnn,stopAnn,annBtn} from "./ann.js";
 import {initShort,stopShort,shortView,weeklyCfgView} from "./short.js";
@@ -235,7 +236,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -308,6 +309,7 @@ function start(){
  if(ROLE.admin||can("req")||can("fl")||vw)listenReqs();
  unsubs.push(onSnapshot(doc(db,"ship","main"),d=>{const v=d.exists()&&d.data().c;SH=v&&typeof v==="object"?v:{};draw()},()=>{}));
  if(ROLE.admin)unsubs.push(onSnapshot(collection(db,"branches"),sn=>{B={};sn.docs.forEach(d=>B[d.id]=d.data().enabled===true);if(tab==="set"&&sub==="br")draw()}));
+ initPwSelf({auth,toast,label:me});// 🔑 كل موظف يغيّر كلمة مروره من «حسابي»
  P=tmpPw;// 🔑 (18 نوفمبر 2026) كلمات المرور لا تُحفظ: P = ما أُنشئ أو تغيّر في فتحة الصفحة هذه فقط (fb.js tmpPw)
  const adm=ROLE.admin;
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});

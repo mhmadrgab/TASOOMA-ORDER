@@ -84,7 +84,7 @@ function paint(){
   :`<p class="off" style="margin:12px 0 0">يحدد الأدمن الاسم والكنية.</p>`}
   <input id="pff" type="file" accept="image/*" hidden>
   <div class="row"><button class="bt p" data-pf="up" type="button" ${busy?"disabled":""}>${busy?"⏳ جاري الرفع...":photo(X.me)?"📷 غيّر الصورة":"📷 ارفع صورتك"}</button>${photo(X.me)?`<button class="bt" data-pf="rm" type="button">🗑 إزالة الصورة</button>`:""}</div>
-  <div class="row">${own?`<button class="bt g" data-pf="save" type="button">حفظ الاسم والكنية</button>`:""}<button class="bt" data-pf="x" type="button">إغلاق</button></div></div>`;
+  <div class="row">${own?`<button class="bt g" data-pf="save" type="button">حفظ الاسم والكنية</button>`:""}<button class="bt" data-pwself type="button">🔑 تغيير كلمة المرور</button><button class="bt" data-pf="x" type="button">إغلاق</button></div></div>`;
 }
 function open(){let m=document.getElementById("pfm");if(!m){m=document.createElement("div");m.id="pfm";document.body.appendChild(m);m.addEventListener("click",e=>{if(e.target===m)m.className=""})}m.className="on";paint()}
 async function click(e){

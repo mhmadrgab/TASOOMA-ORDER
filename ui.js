@@ -84,7 +84,9 @@
  const H=document.documentElement,boot=document.getElementById("boot");
  // (15 نوفمبر 2026) الديب بيرسم نفسه في ~1 ثانية: شاشة البداية بتستنى لحد ما يخلص (في التطبيق 1.7 ثانية زي ما كانت)،
  // والجهاز الخفيف (html.lite) من غير رسم فبتمشي أسرع.
- const LITE=H.classList.contains("lite"),MIN=H.classList.contains("app")?1700:LITE?350:1150,HOLD=LITE?250:1000;
+ // ⚡ (18 نوفمبر 2026) الصفحة اتفتحت للرد على مكالمة (?call=): من غير انتظار رسمة الديب، علشان الرد مايتأخرش
+ const FASTC=/[?&]call=/.test(location.search);
+ const LITE=H.classList.contains("lite"),MIN=FASTC?0:H.classList.contains("app")?1700:LITE?350:1150,HOLD=FASTC?0:LITE?250:1000;
  let ready=false,minDone=false;
  // المحتوى بيفضل مستخبي (aw) لحد ما الديب يخلص، وبعدين شاشة البداية بتختفي بالتدريج فوق الصفحة (#boot.out بيفضل ظاهر وهو بيختفي)
  const hide=()=>{if(!ready||!minDone)return;H.classList.remove("aw");if(!boot||!boot.isConnected||boot.classList.contains("out"))return;boot.classList.add("out");setTimeout(()=>boot.remove(),600)};

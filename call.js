@@ -6,13 +6,19 @@
 //   * أثناء الرنة، جهاز المستقبل بيجهّز الرد كله (العناوين والـ answer) في الخلفية، فلما يضغط "رد" الرد بيتبعت فوراً.
 //   * المتصل بيسأل عن الرد كل ثانية ونص كمان (جنب السماع اللحظي)، فمفيش تأخير لو السماع اتأخر.
 //   * شاشة اتصال جديدة: خلفية متحركة هادية، هالة بتتحرك مع صوت الطرف التاني، شريط تحكم زجاجي، وحبة مصغّرة احترافية.
+// - v4 (18 نوفمبر 2026، محمد: "لسه مش سريعة الاستجابة حتى بعد التطبيق" + "تبديل بين السماعة الخارجية والداخلية"):
+//   * الرد من التطبيق/الإشعار: الصفحة بتجيب المكالمة برقمها فوراً (fetchCall) بدل ما تستنى السماع اللحظي (اللي بيكون نايم
+//     والصفحة في الخلفية، فكان الرد بيتأخر لحد 8–30 ثانية). والتطبيق وهو بيرن بينادي __tzCallWarm فالرد بيتجهّز قبل الضغط.
+//   * المتصل بيسأل عن الرد كل 0.7 ثانية (كانت 1.5). فتح الصفحة على مكالمة (?call=) من غير انتظار شاشة البداية.
+//   * زرار «مكبر الصوت»: في تطبيق تاسومة من التطبيق نفسه (سماعة الأذن هي الافتراضية زي أي مكالمة)، وفي المتصفح لو بيسمح (setSinkId).
+//   * الرنة مابتتكررش (الصفحة في الخلفية جوه التطبيق = التطبيق هو اللي بيرن)، والمتصل لو قفل الصفحة وهي بترن المكالمة بتتلغي.
 // - الإشارة في call/{id} = {fr, to, frn, st:ring|acc|rej|busy|miss|end, ts, of, an?, at?, en?, by?} (القواعد: call_ok/sdp_ok).
 import {collection,doc,getDoc,setDoc,updateDoc,onSnapshot,query,where,PUSH_URL} from "./fb.js";
 const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
 const RING_MS=45000,CONNECT_MS=20000,WIN=10*6e4;
 const canVib=()=>!!navigator.vibrate&&(!navigator.userActivation||navigator.userActivation.hasBeenActive);
-let X=null,UN=null,C=null,SEEN=new Set(),ICE={t:0,v:null,turn:false},AC=null,TONE=null,LV=null;
+let X=null,UN=null,C=null,SEEN=new Set(),ICE={t:0,v:null,turn:false},AC=null,TONE=null,LV=null,QUIET="";// QUIET = مكالمة التطبيق بيرن عليها (الصفحة تجهّز الرد بصمت)
 
 // ---------- خوادم الاتصال ----------
 async function token(){const u=X&&X.auth&&X.auth.currentUser;return u?await u.getIdToken():""}
@@ -42,7 +48,7 @@ async function mkPc(){
  pc.ontrack=e=>{const a=g("tzc-au");if(!a)return;const st=e.streams&&e.streams[0]?e.streams[0]:new MediaStream([e.track]);a.srcObject=st;const p=a.play();if(p&&p.catch)p.catch(()=>{if(C){C.tap=true;status("اضغط على الشاشة لتشغيل الصوت")}});level(st)};
  pc.onconnectionstatechange=()=>{if(!C||C.pc!==pc)return;const s=pc.connectionState;
   if(s==="connected"&&C.inc&&C.st==="ring")return;// اتجهّز قبل الرد: مانبدأش العداد إلا بعد ما يرد
-  if(s==="connected"){clearTimeout(C.dropT);C.dropT=0;clearTimeout(C.ct);if(!C.t0){C.t0=Date.now();tone(null);paint();try{const A=NAT();if(A&&A.callOn)A.callOn(String(C.name||""))}catch(e){}}status("")}
+  if(s==="connected"){clearTimeout(C.dropT);C.dropT=0;clearTimeout(C.ct);if(!C.t0){C.t0=Date.now();tone(null);paint();try{const A=NAT();if(A&&A.callOn)A.callOn(String(C.name||""))}catch(e){}spkInit(C)}status("")}
   else if(s==="disconnected"){status("الاتصال ضعيف… جارٍ إعادة الاتصال");if(!C.dropT)C.dropT=setTimeout(()=>{if(C&&C.pc===pc&&pc.connectionState!=="connected")hang("drop")},12000)}
   else if(s==="failed")hang(C.t0?"drop":"fail")};
  return pc;
@@ -53,6 +59,29 @@ function level(st){
  levelStop();const a=ac();if(!a)return;
  try{const src=a.createMediaStreamSource(st),an=a.createAnalyser();an.fftSize=512;src.connect(an);const buf=new Uint8Array(an.fftSize);let sm=0;
   LV={src,an,iv:setInterval(()=>{an.getByteTimeDomainData(buf);let s=0;for(let i=0;i<buf.length;i++){const v=(buf[i]-128)/128;s+=v*v}const r=Math.min(1,Math.sqrt(s/buf.length)*4);sm=sm*.6+r*.4;const el=g("tzc");if(el)el.style.setProperty("--lv",sm.toFixed(3))},80)}}catch(e){}
+}
+// ---------- 🔊 السماعة: سماعة الأذن ⇄ مكبر الصوت ----------
+// في تطبيق تاسومة: TasoomaApp.speaker(true|false) بترجّع "spk" | "ear" | "ext" (سماعة خارجية/بلوتوث متصلة) | "" (غير مدعوم).
+// في المتصفح: لو فيه setSinkId والمتصفح بيعرض مخرجين (سماعة أذن + مكبر) بنبدّل بينهم؛ غير كده الزرار مابيظهرش.
+async function spkInit(c){
+ if(!c||c.spkInit)return;c.spkInit=true;
+ try{const A=NAT();
+  if(A&&typeof A.speaker==="function"){const r=String(A.speaker(false)||"");c.spkCan=r==="ear"||r==="spk";c.spk=r==="spk";c.spkNat=true;if(C===c)buttons();return}
+  const au=g("tzc-au"),md=navigator.mediaDevices;
+  if(!au||typeof au.setSinkId!=="function"||!md||!md.enumerateDevices)return;
+  const L=(await md.enumerateDevices()).filter(d=>d.kind==="audiooutput"&&d.deviceId&&d.label);
+  const ear=L.find(d=>/earpiece|handset|receiver/i.test(d.label)),sp=L.find(d=>/speaker/i.test(d.label)&&!/earpiece|handset/i.test(d.label));
+  if(!ear||!sp||C!==c)return;
+  c.sinks={ear:ear.deviceId,spk:sp.deviceId};c.spkCan=true;c.spk=true;buttons();
+ }catch(e){}
+}
+async function spkToggle(){
+ const c=C;if(!c||!c.spkCan)return;const want=!c.spk;
+ try{
+  if(c.spkNat){const r=String(NAT().speaker(want)||"");if(r!=="ear"&&r!=="spk"){c.spkCan=false;buttons();if(r==="ext"&&X&&X.toast)X.toast("الصوت يخرج من السماعة المتصلة");return}c.spk=r==="spk"}
+  else if(c.sinks){await g("tzc-au").setSinkId(want?c.sinks.spk:c.sinks.ear);c.spk=want}
+ }catch(e){c.spkCan=false}
+ if(C===c)buttons();
 }
 function levelStop(){if(LV){clearInterval(LV.iv);try{LV.src.disconnect()}catch(e){}LV=null;const el=g("tzc");if(el)el.style.setProperty("--lv","0")}}
 // ---------- الرنة (من غير ملفات صوت) ----------
@@ -86,6 +115,7 @@ const P={call:"M6.6 10.8a15.2 15.2 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11
  mic:"M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z",
  micOff:"M19 11h-2c0 .74-.16 1.43-.43 2.05l1.47 1.47A6.9 6.9 0 0 0 19 11zM15 11.16V5a3 3 0 0 0-5.94-.6zM4.27 3 3 4.27l6 6V11a3 3 0 0 0 4.47 2.6l1.66 1.66A5 5 0 0 1 7 11H5a7 7 0 0 0 6 6.92V21h2v-3.08a6.9 6.9 0 0 0 2.57-.9L19.73 21 21 19.73z",
  down:"M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z",
+ spk:"M3 10v4h4l5 5V5L7 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4.03v8.05A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54z",
  lock:"M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3z"};
 const CSS=`#tzc{--lv:0;position:fixed;inset:0;z-index:99995;display:none;overflow:hidden;color:#fff;font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif;direction:rtl;text-align:center;background:#1b1220}
 #tzc.on{display:block;animation:tzc-in .28s cubic-bezier(.16,1,.3,1) both}@keyframes tzc-in{from{opacity:0;transform:scale(1.02)}}
@@ -113,6 +143,7 @@ const CSS=`#tzc{--lv:0;position:fixed;inset:0;z-index:99995;display:none;overflo
 #tzc .tzc-q.l3 i{background:#a4d36e}#tzc .tzc-q.l2 i:nth-child(-n+2){background:#f0c35a}#tzc .tzc-q.l1 i:nth-child(1){background:#ff8a80}
 #tzc .tzc-bar{width:100%;display:flex;justify-content:center;gap:34px;padding:18px 20px;border-radius:30px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
 #tzc .tzc-bar.inc{background:none;border-color:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;gap:70px}
+#tzc .tzc-bar.three{gap:22px}@media (max-width:360px){#tzc .tzc-bar.three{gap:12px;padding:16px 10px}}
 #tzc .tzc-b{display:flex;flex-direction:column;align-items:center;gap:9px;font-size:12.5px;color:rgba(255,255,255,.8);background:none;border:0;padding:0;margin:0;font-family:inherit;cursor:pointer;width:auto;min-height:0;box-shadow:none}
 #tzc .tzc-b>span:first-child{width:66px;height:66px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.14);transition:transform .14s cubic-bezier(.16,1,.3,1),background .18s ease;box-shadow:0 8px 20px rgba(0,0,0,.25)}
 #tzc .tzc-bar.inc .tzc-b>span:first-child{width:76px;height:76px}
@@ -148,7 +179,8 @@ const btn=(a,cls,ic,lbl)=>`<button class="tzc-b ${cls}" type="button" data-tzc="
 function buttons(){
  const b=g("tzc-bt");if(!b||!C)return;
  if(C.inc&&C.st==="ring"){b.className="tzc-bar inc";b.innerHTML=btn("rej","red",SV(32,P.end),"رفض")+btn("acc","green ring",SV(30,P.call),"رد")}
- else{b.className="tzc-bar";b.innerHTML=btn("mute",C.mute?"on":"",SV(26,C.mute?P.micOff:P.mic),C.mute?"إلغاء الكتم":"كتم")+btn("end","red",SV(30,P.end),"إنهاء")}
+ else{const sp=!!C.spkCan;b.className="tzc-bar"+(sp?" three":"");b.innerHTML=btn("mute",C.mute?"on":"",SV(26,C.mute?P.micOff:P.mic),C.mute?"إلغاء الكتم":"كتم")+(sp?btn("spk",C.spk?"on":"",SV(26,P.spk),"مكبر الصوت"):"")+btn("end","red",SV(30,P.end),"إنهاء")}
+ {const sb=b.querySelector('[data-tzc="spk"]');if(sb)sb.setAttribute("aria-pressed",String(!!C.spk))}
  const pp=g("tzcp");if(pp)pp.classList.toggle("muted",!!C.mute);
 }
 const mmss=ms=>{const s=Math.max(0,Math.floor(ms/1000));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")};
@@ -213,8 +245,8 @@ export async function startCall(to,name){
   C.rt=setTimeout(()=>{if(C&&C.id===id&&C.st==="ring")hang("miss")},RING_MS);
   C.iv=setInterval(tick,500);
   C.un=onSnapshot(doc(X.db,"call",id),s=>{if(s.exists())onOut(id,s.data())},()=>{});
-  // أمان: لو السماع اللحظي اتأخر، بنسأل عن الرد كل ثانية ونص وهي بترن
-  C.poll=setInterval(()=>{if(!C||C.id!==id||C.ans)return;getDoc(doc(X.db,"call",id)).then(s=>{if(s.exists())onOut(id,s.data())}).catch(()=>{})},1500);
+  // أمان: لو السماع اللحظي اتأخر، بنسأل عن الرد كل 0.7 ثانية وهي بترن (طلب صغير جداً، ولمدة الرنة بس)
+  C.poll=setInterval(()=>{if(!C||C.id!==id||C.ans)return;getDoc(doc(X.db,"call",id)).then(s=>{if(s.exists())onOut(id,s.data())}).catch(()=>{})},700);
  }catch(e){cleanup();closeUi(String(e&&e.code)==="permission-denied"?"لا يمكنك الاتصال بهذا الشخص":"تعذّر بدء المكالمة")}
 }
 // ---------- مكالمة واردة ----------
@@ -238,18 +270,27 @@ function incoming(id,d){
   if(k==="b"&&idp&&c.name.indexOf(idp)<0)c.name=(c.name+" · "+idp).slice(0,70);
   else if((k==="w"||k==="d")&&idp)getDoc(doc(X.db,k==="w"?"whdir":"ddir",idp)).then(s=>{if(C!==c||!s.exists())return;const n=String((s.data()||{}).n||"").trim().slice(0,60);
    if(n&&n!==c.name){c.name=n;const el=g("tzc-n"),av=g("tzc-av"),pn=g("tzcp-n");if(el)el.textContent=n;if(av)av.textContent=initial(n);if(pn)pn.textContent=n}}).catch(()=>{})}
- paint();status("مكالمة واردة",true);tone("in");c.iv=setInterval(tick,500);c.prep=prep(c);
+ const quiet=QUIET===id||(!!NAT()&&document.hidden);// التطبيق هو اللي بيرن (الصفحة في الخلفية): مانكررش الرنة
+ if(QUIET===id)QUIET="";
+ paint();status("مكالمة واردة",true);if(!quiet)tone("in");c.iv=setInterval(tick,500);c.prep=prep(c);
  c.rt=setTimeout(()=>{if(C===c&&c.st==="ring"){cleanup();closeUi("مكالمة فائتة")}},RING_MS+5000);
  c.un=onSnapshot(doc(X.db,"call",id),s=>{if(C!==c||!s.exists())return;const x=s.data();
   if(c.st==="ring"&&(x.st==="end"||x.st==="miss")){cleanup();closeUi("مكالمة فائتة من "+(x.frn||""))}
   else if(c.st==="ring"&&(x.st==="acc"||x.st==="rej")){cleanup();closeUi(x.st==="acc"?"تم الرد من جهاز آخر":"تم الرفض من جهاز آخر")}
   else if((c.st==="acc"||c.st==="conn")&&x.st==="end"&&x.by!==X.party){const t0=c.t0;cleanup();closeUi(t0?"انتهت المكالمة · "+mmss(Date.now()-t0):"انتهت المكالمة")}},()=>{});
- if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){try{new Notification("📞 "+c.name+" يتصل بك",{body:"اضغط للرد",tag:"call"+id})}catch(e){}}
- if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="acc"){PEND_ACT=null;setTimeout(()=>{if(C===c&&c.st==="ring")accept()},150)}
+ if(!quiet&&document.hidden&&"Notification" in window&&Notification.permission==="granted"){try{new Notification("📞 "+c.name+" يتصل بك",{body:"اضغط للرد",tag:"call"+id})}catch(e){}}
+ if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="acc"){PEND_ACT=null;setTimeout(()=>{if(C===c&&c.st==="ring")accept()},0)}
 }
 // 📱 تطبيق تاسومة: "رد" من شاشة الاتصال على القفل بينادي دي (لو الصفحة مفتوحة أصلاً)، ونفس المسار لرسالة الـ SW
-const callAct=(id,act)=>{if(!X||!id)return;if(C&&C.id===id&&C.st==="ring"){if(act==="rej")hang("rej");else accept()}else if(!C)PEND_ACT={id,act}};
+// ⚡ نجيب المكالمة برقمها فوراً (من غير انتظار السماع اللحظي: والصفحة في الخلفية الاتصال اللحظي بيكون نايم فالرد كان بيتأخر)
+function fetchCall(id){
+ if(!X||!id||SEEN.has(id)||!/^[A-Za-z0-9_-]{8,64}$/.test(String(id)))return Promise.resolve();
+ return getDoc(doc(X.db,"call",id)).then(s=>{if(!X||!s.exists())return;const d=s.data();if(d&&d.to===X.party&&d.st==="ring"&&d.of&&Math.abs(Date.now()-N(d.ts))<WIN)incoming(id,d)}).catch(()=>{});
+}
+const callAct=(id,act)=>{if(!X||!id)return;if(C&&C.id===id&&C.st==="ring"){if(act==="rej")hang("rej");else accept()}else if(!C){PEND_ACT={id,act};fetchCall(id)}};
 window.__tzCallAct=callAct;
+// 📱 تطبيق تاسومة وهو بيرن (والصفحة في الخلفية) بينادي دي: نجهّز الرد بصمت، فلما يضغط «رد» الصوت يتوصّل فوراً
+window.__tzCallWarm=id=>{if(!X||!id||C||SEEN.has(id))return;QUIET=String(id);fetchCall(id)};
 const NAT=()=>window.TasoomaApp||null;
 // نوقّف الرنة على أجهزة التطبيق عند الطرف التاني (اتلغت / اترد عليها / خلصت)
 const pushEnd=id=>{if(!X||!id)return;token().then(t=>fetch(PUSH_URL+"/call",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({id,end:true})})).catch(()=>{})};
@@ -269,18 +310,20 @@ async function accept(){
    await pc.setRemoteDescription({type:"offer",sdp:hiq(c.of.s)});const an=await pc.createAnswer();await pc.setLocalDescription({type:"answer",sdp:hiq(an.sdp)});await gathered(pc);sdp=pc.localDescription.sdp}
   if(C!==c)return;
   await updateDoc(doc(X.db,"call",c.id),{st:"acc",an:{t:"answer",s:sdp},at:Date.now()});if(C!==c)return;c.st="acc";clearTimeout(c.rt);connectWatch();pushEnd(c.id);
-  if(c.pc&&c.pc.connectionState==="connected"&&!c.t0){c.t0=Date.now();status("")}
+  if(c.pc&&c.pc.connectionState==="connected"&&!c.t0){c.t0=Date.now();status("");try{const A=NAT();if(A&&A.callOn)A.callOn(String(c.name||""))}catch(e){}spkInit(c);paint()}
  }catch(e){cleanup();closeUi("تعذّر الرد على المكالمة")}
 }
 // ---------- الضغطات ----------
 document.addEventListener("click",e=>{if(C&&C.tap){C.tap=false;const au=g("tzc-au");if(au){const p=au.play();if(p&&p.catch)p.catch(()=>{})}ac();status("")}const t=e.target.closest&&e.target.closest("[data-tzc]");if(!t||!X)return;const a=t.dataset.tzc;
  if(a==="acc")accept();else if(a==="rej")hang("rej");else if(a==="end")hang("end");
  else if(a==="mute"&&C&&C.stream){C.mute=!C.mute;C.stream.getAudioTracks().forEach(x=>x.enabled=!C.mute);buttons()}
+ else if(a==="spk")spkToggle()
  else if(a==="min"){if(C){g("tzc").className="";g("tzcp-n").textContent=C.name;g("tzcp").className="on"+(C.mute?" muted":"")}else closeUi()}
  else if(a==="max")paint()});
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target&&e.target.id==="tzcp")paint()});
 addEventListener("tz-call-start",e=>{const d=e.detail||{};if(d.to)startCall(d.to,d.name)});
-addEventListener("pagehide",e=>{if(C&&C.st==="acc"&&!e.persisted)hang("end")});
+// قفل الصفحة: المكالمة الشغالة بتتقفل، والصادرة اللي لسه بترن بتتلغي (كانت بتفضل ترن عند الطرف التاني 45 ثانية)
+addEventListener("pagehide",e=>{if(C&&!e.persisted&&(C.st==="acc"||(C.st==="ring"&&!C.inc)))hang("end")});
 
 // ---------- البداية ----------
 // ctx: {db, auth, party:"w-…"|"b-…"|"d-…", name:()=>اسمي, toast}
@@ -295,8 +338,9 @@ export function initCall(ctx){
  // دلوقتي: الرابط بيتقبل جوه تطبيق تاسومة بس ولما التطبيق نفسه هو اللي فتح الصفحة (من غير referrer؛ الضغط على رابط جوه الصفحة له referrer).
  // في المتصفح: "رد/رفض" من الإشعار بيوصل من الـ SW نفسه (call-pend) مش من الرابط.
  try{const u=new URL(location.href);const cid=u.searchParams.get("call"),act=u.searchParams.get("act");if(cid&&(act==="acc"||act==="rej")&&window.TasoomaApp&&!document.referrer)PEND_ACT={id:cid,act};
+  if(cid){iceServers();fetchCall(cid)}// ⚡ الصفحة اتفتحت على مكالمة: نجيبها ونجهّز خوادم الاتصال فوراً
   if(u.searchParams.has("call")||u.searchParams.has("act")){u.searchParams.delete("call");u.searchParams.delete("act");history.replaceState(null,"",u.pathname+(u.search||"")+u.hash)}}catch(e){}
  try{const sw=navigator.serviceWorker;if(sw&&sw.controller)sw.controller.postMessage({t:"call-pend"})}catch(e){}
 }
-export const callState=()=>C?{id:C.id,st:C.st,inc:C.inc,conn:C.pc?C.pc.connectionState:"",t0:!!C.t0,ready:!!C.ready}:null;// للتشخيص والاختبار
+export const callState=()=>C?{id:C.id,st:C.st,inc:C.inc,conn:C.pc?C.pc.connectionState:"",t0:!!C.t0,ready:!!C.ready,spkCan:!!C.spkCan,spk:!!C.spk}:null;// للتشخيص والاختبار
 export function stopCall(){if(C)hang("end");if(UN){try{UN()}catch(e){}UN=null}X=null;window.__tzCall=false}
