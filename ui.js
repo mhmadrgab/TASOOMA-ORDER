@@ -255,9 +255,14 @@
  function show(){
   if(document.getElementById("tz-news"))return;
   // النص بيختلف حسب مين فاتح: فرع (index) / مدير أو موظف (admin) / سائق (driver)
-  const P=location.pathname,co=window.__tzCo===true&&/admin\.html$/.test(P),role=co?"c":/driver\.html$/.test(P)?"d":/admin\.html$/.test(P)?"a":"b";
+  const P=location.pathname,ADM=/admin\.html$/.test(P),co=window.__tzCo===true&&ADM;let role=co?"c":/driver\.html$/.test(P)?"d":ADM?"a":"b";
    // (16 نوفمبر 2026) كارت خاص بمالك النظام (حساب مدير عليه co) بس: مفتاح تخزين مستقل، وبيظهر له بدل الكارت العام
-   const KEY=co?"tz_news_co":"tz_news",ID=co?"coowner-2026-11-16":NEWS_ID;let seen;try{seen=localStorage.getItem(KEY)}catch(e){return}if(seen===ID)return;
+   let KEY=co?"tz_news_co":"tz_news",ID=co?"coowner-2026-11-16":NEWS_ID;
+   // 👑 (18 نوفمبر 2026، طلب محمد) كارت للأدمن ومالك النظام فقط (role "o"): جدول الصلاحيات. مفتاح مستقل tz_news_own، فلا يراه أي موظف أو فرع أو سائق.
+   // الترتيب: مالك النظام الجديد يرى كارت الترقية أولاً ثم هذا في الفتحة التالية، والأدمن يراه قبل الكارت العام. لكارت إدارة جديد: غيّر OWN_ID ونص T.o.
+   const OWN_ID="perms-2026-11-18",rd=k=>{try{return localStorage.getItem(k)}catch(e){return undefined}};
+   if(ADM&&(co||window.__tzRoot===true)&&rd("tz_news_own")!==OWN_ID&&!(co&&rd("tz_news_co")!=="coowner-2026-11-16")){role="o";KEY="tz_news_own";ID=OWN_ID}
+   let seen;try{seen=localStorage.getItem(KEY)}catch(e){return}if(seen===ID)return;
   const T={
    b:{k:"تحديث جديد · المكالمات",t:"اتصل بالمستودع من داخل المنصة",
     L:[["📞","مكالمات صوتية بجودة عالية","افتح أي محادثة في الدردشة واضغط 📞 لتتصل مباشرة، برنّة تاسومة الخاصة."],
@@ -271,12 +276,16 @@
      L:[["👑","كل الصلاحيات بين يديك","الطلبات والعهدة والسيارات والموظفين والصيانة وأوامر الشراء والإعدادات، كلها متاحة لك الآن."],
         ["⚙️","الإعدادات في مكان واحد","تبويب ⚙ الإعدادات يجمع الصلاحيات والموظفين وحسابات الفروع والتقارير."],
         ["🔔","إشعارات المالك تصلك","تصلك إشعارات الطلبات والصيانة والحاويات المتجهة للمستودع كما تصل للأدمن."]]},
+   o:{k:"تحديث للإدارة · الصلاحيات",t:"كل الصلاحيات أصبحت في جدول واحد",go:"افتح جدول الصلاحيات",sub:"pm",lv:"👑 هذا التنبيه يظهر للأدمن ومالك النظام فقط.",
+     L:[["🔐","جدول الصلاحيات","من تبويب الإعدادات: صف لكل موظف وعمود لكل صلاحية. ضع العلامة لمنحها وأزلها لسحبها، وتُحفظ فوراً."],
+        ["💬","مراسلة الفروع لأي موظف","فعّلها لمهندس الصيانة أو لأي موظف آخر ليرى الفروع في الدردشة ويراسلها."],
+        ["🔑","كلمات المرور لم تعد محفوظة","تظهر مرة واحدة عند إنشاء الحساب أو تغيير كلمته. وكل فرع وموظف يغيّر كلمته بنفسه."]]},
    d:{k:"تحديث جديد · المكالمات",t:"المستودع والفروع يتصلون بك من المنصة",
     L:[["📞","مكالمات صوتية داخل المنصة","من الدردشة: افتح المحادثة واضغط 📞 لتتصل بالمستودع أو بالفرع."],
        ["📱","حدّث التطبيق","بالنسخة الجديدة تصلك المكالمة كاتصال حقيقي يرنّ حتى والجوال مقفول."],
        ["🔔","رنّة تاسومة","رنّة خاصة بالمنصة لتعرف أن الاتصال للعمل."]]}
   }[role];
-  if(role!=="c"){T.lv=IOS?"📱 تطبيق تاسومة متاح لأجهزة أندرويد حالياً. على الآيفون تصلك المكالمة إشعاراً فيه «رد» و«رفض».":"🔒 المكالمات مشفّرة بين الطرفين، ولا يسمعها أحد غيركما.";
+  if(role!=="c"&&role!=="o"){T.lv=IOS?"📱 تطبيق تاسومة متاح لأجهزة أندرويد حالياً. على الآيفون تصلك المكالمة إشعاراً فيه «رد» و«رفض».":"🔒 المكالمات مشفّرة بين الطرفين، ولا يسمعها أحد غيركما.";
    if(DROID&&!INAPP){T.go=role==="d"?"⬇️ حدّث التطبيق":"⬇️ ثبّت تطبيق تاسومة";T.url=APK_URL}
    else if(!DROID&&!IOS&&role==="a"){T.go="📋 انسخ رابط التطبيق للموظفين";T.copy=APK_URL}}
   if(!document.getElementById("tz-news-css")){const s=document.createElement("style");s.id="tz-news-css";s.textContent=`
@@ -322,7 +331,7 @@
   const d=document.createElement("div");d.id="tz-news";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-labelledby","tz-news-t");
   d.innerHTML=`<div class="k"><div class="tn-hero"><span class="tn-dot tn-d1"></span><span class="tn-dot tn-d2"></span>
 <div class="tn-lgo"><img src="./icon-192.png" alt=""><span>تاسومة</span></div><span class="tn-nw">جديد</span><button class="tn-xb" type="button" data-n="x" aria-label="إغلاق">✕</button>
-<div class="tn-ps tn-bk"></div>${role==="c"?`<div class="tn-ps"><div class="tn-t"><b>مالك النظام</b><span>مفعّل</span></div><div style="font-size:46px;text-align:center;margin:8px 0 6px">👑</div><div class="tn-at"><b>📦 الطلبات</b><b>👥 الموظفين</b><b>⚙ الإعدادات</b></div></div>`:`<div class="tn-ps" style="text-align:center"><div class="tn-t"><b>مكالمة واردة</b><span>تاسومة</span></div><div style="width:48px;height:48px;border-radius:50%;margin:12px auto 10px;background:linear-gradient(150deg,#c9a3c0,#8a5a83);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:21px">ت</div><div style="display:flex;justify-content:center;gap:26px"><span style="width:32px;height:32px;border-radius:50%;background:#e5372b;display:block"></span><span style="width:32px;height:32px;border-radius:50%;background:#34c759;display:block"></span></div></div>`}</div>
+<div class="tn-ps tn-bk"></div>${role==="o"?`<div class="tn-ps"><div class="tn-t"><b>جدول الصلاحيات</b><span>جديد</span></div>${[[1,1,0,1],[0,1,1,0],[1,0,1,1]].map((r,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-top:${i?7:11}px"><u style="display:block;height:7px;border-radius:9px;background:#e3d6e1;flex:1"></u>${r.map(x=>`<span style="display:block;width:15px;height:15px;border-radius:5px;flex:none;${x?"background:#8a5a83":"border:1.5px solid #cdbfca"}"></span>`).join("")}</div>`).join("")}</div>`:role==="c"?`<div class="tn-ps"><div class="tn-t"><b>مالك النظام</b><span>مفعّل</span></div><div style="font-size:46px;text-align:center;margin:8px 0 6px">👑</div><div class="tn-at"><b>📦 الطلبات</b><b>👥 الموظفين</b><b>⚙ الإعدادات</b></div></div>`:`<div class="tn-ps" style="text-align:center"><div class="tn-t"><b>مكالمة واردة</b><span>تاسومة</span></div><div style="width:48px;height:48px;border-radius:50%;margin:12px auto 10px;background:linear-gradient(150deg,#c9a3c0,#8a5a83);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:21px">ت</div><div style="display:flex;justify-content:center;gap:26px"><span style="width:32px;height:32px;border-radius:50%;background:#e5372b;display:block"></span><span style="width:32px;height:32px;border-radius:50%;background:#34c759;display:block"></span></div></div>`}</div>
 <div class="tn-hd"><small>${T.k}</small><b id="tz-news-t">${T.t}</b></div>
 <div class="b"><ul>${T.L.map(x=>`<li><i>${x[0]}</i><div><b>${x[1]}</b><span>${x[2]}</span></div></li>`).join("")}</ul>
 <div class="tn-lv"><span style="display:inline;font-size:13px;color:inherit">${T.lv||"⚡ الطلبات والتغييرات الجديدة تصل لحظياً دون إعادة تحميل الصفحة."}</span></div></div>
@@ -335,7 +344,7 @@
     if(T.url){try{location.href=T.url}catch(x){}}
     else if(T.copy){const say=m=>{const o=document.createElement("div");o.textContent=m;o.style.cssText="position:fixed;z-index:99991;left:50%;bottom:24px;transform:translateX(-50%);background:#2a1d2c;color:#fff;border-radius:999px;padding:10px 18px;font:600 14px/1.4 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;box-shadow:0 10px 28px rgba(0,0,0,.3)";document.body.appendChild(o);setTimeout(()=>o.remove(),2600)};
      try{navigator.clipboard.writeText(T.copy).then(()=>say("✅ تم نسخ رابط التطبيق. أرسله للموظفين والفروع"),()=>prompt("انسخ رابط التطبيق:",T.copy))}catch(x){prompt("انسخ رابط التطبيق:",T.copy)}}
-    else{try{window.dispatchEvent(new CustomEvent("tz-news-go"))}catch(x){}}}});
+    else{try{window.dispatchEvent(new CustomEvent("tz-news-go",{detail:{sub:T.sub||""}}))}catch(x){}}}});
   document.addEventListener("keydown",esc);
   document.body.appendChild(d);setTimeout(()=>{const b=d.querySelector(".f button");if(b)b.focus({preventScroll:true})},300);
   // (15 نوفمبر 2026، محمد: "بيظهر كل مرة رغم إنه شافه") بتتسجّل "اتشافت" بعد ما تبان ثانيتين، مش بس لما يقفلها

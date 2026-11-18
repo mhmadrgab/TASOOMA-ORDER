@@ -382,7 +382,9 @@ function reqView(){
 }
 // ⚙ الإعدادات: كل الصلاحيات والإعدادات في مكان واحد (16 نوفمبر 2026)
 let sub="perm";try{const q=localStorage.getItem("st_sub");if(q==="perm"||q==="pm"||q==="br"||q==="rep"||q==="cat"||q==="hl")sub=q}catch(x){}
-window.addEventListener("tz-news-go",()=>{if(ROLE.co&&okTab("set")){tab="set";draw()}});
+window.addEventListener("tz-news-go",e=>{const sb=e&&e.detail&&e.detail.sub;
+ if(sb==="pm"&&ROLE.owner===true&&okTab("set")){tab="set";sub="pm";try{localStorage.setItem("st_sub","pm")}catch(x){}draw();return}// 👑 كارت الإدارة ← جدول الصلاحيات
+ if(ROLE.co&&okTab("set")){tab="set";draw()}});
 function setView(){
  const S=[["perm","👥 الموظفون والحسابات"],["br","🏬 حسابات الفروع"],["rep","📊 التقارير والإشعارات"]].concat(ROLE.owner===true?[["cat","📦 كتالوج الأصناف"],["hl","📏 صحة المنصة"]]:[]);S.splice(1,0,["pm","🔐 جدول الصلاحيات"]);
  if(!S.some(a=>a[0]===sub))sub="perm";
@@ -565,7 +567,7 @@ document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)document.title="لوحة المستودع - تاسومة"});
 const deny=async m=>{lastErr=m;stop();login(m);try{await signOut(auth)}catch(e){}};
 // صلاحيات الحساب من staff/{email}. المتابع (v) مالوش أي صلاحية تعديل حتى لو اتعلّم غلط
-const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;window.__tzCo=co;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,cw:!v&&s.cw===true,p:v?{}:(s.p||{}),name:s.name||"",k:s.k||""}};
+const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;window.__tzCo=co;window.__tzRoot=false;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,cw:!v&&s.cw===true,p:v?{}:(s.p||{}),name:s.name||"",k:s.k||""}};
 async function enterStaff(u){
  const em=String(u.email||"").toLowerCase();
  try{
@@ -596,7 +598,7 @@ function waitNet(u,fn){
 }
 onAuthStateChanged(auth,async u=>{
  if(stW){stW();stW=null}
- if(u&&u.email===ADMIN_EMAIL){ROLE={admin:true,owner:true,root:true,co:false,p:{},name:OWNER_NAME,k:""};start()}// الاسم والكنية بيتحدّثوا من meta/me (ملفي الشخصي)
+ if(u&&u.email===ADMIN_EMAIL){window.__tzRoot=true;window.__tzCo=false;ROLE={admin:true,owner:true,root:true,co:false,p:{},name:OWNER_NAME,k:""};start()}// الاسم والكنية بيتحدّثوا من meta/me (ملفي الشخصي)
  else if(u&&u.email){stop();await enterStaff(u)}
  else{stop();const m=lastErr;lastErr="";login(m)}
  window.uiReady&&uiReady();// حالياً بس نعرض الصفحة (دخول أو لوحة)

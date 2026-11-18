@@ -2759,4 +2759,13 @@ export default {
 "لن يراسل الفروع ولن يظهر لها":"Will not message branches or appear to them",
 "🔒 قُفلت الدردشة":"🔒 Chat locked",
 "💬 فُتحت الدردشة":"💬 Chat opened",
+"تحديث للإدارة · الصلاحيات":"Management update · Permissions",
+"كل الصلاحيات أصبحت في جدول واحد":"All permissions are now in one table",
+"افتح جدول الصلاحيات":"Open the permissions table",
+"👑 هذا التنبيه يظهر للأدمن ومالك النظام فقط.":"👑 This notice is shown to the admin and the system owner only.",
+"من تبويب الإعدادات: صف لكل موظف وعمود لكل صلاحية. ضع العلامة لمنحها وأزلها لسحبها، وتُحفظ فوراً.":"In the Settings tab: a row per employee and a column per permission. Tick to grant, untick to remove; it saves immediately.",
+"مراسلة الفروع لأي موظف":"Branch messaging for any employee",
+"فعّلها لمهندس الصيانة أو لأي موظف آخر ليرى الفروع في الدردشة ويراسلها.":"Turn it on for the maintenance engineer or any other employee so they see branches in chat and message them.",
+"كلمات المرور لم تعد محفوظة":"Passwords are no longer stored",
+"تظهر مرة واحدة عند إنشاء الحساب أو تغيير كلمته. وكل فرع وموظف يغيّر كلمته بنفسه.":"They show once when an account is created or its password changed. Every branch and employee can change their own password.",
 };
