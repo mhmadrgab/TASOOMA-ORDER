@@ -154,7 +154,7 @@ import {initPwSelf,stopPwSelf} from "./pwself.js";
 import {initCall,stopCall} from "./call.js";
 import {initAnn,stopAnn,annBtn} from "./ann.js";
 import {initShort,stopShort,shortView,weeklyCfgView} from "./short.js";
-import {initStaff,view as staffView,stop as stopStaff,syncDir,staffName,OWNER_NAME} from "./staff.js";
+import {initStaff,view as staffView,permView,stop as stopStaff,syncDir,staffName,OWNER_NAME} from "./staff.js";
 import {initProf,stopProf,chip as meChip} from "./prof.js";
 import {initAudit,view as logView,stopAudit} from "./audit.js";
 import {initWorkers,view as wkView,stop as stopWorkers,pick as pickWorkers,has as hasWorkers} from "./workers.js";
@@ -332,7 +332,7 @@ function start(){
    ping:ids=>ping(auth,[],[],[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="po"]');if(b)b.innerHTML=poLbl()}});
  if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
- if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&sub==="perm"?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
+ if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
  // النسخة الاحتياطية: لمالك النظام بس
  initBackup({db,toast,owner:ROLE.owner===true,redraw:draw});
@@ -346,7 +346,7 @@ function start(){
  {// الشات لكل اللي في المستودع، ومعاهم الإدارة: مدير التسويق وصاحب الشركة (نوفمبر 2026)، وبيكلّموا الفروع كمان
   // 📞 المكالمات (17 نوفمبر 2026): لكل اللي الدردشة مفتوحة له
   if(ROLE.owner===true||ROLE.p.nc!==true)initCall({db,auth,party:"w-"+me,name:()=>ROLE.name||me.split("@")[0],toast});
-  initBChat({db,app,party:"w-"+me,canBr:adm||can("req")||can("gm")||vw,canGroup:adm,owner:ROLE.owner===true,codes:BR,name:()=>ROLE.name||"",myLabel:()=>ROLE.name||me.split("@")[0],brn:c=>BR.find(b=>code(b)===c)||c,toast,beep,notify,ping:c=>ping(auth,[],[c]),visible:()=>tab==="chat",
+  initBChat({db,app,party:"w-"+me,canBr:adm||can("req")||can("gm")||vw||ROLE.cw===true,canGroup:adm,owner:ROLE.owner===true,codes:BR,name:()=>ROLE.name||"",myLabel:()=>ROLE.name||me.split("@")[0],brn:c=>BR.find(b=>code(b)===c)||c,toast,beep,notify,ping:c=>ping(auth,[],[c]),visible:()=>tab==="chat",
    show:()=>{if(tab!=="chat"){tab="chat";draw()}},onBadge:()=>{const b=document.querySelector('[data-t="chat"]');if(b)b.innerHTML=chatLbl()}});
   // فتح من الإشعار: admin.html?chat=003 (فرع) أو ?chat=d-drv1 / w-إيميل
   const qc=(q=>/^g_/.test(q)?q:q.toLowerCase())(String(new URLSearchParams(location.search).get("chat")||""));
@@ -381,13 +381,13 @@ function reqView(){
  (L.length?L.map(r=>`<article class="rq ${ST(r.st)}"><div class="rh"><div><b>${r.tr?trHead(r):E(r.brn)}</b>${r.tr?`<span class="tg" style="background:#e3f0fb;color:#1c4f86">🔄 تحويل${trWhere(r)?" · "+trWhere(r):""}</span>`:r.by==="wh"?`<span class="tg">📋 من المستودع${r.byn?" · "+E(r.byn):""}</span>`:""}${r.edited?`<span class="tg">✏️ عدّله ${E(r.edn||"المستودع")}</span>`:""}${(()=>{const n=(Array.isArray(r.rows)?r.rows:[]).filter(x=>x&&x.na).length;return n?`<span class="tg" style="background:#fdecea;color:#8a2218">🚫 ${n} غير متوفر</span>`:""})()}<small>${r.tr?"تحويل":"طلب"} <bdi dir="ltr">${E(r.no)}</bdi> · ${ago(NUM(r.ts))}</small></div><span class="chp">${stLbl(r)}</span></div><div class="kp"><span><b>${NUM(r.codes)}</b> صنف</span><span><b>${NUM(r.pcs)}</b> قطعة</span>${r.dr?`<span>المسؤول: ${E(r.dr)}</span>`:""}${r.asg&&r.asg.drvn?`<span>🚚 ${E(r.asg.drvn)} · ${E(r.asg.carn||"")}</span>`:""}${r.prep&&Array.isArray(r.prep.names)&&r.prep.names.length?`<span>👷 ${E(r.prep.names.join("، "))} <button class="bt s" data-a="wk" data-id="${E(r.id)}" type="button" style="padding:1px 8px;font-size:12px">تعديل</button></span>`:(r.st!=="new"&&!r.tr&&hasWorkers()?`<span><button class="bt s" data-a="wk" data-id="${E(r.id)}" type="button" style="padding:1px 8px;font-size:12px">👷 من الذي جهّز؟</button></span>`:"")}${r.st==="go"&&NUM(r.eta)?`<span>${NUM(r.near)>NUM(r.dep)?"🔔 اقترب من الوصول":"🕒 متوقع"} ~${new Date(NUM(r.eta)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</span>`:""}${NUM(r.dlv)?`<span>وصل${new Date(NUM(r.dlv)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</span>`:""}</div>${rcvHtml(r)}${podHtml(r)}<details data-id="${E(r.id)}" ${openSet.has(r.id)||(r.st==="new"&&!openSet.has("-"+r.id))?"open":""}><summary>تفاصيل الطلب</summary>${r.gn?`<div class="gn">ملاحظات: ${E(r.gn)}</div>`:""}<div class="grp">${gHtml(r.rows)}</div></details><div class="rf">${rqBtn(r,"bt")}${r.st==="new"&&!r.tr?`<button class="bt g" data-a="prep" data-id="${E(r.id)}">بدء التجهيز</button>`:""}${r.st==="prep"&&!r.tr&&!NUM(r.pdn)?`<button class="bt g" data-a="pdn" data-id="${E(r.id)}">✅ تم التجهيز</button>`:""}${!isDn(r)?`<button class="bt p" data-a="done" data-id="${E(r.id)}">تم التسليم</button>`:r.st==="recv"?`<span class="off" style="align-self:center">🔒 الفرع أكّد الاستلام</span>`:`<button class="bt" data-a="new" data-id="${E(r.id)}">إعادة فتح</button>`}<button class="bt" data-a="edit" data-id="${E(r.id)}">✏️ تعديل</button><button class="bt" data-a="print" data-id="${E(r.id)}">🖨 طباعة</button>${ROLE.admin&&(r.st!=="recv"||ROLE.owner)?`<button class="bt r" data-a="del" data-id="${E(r.id)}">حذف</button>`:""}</div></article>`).join(""):'<div class="em">لا توجد طلبات مطابقة</div>');
 }
 // ⚙ الإعدادات: كل الصلاحيات والإعدادات في مكان واحد (16 نوفمبر 2026)
-let sub="perm";try{const q=localStorage.getItem("st_sub");if(q==="perm"||q==="br"||q==="rep"||q==="cat"||q==="hl")sub=q}catch(x){}
+let sub="perm";try{const q=localStorage.getItem("st_sub");if(q==="perm"||q==="pm"||q==="br"||q==="rep"||q==="cat"||q==="hl")sub=q}catch(x){}
 window.addEventListener("tz-news-go",()=>{if(ROLE.co&&okTab("set")){tab="set";draw()}});
 function setView(){
- const S=[["perm","👥 الصلاحيات والموظفين"],["br","🏬 حسابات الفروع"],["rep","📊 التقارير والإشعارات"]].concat(ROLE.owner===true?[["cat","📦 كتالوج الأصناف"],["hl","📏 صحة المنصة"]]:[]);
+ const S=[["perm","👥 الموظفون والحسابات"],["br","🏬 حسابات الفروع"],["rep","📊 التقارير والإشعارات"]].concat(ROLE.owner===true?[["cat","📦 كتالوج الأصناف"],["hl","📏 صحة المنصة"]]:[]);S.splice(1,0,["pm","🔐 جدول الصلاحيات"]);
  if(!S.some(a=>a[0]===sub))sub="perm";
  const who=ROLE.root?"👑 الأدمن":ROLE.co?"👑 مالك النظام":ROLE.owner?"👑 مالك النظام":"🛡 مدير";
- return `<div class="stg"><nav class="stg-nav"><div class="stg-who">${who}</div>${S.map(a=>`<button type="button" class="${sub===a[0]?"on":""}" data-ss="${a[0]}">${a[1]}</button>`).join("")}</nav><section class="stg-body">${sub==="perm"?staffView():sub==="br"?brView():sub==="cat"?catAdminView():sub==="hl"?healthView():weeklyCfgView()}</section></div>`
+ return `<div class="stg"><nav class="stg-nav"><div class="stg-who">${who}</div>${S.map(a=>`<button type="button" class="${sub===a[0]?"on":""}" data-ss="${a[0]}">${a[1]}</button>`).join("")}</nav><section class="stg-body">${sub==="perm"?staffView():sub==="pm"?permView():sub==="br"?brView():sub==="cat"?catAdminView():sub==="hl"?healthView():weeklyCfgView()}</section></div>`
 }
 function brView(){
  const info={};BR.forEach(b=>info[code(b)]={n:0,p:0,t:0});
@@ -565,7 +565,7 @@ document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)document.title="لوحة المستودع - تاسومة"});
 const deny=async m=>{lastErr=m;stop();login(m);try{await signOut(auth)}catch(e){}};
 // صلاحيات الحساب من staff/{email}. المتابع (v) مالوش أي صلاحية تعديل حتى لو اتعلّم غلط
-const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;window.__tzCo=co;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,p:v?{}:(s.p||{}),name:s.name||"",k:s.k||""}};
+const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;window.__tzCo=co;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,cw:!v&&s.cw===true,p:v?{}:(s.p||{}),name:s.name||"",k:s.k||""}};
 async function enterStaff(u){
  const em=String(u.email||"").toLowerCase();
  try{
@@ -578,7 +578,7 @@ async function enterStaff(u){
    if(!d.exists()||d.data().enabled!==true){if(stW){stW();stW=null}deny("تم إيقاف حسابك");return}
    if(first2){first2=false;return}
    const nr=roleOf(d.data());
-   if(JSON.stringify(nr.p)!==JSON.stringify(ROLE.p)||nr.name!==ROLE.name||nr.admin!==ROLE.admin||nr.v!==ROLE.v||nr.owner!==ROLE.owner){const wasCo=ROLE.co===true;ROLE=nr;stop();start();if(nr.co&&!wasCo)try{window.dispatchEvent(new CustomEvent("tz-news-check"))}catch(x){}}
+   if(JSON.stringify(nr.p)!==JSON.stringify(ROLE.p)||nr.name!==ROLE.name||nr.admin!==ROLE.admin||nr.v!==ROLE.v||nr.owner!==ROLE.owner||!!nr.cw!==!!ROLE.cw){const wasCo=ROLE.co===true;ROLE=nr;stop();start();if(nr.co&&!wasCo)try{window.dispatchEvent(new CustomEvent("tz-news-check"))}catch(x){}}
    else if((d.data().k||"")!==ROLE.k){ROLE.k=d.data().k||"";draw()}// الكنية اتغيّرت بس
   },()=>{});
  }catch(e){
