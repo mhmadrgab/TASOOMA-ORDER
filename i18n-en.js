@@ -2768,4 +2768,13 @@ export default {
 "فعّلها لمهندس الصيانة أو لأي موظف آخر ليرى الفروع في الدردشة ويراسلها.":"Turn it on for the maintenance engineer or any other employee so they see branches in chat and message them.",
 "كلمات المرور لم تعد محفوظة":"Passwords are no longer stored",
 "تظهر مرة واحدة عند إنشاء الحساب أو تغيير كلمته. وكل فرع وموظف يغيّر كلمته بنفسه.":"They show once when an account is created or its password changed. Every branch and employee can change their own password.",
+"(مكرّرة)":"(duplicate)",
+"إزالة هذه التوصيلة من الرحلة":"Remove this delivery from the trip",
+"إزالة توصيلة من رحلة جارية للمدير فقط":"Only a manager can remove a delivery from a running trip",
+"هذه الرحلة لم تعد جارية":"This trip is no longer running",
+"الرحلة تغيّرت الآن، أعد المحاولة":"The trip just changed, try again",
+"هذه التوصيلة سُلِّمت بالفعل ولا يمكن إزالتها":"This delivery was already handed over and cannot be removed",
+"أُزيلت التوصيلة المكرّرة من الرحلة":"Duplicate delivery removed from the trip",
+"أُزيلت من الرحلة، والطلب رجع إلى قيد التجهيز":"Removed from the trip; the order is back to In preparation",
+"أُزيلت من الرحلة":"Removed from the trip",
 };
