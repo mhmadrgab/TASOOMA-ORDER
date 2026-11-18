@@ -205,7 +205,7 @@ function paintLive(){
    // نحسب المسار مجدداً بس لو اتحرك أكتر من 2 كيلو أو عدّى 10 دقائق أو الفروع اتغيّرت (الحد المجاني 2,500 في اليوم لكل الأجهزة)
    // أو السواق خرج عن المسار (أخد طريق تاني) أكتر من 80 متر، مرة كل دقيقة ونص بالكتير
    const sig=path.slice(1).map(p=>(+p.lat).toFixed(4)+","+(+p.lng).toFixed(4)).join("|"),o=RT[t.id];
-   const offR=!old&&rd&&car._off!=null&&car._off>80;
+   const offR=!old&&rd&&car._tzOff!=null&&car._tzOff>80;
    if(!o||o.busy!==true&&(o.sig!==sig||Date.now()-o.at>10*6e4||km2r(o.from,loc)>2||offR&&Date.now()-o.at>90e3)){
     RT[t.id]={...(o||{}),busy:true,sig,from:loc,at:Date.now()};
     roadRoute(path,10).then(r=>{RT[t.id]={r:r||(o&&o.sig===sig?o.r:null),sig,from:loc,at:Date.now(),busy:false};if(r)paintLive()});

@@ -119,13 +119,15 @@ export function setHd(m,brg){m._brg=brg;const el=m.getElement&&m.getElement(),h=
 // - الإشارة قريبة من المسار (أقل من 60 متر): تتلزق عليه وتمشي على شكل الشارع بسرعة ثابتة لحد الإشارة الجاية
 // - المسار اتحسب من جديد والعلامة لسه ورا: تكمّل على القديم لحد أول الجديد (من غير ما تنط)
 // - قفزة كبيرة (أكتر من 4 كم، النت كان فاصل) أو رجوع كتير: تتنقل على طول
-// - بعيدة عن المسار: حركة مستقيمة عادية. m._off = بُعدها عن المسار بالمتر (اللي بينادي بيقرر يحسب مسار جديد)
+// - بعيدة عن المسار: حركة مستقيمة عادية. m._tzOff = بُعدها عن المسار بالمتر (اللي بينادي بيقرر يحسب مسار جديد)
 const SNAP_M=60;
 export function driveTo(m,loc,P,o={}){
  const lk=(+loc.lat).toFixed(6)+","+(+loc.lng).toFixed(6)+","+(+loc.ts||0),first=m._lk==null,mv=o.onMove||(()=>{}),ms=o.ms||17000;
  if(m._lk===lk)return;// نفس الإشارة (إعادة رسم بس): العربية تكمّل حركتها
  const pr=P&&!o.old?projectOn(P,loc,m._P===P?m._d:null):null,on=!!(pr&&pr.off<SNAP_M);
- m._lk=lk;m._off=pr?pr.off:null;
+ // ⚠️ (18 نوفمبر 2026) الاسم _tzOff لا _off: مكتبة Leaflet عندها دالة داخلية اسمها _off على كل علامة، ولما كنا بنكتب فوقها رقم
+ // كان شيل العلامة من الخريطة (نهاية الرحلة) بيرمي «this._off is not a function». أي خاصية جديدة على علامة: تبدأ بـ _tz.
+ m._lk=lk;m._tzOff=pr?pr.off:null;
  const jump=()=>{if(m._gl){cancelAnimationFrame(m._gl);m._gl=0}m._P=P;m._d=pr.d;m.setLatLng([pr.lat,pr.lng]);const b=pointAt(P,pr.d).brg;setHd(m,b);mv({lat:pr.lat,lng:pr.lng,brg:b},1)};
  if(first){if(on)jump();return}
  if(on){

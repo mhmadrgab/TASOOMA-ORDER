@@ -92,7 +92,7 @@ function paint(){
   driveTo(me.car,loc,P,{old,onMove:(pt,k)=>{const n=performance.now();if((n-lt>400||k>=1)&&me.line&&me.car._P&&me.car._d!=null){lt=n;me.line.setLatLngs(pathFrom(me.car._P,me.car._d))}}});
   if(mine){
    // المسار: نحسبه أول مرة، ولاحقاً بس لو اتحرك 2 كم / عدّى 10 دقايق / خرج عن الطريق (مرة كل دقيقة ونص) / ترتيب الفروع اتغيّر
-   const sig=before.map(p=>p.lat.toFixed(4)+","+p.lng.toFixed(4)).join("|")+"#"+ix,o=me.rt,off=!old&&o&&o.P&&me.car._off!=null&&me.car._off>80;
+   const sig=before.map(p=>p.lat.toFixed(4)+","+p.lng.toFixed(4)).join("|")+"#"+ix,o=me.rt,off=!old&&o&&o.P&&me.car._tzOff!=null&&me.car._tzOff>80;
    // علامة صغيرة لكل فرع هيعدّي عليه قبلك
    if(me.bsig!==sig){me.bsig=sig;(me.bm||[]).forEach(x=>map.removeLayer(x));me.bm=before.map((p,i)=>L.marker([p.lat,p.lng],{icon:pin(L,`<div class="tz-b">${i+1}</div>`),keyboard:false,interactive:false}).addTo(map))}
    if(!old&&(!o||(!o.busy&&(o.sig!==sig||Date.now()-o.at>10*6e4||km(o.from,loc)>2||(off&&Date.now()-o.at>9e4))))){
