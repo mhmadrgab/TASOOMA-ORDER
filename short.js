@@ -24,7 +24,7 @@ const CSS=`
 .wr h4{margin:18px 0 8px;font-size:16px}.wr table{width:100%;border-collapse:collapse;font-size:14px}.wr th{font-size:12.5px;color:var(--mut);text-align:start;padding:6px;border-bottom:2px solid #b48aab}.wr td{padding:7px 6px;border-bottom:1px solid var(--line)}
 .wr-a{display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px;border-top:1px solid var(--line);background:var(--soft,#f6eee3)}.wr-a .bt{flex:1}
 @media (max-width:600px){.wr-k{grid-template-columns:1fr 1fr}.wr-b{padding:12px}}
-@media (prefers-color-scheme:dark){.sh-ban{background:#3a1715;border-color:#6b2a24;color:#f1a5a0}.sh-t tr.hot td{background:#2a1513}}
+:where([data-theme=dark]) .sh-ban{background:#3a1715;border-color:#6b2a24;color:#f1a5a0}:where([data-theme=dark]) .sh-t tr.hot td{background:#2a1513}
 @media print{#wrm{display:none!important}}
 `;
 const key=x=>[x.k,x.c||"",x.z||""].map(v=>String(v).trim()).join("|");

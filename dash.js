@@ -17,8 +17,8 @@ const STYLE=`
 .dz{--dz-card:#fffaf3;--dz-ink:#2a1d2c;--dz-ink2:#5a4e5c;--dz-mut:#8b7f8c;--dz-grid:#e9dfd0;--dz-track:#ece2d4;--dz-s1:#8a5a83;--dz-s2:#00899e;
  --dz-r1:#00899e;--dz-r2:#8a5a83;--dz-r3:#6f7d45;--dz-r4:#2a78d6;--dz-new:#8a5a83;--dz-prep:#00899e;--dz-go:#2a78d6;--dz-done:#6f7d45;
  --dz-good:#6f7d45;--dz-warn:#fab219;--dz-bad:#d03b3b;--dz-goodt:#45512a;--dz-shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px -14px rgba(60,45,10,.25);margin-bottom:16px}
-@media (prefers-color-scheme:dark){.dz{--dz-card:#1d1720;--dz-ink:#f3edf1;--dz-ink2:#cfc4d0;--dz-mut:#9a8e9c;--dz-grid:#2e2532;--dz-track:#2c2330;--dz-s1:#8a5a83;--dz-s2:#1b9fb3;
- --dz-r1:#1b9fb3;--dz-r2:#a06f97;--dz-r3:#a4b46e;--dz-r4:#3987e5;--dz-new:#a06f97;--dz-prep:#1b9fb3;--dz-go:#3987e5;--dz-done:#a4b46e;--dz-goodt:#6f7d45;--dz-shadow:0 1px 2px rgba(0,0,0,.4)}}
+:where([data-theme=dark]) .dz{--dz-card:#1d1720;--dz-ink:#f3edf1;--dz-ink2:#cfc4d0;--dz-mut:#9a8e9c;--dz-grid:#2e2532;--dz-track:#2c2330;--dz-s1:#8a5a83;--dz-s2:#1b9fb3;
+ --dz-r1:#1b9fb3;--dz-r2:#a06f97;--dz-r3:#a4b46e;--dz-r4:#3987e5;--dz-new:#a06f97;--dz-prep:#1b9fb3;--dz-go:#3987e5;--dz-done:#a4b46e;--dz-goodt:#6f7d45;--dz-shadow:0 1px 2px rgba(0,0,0,.4)}
 .dz-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
 .dz-hd h2{margin:0;font-size:19px;display:flex;align-items:center;gap:8px;color:var(--dz-ink)}
 .dz-hd h2 small{font-size:12.5px;font-weight:600;color:var(--dz-mut)}
@@ -99,7 +99,7 @@ export function initDash(ctx){
     const p=e.target.closest("[data-dp]");
     if(p&&X){PER=p.dataset.dp;try{localStorage.setItem("dz_per",PER)}catch(x){}X.redraw();return}
     // مرحلة من المراحل: اللوحة بتفلتر بنفسها (data-s)، وإحنا ننزل للطلبات
-    if(e.target.closest(".dz-st"))setTimeout(()=>{const c=document.querySelector('main .chip[data-s="all"]'),hd=document.querySelector(".hd");if(!c)return;
+    if(e.target.closest(".dz-st"))setTimeout(()=>{const c=document.querySelector('main .chip[data-s="all"]'),hd=document.querySelector(".tzt,.hd");if(!c)return;
       window.scrollTo({top:c.getBoundingClientRect().top+scrollY-(hd?hd.offsetHeight:0)-12,behavior:reduce()?"auto":"smooth"})},30);
   });
 }

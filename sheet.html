@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
+<script>/* 🌙 المظهر (تلقائي/نهاري/ليلي) يُحدَّد قبل الرسم حتى لا تومض الصفحة: localStorage.tz_theme، والتبديل من tzTheme في ui.js */(function(){var h=document.documentElement,t="auto";try{t=localStorage.getItem("tz_theme")||"auto"}catch(e){}if(t!=="dark"&&t!=="light")t="auto";var d=t==="dark"||(t==="auto"&&!!window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);h.setAttribute("data-theme",d?"dark":"light");h.setAttribute("data-thp",t)})()</script>
 <script src="./i18n.js"></script><script src="./icons.js" defer></script>
 <script>/* الورقة اليدوية بتفتح جوه لوحة المستودع بس (بعد تسجيل الدخول). لو حد فتح الرابط لوحده: مايشوفش حاجة ويروح لصفحة الدخول */if(window.top===window){document.documentElement.style.display="none";location.replace("./admin.html")}</script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
@@ -51,7 +52,7 @@ button.b.p{background:var(--btn);border-color:var(--btn);color:var(--btnink);fle
 #tr2.sent{background:#1e6b2e;border-color:#1e6b2e}
 .toq{margin-top:14px;padding:11px 14px;border-radius:14px;font-size:14.5px;font-weight:700;background:#e9f6ec;border:1px solid #b9e0c2;color:#1e6b2e}
 .toq small{display:block;font-weight:500;font-size:12.5px;opacity:.85}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .toq{background:#16301c;border-color:#24502e;color:#9fdcae}}
+:root[data-theme=dark] .toq{background:#16301c;border-color:#24502e;color:#9fdcae}
 .tip{color:var(--mut);font-size:14px;margin:14px 2px 0}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .sg{display:none}
@@ -159,11 +160,9 @@ body[data-ty="tr"] .rc.to{color:#fff}
 body[data-ty="tr"] .rc.to small{color:#d6eef2}
 body[data-ty="tr"] .hd small{color:#7fd0dc}
 body[data-ty="tr"] .rc:not(.to) small{color:#7fd0dc}
-@media (prefers-color-scheme:dark){
- :root:not([data-theme="light"]) .rc:not(.to){background:#2c2c2c;border-color:#444}
- body[data-ty="tr"]{--acc:#4fc3d1;--soft:#14272b}
- body[data-ty="tr"] .rc.to{color:#08242a}body[data-ty="tr"] .rc.to small{color:#0f4a54}
-}
+:root[data-theme=dark] .rc:not(.to){background:#2c2c2c;border-color:#444}
+:where([data-theme=dark]) body[data-ty="tr"]{--acc:#4fc3d1;--soft:#14272b}
+:where([data-theme=dark]) body[data-ty="tr"] .rc.to{color:#08242a}:where([data-theme=dark]) body[data-ty="tr"] .rc.to small{color:#0f4a54}
 @media (max-width:560px){.en{min-width:620px}.en td input{font-size:15px;padding-inline:3px}.en td.q input{font-size:17px}.en th:nth-child(8),.en td:nth-child(8){width:60px}.fh{width:26px}.sheet{padding:0 14px 16px}.hd{margin:0 -14px 18px;padding:16px 14px}.lg1{height:46px}.lg2{height:38px}.brand{gap:10px}h1{font-size:17px}.meta{grid-template-columns:1fr 1fr}.meta div:first-child{grid-column:1/-1}td input{padding:10px 5px}}
 @media print{
  @page{size:A4;margin:12mm 14mm}

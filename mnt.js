@@ -75,7 +75,7 @@ const CSS=`
 #mtbtn .tx{flex:1;min-width:0}#mtbtn .tx b{display:block;font-size:19px}#mtbtn .tx small{display:block;color:var(--mut);font-size:13.5px}
 #mtbtn .m-bd{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}#mtbtn .m-bd span{background:#0b6bdb;color:#fff;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700}#mtbtn .m-bd span.g{background:#6f7d45}
 #mtbtn .ar{font-size:24px;opacity:.6;transform:scaleX(-1)}
-@media (prefers-color-scheme:dark){#mtbtn .ic{background:none}}
+:where([data-theme=dark]) #mtbtn .ic{background:none}
 `;
 function css(){if(!g("mt-css")){const s=document.createElement("style");s.id="mt-css";s.textContent=CSS;document.head.appendChild(s)}}
 

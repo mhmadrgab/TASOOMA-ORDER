@@ -19,14 +19,19 @@ export function leaflet(){
  return ready;
 }
 const TT="EKvqbvD3N1wXR53fTP5Ti4XF6lB4BOKX",TTA='&copy; <a href="https://www.tomtom.com" target="_blank" rel="noopener noreferrer">TomTom</a>';
-const dark=()=>!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);
+// 🌙 (v172) مظهر المنصة (تلقائي/نهاري/ليلي) لا وضع الجهاز وحده: html[data-theme]
+const dark=()=>{const t=document.documentElement.getAttribute("data-theme");return t?t==="dark":!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)};
+const ttUrl=()=>`https://api.tomtom.com/map/1/tile/basic/${dark()?"night":"main"}/{z}/{x}/{y}.png?key=${TT}&tileSize=256&language=ar`;
+// الخرائط المفتوحة تبدّل بلاطها عند تغيير المظهر
+const BASES=[];
+if(typeof window!=="undefined")window.addEventListener("tz-theme",()=>{for(let i=BASES.length-1;i>=0;i--){const b=BASES[i];if(!b.el.isConnected){BASES.splice(i,1);continue}try{if(b.osm)b.el.classList.toggle("tz-dark",dark());else b.base.setUrl(ttUrl())}catch(e){}}});
 const lsG=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsS=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 // خريطة جديدة جوه عنصر (المركز الافتراضي الرياض إلى ما نعرف الأماكن) + زرار 🚦 الزحمة (بيتفتكر)
 export function baseMap(L,el){
  const m=L.map(el,{zoomControl:true,attributionControl:true,scrollWheelZoom:true}).setView([24.71,46.68],11);
- const base=L.tileLayer(`https://api.tomtom.com/map/1/tile/basic/${dark()?"night":"main"}/{z}/{x}/{y}.png?key=${TT}&tileSize=256&language=ar`,{maxZoom:20,attribution:TTA}).addTo(m);
+ const base=L.tileLayer(ttUrl(),{maxZoom:20,attribution:TTA}).addTo(m),BK={base,el,osm:false};BASES.push(BK);
  // TomTom لم يتم (المفتاح اتقفل أو الحد خلص): نرجع لـ OpenStreetMap
- let bad=0;base.on("tileerror",()=>{if(++bad===6){m.removeLayer(base);if(dark())el.classList.add("tz-dark");L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'}).addTo(m)}});
+ let bad=0;base.on("tileerror",()=>{if(++bad===6){m.removeLayer(base);BK.osm=true;if(dark())el.classList.add("tz-dark");L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'}).addTo(m)}});
  // الزحمة اللايف (أخضر = ماشي، أصفر/أحمر = زحمة)
  const tr=L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${TT}&tileSize=256`,{maxZoom:20,opacity:.85,zIndex:5});
  if(lsG("tz_traffic")!=="0")tr.addTo(m);

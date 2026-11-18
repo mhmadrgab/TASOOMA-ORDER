@@ -22,7 +22,7 @@ img.rc{max-width:100%;border-radius:10px}
 .rq.recv{border-inline-start-color:var(--done);opacity:.85}.rq.recv .chp{background:#e3e7cf;color:#45512a}
 .rq.go{border-inline-start-color:#6a56c9}.rq.go .chp{background:#e4def7;color:#44348a}
 .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tools button{white-space:nowrap}.tools button{background:none;border:1.5px solid #444;color:#ddd;border-radius:999px;padding:6px 14px;cursor:pointer;font:inherit;font-size:14px}
-@media (prefers-color-scheme:dark){.rcb{background:#40191a;color:#f1a5a0}.rcb.ok{background:#2a301b;color:#b9c68a}.rq.go .chp{background:#2a2450;color:#c3b8f5}}
+:where([data-theme=dark]) .rcb{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .rcb.ok{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .rq.go .chp{background:#2a2450;color:#c3b8f5}
 @media print{.cm{display:none!important}}
 `;
 const cur=()=>calc(LA,SA);

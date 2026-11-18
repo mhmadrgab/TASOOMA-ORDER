@@ -20,7 +20,7 @@ const CSS=`
 .wrv{border:1.5px solid var(--line);border-inline-start:5px solid #c4362b;border-radius:12px;padding:10px 14px;margin-bottom:8px}
 .wrv .rn{font-size:13.5px;color:var(--mut);margin:4px 0 8px}
 .wnote{font-size:13px;color:var(--mut);line-height:1.9}
-@media (prefers-color-scheme:dark){.wsc.a{background:#2a301b;color:#b9c68a}.wsc.b{background:#3d2b40;color:#e3c8dd}.wsc.c{background:#40191a;color:#f1a5a0}}
+:where([data-theme=dark]) .wsc.a{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .wsc.b{background:#3d2b40;color:#e3c8dd}:where([data-theme=dark]) .wsc.c{background:#40191a;color:#f1a5a0}
 @media print{.wkm{display:none!important}}
 `;
 const ym=t=>new Date(N(t)).toLocaleDateString("en-CA").slice(0,7);

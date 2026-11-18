@@ -30,7 +30,7 @@ const CSS=`
 .tzh-err{color:#9b2a1f;font-weight:700}
 .tzh-er{padding:9px 0;font-size:13px}.tzh-er+.tzh-er{border-top:1px solid var(--line)}.tzh-er b{display:block;font-size:13.5px;font-family:ui-monospace,Consolas,monospace;word-break:break-word;text-align:left;user-select:all}.tzh-er span{display:block;color:var(--mut);margin-top:3px;line-height:1.7}
 @media (max-width:640px){.tzh-row{grid-template-columns:1fr auto}.tzh-row i{display:none}.tzh-top b{font-size:26px}}
-@media (prefers-color-scheme:dark){.tzh-top em{background:#2a301b;color:#b9c68a}.tzh-card.w .tzh-top em{background:#3a2a08;color:#f6c770}.tzh-card.r .tzh-top em{background:#40191a;color:#f1a5a0}.tzh-card.r .tzh-msg,.tzh-err{color:#f1a5a0}}
+:where([data-theme=dark]) .tzh-top em{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .tzh-card.w .tzh-top em{background:#3a2a08;color:#f6c770}:where([data-theme=dark]) .tzh-card.r .tzh-top em{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .tzh-card.r .tzh-msg,:where([data-theme=dark]) .tzh-err{color:#f1a5a0}
 `;
 export function initHealth(ctx){
  X=ctx;H=null;err="";busy=false;PLAN=500;

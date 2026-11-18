@@ -24,7 +24,7 @@ const CSS=`.mp{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1
 .mp .ma i{font-style:normal;font-size:24px}
 .mp .ma.wait{cursor:progress;opacity:.7}
 .mp-h{font-size:12.5px;color:var(--mut,#74687a);margin-top:4px}
-@media (prefers-color-scheme:dark){.mp .mt{background:#282029}.mp .mt.pdf{background:#2e2427}}`;
+:where([data-theme=dark]) .mp .mt{background:#282029}:where([data-theme=dark]) .mp .mt.pdf{background:#2e2427}`;
 function css(){if(!document.getElementById("mp-css")){const s=document.createElement("style");s.id="mp-css";s.textContent=CSS;document.head.appendChild(s)}}
 let SEQ=0;
 const kb=n=>n>=1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";

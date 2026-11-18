@@ -15,7 +15,7 @@ const CSS=`#pws{display:none;position:fixed;inset:0;z-index:9000;background:rgba
 #pws .pws-er{min-height:22px;margin:10px 0 0;color:#c4362b;font-weight:700;font-size:14px;line-height:1.6}
 #pws .pws-act{display:flex;gap:10px;margin-top:8px}#pws .pws-act button{flex:1;font:inherit;font-weight:700;font-size:15.5px;border-radius:12px;padding:12px;cursor:pointer;border:1.5px solid var(--line,#e2d6c8);background:none;color:var(--ink,#2a1d2c);text-decoration:none}
 #pws .pws-act button.p{background:#2a1d2c;border-color:#2a1d2c;color:#fff}#pws .pws-act button:disabled{opacity:.6}
-@media (prefers-color-scheme:dark){#pws .pws-act button.p{background:#b48aab;border-color:#b48aab;color:#2a1d2c}#pws .pws-er{color:#f1a5a0}}`;
+:where([data-theme=dark]) #pws .pws-act button.p{background:#b48aab;border-color:#b48aab;color:#2a1d2c}:where([data-theme=dark]) #pws .pws-er{color:#f1a5a0}`;
 export function initPwSelf(ctx){
  X=ctx;busy=false;
  if(!g("pws-css")){const s=document.createElement("style");s.id="pws-css";s.textContent=CSS;document.head.appendChild(s)}

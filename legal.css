@@ -1,6 +1,8 @@
 /* صفحات سياسة الخصوصية والشروط والأحكام (privacy.html / terms.html) */
 :root{--bg:#ebe0d1;--card:#fffaf3;--ink:#2a1d2c;--acc:#8a5a83;--soft:#f3e9f1;--olive:#6f7d45;--olsoft:#eef1e2;--mut:#6b5d6c;--line:#e0d2bf}
-@media (prefers-color-scheme:dark){:root{--bg:#1d151e;--card:#2a1f2c;--ink:#f3edf1;--acc:#c9a3c2;--soft:#34263a;--olive:#a4b46e;--olsoft:#2b3020;--mut:#b9a9ba;--line:#3f3042}}
+/* 🌙 المظهر من اختيار المنصة (سكريبت أول الصفحة يضع data-theme)، وإلا حسب الجهاز */
+:root[data-theme=dark]{--bg:#1d151e;--card:#2a1f2c;--ink:#f3edf1;--acc:#c9a3c2;--soft:#34263a;--olive:#a4b46e;--olsoft:#2b3020;--mut:#b9a9ba;--line:#3f3042}
+@media (prefers-color-scheme:dark){:root:not([data-theme]){--bg:#1d151e;--card:#2a1f2c;--ink:#f3edf1;--acc:#c9a3c2;--soft:#34263a;--olive:#a4b46e;--olsoft:#2b3020;--mut:#b9a9ba;--line:#3f3042}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.9 "Segoe UI",Tahoma,"Noto Naskh Arabic","Geeza Pro",system-ui,sans-serif}

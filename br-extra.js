@@ -1,12 +1,12 @@
 // صفحة الفرع: تأكيد الاستلام + التنبيهات + تثبيت التطبيق
 import {doc,updateDoc,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {E,N} from "./cust.js";
-import {wireButtons,regSW} from "./notify.js";
+import {regSW} from "./notify.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 let X=null;
 const CSS=`
-#me .tl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}#me .tl button{font-size:13px}
+#me .tl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-inline-start:auto}
 .xm{display:none;position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.55);overflow:auto;padding:16px}.xm.on{display:block}
 .xk{max-width:520px;margin:4vh auto;background:var(--card);border-radius:18px;padding:20px}.xk h3{margin:0 0 10px}.xk label{display:block;color:var(--mut);font-size:13px;margin:12px 0 4px}
 .xk textarea{width:100%;background:var(--field);border:1.5px solid transparent;border-radius:11px;padding:10px 12px;font:inherit;color:var(--ink)}
@@ -14,14 +14,14 @@ const CSS=`
 .xk table{width:100%;border-collapse:collapse;font-size:14px}.xk th{text-align:right;color:var(--mut);font-weight:500;padding:4px;border-bottom:2px solid var(--acc);font-size:12.5px}.xk td{padding:5px 4px;border-bottom:1px solid var(--line)}.xk td input{padding:6px;text-align:center;width:64px;font-weight:700}
 .mr{flex-wrap:wrap}.rcvb{background:var(--btn);color:var(--btnink);border:0;border-radius:10px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer}
 .chp.recv{background:#e3e7cf;color:#45512a}.chp.go{background:#e4def7;color:#44348a}.rcn{font-size:12.5px;color:#8a2218;font-weight:700}.gon{font-size:13px;color:#44348a;font-weight:700;width:100%}
-@media (prefers-color-scheme:dark){.chp.recv{background:#2a301b;color:#b9c68a}.chp.go{background:#2a2450;color:#c3b8f5}.gon{color:#c3b8f5}}
+:where([data-theme=dark]) .chp.recv{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .chp.go{background:#2a2450;color:#c3b8f5}:where([data-theme=dark]) .gon{color:#c3b8f5}
 `;
 function ui(){
  if(g("cx-css"))return;
  const s=document.createElement("style");s.id="cx-css";s.textContent=CSS;document.head.appendChild(s);
  const mx=g("mx"),tl=document.createElement("div");tl.className="tl";
- tl.innerHTML=`<button id="bell" type="button"></button><button data-install type="button" hidden>📲 تثبيت التطبيق</button>`;
- mx.before(tl);tl.appendChild(mx);wireButtons();
+ // (v172) الجرس وزر التثبيت صارا داخل ⚙ الإعدادات (tzset.js). هنا حاوية الأزرار فقط: «المحادثات» (bchat.js) ثم ⚙ (#mx)
+ mx.before(tl);tl.appendChild(mx);
  const xm=document.createElement("div");xm.id="xm";xm.className="xm";document.body.appendChild(xm);
  xm.onclick=e=>{if(e.target===xm)closeX()};
  g("ml").addEventListener("click",e=>{const b=e.target.closest("[data-rcv]");if(b)openRcv(b.dataset.rcv)});

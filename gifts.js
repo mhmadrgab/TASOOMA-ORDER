@@ -85,16 +85,16 @@ const CSS=`
 .gfc-st{display:inline-block;margin-top:4px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#f2e5ee;color:#5f3a59}
 .gfc.ok .gfc-st{background:#e5ecd0;color:#45512a}.gfc.set .gfc-st{background:#dde9f7;color:#1c4f86}.gfc.no .gfc-st{background:#fbe3e0;color:#a2271d}.gfc.pend .gfc-st{background:#fdf0cf;color:#7a5200}
 .gfc-ret{grid-column:1/-1;font:inherit;font-weight:700;font-size:14px;border:0;border-radius:11px;padding:9px;background:#6f7d45;color:#fff;cursor:pointer}
-@media (prefers-color-scheme:dark){.gfc-st{background:#3d2b40;color:#e3c8dd}.gfc.ok .gfc-st{background:#2a301b;color:#b9c68a}.gfc.set .gfc-st{background:#1c2d44;color:#9cc2ee}.gfc.no .gfc-st{background:#40191a;color:#f1a5a0}.gfc.pend .gfc-st{background:#3a2d0f;color:#f0cf7a}}
+:where([data-theme=dark]) .gfc-st{background:#3d2b40;color:#e3c8dd}:where([data-theme=dark]) .gfc.ok .gfc-st{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .gfc.set .gfc-st{background:#1c2d44;color:#9cc2ee}:where([data-theme=dark]) .gfc.no .gfc-st{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .gfc.pend .gfc-st{background:#3a2d0f;color:#f0cf7a}
 @media (max-width:560px){.gs-mt{grid-template-columns:1fr 1fr}.gs-bd{padding:14px 14px 0}.gs-ac{margin:12px -14px 0;padding:12px 14px 16px}.gs-ac .bt{min-width:calc(50% - 4px)}.gs-hd{padding:14px}.gs-rt b{font-size:15px}.gs-tb{font-size:14px}.gs-tb td.k{font-size:15px}}
-@media (prefers-color-scheme:dark){.gs-nt{background:#2b2210}.gs-rt>div.to{background:#000}}
+:where([data-theme=dark]) .gs-nt{background:#2b2210}:where([data-theme=dark]) .gs-rt>div.to{background:#000}
 .gf-ret{margin-top:8px;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8;background:#f3efe6;color:#4e2f4a}.gf-ret.w{background:#fff1d6;color:#8a5a00;font-weight:700}.gf-ret.ok{background:#e7f4ec;color:#45512a}.gf-ret.no{background:#f1f1f1;color:#666}
 .gf-rt{display:grid;gap:10px;margin-top:14px}.gf-rt button{font:inherit;font-weight:800;font-size:16px;border-radius:14px;padding:14px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-align:start}.gf-rt button small{display:block;font-weight:400;color:var(--mut);font-size:13px;margin-top:2px}.gf-rt button.y{border-color:#b48aab;background:#fff8e6}
 .gf-rr{display:grid;grid-template-columns:1fr 90px 100px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}.gf-rr input{text-align:center;padding:9px 6px}
-@media (prefers-color-scheme:dark){.gf-ret{background:#2a261d;color:#e3c8dd}.gf-ret.w{background:#3a2a08;color:#f6c770}.gf-ret.ok{background:#2a301b;color:#b9c68a}.gf-ret.no{background:#262626;color:#aaa}.gf-rt button.y{background:#3d2b40}}
+:where([data-theme=dark]) .gf-ret{background:#2a261d;color:#e3c8dd}:where([data-theme=dark]) .gf-ret.w{background:#3a2a08;color:#f6c770}:where([data-theme=dark]) .gf-ret.ok{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .gf-ret.no{background:#262626;color:#aaa}:where([data-theme=dark]) .gf-rt button.y{background:#3d2b40}
 .gf-ref{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}.gf-ref input{flex:1;min-width:180px}
 .gf-acc{background:#eef4fb;border:1px solid #9fc0e6;border-radius:16px;padding:12px 14px;margin-bottom:14px}
-@media (prefers-color-scheme:dark){.gf-st.set,.gf-set,.gf-acc{background:#14243a;color:#9cc4f0;border-color:#2a4a70}}.gf-st.ok{background:#e3e7cf;color:#45512a}.gf-st.no{background:#f8d9d5;color:#8a2218}
+:where([data-theme=dark]) .gf-st.set,:where([data-theme=dark]) .gf-set,:where([data-theme=dark]) .gf-acc{background:#14243a;color:#9cc4f0;border-color:#2a4a70}.gf-st.ok{background:#e3e7cf;color:#45512a}.gf-st.no{background:#f8d9d5;color:#8a2218}
 .gf-it{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.gf-it span{background:var(--soft);border-radius:9px;padding:3px 9px;font-size:13.5px}
 .gf-b{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.gf-b .bt,.gf-b button{width:auto}
 /* شريط الفلاتر (نوفمبر 2026): كان flex بيلف بشكل عشوائي (فلاتر فوق وتحت وفي النص). دلوقتي شبكة ثابتة: 4 فلاتر + الأزرار في سطر على الكمبيوتر، وعمودين على التابلت والموبايل والأزرار سطر كامل */
@@ -120,8 +120,8 @@ const CSS=`
 .gf-hero .ic{font-size:40px}.gf-hero h3{margin:0;font-size:21px;color:#fff}.gf-hero p{margin:3px 0 0;font-size:13.5px;color:#cfb1c8;line-height:1.7}
 .gf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}.gf-stats div{background:var(--soft);border-radius:14px;padding:10px;text-align:center}.gf-stats b{display:block;font-size:22px}.gf-stats small{color:var(--mut);font-size:12.5px}
 .gf-new{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font:inherit;font-size:17px;font-weight:800;border:0;border-radius:14px;padding:15px;background:#2a1d2c;color:#fff;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.18)}
-@media (prefers-color-scheme:dark){#gfbtn{color:#2a1d2c}}
-@media (prefers-color-scheme:dark){.gf-st{background:#3d2b40;color:#e3c8dd}.gf-st.ok{background:#2a301b;color:#b9c68a}.gf-st.no{background:#40191a;color:#f1a5a0}.gf-up.ok{background:#2a301b;color:#b9c68a}.gf-pend{background:#2b2210;border-color:#5f3a59}}
+:where([data-theme=dark]) #gfbtn{color:#2a1d2c}
+:where([data-theme=dark]) .gf-st{background:#3d2b40;color:#e3c8dd}:where([data-theme=dark]) .gf-st.ok{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .gf-st.no{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .gf-up.ok{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .gf-pend{background:#2b2210;border-color:#5f3a59}
 #gfm .bt{font:inherit;font-weight:700;border-radius:12px;padding:10px 16px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}#gfm .bt.s{padding:6px 12px;font-size:13.5px}
 #gfm .bt.p{background:#2a1d2c;border-color:#2a1d2c;color:#fff}#gfm .bt.g{background:#b48aab;border-color:#b48aab;color:#2a1d2c}#gfm .bt.r{color:#c4362b;border-color:#c4362b}#gfm .bt:disabled{opacity:.6}
 @media print{.gfm{display:none!important}}
@@ -211,13 +211,13 @@ html.lite .g5 *{animation:none!important}
  .g5-exp{flex:none}.g5-exp .tx{display:none}.g5-sumd{grid-template-columns:1fr;padding:4px 4px 10px}
  .g5-fc{flex:1 1 calc(50% - 4px);min-width:0}.g5-fc select{flex:1;width:100%;min-width:0;text-overflow:ellipsis}.g5-fc input[type=date]{flex:1;width:auto}.g5-hint{flex-direction:column;gap:6px}
 }
-@media (prefers-color-scheme:dark){
- .g5-seg .ic{background:rgba(180,138,171,.16);color:#d8b4cf}.g5-seg button.on .ic{background:#b48aab;color:#2a1d2c}.g5-seg button.has small{color:#f1a5a0}
- .g5-tag.w{background:#3a2a08;color:#f6c770}.g5-tag.ok{background:#2a301b;color:#b9c68a}.g5-tag.b{background:#14243a;color:#9cc4f0}.g5-tag.r{background:#40191a;color:#f1a5a0}.g5-tag.me{background:#3d2b40;color:#e3c8dd}
- .g5-per button.on{background:#b48aab;border-color:#b48aab;color:#2a1d2c}.g5-fc.on{background:#3d2b40}.g5-fc .fx{background:rgba(255,255,255,.14)}
- .g5-mine{border-color:#b48aab;color:#d8b4cf}.g5-mine.on{background:#b48aab;color:#2a1d2c}.g5-lnk{color:#d8b4cf}.g5-bar u{background:#b48aab}
- .gs-rep{background:#40191a;color:#f1a5a0}.gs-set{background:#14243a}
-}
+
+ :where([data-theme=dark]) .g5-seg .ic{background:rgba(180,138,171,.16);color:#d8b4cf}:where([data-theme=dark]) .g5-seg button.on .ic{background:#b48aab;color:#2a1d2c}:where([data-theme=dark]) .g5-seg button.has small{color:#f1a5a0}
+ :where([data-theme=dark]) .g5-tag.w{background:#3a2a08;color:#f6c770}:where([data-theme=dark]) .g5-tag.ok{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .g5-tag.b{background:#14243a;color:#9cc4f0}:where([data-theme=dark]) .g5-tag.r{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .g5-tag.me{background:#3d2b40;color:#e3c8dd}
+ :where([data-theme=dark]) .g5-per button.on{background:#b48aab;border-color:#b48aab;color:#2a1d2c}:where([data-theme=dark]) .g5-fc.on{background:#3d2b40}:where([data-theme=dark]) .g5-fc .fx{background:rgba(255,255,255,.14)}
+ :where([data-theme=dark]) .g5-mine{border-color:#b48aab;color:#d8b4cf}:where([data-theme=dark]) .g5-mine.on{background:#b48aab;color:#2a1d2c}:where([data-theme=dark]) .g5-lnk{color:#d8b4cf}:where([data-theme=dark]) .g5-bar u{background:#b48aab}
+ :where([data-theme=dark]) .gs-rep{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .gs-set{background:#14243a}
+
 `;
 const all=()=>{const m=new Map([...OLD,...MINE,...L,...LS,...PEND]);return [...m.values()]};
 // ✏️ (15 نوفمبر 2026) "سجّلتها أنا": اللي سجّل الهدية يلاقيها بسرعة ويعدّلها طول ما هي لسه بانتظار الاعتماد (القواعد بتسمح بده بس)

@@ -50,7 +50,7 @@ const CSS=`
 .st1{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tr .st1 span{background:var(--soft);border-radius:10px;padding:4px 10px;font-size:14px}.tr .st1 span.ok{background:#e3e7cf;color:#45512a}
 .pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#e3e7cf;color:#45512a}.pill.off2{background:#f8d9d5;color:#8a2218}.pill.go{background:#e4def7;color:#44348a}
 .fl2{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}.sub{margin:22px 0 8px;font-size:18px}
-@media (prefers-color-scheme:dark){.al{background:#40191a;color:#f1a5a0}.al.w{background:#3d2b40;color:#e3c8dd}.pill{background:#2a301b;color:#b9c68a}.pill.go{background:#2a2450;color:#c3b8f5}}
+:where([data-theme=dark]) .al{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .al.w{background:#3d2b40;color:#e3c8dd}:where([data-theme=dark]) .pill{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .pill.go{background:#2a2450;color:#c3b8f5}
 @media print{.fm{display:none!important}}
 `;
 export const cars=()=>CARS;

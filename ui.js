@@ -106,15 +106,49 @@
   p.style.cssText="position:absolute;inset:auto 0 calc(12% + env(safe-area-inset-bottom,0px)) 0;text-align:center;color:rgba(255,255,255,.78);font:500 14px/1.6 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;padding:0 20px;opacity:0;transition:opacity .4s";
   p.textContent=navigator.onLine?"جاري الاتصال… الإنترنت بطيء قليلاً":"لا يوجد اتصال بالإنترنت… سنحاول تلقائياً";boot.appendChild(p);setTimeout(()=>{p.style.opacity="1"},30)},4500);
  if(!H.classList.contains("aw"))window.uiReady();// صفحات من غير تسجيل دخول
- // الموبايل: الشريط اللي فوق بيختفي وإنت نازل ويرجع أول ما تطلع لفوق (مساحة أكبر للمحتوى)
- let lastY=scrollY,tick=false;
- addEventListener("scroll",()=>{if(tick)return;tick=true;requestAnimationFrame(()=>{tick=false;const y=scrollY,d=y-lastY;if(Math.abs(d)<8&&y>10)return;
-  const up=d>0&&y>180&&innerWidth<=760&&!!document.querySelector("#app>.hd>.hi");if(H.classList.contains("hd-up")!==up)H.classList.toggle("hd-up",up);lastY=y})},{passive:true});
+})();
+
+// 🌙 (v172، 18 نوفمبر 2026، طلب محمد: «الوضع الليلي») المظهر: تلقائي (حسب الجهاز) / نهاري / ليلي.
+// الاختيار في localStorage.tz_theme (لا شيء = تلقائي). سكريبت صغير في أول كل صفحة يضع html[data-theme=dark|light] قبل الرسم (بلا وميض)،
+// وكل ألوان الوضع الليلي في المنصة مكتوبة على [data-theme=dark]. هنا: التبديل، متابعة تغيّر وضع الجهاز، والنوافذ/الإطارات الأخرى (storage).
+// الاستخدام: tzTheme.seg() يرجّع مفتاح الاختيار (HTML)، وأي زر عليه data-thset="auto|light|dark" يعمل وحده. الحدث: window «tz-theme».
+(function(){
+ var H=document.documentElement,KEY="tz_theme",mq=window.matchMedia?matchMedia("(prefers-color-scheme: dark)"):null,RM=window.matchMedia?matchMedia("(prefers-reduced-motion: reduce)"):null;
+ var pref=function(){var t=null;try{t=localStorage.getItem(KEY)}catch(e){}return t==="dark"||t==="light"?t:"auto"};
+ var want=function(p){return p==="dark"||(p==="auto"&&!!mq&&mq.matches)?"dark":"light"};
+ var paint=function(){var p=pref(),bs=document.querySelectorAll("[data-thset]");for(var i=0;i<bs.length;i++){var on=bs[i].getAttribute("data-thset")===p;if(bs[i].getAttribute("aria-checked")!==String(on))bs[i].setAttribute("aria-checked",String(on));bs[i].tabIndex=on?0:-1}};
+ var apply=function(){var p=pref(),v=want(p),ch=H.getAttribute("data-theme")!==v;if(ch)H.setAttribute("data-theme",v);if(H.getAttribute("data-thp")!==p)H.setAttribute("data-thp",p);paint();
+  if(ch){try{window.dispatchEvent(new CustomEvent("tz-theme",{detail:{theme:v,pref:p}}))}catch(e){}}};
+ var IC={auto:'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></svg>',
+  light:'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>',
+  dark:'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.2A8.3 8.3 0 0 1 9.8 4a8.3 8.3 0 1 0 10.2 10.2z"/></svg>'};
+ var LB={auto:"تلقائي",light:"نهاري",dark:"ليلي"},TP={auto:"حسب إعداد الجهاز",light:"الوضع النهاري",dark:"الوضع الليلي"},ORD=["auto","light","dark"];
+ var set=function(p,el){p=p==="dark"||p==="light"?p:"auto";
+  var go=function(){try{if(p==="auto")localStorage.removeItem(KEY);else localStorage.setItem(KEY,p)}catch(e){}apply()};
+  // الوضع الجديد ينتشر كدائرة من مكان الزر (المتصفحات الحديثة فقط، ومتوقف في الوضع الخفيف ومع «تقليل الحركة»)
+  if(want(p)!==H.getAttribute("data-theme")&&document.startViewTransition&&!H.classList.contains("lite")&&!(RM&&RM.matches)&&!document.hidden){
+   var r=el&&el.getBoundingClientRect?el.getBoundingClientRect():null,x=r?r.left+r.width/2:innerWidth/2,y=r?r.top+r.height/2:innerHeight/2;
+   try{H.style.setProperty("--thx",Math.round(x)+"px");H.style.setProperty("--thy",Math.round(y)+"px");H.style.setProperty("--thr",Math.ceil(Math.sqrt(Math.pow(Math.max(x,innerWidth-x),2)+Math.pow(Math.max(y,innerHeight-y),2)))+"px");H.classList.add("tz-thv");
+    var done=function(){H.classList.remove("tz-thv")},vt=document.startViewTransition(go);if(vt&&vt.finished&&vt.finished.then)vt.finished.then(done,done);else setTimeout(done,700);return}catch(e){H.classList.remove("tz-thv")}}
+  go()};
+ window.tzTheme={get:pref,eff:function(){return H.getAttribute("data-theme")==="dark"?"dark":"light"},set:set,
+  seg:function(cls){var p=pref();return '<div class="tzth'+(cls?" "+cls:"")+'" role="radiogroup" aria-label="المظهر">'+ORD.map(function(k){return '<button type="button" role="radio" data-noico data-thset="'+k+'" aria-checked="'+(p===k)+'" tabindex="'+(p===k?0:-1)+'" title="'+TP[k]+'">'+IC[k]+'<span>'+LB[k]+'</span></button>'}).join("")+'</div>'}};
+ document.addEventListener("click",function(e){var b=e.target&&e.target.closest&&e.target.closest("[data-thset]");if(!b)return;var k=b.getAttribute("data-thset");
+  // المفتاح المضغوط (القائمة المطوية): الزر الظاهر وحده يدور على الاختيارات
+  if(b.getAttribute("aria-checked")==="true"&&b.parentElement&&getComputedStyle(b.parentElement).getPropertyValue("--th-cyc").trim()==="1")k=ORD[(ORD.indexOf(k)+1)%3];
+  set(k,b)});
+ document.addEventListener("keydown",function(e){var b=e.target&&e.target.closest&&e.target.closest("[data-thset]");if(!b||(e.key!=="ArrowLeft"&&e.key!=="ArrowRight"&&e.key!=="ArrowUp"&&e.key!=="ArrowDown"))return;
+  e.preventDefault();var rtl=getComputedStyle(H).direction==="rtl",fw=e.key==="ArrowDown"||(e.key==="ArrowLeft"&&rtl)||(e.key==="ArrowRight"&&!rtl),k=ORD[(ORD.indexOf(b.getAttribute("data-thset"))+(fw?1:2))%3];set(k,b);
+  var n=b.parentElement&&b.parentElement.querySelector('[data-thset="'+k+'"]');if(n&&n.getClientRects().length)n.focus()});
+ if(mq){if(mq.addEventListener)mq.addEventListener("change",apply);else if(mq.addListener)mq.addListener(apply)}
+ addEventListener("storage",function(e){if(!e||!e.key||e.key===KEY)apply()});
+ apply();
 })();
 
 // ⏰ ساعة الجهاز (12 نوفمبر 2026): لو ساعة الكمبيوتر/الموبايل غلط، تسجيل الدخول في Supabase بيبان "شغال" عند الجهاز وهو منتهي
 // عند السيرفر، فالبيانات كلها بتطلع فاضية من غير أي سبب واضح (حصل عند محمد: الساعة متأخرة 9 ساعات). بنقارن بوقت السيرفر ونقول بوضوح.
 (function(){
+ try{if(window.top!==window.self)return}catch(e){return}// داخل إطار (الورقة اليدوية): اللوحة نفسها تفحص الساعة، والإطار ممنوع من الاتصال أصلاً (كان يكتب خطأ CSP في الكونسول)
  const chk=()=>fetch(location.pathname,{method:"HEAD",cache:"no-store"}).then(r=>{
   const sv=Date.parse(r.headers.get("date")||"");if(!sv)return;const sk=Date.now()-sv,ab=Math.abs(sk);
   let b=document.getElementById("tz-clock");if(ab<5*6e4){if(b)b.remove();return}
@@ -198,7 +232,7 @@
  addEventListener("online",upd);addEventListener("focus",upd);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)upd();tick()});
  // 2) هل ينفع نعمل ريفرش دلوقتي من غير ما نضيّع شغل؟
- const MOD="#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#zbx,#bciv,#anniv,#annm,#annp,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,.cm,.fm,.gfm,.mdl,.wkm,.ov";
+ const MOD="#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#zbx,#bciv,#anniv,#annm,#annp,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,.cm,.fm,.gfm,.mdl,.wkm,.ov";
  const overlayOpen=()=>{if(document.getElementById("tz-news"))return true;try{return [...document.querySelectorAll(MOD)].some(e=>e.classList.contains("on")&&!e.classList.contains("is-closing"))}catch(x){return false}};
  const typing=()=>{const a=document.activeElement;if(!a)return false;const t=a.tagName;
   if(a.isContentEditable)return String(a.textContent||"").length>0;
@@ -324,7 +358,7 @@
 #tz-news .f small{display:block;text-align:center;color:var(--mut,#74687a);font-size:12.5px;margin-top:2px}
 @media (max-width:420px){#tz-news .tn-hero{height:150px}#tz-news .tn-ps{top:22px;width:178px;margin-left:-89px}#tz-news .tn-ps.tn-bk{top:32px;height:112px}#tz-news .tn-lgo{top:12px}#tz-news .tn-nw{top:14px}#tz-news .tn-xb{top:8px}#tz-news .tn-hd{padding:14px 20px 0}#tz-news .tn-hd b{font-size:20px}#tz-news .b{padding:12px 16px 2px}#tz-news li{padding:9px 12px;gap:10px}#tz-news li span{font-size:12.5px;line-height:1.5}#tz-news .tn-lv{margin-top:9px;padding:8px 11px}#tz-news .f{padding:12px 16px 16px}#tz-news .f small{display:none}}
 @media (max-height:800px){#tz-news .tn-hero{height:172px}#tz-news .tn-ps{top:30px}#tz-news .tn-ps.tn-bk{top:42px;height:128px}#tz-news .tn-hd{padding-top:14px}#tz-news .b{padding-top:12px}#tz-news li{padding:10px 13px}#tz-news .f{padding-top:12px}}
-@media (prefers-color-scheme:dark){#tz-news .f button{background:#b48aab;color:#1d1720}#tz-news .tn-hd small{color:#cfb1c8}}
+:where([data-theme=dark]) #tz-news .f button{background:#b48aab;color:#1d1720}:where([data-theme=dark]) #tz-news .tn-hd small{color:#cfb1c8}
 @keyframes tzn-f{from{opacity:0}}@keyframes tzn-u{from{opacity:0;transform:translateY(22px) scale(.95)}}
 @keyframes tzn-fl{50%{transform:translateY(-6px) rotate(-4deg)}}
 @media (prefers-reduced-motion:reduce){#tz-news,#tz-news .k,#tz-news .tn-ps{animation:none}}`;document.head.appendChild(s)}
@@ -377,7 +411,7 @@
 // بكلاس is-closing (الخلفية بتختفي بالتدريج واللوحة بتصغر)، وبعدين بتختفي. الملفات التانية مش محتاجة تتغيّر.
 // لو اتفتحت تاني في النص، بنلغي القفل على طول. الضغطات بتعدّي من تحتها وهي بتقفل (pointer-events:none في ui.css).
 (()=>{
- const SEL="#mtm,.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#md,#em,.mdl,.wkm,#npm,#uim,#bcm,#anniv,#bciv,#zbx,.ov";
+ const SEL="#tzset,#mtm,.cm,.xm,.fm,.gfm,#annm,#annp,#bcgi,#pfm,#pfc,#wrm,#md,#em,.mdl,.wkm,#npm,#uim,#bcm,#anniv,#bciv,#zbx,.ov";
  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
  const ms=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--modal-close-dur"))||150;
  const T=new WeakMap();

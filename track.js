@@ -28,7 +28,7 @@ const CSS=MAP_CSS+`
 #trk .trk-x{width:100%;margin-top:12px;padding:12px;border:0;border-radius:12px;font:700 15px inherit;background:#2a1d2c;color:#fff;cursor:pointer}
 .trkb{display:block;width:100%;margin-top:6px;padding:10px;border:0;border-radius:10px;font:700 14px inherit;background:#6a56c9;color:#fff;cursor:pointer}
 .tz-me{background:#1f8a3c;color:#fff;border:2px solid #fff;border-radius:999px;padding:3px 10px;font-size:12.5px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
-@media (prefers-color-scheme:dark){#trk .trk-s{background:#14304d;color:#9cc7f0}#trk .trk-s.n{background:#1f8a3c;color:#fff}#trk .trk-s.w{background:#4a1f1b;color:#f3b0a8}}
+:where([data-theme=dark]) #trk .trk-s{background:#14304d;color:#9cc7f0}:where([data-theme=dark]) #trk .trk-s.n{background:#1f8a3c;color:#fff}:where([data-theme=dark]) #trk .trk-s.w{background:#4a1f1b;color:#f3b0a8}
 `;
 export function initTrack(o){
  C=o;

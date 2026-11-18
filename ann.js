@@ -68,7 +68,7 @@ const CSS=`
 .annbg .ft{position:relative;width:100%;display:flex;align-items:center;gap:10px;color:#cfb1c8;font-size:12px}.annbg .ft::before,.annbg .ft::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,#b48aab,transparent)}
 .annpb .annbg{margin:0 0 6px}
 @media (max-width:480px){.annbg{min-height:260px}.annbg .abt.s1{font-size:28px}.annbg .abt.s2{font-size:23px}}
-@media (prefers-color-scheme:dark){.anni.nw{background:#2b2210}}
+:where([data-theme=dark]) .anni.nw{background:#2b2210}
 @media print{#annb,#annm,#annp,#anniv{display:none!important}}
 `;
 const me=()=>X&&X.party;

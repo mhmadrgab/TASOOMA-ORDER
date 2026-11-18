@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
+<script>/* 🌙 المظهر (تلقائي/نهاري/ليلي) يُحدَّد قبل الرسم حتى لا تومض الصفحة: localStorage.tz_theme، والتبديل من tzTheme في ui.js */(function(){var h=document.documentElement,t="auto";try{t=localStorage.getItem("tz_theme")||"auto"}catch(e){}if(t!=="dark"&&t!=="light")t="auto";var d=t==="dark"||(t==="auto"&&!!window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);h.setAttribute("data-theme",d?"dark":"light");h.setAttribute("data-thp",t)})()</script>
 <script src="./i18n.js"></script><script src="./icons.js" defer></script>
 <!-- شاشة البداية: خطوط لوجو تاسومة بترسم نفسها. ومحتوى الصفحة مخفي (aw) إلى ما نعرف مين داخل، علشان مايبانش حاجة قبل تسجيل الدخول -->
 <script>(function(){var h=document.documentElement;h.classList.add("aw");var n=navigator,c=n.connection||{},ap=/iPhone|iPad|iPod|Macintosh/.test(n.userAgent),lt=c.saveData||/(^|-)2g$/.test(c.effectiveType||"")||matchMedia("(prefers-reduced-motion: reduce)").matches||(n.deviceMemory&&n.deviceMemory<=2)||(!ap&&n.hardwareConcurrency&&n.hardwareConcurrency<=4);if(lt)h.classList.add("lite");if(navigator.standalone||matchMedia("(display-mode: standalone)").matches)h.classList.add("app");setTimeout(function(){if(!h.classList.contains("aw")||window.__tzMod)return;var g=document.getElementById("gate");if(g&&!document.body.classList.contains("lock"))g.classList.add("on");h.classList.remove("aw");var b=document.getElementById("boot");if(b)b.remove()},10000)})()</script>
@@ -39,7 +40,7 @@ html.lite #boot .l{stroke-dasharray:none;animation:none;stroke-opacity:.3}html.l
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
 <style>
 :root{--bg:#ebe0d1;--card:#fffaf3;--ink:#2a1d2c;--mut:#74687a;--line:#e3d5c3;--acc:#8a5a83;--soft:#f6eee3;--field:#f2e9dd;--ring:rgba(138,90,131,.22);--ok:#6f7d45;--go:#6a56c9}
-@media (prefers-color-scheme:dark){:root{--bg:#141015;--card:#1d1720;--ink:#f3edf1;--mut:#a498a7;--line:#382d3b;--acc:#b48aab;--soft:#261c28;--field:#282029;--ring:rgba(180,138,171,.25);--ok:#a4b46e;--go:#a597ee}}
+:root[data-theme=dark]{--bg:#141015;--card:#1d1720;--ink:#f3edf1;--mut:#a498a7;--line:#382d3b;--acc:#b48aab;--soft:#261c28;--field:#282029;--ring:rgba(180,138,171,.25);--ok:#a4b46e;--go:#a597ee}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 "IBM Plex Sans Arabic",Tahoma,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
 button,input,select{font:inherit;color:var(--ink)}
 input,select{width:100%;background:var(--field);border:1.5px solid transparent;border-radius:12px;padding:13px 14px}
@@ -47,11 +48,12 @@ input:focus,select:focus{outline:0;border-color:var(--acc);box-shadow:0 0 0 4px 
 label{display:block;color:var(--mut);font-size:14px;margin:12px 0 4px}
 .hd{background:#2a1d2c;border-bottom:3px solid var(--acc);padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
 .hd img{height:38px}.hd b{color:#fff;display:block;line-height:1.2}.hd small{color:#cfb1c8}
+.hd .tzset-btn{height:34px;min-width:38px;padding:0 9px!important;border-radius:999px!important;border:1.5px solid #444!important;background:none!important;color:#ddd!important}
 .hd .sp{flex:1}.hd button{background:none;border:1.5px solid #444;color:#ddd;border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
 /* الجوال: الشريط كان أعرض من الشاشة (الصفحة كانت بتتسحب يمين وشمال). السطر الأول: اللوجو والاسم والخروج، والتاني: اللغة والإشعارات والرسائل */
 @media (max-width:520px){
  .hd{flex-wrap:wrap;row-gap:8px}.hd::before{content:"";order:4;flex-basis:100%;height:0}
- .hd #out{order:3}.hd [data-tzl-slot],.hd #bell,.hd #bcme,.hd [data-install]{order:5}
+ .hd #out{order:3}.hd [data-tzl-slot],.hd #bell,.hd #bcme,.hd [data-install],.hd .tzset-btn{order:5}
  .hd [data-tzl-slot]~*{flex:none}
  /* كارت التوصيلة: زرار الأصناف تحت، علشان اسم الفرع وخانة الكراتين ياخدوا العرض كله */
  .pick{flex-wrap:wrap}.pick>span{flex:1 1 calc(100% - 50px)!important;min-width:0}.pick>button{margin-inline-start:36px}
@@ -86,12 +88,13 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 80px}
 <div id="toast"></div>
 <div id="gate"><div class="card"><div class="tzl-row"><span data-tzl-slot></span></div><img src="./icon-192.png" alt=""><h2 style="margin:10px 0 2px">تطبيق السائق</h2><p class="mut" style="margin:0 0 12px">سجّل دخولك لتبدأ الرحلة</p>
 <input id="gu" placeholder="اسم المستخدم (مثلاً drv1)" autocomplete="username" autocapitalize="none" dir="ltr" style="text-align:center"><div style="height:10px"></div><input id="gp" type="password" placeholder="كلمة المرور" autocomplete="current-password" style="text-align:center"><div style="height:12px"></div><button class="b p" id="gg" type="button">دخول</button><div class="er" id="ge"></div><p class="tz-legal" style="margin:14px 0 0;font-size:12px;line-height:1.8;opacity:.8;text-align:center">باستخدامك المنصة فأنت توافق على:<br><a href="./terms.html" style="color:inherit;font-weight:700">الشروط والأحكام</a> · <a href="./privacy.html" style="color:inherit;font-weight:700">سياسة الخصوصية</a></p></div></div>
-<div id="app" hidden><div class="hd"><img src="./icon-192.png" alt=""><div><b id="nm"></b><small>سائق التوصيل</small></div><div class="sp"></div><span data-tzl-slot></span><button id="bell" type="button"></button><button data-install type="button" hidden>📲</button><button id="out" type="button">خروج</button></div><main id="mn"></main></div>
+<div id="app" hidden><div class="hd"><img src="./icon-192.png" alt=""><div><b id="nm"></b><small>سائق التوصيل</small></div><div class="sp"></div><button type="button" class="tzset-btn" data-tzset aria-haspopup="dialog" aria-label="الإعدادات" title="الإعدادات" data-noico><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><span data-tzl-slot></span><button id="bell" type="button"></button><button data-install type="button" hidden>📲</button><button id="out" type="button">خروج</button></div><main id="mn"></main></div>
 <div class="mdl" id="md"></div>
 <script type="module">
 import {makeFb,pushRegister,pushSave,ping,emailOf,withTimeout,failReason,FAIL_MSG,collection,doc,getDoc,addDoc,updateDoc,setDoc,onSnapshot,query,where,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "./fb.js";
 window.__tzMod=1;// (15 نوفمبر 2026) الكود الأساسي اشتغل: ui.js مايمسحش النسخة المحفوظة ومايعملش ريفرش لو الدخول بطيء بس
 import {wireButtons,regSW,notify,beep,autoPush} from "./notify.js";
+import {initSettings} from "./tzset.js";
 import {shrink} from "./cust.js";
 import {multiPick,saveExtras} from "./att.js";
 import {initBChat,stopBChat,openBr} from "./bchat.js";
@@ -303,7 +306,7 @@ async function check(u){
   else{g("app").hidden=true;g("gate").hidden=false;g("ge").textContent="📡 لا يوجد اتصال بالإنترنت. دخولك محفوظ، وسنحاول مجدداً تلقائياً...";window.uiReady&&uiReady();
    setTimeout(()=>{if(auth.currentUser===u)check(u)},8000);return}
  }
- g("gate").hidden=true;g("app").hidden=false;g("nm").textContent=me.name;wireButtons();startAll();window.uiReady&&uiReady();
+ g("gate").hidden=true;g("app").hidden=false;g("nm").textContent=me.name;wireButtons();initSettings({kind:"driver",who:()=>me.name,sub:"سائق التوصيل",toast});/* ⚙ (v172) المظهر واللغة وتحديث المنصة والشروط */startAll();window.uiReady&&uiReady();
  // الدردشة الخاص: السائق يتواصل مع المستودع والفروع (زرار 💬 عائم + زرار فوق). كل محادثة بين طرفين بس
  initCall({db,auth,party:"d-"+me.id,name:()=>"🚚 "+me.name,toast});initBChat({db,app,party:"d-"+me.id,codes:BRL,name:()=>me.name,myLabel:()=>me.name,brn:c=>BRL.find(b=>codeOf(b)===c)||c,toast,beep,notify,ping:c=>ping(auth,[],[c]),
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))}});
