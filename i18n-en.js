@@ -2897,4 +2897,7 @@ export default {
 "يستلم الحاويات من شاشة الاستلام، بلا قيمة ولا مرفقات":"receives containers from the receiving screen, with no value or attachments",
 "📦 في عمود أوامر الشراء يفتح للشخص شاشة «استلام الحاويات» فقط، حتى لو كان القسم مخفياً عنه: يرى المورد والوصف وأرقام الحاويات والأصناف ويؤكد الاستلام، بلا قيمة ولا مرفقات.":"📦 in the Purchase orders column opens only the “Receive containers” screen for the person, even if the section is hidden from him: he sees the supplier, description, container numbers and items and confirms receipt, with no value or attachments.",
 "يرن… لا توجد إشعارات مفعّلة عند الطرف الآخر، وسيرن فقط إن كانت المنصة مفتوحة أمامه":"Ringing… the other side has no notifications enabled, so it will ring only if the platform is open in front of them",
+"باستخدامك المنصة فأنت توافق على:":"By using the platform you agree to:",
+"الشروط والأحكام":"Terms & Conditions",
+"سياسة الخصوصية":"Privacy Policy",
 };

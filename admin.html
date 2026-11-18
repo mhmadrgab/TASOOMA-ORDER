@@ -245,7 +245,7 @@ const gHtml=(rows,print)=>{
 };
 
 function login(msg){
- g("app").innerHTML=`<div class="lg"><div class="tzl-row">${TZL.btn()}</div><img src="${LOGO1}" alt=""><h2>لوحة المستودع</h2><p>تسجيل الدخول</p><input id="lm" type="email" dir="ltr" placeholder="البريد الإلكتروني (اتركه فارغاً إن كنت المدير)" autocomplete="username"><input id="la" type="password" placeholder="كلمة المرور" autocomplete="current-password"><button class="bt p" id="lg">دخول</button><div class="er" id="le">${E(msg||"")}</div></div>`;
+ g("app").innerHTML=`<div class="lg"><div class="tzl-row">${TZL.btn()}</div><img src="${LOGO1}" alt=""><h2>لوحة المستودع</h2><p>تسجيل الدخول</p><input id="lm" type="email" dir="ltr" placeholder="البريد الإلكتروني (اتركه فارغاً إن كنت المدير)" autocomplete="username"><input id="la" type="password" placeholder="كلمة المرور" autocomplete="current-password"><button class="bt p" id="lg">دخول</button><div class="er" id="le">${E(msg||"")}</div><p class="tz-legal" style="margin:14px 0 0;font-size:12px;line-height:1.8;opacity:.8;text-align:center">باستخدامك المنصة فأنت توافق على:<br><a href="./terms.html" style="color:inherit;font-weight:700">الشروط والأحكام</a> · <a href="./privacy.html" style="color:inherit;font-weight:700">سياسة الخصوصية</a></p></div>`;
  const go=async()=>{g("le").textContent="";g("lg").disabled=true;
   try{lastErr="";await signInWithEmailAndPassword(auth,(g("lm").value.trim().toLowerCase()||ADMIN_EMAIL),g("la").value)}
   catch(e){g("le").textContent=e.code==="auth/network-request-failed"?"لا يوجد اتصال بالإنترنت":e.code==="auth/too-many-requests"?"محاولات كثيرة، انتظر قليلاً":"كلمة المرور غير صحيحة"}

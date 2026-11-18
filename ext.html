@@ -146,5 +146,6 @@ function stopGps(){if(watch!=null){try{navigator.geolocation.clearWatch(watch)}c
 setInterval(()=>{if(T&&!document.hidden&&!g("md").classList.contains("on"))api(null).then(j=>{T=j;draw()}).catch(e=>{if(e.code==="closed")fatal("✅","انتهت الرحلة","شكراً لك 👏 الرابط لم يعد يعمل.")})},60000);
 load();
 </script>
+<p class="tz-legal" style="margin:18px 12px 22px;font-size:12px;line-height:1.8;opacity:.8;text-align:center">باستخدامك المنصة فأنت توافق على:<br><a href="./terms.html" style="color:inherit;font-weight:700">الشروط والأحكام</a> · <a href="./privacy.html" style="color:inherit;font-weight:700">سياسة الخصوصية</a></p>
 </body>
 </html>
