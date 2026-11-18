@@ -112,6 +112,8 @@ export async function ping(auth, ids, chats, trips, gifts, mnts, pos) {
   try {
     const u0 = a => [...new Set((a || []).filter(Boolean))]; ids = u0(ids); chats = u0(chats); trips = u0(trips); gifts = u0(gifts); mnts = u0(mnts); pos = u0(pos);
     chats.filter(c => /^g_/.test(c)).forEach(c => multiPush(auth, "/grp", {gid: c.slice(2)})); chats = chats.filter(c => !/^g_/.test(c));
+    // 📦 (18 نوفمبر 2026) مرحلة الحاوية (ميناء / متجهة / وصلت المستودع) تُذاع للمديرين والمحاسبين، والفروع عند الوصول. على دفعات، والسيرفر يمنع التكرار
+    if (auth && auth.currentUser && !/@tasooma\.app$/i.test(String(auth.currentUser.email || ""))) pos.forEach(x => multiPush(auth, "/pobc", {id: x}));
     if (!PUSH_URL || !(ids.length || chats.length || trips.length || gifts.length || mnts.length || pos.length)) return;
     const u = auth && auth.currentUser; if (!u) return;
     const t = await u.getIdToken();

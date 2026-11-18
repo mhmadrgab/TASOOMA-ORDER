@@ -22,7 +22,11 @@ const TL=()=>{const o=[];S.forEach(s=>{if(hasT(s)){const v=tClean(s.t);if(v&&!o.
 const tSame=v=>TL().find(x=>x.toLowerCase()===String(v).toLowerCase())||v;
 const SECL={req:"الطلبات",cus:"العهدة",fl:"السيارات والسائقين",gift:"الهدايا: مشاهدة وتسوية",mt:"الصيانة",po:"أوامر الشراء"};
 const isCus=()=>f.r==="new"||f.r.indexOf("t:")===0;
-const tP=()=>{const p={};Object.keys(SECL).forEach(k=>{if(f.tp[k])p[k]=true});return p};
+// 🔒 قسم أوامر الشراء مقفول (cfg/lock.po.on): صلاحيتا po و rcv يمنحهما مالك النظام فقط (القواعد ترفض غيره)
+const poLk=()=>{const L=X&&X.lock&&X.lock();return !!(L&&L.po&&L.po.on===true)};
+const poDeny=()=>poLk()&&!(X&&X.co);
+const LK_MSG="قسم أوامر الشراء خاص الآن: هذه الصلاحية يمنحها مالك النظام فقط";
+const tP=()=>{const p={};Object.keys(SECL).forEach(k=>{if(f.tp[k]&&!(k==="po"&&poDeny()))p[k]=true});return p};
 const isEng=s=>!hasT(s)&&s.v!==true&&s.admin!==true&&!!(s.p&&s.p.mt===true&&!s.p.req&&!s.p.cus&&!s.p.fl&&!s.p.gift&&!s.p.gm);
 // 🚢 مدير المشتريات (15 نوفمبر 2026): p.po بس، بيشوف أوامر الشراء والدردشة
 const isPur=s=>!hasT(s)&&s.v!==true&&s.admin!==true&&!!(s.p&&s.p.po===true&&!s.p.req&&!s.p.cus&&!s.p.fl&&!s.p.gift&&!s.p.gm&&!s.p.mt&&!s.p.rcv);
@@ -54,7 +58,7 @@ const cpy=async t=>{try{await navigator.clipboard.writeText(t);X.toast("تم ا�
 // الصفحة مقسومة: مالك النظام، المديرين، المحاسبين. المالك بس اللي بيعدّل؛ المدير بيشوف بس (ويلاقي نفسه في قسم المديرين)
 // صندوق المنصب تحت نموذج الإضافة: اسم المنصب (للجديد) + الأقسام التي يدخلها
 const ttlBox=()=>{if(!isCus())return "";const nw=f.r==="new";
- return `<div class="sft-box" style="margin-top:10px;padding:12px 14px;border:1px dashed var(--line);border-radius:12px">${nw?`<input id="sft" placeholder="اسم المنصب (مثلاً: أمين مخزن)" value="${E(f.t)}" maxlength="30" autocomplete="off" style="display:block;width:100%;max-width:340px;margin:0 0 12px">`:""}<div style="font-size:13.5px;margin:0 0 8px"><b>الأقسام التي يدخلها صاحب هذا المنصب</b></div><div style="display:flex;flex-wrap:wrap;gap:10px 20px">${Object.keys(SECL).map(k=>`<label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:14px"><input type="checkbox" data-stp="${k}" ${f.tp[k]?"checked":""} style="width:19px;height:19px;margin:0;accent-color:var(--acc)">${SECL[k]}</label>`).join("")}</div><p class="off" style="margin:10px 0 0;font-size:13px;line-height:1.8">بدون أي قسم يدخل الدردشة فقط. تستطيع تعديل صلاحياته في أي وقت من «🔐 جدول الصلاحيات».</p></div>`};
+ return `<div class="sft-box" style="margin-top:10px;padding:12px 14px;border:1px dashed var(--line);border-radius:12px">${nw?`<input id="sft" placeholder="اسم المنصب (مثلاً: أمين مخزن)" value="${E(f.t)}" maxlength="30" autocomplete="off" style="display:block;width:100%;max-width:340px;margin:0 0 12px">`:""}<div style="font-size:13.5px;margin:0 0 8px"><b>الأقسام التي يدخلها صاحب هذا المنصب</b></div><div style="display:flex;flex-wrap:wrap;gap:10px 20px">${Object.keys(SECL).filter(k=>!(k==="po"&&poDeny())).map(k=>`<label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:14px"><input type="checkbox" data-stp="${k}" ${f.tp[k]?"checked":""} style="width:19px;height:19px;margin:0;accent-color:var(--acc)">${SECL[k]}</label>`).join("")}</div><p class="off" style="margin:10px 0 0;font-size:13px;line-height:1.8">بدون أي قسم يدخل الدردشة فقط. تستطيع تعديل صلاحياته في أي وقت من «🔐 جدول الصلاحيات».</p></div>`};
 export function view(){// (خانات الصلاحيات انتقلت إلى permView: جدول الصلاحيات)
  // V = المتابعين (صاحب الشركة): بيشوفوا كل حاجة من غير تعديل
  const pw=PW(),own=X.owner,me=X.me,V=S.filter(s=>s.v===true),M=S.filter(s=>s.v!==true&&s.admin===true&&s.co!==true),C=S.filter(s=>s.v!==true&&s.admin===true&&s.co===true),G=S.filter(s=>isMkt(s)),T=S.filter(s=>isEng(s)),U=S.filter(s=>isPur(s)),O=S.filter(hasT),A=S.filter(s=>s.v!==true&&s.admin!==true&&!hasT(s)&&!isMkt(s)&&!isEng(s)&&!isPur(s));
@@ -78,7 +82,7 @@ export function view(){// (خانات الصلاحيات انتقلت إلى per
  const nc=s=>own?`<td style="white-space:nowrap">${dvs(s.id)} <button class="bt s" data-sf="ntest" data-id="${E(s.id)}" type="button" ${testing?"disabled":""}>${testing===s.id?"⏳":"🔔 جرّب"}</button></td>`:"";
  return `${own?`<div class="pan"><h3 style="margin:0 0 10px">👑 الأدمن</h3><div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px">${avatar(rt,on,44)}<div><b>${E(on)}</b>${mo.k?` <span class="pill">${E(mo.k)}</span>`:""}<div class="off" dir="ltr" style="font-size:13px">${E(rt)}</div></div>${X.root?`<span class="pill go">أنت</span>`:""}<span class="off" style="font-size:13.5px">🔔 ${dvs(rt)}</span> <button class="bt s" data-sf="ntest" data-id="${E(rt)}" type="button" ${testing?"disabled":""}>${testing===rt?"⏳":"🔔 جرّب"}</button>${X.root?`<button class="bt s" data-pfopen type="button" style="margin-inline-start:auto">✏️ اسمي وكنيتي وصورتي</button>`:""}</div></div>
  <div class="pan" style="margin-top:12px"><h3 style="margin:0 0 10px">➕ إضافة موظف</h3>
- <div class="fl" style="margin:0"><input id="sfe" type="email" dir="ltr" placeholder="البريد الإلكتروني" value="${E(f.e)}" autocomplete="off" style="flex:1;min-width:190px"><input id="sfn" placeholder="الاسم" value="${E(f.n)}" maxlength="40" style="flex:1;min-width:140px"><input id="sfp" dir="ltr" placeholder="كلمة المرور (اختياري)" value="${E(f.p)}" autocomplete="off" style="flex:1;min-width:150px"><select id="sfr"><option value="acc" ${f.r==="acc"?"selected":""}>محاسب</option><option value="adm" ${f.r==="adm"?"selected":""}>مدير</option><option value="mkt" ${f.r==="mkt"?"selected":""}>📣 مدير تسويق (الهدايا فقط)</option><option value="eng" ${f.r==="eng"?"selected":""}>🔧 مهندس صيانة (الصيانة فقط)</option><option value="pur" ${f.r==="pur"?"selected":""}>🚢 مدير المشتريات (أوامر الشراء فقط)</option>${TL().map(x=>`<option data-notr value="t:${E(x)}" ${f.r==="t:"+x?"selected":""}>💼 ${E(x)}</option>`).join("")}${X.root?`<option value="co" ${f.r==="co"?"selected":""}>👑 مالك النظام (كل الصلاحيات)</option>`:""}<option value="view" ${f.r==="view"?"selected":""}>👁 متابع (صاحب الشركة)</option><option value="new" ${f.r==="new"?"selected":""}>➕ إضافة منصب جديد…</option></select><button class="bt p" data-sf="add" type="button" ${busy?"disabled":""}>إضافة</button></div>${ttlBox()}</div>`:""}
+ <div class="fl" style="margin:0"><input id="sfe" type="email" dir="ltr" placeholder="البريد الإلكتروني" value="${E(f.e)}" autocomplete="off" style="flex:1;min-width:190px"><input id="sfn" placeholder="الاسم" value="${E(f.n)}" maxlength="40" style="flex:1;min-width:140px"><input id="sfp" dir="ltr" placeholder="كلمة المرور (اختياري)" value="${E(f.p)}" autocomplete="off" style="flex:1;min-width:150px"><select id="sfr"><option value="acc" ${f.r==="acc"?"selected":""}>محاسب</option><option value="adm" ${f.r==="adm"?"selected":""}>مدير</option><option value="mkt" ${f.r==="mkt"?"selected":""}>📣 مدير تسويق (الهدايا فقط)</option><option value="eng" ${f.r==="eng"?"selected":""}>🔧 مهندس صيانة (الصيانة فقط)</option>${poDeny()?"":`<option value="pur" ${f.r==="pur"?"selected":""}>🚢 مدير المشتريات (أوامر الشراء فقط)</option>`}${TL().map(x=>`<option data-notr value="t:${E(x)}" ${f.r==="t:"+x?"selected":""}>💼 ${E(x)}</option>`).join("")}${X.root?`<option value="co" ${f.r==="co"?"selected":""}>👑 مالك النظام (كل الصلاحيات)</option>`:""}<option value="view" ${f.r==="view"?"selected":""}>👁 متابع (صاحب الشركة)</option><option value="new" ${f.r==="new"?"selected":""}>➕ إضافة منصب جديد…</option></select><button class="bt p" data-sf="add" type="button" ${busy?"disabled":""}>إضافة</button></div>${ttlBox()}</div>`:""}
  ${own||V.length?`<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 4px">👁 المتابعين (${V.length})</h3><p class="off" style="margin:0 0 8px;font-size:13px">مثل صاحب الشركة: يرى لوحة الأداء والطلبات والتحويلات والعهدة والسيارات والعمال والسجل، ولا يستطيع تعديل أو حذف أي شيء. وليس له دردشة ولا كلمات مرور.</p><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
  ${V.length?V.map(s=>`<tr>${who(s)}${kc(s)}<td class="l" dir="ltr">${E(s.id)}</td><td>${st(s)}</td>${own?nc(s)+pwc(s)+acts(s,""):""}</tr>`).join(""):empty(own?7:4,"لا يوجد متابعون بعد. أضفه من الأعلى واختر \"👁 متابع\"")}</tbody></table></div></div>`:""}
  ${own||G.length?`<div class="pan" style="margin-top:12px"><h3 style="margin:0 0 4px">📣 مديرو التسويق (${G.length})</h3><p class="off" style="margin:0 0 8px;font-size:13px">يدخل ويرى مديول الهدايا والعينات فقط، ويعتمد هدايا الفروع والمستودع أو يرفضها. لو أردت أن يعتمد شخص آخر، فعّل له "✅ اعتماد الهدايا" في جدول المديرين أو المحاسبين.</p><div class="tw"><table><thead><tr><th>الاسم</th><th>الكنية</th><th>البريد الإلكتروني</th><th>الحالة</th>${own?"<th>الإشعارات</th><th>كلمة المرور</th><th></th>":""}</tr></thead><tbody>
@@ -132,8 +136,9 @@ export function permView(){
   if(co)return td(lk);
   if(k==="pm")return adm?td(`<input type="checkbox" data-sp2="pm" data-id="${id}" ${s.p&&s.p.pm===true?"checked":""} ${own?"":"disabled"} aria-label="${lab}">`):td(na);
   if(adm&&SECK.includes(k))return td(lk);
-  const can=own||(X.pm&&PM_KEYS.includes(k)&&!adm&&!(s.p&&s.p.gm)&&s.id!==me);
-  return td(`<input type="checkbox" data-sp2="${k}" data-id="${id}" ${s.p&&s.p[k]===true?"checked":""} ${can?"":"disabled"} aria-label="${lab}">`);
+  const lkd=(k==="po"||k==="rcv")&&poDeny();// 🔒 القسم مقفول: لمالك النظام فقط
+  const can=!lkd&&(own||(X.pm&&PM_KEYS.includes(k)&&!adm&&!(s.p&&s.p.gm)&&s.id!==me));
+  return td(`<input type="checkbox" data-sp2="${k}" data-id="${id}" ${s.p&&s.p[k]===true?"checked":""} ${can?"":"disabled"} ${lkd?'title="قسم خاص: يعدّلها مالك النظام فقط"':""} aria-label="${lab}">`);
  };
  const rows=L.map(s=>`<tr class="${s.enabled?"":"dis"}"><td class="pn"><b>${E(s.name||"")}</b>${s.id===me?' <span class="pill go">أنت</span>':""}<small>${roleLbl(s)}${s.enabled?"":" · معطّل"}</small></td>${PG.map(gp=>gp[1].map((c,i)=>cell(s,c[0],i===0)).join("")).join("")}</tr>`).join("");
  return `<div class="pan"><h3 style="margin:0 0 4px">🔐 جدول الصلاحيات</h3>
@@ -143,6 +148,40 @@ export function permView(){
  <tbody>${rows||`<tr><td class="off" colspan="12" style="padding:18px">لا يوجد موظفون بعد. أضفهم من «👥 الموظفون والحسابات».</td></tr>`}</tbody></table></div>
  <p class="off" style="margin:10px 0 0;font-size:13px;line-height:1.8">«مراسلة الفروع»: يرى الفروع في الدردشة ويراسلها، ويظهر لها في قسم المستودع. «الدردشة مفتوحة»: إزالتها تقفل الدردشة كلها عن الموظف.</p></div>`;
 }
+// 🔒 الأقسام الخاصة (18 نوفمبر 2026، طلب محمد: مديره لا يريد أن يرى أحد أوامر الشراء ومرفقات الأسعار، ولا محمد نفسه).
+// مالك النظام وحده يقفل ويفتح ويحدد المستثنين (القواعد: cfg/lock لا يكتبه الأدمن). الأدمن يرى الحالة فقط.
+const LKX_CSS=`.lkx{border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:12px}.lkx.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 6%,transparent)}
+.lkx-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.lkx-hd b{font-size:16px}.lkx-hd .bt{margin-inline-start:auto}
+.lkx-sub{font-size:13px;font-weight:800;color:var(--mut);margin:14px 0 8px}.lkx-ch{display:flex;flex-wrap:wrap;gap:8px}
+.lkx-ch span{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13.5px}.lkx-ch small{color:var(--mut);font-size:12px}
+.lkx-al{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}.lkx-al label{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:12px;padding:9px 12px;cursor:pointer;font-size:14px}
+.lkx-al input{width:19px;height:19px;margin:0;accent-color:var(--acc);flex:none}.lkx-al small{display:block;color:var(--mut);font-size:12px}
+.lkx-n{color:var(--mut);font-size:13px;line-height:1.9;margin:12px 0 0}@media (max-width:560px){.lkx-hd .bt{margin-inline-start:0;width:100%}}`;
+export function lockView(){
+ if(!X||!X.owner)return "";
+ if(!g("lkx-css")){const st=document.createElement("style");st.id="lkx-css";st.textContent=LKX_CSS;document.head.appendChild(st)}
+ const L=(X.lock&&X.lock())||{},cur=L.po||{},on=cur.on===true,al=Array.isArray(cur.al)?cur.al:[],rt=String(X.rootEmail||"").toLowerCase(),on2=ownerMe().n||OWNER_NAME;
+ const nm=id=>id===rt?on2:staffName(id),byN=L.by?nm(String(L.by).toLowerCase()):"",when=L.at?new Date(L.at).toLocaleDateString("ar-EG-u-nu-latn",{day:"numeric",month:"long"}):"";
+ const cos=S.filter(s=>s.enabled&&s.admin===true&&s.co===true&&s.v!==true),has=S.filter(s=>s.enabled&&s.v!==true&&!(s.admin===true&&s.co===true)&&s.p&&(s.p.po===true||s.p.rcv===true));
+ const chip=(n,t)=>`<span><b data-notr>${E(n)}</b><small>${t}</small></span>`;
+ const seen=cos.map(s=>chip(s.name||s.id,"مالك النظام")).concat(has.map(s=>chip(s.name||s.id,s.p.po===true?"له «أوامر الشراء»":"له «استلام الحاويات»")),al.map(id=>chip(nm(id),"مستثنى")));
+ // من يمكن استثناؤه: الأدمن + المديرون + المتابعون (من له الصلاحية صراحةً يرى أصلاً)
+ const cand=[{id:rt,n:on2,r:"الأدمن"}].concat(S.filter(s=>s.enabled&&!(s.admin===true&&s.co===true)&&(s.admin===true||s.v===true)&&!(s.p&&(s.p.po===true||s.p.rcv===true))).map(s=>({id:String(s.id).toLowerCase(),n:s.name||s.id,r:s.v===true?"متابع":"مدير"})));
+ const head=`<h3 style="margin:0 0 4px">🔒 الأقسام الخاصة</h3>`;
+ if(!X.co){// الأدمن: يرى الحالة فقط
+  const mine=al.includes(String(X.me||"").toLowerCase());
+  return `<div class="pan">${head}<p class="off" style="margin:0 0 4px;font-size:13.5px;line-height:1.8">قفل الأقسام وفتحها لمالك النظام فقط.</p>
+  <div class="lkx ${on?"on":""}"><div class="lkx-hd"><b>🚢 أوامر الشراء والحاويات</b><span class="pill ${on?"":"go"}">${on?"🔒 قسم خاص":"مفتوح للإدارة"}</span></div>
+  <p class="lkx-n">${on?`أقفله مالك النظام${byN?` (<span data-notr>${E(byN)}</span>)`:""}${when?" · "+when:""}. ${mine?"أنت مستثنى من القفل وتراه كما كان.":"لا يظهر لك ولا لباقي المديرين ولا للمتابع، ولا يدخل في النسخة الاحتياطية التي تأخذها. النسخة الكاملة عند مالك النظام."}`:"القسم ظاهر للمديرين والمتابع كالمعتاد."}</p>${on?'<p class="lkx-n">🔔 إشعارات وصول الحاويات تصلك كالمعتاد لتجهيز المستودع.</p>':""}</div>
+  ${cos.length?"":`<p class="lkx-n">لا يوجد مالك نظام الآن. عيّنه من «👥 الموظفون والحسابات» ليستطيع قفل الأقسام.</p>`}</div>`}
+ return `<div class="pan">${head}<p class="off" style="margin:0 0 4px;font-size:13.5px;line-height:1.8">القسم الخاص لا يراه ولا يعدّل فيه إلا أنت ومن تحددهم هنا. يختفي عن الأدمن وباقي المديرين والمتابع، والقفل والفتح لك وحدك.</p>
+ <div class="lkx ${on?"on":""}"><div class="lkx-hd"><b>🚢 أوامر الشراء والحاويات</b><span class="pill ${on?"":"go"}">${on?"🔒 قسم خاص":"مفتوح للإدارة"}</span><button class="bt ${on?"":"p"}" data-sf="lktog" type="button">${on?"🔓 فتح القسم":"🔒 قفل القسم"}</button></div>
+ ${on?`<div class="lkx-sub">من يرى القسم الآن</div><div class="lkx-ch">${seen.join("")||'<span class="off">لا أحد</span>'}</div>
+ <div class="lkx-sub">استثناء من القفل</div><div class="lkx-al">${cand.map(c=>`<label><input type="checkbox" data-lka="${E(c.id)}" ${al.includes(c.id)?"checked":""}><span><b data-notr>${E(c.n)}</b><small>${c.r}</small></span></label>`).join("")}</div>
+ <p class="lkx-n">المستثنى يرى القسم كما كان قبل القفل بحسب دوره. صلاحيتا «أوامر الشراء» و«استلام الحاويات» في «🔐 جدول الصلاحيات» تعدّلهما أنت فقط ما دام القسم مقفولاً، وكذلك كلمات مرور أصحابهما.<br>النسخة الاحتياطية التي يأخذها غيرك لا تشمل هذا القسم وهو مقفول، فخذ نسختك من زر «📥 نسخة». كل قفل وفتح يُسجَّل في «📜 السجل».</p><p class="lkx-n">🔔 إشعارات وصول الحاويات مستمرة والقسم مقفول ليستعد المستودع: تصل المديرين والمحاسبين، وتعرف الفروع عند وصول الحاوية المستودع، وفيها وصف البضاعة وعدد الحاويات فقط. ويصل الأدمن ومن يستلم الحاويات اسم المورد ورقم الأمر أيضاً. لا أسعار ولا مرفقات في أي إشعار.</p>`
+ :`<p class="lkx-n">القسم ظاهر الآن للأدمن والمديرين والمتابع. بعد القفل يبقى لك ولمن له «أوامر الشراء» أو «استلام الحاويات» ولمن تستثنيه.</p>`}</div></div>`;
+}
+async function lockSave(on,al){await setDoc(doc(X.db,"cfg","lock"),{po:{on:on===true,al:al.slice(0,30)},at:Date.now(),by:String(X.me||"").slice(0,120)})}
 async function add(){
  const e=f.e.trim().toLowerCase(),n=f.n.trim().slice(0,40);
  if(f.r==="co"&&!X.root){X.toast("تعيين مالك النظام للأدمن فقط");return}
@@ -150,6 +189,7 @@ async function add(){
  if(!n){X.toast("اكتب اسم المحاسب");return}
  if(S.some(s=>s.id===e)){X.toast("هذا المحاسب مضاف بالفعل");return}
  // 💼 منصب جديد أو منصب أُضيف من قبل
+ if(f.r==="pur"&&poDeny()){X.toast(LK_MSG);return}
  const cus=isCus();let ttl="";
  if(cus){ttl=tClean(f.r==="new"?f.t:f.r.slice(2));const te=tErr(ttl);if(te){X.toast(te);const el=g("sft");if(el)el.focus();return}ttl=tSame(ttl)}
  busy=true;X.redraw();
@@ -186,6 +226,12 @@ async function click(e){
    else if(a==="unco"&&s){if(confirm(`إزالة صلاحية مالك النظام من ${s.name}؟\nسيرجع مديراً عادياً.`)){await updateDoc(doc(X.db,"staff",id),{co:false});X.toast("رجع مديراً عادياً")}}
    else if((a==="toadm"||a==="toacc")&&s){const up=a==="toadm";
    if(confirm(up?`ترقية ${s.name} لمدير؟`:`تحويل ${s.name} لمحاسب؟`)){await updateDoc(doc(X.db,"staff",id),{admin:up});X.toast(up?"أصبح مديراً 🛡":"أصبح محاسباً")}}
+  else if(a==="lktog"){
+   if(!X.co){X.toast("قفل الأقسام وفتحها لمالك النظام فقط");return}
+   const L=(X.lock&&X.lock())||{},cur=L.po||{},on=cur.on===true,al=Array.isArray(cur.al)?cur.al:[];
+   if(!confirm(on?"فتح قسم أوامر الشراء؟\n\nسيراه الأدمن وباقي المديرين والمتابع كما كان.":"قفل قسم أوامر الشراء؟\n\nسيختفي عن الأدمن وباقي المديرين والمتابع ولن يستطيعوا التعديل فيه. يبقى لك ولمن له «أوامر الشراء» أو «استلام الحاويات».\n\nتذكّر: خذ نسختك الاحتياطية بنفسك، فنسخة غيرك لن تشمل هذا القسم."))return;
+   await lockSave(!on,al);X.toast(on?"🔓 فُتح القسم":"🔒 أصبح القسم خاصاً");
+  }
   else if(a==="ttl"&&s){
    const q=prompt(hasT(s)?"اكتب المنصب الجديد، أو اتركه فارغاً لإزالة المنصب وإرجاعه محاسباً:":"اكتب منصب "+s.name+" (مثلاً: أمين مخزن):",s.t||"");if(q===null)return;
    const v=tClean(q);if(v){const te=tErr(v);if(te){X.toast(te);return}}else if(!hasT(s))return;
@@ -221,6 +267,10 @@ export function initStaff(ctx){
     if(f.r.indexOf("t:")===0){const h=S.filter(x=>hasT(x)&&tClean(x.t)===f.r.slice(2)).sort((a,b)=>(b.enabled?1:0)-(a.enabled?1:0))[0];if(h&&h.p)Object.keys(SECL).forEach(k=>{if(h.p[k]===true)f.tp[k]=true})}
     if(was||isCus()){X.redraw();if(f.r==="new")setTimeout(()=>{const el=g("sft");if(el)el.focus()},260)}return}
    if(t.dataset.stp){if(X.owner)f.tp[t.dataset.stp]=t.checked;return}
+   if(t.dataset.lka){if(!X.co){t.checked=!t.checked;return}
+    const L=(X.lock&&X.lock())||{},cur=L.po||{},al=(Array.isArray(cur.al)?cur.al:[]).filter(x=>x!==t.dataset.lka);if(t.checked)al.push(t.dataset.lka);
+    try{await lockSave(cur.on===true,al);X.toast(t.checked?"أصبح مستثنى ويرى القسم":"أُزيل الاستثناء")}catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message));X.redraw()}return}
+   if(t.dataset.sp2&&(t.dataset.sp2==="po"||t.dataset.sp2==="rcv")&&poDeny()){t.checked=!t.checked;X.toast(LK_MSG);return}
    // الكنية: بتتحفظ أول ما تخلّص كتابة (وبتظهر للفروع في الدردشة لوحدها)
    if(t.dataset.sk&&X.owner){try{await updateDoc(doc(X.db,"staff",t.dataset.sk),{k:t.value.trim().slice(0,40)});X.toast("حُفظت الكنية")}catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message))}return}
    if(t.dataset.scw&&X.owner){try{await updateDoc(doc(X.db,"staff",t.dataset.scw),{cw:t.checked});X.toast(t.checked?"💬 يستطيع مراسلة الفروع ويظهر لها":"لن يراسل الفروع ولن يظهر لها")}catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message));X.redraw()}return}
