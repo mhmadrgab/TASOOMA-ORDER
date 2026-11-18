@@ -1,32 +1,60 @@
 // 📞 المكالمات الصوتية داخل المنصة (17 نوفمبر 2026، طلب محمد: "مكالمات بجودة خرافية ونكلم بعض")
 // - الصوت WebRTC بترميز Opus بجودة عالية (48kHz، 64kbps، FEC) ومشفّر بين الطرفين (DTLS-SRTP).
-// - v3 (محمد: "بتاخد وقت لحد ما تجمع" + "كل المكالمات من خلال السيرفر اللي اشتركنا فيه"):
-//   * لو TURN (Cloudflare) متاح: كل المكالمات بتعدّي عليه (iceTransportPolicy:"relay") = توصيل ثابت وسريع على أي شبكة،
-//     والصوت لسه مشفّر (السيرفر بيعدّي الحزم بس ومايقدرش يسمعها). من غيره: مباشر/STUN زي الأول.
-//   * أثناء الرنة، جهاز المستقبل بيجهّز الرد كله (العناوين والـ answer) في الخلفية، فلما يضغط "رد" الرد بيتبعت فوراً.
-//   * المتصل بيسأل عن الرد كل ثانية ونص كمان (جنب السماع اللحظي)، فمفيش تأخير لو السماع اتأخر.
-//   * شاشة اتصال جديدة: خلفية متحركة هادية، هالة بتتحرك مع صوت الطرف التاني، شريط تحكم زجاجي، وحبة مصغّرة احترافية.
-// - v4 (18 نوفمبر 2026، محمد: "لسه مش سريعة الاستجابة حتى بعد التطبيق" + "تبديل بين السماعة الخارجية والداخلية"):
-//   * الرد من التطبيق/الإشعار: الصفحة بتجيب المكالمة برقمها فوراً (fetchCall) بدل ما تستنى السماع اللحظي (اللي بيكون نايم
-//     والصفحة في الخلفية، فكان الرد بيتأخر لحد 8–30 ثانية). والتطبيق وهو بيرن بينادي __tzCallWarm فالرد بيتجهّز قبل الضغط.
-//   * المتصل بيسأل عن الرد كل 0.7 ثانية (كانت 1.5). فتح الصفحة على مكالمة (?call=) من غير انتظار شاشة البداية.
-//   * زرار «مكبر الصوت»: في تطبيق تاسومة من التطبيق نفسه (سماعة الأذن هي الافتراضية زي أي مكالمة)، وفي المتصفح لو بيسمح (setSinkId).
-//   * الرنة مابتتكررش (الصفحة في الخلفية جوه التطبيق = التطبيق هو اللي بيرن)، والمتصل لو قفل الصفحة وهي بترن المكالمة بتتلغي.
-// - الإشارة في call/{id} = {fr, to, frn, st:ring|acc|rej|busy|miss|end, ts, of, an?, at?, en?, by?} (القواعد: call_ok/sdp_ok).
-import {collection,doc,getDoc,setDoc,updateDoc,onSnapshot,query,where,PUSH_URL} from "./fb.js";
+// - v5 (18 نوفمبر 2026، محمد: "المكالمات لسه مش كويسة، ولو آيفون اتصل على أندرويد الاستجابة بطيئة جداً، عيد هيكلتها"):
+//   السبب: كل الخطوات كانت ورا بعض قبل ما موبايل الطرف التاني يرن أصلاً: إذن الميكروفون ← خوادم الاتصال ← تجميع العناوين
+//   ← كتابة المكالمة ← ثم طلب الإشعار (3–7 ثواني، وأكتر على الآيفون). وكل الصوت كان بيتجبر يعدّي على السيرفر الوسيط (relay)
+//   فبيزيد تأخير الكلام نفسه. وانقطاع الشبكة لحظة (واي فاي ⇄ بيانات) كان بيقفل المكالمة.
+//   1) **الرنة أولاً**: بعد إذن الميكروفون مباشرة بنكتب المكالمة (من غير offer) ونطلب الإشعار في نفس اللحظة، والتجهيز
+//      (خوادم الاتصال + العناوين + الـ offer) بيتم بالتوازي والتليفون التاني بيرن، ثم يتكتب الـ offer على نفس المستند.
+//      المستقبل بيرن فوراً، وبيجهّز الرد أول ما الـ offer يوصل. (لو القواعد قديمة: بنرجع للطريقة القديمة لوحدنا = LEGACY)
+//   2) **أقصر طريق للصوت**: مباشر بين الجهازين لو الشبكة تسمح (أقل تأخير)، والسيرفر الوسيط (TURN المدفوع) بديل مضمون
+//      لما المباشر مايتمش (iceTransportPolicy:"all"). الاشتراك هو اللي بيضمن إن المكالمة تتوصّل على أي شبكة.
+//   3) خوادم الاتصال محفوظة على الجهاز 40 دقيقة (أول مكالمة مابتستناش السيرفر)، والاتصال بيبدأ يجمّع عناوينه بدري (pool).
+//   4) **إعادة الاتصال**: لو الشبكة اتغيّرت أو قطعت لحظة، المتصل بيعيد التفاوض (ICE restart عبر ro/ra) بدل ما المكالمة تقفل.
+//   5) الآيفون: مابنوصّلش صوت الطرف التاني بـ WebAudio (كان بيلخبط مسار الصوت)، وبنوقف مولّد الرنة أول ما المكالمة تتوصّل.
+//   6) الصفحة اللي اتفتحت على مكالمة (?call=) بتبدأ المكالمات أول ما الدخول يتعرف، قبل باقي تحميل الصفحة (earlyCall).
+//   7) قياس حقيقي: كل طرف بيكتب توقيتات مكالمته (mf للمتصل / mt للمستقبل) علشان نعرف التأخير فين بالأرقام.
+// - من الإصدارات السابقة (لسه شغال): الرد بيتجهّز أثناء الرنة (prep)، الرد من الإشعار/التطبيق بيجيب المكالمة برقمها (fetchCall)،
+//   __tzCallWarm من التطبيق وهو بيرن، زرار مكبر الصوت، الرنة مابتتكررش جوه التطبيق، إلغاء الصادرة عند قفل الصفحة.
+// - الإشارة في call/{id} = {fr, to, frn, st:ring|acc|rej|busy|miss|end, ts, of?, an?, at?, en?, by?, ro?, ra?, mf?, mt?}
+//   (القواعد: call_ok / sdp_ok / call_rs_ok / call_m_ok).
+import {collection,doc,getDoc,setDoc,updateDoc,onSnapshot,query,where,onAuthStateChanged,PUSH_URL} from "./fb.js";
 const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
-const RING_MS=45000,CONNECT_MS=20000,WIN=10*6e4;
+const RING_MS=45000,CONNECT_MS=20000,WIN=10*6e4,DROP_MS=25000,RS_MAX=3,ICE_TTL=40*6e4;
+const RELAY_ONLY=false;// true = كل الصوت عبر السيرفر الوسيط دائماً (أبطأ؛ للتجربة فقط)
 const canVib=()=>!!navigator.vibrate&&(!navigator.userActivation||navigator.userActivation.hasBeenActive);
-let X=null,UN=null,C=null,SEEN=new Set(),ICE={t:0,v:null,turn:false},AC=null,TONE=null,LV=null,QUIET="";// QUIET = مكالمة التطبيق بيرن عليها (الصفحة تجهّز الرد بصمت)
+const NAT=()=>window.TasoomaApp||null;
+const UA=String(navigator.userAgent||"");
+const IOS=/iPad|iPhone|iPod/.test(UA)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const PLAT=()=>NAT()?"app":IOS?"ios":/Android/i.test(UA)?"and":"pc";
+let X=null,UN=null,C=null,SEEN=new Set(),ICE={t:0,v:null,turn:false},ICEP=null,AC=null,TONE=null,LV=null,QUIET="",LEGACY=false;// QUIET = مكالمة التطبيق بيرن عليها (الصفحة تجهّز الرد بصمت)
+// قياس: mark(c,"اسم") = كام مللي ثانية من بداية المكالمة على الجهاز ده
+const mark=(c,k)=>{if(c&&c.tm&&c.tm[k]==null)c.tm[k]=Date.now()-c.t00};
 
 // ---------- خوادم الاتصال ----------
+const STUNS=[{urls:["stun:stun.cloudflare.com:3478","stun:stun.l.google.com:19302"]}];
 async function token(){const u=X&&X.auth&&X.auth.currentUser;return u?await u.getIdToken():""}
+const iceKey=()=>"tz_ice_"+String(X&&X.party||"");
+function iceCached(){
+ if(ICE.v&&Date.now()-ICE.t<ICE_TTL)return ICE.v;
+ try{const j=JSON.parse(localStorage.getItem(iceKey())||"null");if(j&&Array.isArray(j.v)&&j.v.length&&Date.now()-N(j.t)<ICE_TTL){ICE={t:N(j.t),v:j.v,turn:!!j.turn};return ICE.v}}catch(e){}
+ return null;
+}
+// طلب واحد في نفس الوقت، وبحد أقصى 5 ثواني (المكالمة ماتقفش على السيرفر: لو اتأخر بنكمّل بـ STUN)
+function iceFetch(){
+ if(ICEP)return ICEP;
+ ICEP=(async()=>{
+  try{const t=await token(),ctl=typeof AbortController==="function"?new AbortController():null,tm=setTimeout(()=>{try{ctl&&ctl.abort()}catch(e){}},5000);
+   const r=await fetch(PUSH_URL+"/ice",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:"{}",signal:ctl?ctl.signal:undefined});clearTimeout(tm);const j=await r.json();
+   if(j&&Array.isArray(j.iceServers)&&j.iceServers.length){ICE={t:Date.now(),v:j.iceServers,turn:!!j.turn};try{localStorage.setItem(iceKey(),JSON.stringify(ICE))}catch(e){}}}catch(e){}
+  ICEP=null;return ICE.v})();
+ return ICEP;
+}
 async function iceServers(force){
- if(!force&&ICE.v&&Date.now()-ICE.t<45*6e4)return ICE.v;
- try{const t=await token();const r=await fetch(PUSH_URL+"/ice",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:"{}"});const j=await r.json();
-  if(j&&Array.isArray(j.iceServers)&&j.iceServers.length){ICE={t:Date.now(),v:j.iceServers,turn:!!j.turn};return j.iceServers}}catch(e){}
- return ICE.v||[{urls:["stun:stun.cloudflare.com:3478","stun:stun.l.google.com:19302"]}];
+ const c=force?null:iceCached();
+ if(c){if(Date.now()-ICE.t>ICE_TTL/2)iceFetch();return c}// نجدّدها في الخلفية قبل ما تقدم
+ return (await iceFetch())||STUNS;
 }
 // ---------- جودة الصوت: Opus fullband + FEC (تصحيح الضياع) + من غير DTX ----------
 function hiq(sdp){
@@ -36,27 +64,46 @@ function hiq(sdp){
  if(re.test(sdp))return sdp.replace(re,(x,p)=>{const o={};String(p).split(";").forEach(kv=>{const i=kv.indexOf("=");if(i>0)o[kv.slice(0,i).trim()]=kv.slice(i+1).trim()});Object.assign(o,want);return "a=fmtp:"+pt+" "+Object.keys(o).map(k=>k+"="+o[k]).join(";")});
  return sdp.replace(m[0],m[0]+"\r\na=fmtp:"+pt+" "+Object.keys(want).map(k=>k+"="+want[k]).join(";"));
 }
-// تجميع العناوين: مع TURN بنكتفي بأول عنوان على السيرفر (+ لحظة للباقي)، من غيره لحد ثانية ونص
+// تجميع العناوين (من غير trickle): بنخلص أول ما العناوين تكمل، أو بعد أول عنوان على السيرفر الوسيط بلحظة (هو الضمان)،
+// أو بعد مهلة قصيرة. الاتصال بيبدأ يجمّع من لحظة إنشائه (iceCandidatePoolSize) فغالباً العناوين جاهزة قبل ما نوصل هنا.
 const gathered=pc=>new Promise(ok=>{if(pc.iceGatheringState==="complete")return ok();let done=false;const fin=()=>{if(done)return;done=true;clearTimeout(t);ok()};
- const t=setTimeout(fin,ICE.turn?2500:1500);pc.addEventListener("icegatheringstatechange",()=>{if(pc.iceGatheringState==="complete")fin()});
- if(ICE.turn)pc.addEventListener("icecandidate",e=>{if(e.candidate&&/ typ relay/.test(e.candidate.candidate))setTimeout(fin,250)})});
+ const t=setTimeout(fin,ICE.turn?1800:1000);pc.addEventListener("icegatheringstatechange",()=>{if(pc.iceGatheringState==="complete")fin()});
+ pc.addEventListener("icecandidate",e=>{if(!e.candidate){fin();return}if(ICE.turn&&/ typ relay/.test(e.candidate.candidate))setTimeout(fin,150)})});
 async function mic(){return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1,sampleRate:48000},video:false})}
 const failMsg=()=>ICE.turn?"تعذّر توصيل الصوت بسبب ضعف الإنترنت عند أحد الطرفين. حاول مرة أخرى":"تعذّر توصيل الصوت: شبكة أحد الطرفين تمنع الاتصال المباشر";
-async function mkPc(){
- const servers=await iceServers();
- const pc=new RTCPeerConnection({iceServers:servers,bundlePolicy:"max-bundle",iceTransportPolicy:ICE.turn?"relay":"all"});
+function mkPc(servers){
+ const pc=new RTCPeerConnection({iceServers:servers&&servers.length?servers:STUNS,bundlePolicy:"max-bundle",iceCandidatePoolSize:1,iceTransportPolicy:RELAY_ONLY&&ICE.turn?"relay":"all"});
  pc.ontrack=e=>{const a=g("tzc-au");if(!a)return;const st=e.streams&&e.streams[0]?e.streams[0]:new MediaStream([e.track]);a.srcObject=st;const p=a.play();if(p&&p.catch)p.catch(()=>{if(C){C.tap=true;status("اضغط على الشاشة لتشغيل الصوت")}});level(st)};
- pc.onconnectionstatechange=()=>{if(!C||C.pc!==pc)return;const s=pc.connectionState;
-  if(s==="connected"&&C.inc&&C.st==="ring")return;// اتجهّز قبل الرد: مانبدأش العداد إلا بعد ما يرد
-  if(s==="connected"){clearTimeout(C.dropT);C.dropT=0;clearTimeout(C.ct);if(!C.t0){C.t0=Date.now();tone(null);paint();try{const A=NAT();if(A&&A.callOn)A.callOn(String(C.name||""))}catch(e){}spkInit(C)}status("")}
-  else if(s==="disconnected"){status("الاتصال ضعيف… جارٍ إعادة الاتصال");if(!C.dropT)C.dropT=setTimeout(()=>{if(C&&C.pc===pc&&pc.connectionState!=="connected")hang("drop")},12000)}
-  else if(s==="failed")hang(C.t0?"drop":"fail")};
+ pc.onconnectionstatechange=()=>connState(pc);pc.oniceconnectionstatechange=()=>connState(pc);
  return pc;
 }
+// حالة الاتصال: متوصّل / ضعيف (نحاول نرجّعه) / فشل
+function connState(pc){
+ const c=C;if(!c||c.pc!==pc)return;const s=pc.connectionState,ic=pc.iceConnectionState,bad=s==="failed"||ic==="failed",weak=bad||s==="disconnected"||ic==="disconnected";
+ if(s==="connected"&&!weak){
+  if(c.inc&&c.st==="ring")return;// اتجهّز قبل الرد: مانبدأش العداد إلا بعد ما يرد
+  clearTimeout(c.dropT);c.dropT=0;clearTimeout(c.rsT);c.rsT=0;clearInterval(c.rpoll);c.rpoll=0;clearTimeout(c.ct);
+  if(!c.t0){c.t0=Date.now();mark(c,"con");tone(null);if(IOS&&AC){try{AC.suspend()}catch(e){}}paint();try{const A=NAT();if(A&&A.callOn)A.callOn(String(c.name||""))}catch(e){}spkInit(c);setTimeout(()=>pairInfo(c),2500)}
+  status("");return}
+ if(!c.t0){if(bad)hang("fail");return}// قبل أول توصيل: المهلة (connectWatch) هي الحكم
+ if(!weak)return;
+ // 🔁 الاتصال ضعف أو قطع والمكالمة شغالة: مانقفلش. المتصل يعيد التفاوض، والطرفان يتابعان المستند كل ثانية لحد ما يرجع
+ status("الاتصال ضعيف… جارٍ إعادة الاتصال",true);
+ if(!c.dropT)c.dropT=setTimeout(()=>{if(C===c&&c.pc===pc&&pc.connectionState!=="connected")hang("drop")},DROP_MS);
+ if(!c.rpoll)c.rpoll=setInterval(()=>docPoll(c),1000);
+ if(!c.inc){if(bad)restart(c);else if(!c.rsT)c.rsT=setTimeout(()=>{c.rsT=0;if(C===c&&pc.connectionState!=="connected")restart(c)},2500)}
+}
 function connectWatch(){if(!C)return;const id=C.id;clearTimeout(C.ct);C.ct=setTimeout(()=>{if(C&&C.id===id&&!C.t0)hang("fail")},CONNECT_MS)}
+// نوع المسار اللي الصوت ماشي عليه فعلاً (hh مباشر على نفس الشبكة، ss مباشر عبر الإنترنت، r = عبر السيرفر الوسيط) + زمن الذهاب والعودة
+function pairInfo(c){
+ if(!c||!c.pc||C!==c)return;
+ c.pc.getStats().then(r=>{const by={};let sel=null,p=null;r.forEach(x=>{by[x.id]=x;if(x.type==="transport"&&x.selectedCandidatePairId)sel=x.selectedCandidatePairId});
+  p=sel&&by[sel];if(!p)r.forEach(x=>{if(!p&&x.type==="candidate-pair"&&x.state==="succeeded"&&(x.nominated||x.selected))p=x});
+  if(p){const l=by[p.localCandidateId],m=by[p.remoteCandidateId];c.pair=String((l&&l.candidateType)||"?").slice(0,1)+String((m&&m.candidateType)||"?").slice(0,1);if(p.currentRoundTripTime!=null)c.rtt=Math.round(p.currentRoundTripTime*1000)}}).catch(()=>{});
+}
 // ---------- مستوى صوت الطرف التاني (الهالة حوالين الصورة بتتحرك معاه) ----------
 function level(st){
- levelStop();const a=ac();if(!a)return;
+ levelStop();if(IOS)return;const a=ac();if(!a)return;
  try{const src=a.createMediaStreamSource(st),an=a.createAnalyser();an.fftSize=512;src.connect(an);const buf=new Uint8Array(an.fftSize);let sm=0;
   LV={src,an,iv:setInterval(()=>{an.getByteTimeDomainData(buf);let s=0;for(let i=0;i<buf.length;i++){const v=(buf[i]-128)/128;s+=v*v}const r=Math.min(1,Math.sqrt(s/buf.length)*4);sm=sm*.6+r*.4;const el=g("tzc");if(el)el.style.setProperty("--lv",sm.toFixed(3))},80)}}catch(e){}
 }
@@ -197,13 +244,23 @@ function closeUi(msg){
  else{d.className="";g("tzcp").className=""}
 }
 // ---------- إنهاء وتنظيف ----------
-function cleanup(){
+// 📊 توقيتات المكالمة على الجهاز ده، مرة واحدة لكل طرف (mf للمتصل / mt للمستقبل). للتشخيص فقط، وفشل كتابتها لا يؤثر على شيء
+function metrics(c,why){
+ if(!X||!c||!c.id||c.msent||(!c.inc&&!c.docOk))return;c.msent=true;
+ const m={v:5,u:PLAT(),e:String(why||c.st||"").slice(0,8)};
+ Object.keys(c.tm||{}).forEach(k=>{const v=Math.round(N(c.tm[k]));if(v>=0&&v<6e5)m[k]=v});
+ if(c.t0)m.dur=Math.round((Date.now()-c.t0)/1000);if(ICE.turn)m.tn=1;if(c.rs)m.rs=c.rs;if(c.via)m.w=c.via;if(c.pair)m.p=c.pair;if(c.rtt!=null)m.rtt=c.rtt;if(c.pn!=null)m.pn=c.pn;
+ updateDoc(doc(X.db,"call",c.id),{[c.inc?"mt":"mf"]:m}).catch(()=>{});
+}
+function cleanup(why){
  if(!C)return;const c=C;C=null;
- clearInterval(c.iv);clearInterval(c.poll);clearTimeout(c.rt);clearTimeout(c.dropT);clearTimeout(c.ct);if(c.un)try{c.un()}catch(e){}
+ clearInterval(c.iv);clearInterval(c.poll);clearInterval(c.opoll);clearInterval(c.rpoll);clearTimeout(c.rt);clearTimeout(c.dropT);clearTimeout(c.ct);clearTimeout(c.rsT);if(c.un)try{c.un()}catch(e){}
+ if(c.ofRes){try{c.ofRes()}catch(e){}c.ofRes=null}
  if(c.stream)c.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});
  if(c.pc)try{c.pc.close()}catch(e){}
  const a=g("tzc-au");if(a)a.srcObject=null;tone(null);levelStop();
  try{const A=NAT();if(A&&A.callOff)A.callOff()}catch(e){}
+ metrics(c,why);
 }
 async function hang(why){
  if(!C)return;const c=C,id=c.id,st=c.st;let msg="انتهت المكالمة",up=null;
@@ -214,57 +271,113 @@ async function hang(why){
  if(why==="drop")msg="انقطع الاتصال";
  if(why==="fail")msg=failMsg();
  if(c.t0&&why==="end")msg="انتهت المكالمة · "+mmss(Date.now()-c.t0);
- if(why==="fail"||why==="drop")try{console.warn("📞 call",why,{turn:ICE.turn,ice:c.pc&&c.pc.iceConnectionState,conn:c.pc&&c.pc.connectionState})}catch(e){}
- cleanup();closeUi(msg);
+ if(why==="fail"||why==="drop")try{console.warn("📞 call",why,{turn:ICE.turn,ice:c.pc&&c.pc.iceConnectionState,conn:c.pc&&c.pc.connectionState,pair:c.pair||""})}catch(e){}
+ cleanup(why);closeUi(msg);
  if(up&&id&&X){try{await updateDoc(doc(X.db,"call",id),up)}catch(e){}if(st==="ring"&&!c.inc)pushEnd(id)}
 }
+// ---------- 🔁 إعادة الاتصال والمكالمة شغالة (ICE restart) ----------
+// المتصل (صاحب الـ offer) وحده يبدأ: offer جديد بعناوين جديدة في ro = {t,s,n}، والمستقبل يرد في ra بنفس الرقم n. بحد أقصى RS_MAX مرات.
+async function restart(c){
+ if(C!==c||c.inc||c.rsBusy||!c.t0||!c.pc||(c.rs||0)>=RS_MAX)return;c.rsBusy=true;const n=(c.rs||0)+1;
+ try{const of=await c.pc.createOffer({iceRestart:true});await c.pc.setLocalDescription({type:"offer",sdp:hiq(of.sdp)});await gathered(c.pc);
+  if(C===c){c.rs=n;await updateDoc(doc(X.db,"call",c.id),{ro:{t:"offer",s:c.pc.localDescription.sdp,n}})}}catch(e){}
+ c.rsBusy=false;
+}
+async function reAnswer(c,ro){
+ const n=N(ro&&ro.n);if(!n||n<=(c.rn||0)||c.raBusy||!c.pc||typeof ro.s!=="string")return;c.raBusy=true;c.rn=n;
+ try{await c.pc.setRemoteDescription({type:"offer",sdp:hiq(ro.s)});const an=await c.pc.createAnswer();await c.pc.setLocalDescription({type:"answer",sdp:hiq(an.sdp)});await gathered(c.pc);
+  if(C===c)await updateDoc(doc(X.db,"call",c.id),{ra:{t:"answer",s:c.pc.localDescription.sdp,n}})}catch(e){}
+ c.raBusy=false;
+}
+function reApply(c,ra){
+ const n=N(ra&&ra.n);if(!n||n!==(c.rs||0)||c.raN===n||!c.pc||typeof ra.s!=="string")return;c.raN=n;
+ c.pc.setRemoteDescription({type:"answer",sdp:hiq(ra.s)}).catch(()=>{});
+}
+// ---------- متابعة مستند المكالمة (سماع لحظي + سؤال دوري: نفس المعالجة) ----------
+function docPoll(c){if(C!==c||!X)return;getDoc(doc(X.db,"call",c.id)).then(s=>{if(C===c&&s.exists())onDoc(c,s.data())}).catch(()=>{})}
+function onDoc(c,x){
+ if(C!==c||!x||!X)return;
+ if(c.inc){
+  if(!c.of&&x.of&&x.st==="ring")gotOffer(c,x.of);
+  if(c.st==="ring"&&(x.st==="end"||x.st==="miss")){cleanup("miss");closeUi("مكالمة فائتة من "+(c.name||x.frn||""))}
+  else if(c.st==="ring"&&(x.st==="acc"||x.st==="rej")){cleanup("other");closeUi(x.st==="acc"?"تم الرد من جهاز آخر":"تم الرفض من جهاز آخر")}
+  else if((c.st==="acc"||c.st==="conn")&&x.st==="end"&&x.by!==X.party){const t0=c.t0;cleanup("end");closeUi(t0?"انتهت المكالمة · "+mmss(Date.now()-t0):"انتهت المكالمة")}
+  else if(c.st==="acc"&&x.st==="acc"&&x.ro)reAnswer(c,x.ro);
+  return}
+ if(x.st==="acc"&&x.an&&!c.ans){c.ans=true;c.st="acc";mark(c,"acc");clearTimeout(c.rt);clearInterval(c.poll);c.poll=0;tone(null);status("جارٍ توصيل الصوت",true);paint();connectWatch();
+  c.pc.setRemoteDescription({type:"answer",sdp:hiq(x.an.s)}).catch(()=>hang("fail"))}
+ else if(x.st==="rej"){cleanup("rej");closeUi("رفض المكالمة")}
+ else if(x.st==="busy"){cleanup("busy");closeUi("مشغول في مكالمة أخرى")}
+ else if(x.st==="end"&&x.by!==X.party){const t0=c.t0;cleanup("end");closeUi(t0?"انتهت المكالمة · "+mmss(Date.now()-t0):"انتهت المكالمة")}
+ else if(x.st==="acc"&&c.ans&&x.ra)reApply(c,x.ra);
+}
 // ---------- مكالمة صادرة ----------
-function onOut(id,d){
- if(!C||C.id!==id||!d)return;
- if(d.st==="acc"&&d.an&&!C.ans){C.ans=true;C.st="acc";clearTimeout(C.rt);clearInterval(C.poll);tone(null);status("جارٍ توصيل الصوت",true);paint();connectWatch();
-  C.pc.setRemoteDescription({type:"answer",sdp:hiq(d.an.s)}).catch(()=>hang("fail"))}
- else if(d.st==="rej"){cleanup();closeUi("رفض المكالمة")}
- else if(d.st==="busy"){cleanup();closeUi("مشغول في مكالمة أخرى")}
- else if(d.st==="end"&&d.by!==X.party){const t0=C.t0;cleanup();closeUi(t0?"انتهت المكالمة · "+mmss(Date.now()-t0):"انتهت المكالمة")}
+// نوقّف الرنة على أجهزة التطبيق عند الطرف التاني (اتلغت / اترد عليها / خلصت)
+const pushEnd=id=>{if(!X||!id)return;token().then(t=>fetch(PUSH_URL+"/call",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({id,end:true})})).catch(()=>{})};
+// إشعار الرنة لأجهزة الطرف التاني. السيرفر بيرد بعدد الأجهزة المسجّلة عنده: لو صفر بنقول للمتصل
+// لو السيرفر رفض (الطلب سبق كتابة المكالمة بلحظة والسيرفر نسخة قديمة) أو النت قطع: نعيد المحاولة مرتين وهي لسه بترن
+function pushRing(c,n){
+ const again=ms=>{if((n||0)<2&&C===c&&(c.st==="ring"||c.st==="init")&&!c.ans)setTimeout(()=>{if(C===c&&!c.ans)pushRing(c,(n||0)+1)},ms)};
+ token().then(t=>fetch(PUSH_URL+"/call",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({id:c.id})})).then(r=>r.json().catch(()=>({}))).then(j=>{
+  if(C!==c)return;if(!(j&&j.ok===true)){again(700);return}
+  mark(c,"push");c.pn=N(j.n);if(c.pn===0&&c.st==="ring"&&!c.ans)status("يرن… لا توجد إشعارات مفعّلة عند الطرف الآخر، وسيرن فقط إن كانت المنصة مفتوحة أمامه",true)}).catch(()=>again(1200));
+}
+function ringing(c){
+ if(C!==c||c.st!=="init")return;c.st="ring";c.docOk=true;mark(c,"doc");paint();status("يرن",true);tone("out");
+ const id=c.id;
+ c.rt=setTimeout(()=>{if(C===c&&c.st==="ring")hang("miss")},RING_MS);
+ c.iv=setInterval(tick,500);
+ c.un=onSnapshot(doc(X.db,"call",id),s=>{if(s.exists())onDoc(c,s.data())},()=>{});
+ // أمان: لو السماع اللحظي اتأخر، بنسأل عن الرد كل 0.4 ثانية وهي بترن (طلب صغير جداً، ولمدة الرنة بس)
+ c.poll=setInterval(()=>{if(C!==c||c.ans)return;docPoll(c)},400);
 }
 export async function startCall(to,name){
  if(!X)return;if(C){X.toast&&X.toast("أنت في مكالمة الآن");paint();return}
  if(!window.RTCPeerConnection||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){X.toast&&X.toast("هذا المتصفح لا يدعم المكالمات. استخدم Chrome أو Safari حديث","er");return}
- ac();const id=doc(collection(X.db,"call")).id;
- C={id,inc:false,to,name:String(name||"").slice(0,60),st:"init",mute:false};paint();status("جارٍ الاتصال",true);
- try{C.stream=await mic()}catch(e){cleanup();closeUi("اسمح للمنصة باستخدام الميكروفون ثم حاول مرة أخرى");return}
- if(!C||C.id!==id){return}
+ ac();const id=doc(collection(X.db,"call")).id,ref=doc(X.db,"call",id);
+ const c={id,inc:false,to,name:String(name||"").slice(0,60),st:"init",mute:false,tm:{},t00:Date.now()};C=c;paint();status("جارٍ الاتصال",true);
+ const pIce=iceServers().catch(()=>null);// خوادم الاتصال بالتوازي مع إذن الميكروفون
+ try{c.stream=await mic()}catch(e){if(C===c){cleanup();closeUi("اسمح للمنصة باستخدام الميكروفون ثم حاول مرة أخرى")}return}
+ if(C!==c){c.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});return}
+ mark(c,"mic");
+ const base=()=>({fr:X.party,to,frn:String(X.name()||"").slice(0,60),st:"ring",ts:Date.now()});
+ // 1) الرنة أولاً: المستند من غير offer + الإشعار، والتجهيز بالتوازي. لو المتصل لغى قبل ما الكتابة تخلص: نقفلها عند الطرف التاني
+ let first=!LEGACY,pDoc=null;
+ if(first){pDoc=setDoc(ref,base()).then(()=>{if(C===c){ringing(c);return true}updateDoc(ref,{st:"end",en:Date.now(),by:X?X.party:""}).catch(()=>{});pushEnd(id);return true},e=>e);pushRing(c)}
  try{
-  const pc=await mkPc();if(!C||C.id!==id){pc.close();return}C.pc=pc;C.stream.getTracks().forEach(t=>pc.addTrack(t,C.stream));
+  const pc=mkPc(await pIce);if(C!==c){pc.close();return}c.pc=pc;c.stream.getTracks().forEach(t=>pc.addTrack(t,c.stream));
   const of=await pc.createOffer({offerToReceiveAudio:true});await pc.setLocalDescription({type:"offer",sdp:hiq(of.sdp)});await gathered(pc);
-  if(!C||C.id!==id)return;
-  await setDoc(doc(X.db,"call",id),{fr:X.party,to,frn:String(X.name()||"").slice(0,60),st:"ring",ts:Date.now(),of:{t:"offer",s:pc.localDescription.sdp}});
-  if(!C||C.id!==id)return;
-  C.st="ring";paint();status("يرن",true);tone("out");
-  token().then(t=>fetch(PUSH_URL+"/call",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({id})})).catch(()=>{});
-  C.rt=setTimeout(()=>{if(C&&C.id===id&&C.st==="ring")hang("miss")},RING_MS);
-  C.iv=setInterval(tick,500);
-  C.un=onSnapshot(doc(X.db,"call",id),s=>{if(s.exists())onOut(id,s.data())},()=>{});
-  // أمان: لو السماع اللحظي اتأخر، بنسأل عن الرد كل 0.7 ثانية وهي بترن (طلب صغير جداً، ولمدة الرنة بس)
-  C.poll=setInterval(()=>{if(!C||C.id!==id||C.ans)return;getDoc(doc(X.db,"call",id)).then(s=>{if(s.exists())onOut(id,s.data())}).catch(()=>{})},700);
- }catch(e){cleanup();closeUi(String(e&&e.code)==="permission-denied"?"لا يمكنك الاتصال بهذا الشخص":"تعذّر بدء المكالمة")}
+  if(C!==c)return;mark(c,"of");const offer={t:"offer",s:pc.localDescription.sdp};
+  if(first){const r=await pDoc;if(C!==c)return;
+   if(r!==true){if(String(r&&r.code)!=="permission-denied")throw r;LEGACY=true;first=false}}// قواعد قديمة لا تقبل مكالمة من غير offer: الطريقة القديمة
+  if(first)await updateDoc(ref,{of:offer});
+  else{await setDoc(ref,Object.assign(base(),{of:offer}));if(C!==c){updateDoc(ref,{st:"end",en:Date.now(),by:X?X.party:""}).catch(()=>{});pushEnd(id);return}ringing(c);pushRing(c)}
+  mark(c,"ofw");
+ }catch(e){if(C!==c)return;const denied=String(e&&e.code)==="permission-denied";
+  if(c.st==="ring"){await hang("end");closeUi("تعذّر بدء المكالمة")}else{cleanup();closeUi(denied?"لا يمكنك الاتصال بهذا الشخص":"تعذّر بدء المكالمة")}}
 }
 // ---------- مكالمة واردة ----------
 // أثناء الرنة بنجهّز الرد كله في الخلفية (الاتصال والعناوين والـ answer)، والميكروفون بيتضاف لحظة الضغط على "رد"
 async function prep(c){
- try{const pc=await mkPc();if(C!==c){pc.close();return}c.pc=pc;
+ try{const pc=mkPc(await iceServers());if(C!==c){pc.close();return}c.pc=pc;
   await pc.setRemoteDescription({type:"offer",sdp:hiq(c.of.s)});
   const tr=pc.getTransceivers().find(t=>t.receiver&&t.receiver.track&&t.receiver.track.kind==="audio");if(tr)tr.direction="sendrecv";c.tr=tr;
   const an=await pc.createAnswer();await pc.setLocalDescription({type:"answer",sdp:hiq(an.sdp)});await gathered(pc);
-  if(C===c)c.ready=pc.localDescription.sdp;
+  if(C===c){c.ready=pc.localDescription.sdp;mark(c,"rdy")}
  }catch(e){c.prepErr=e}
 }
+// الـ offer وصل (مع المكالمة نفسها، أو بعدها بلحظة في «الرنة أولاً»): نبدأ التجهيز فوراً
+function gotOffer(c,of){
+ if(C!==c||c.of||!of||typeof of.s!=="string")return;c.of=of;mark(c,"ofs");c.prep=prep(c);
+ if(c.ofRes){const f=c.ofRes;c.ofRes=null;f()}
+}
 let PEND_ACT=null;// {id, act:"acc"|"rej"} من إشعار المكالمة
-function incoming(id,d){
+function incoming(id,d,via){
  if(SEEN.has(id))return;SEEN.add(id);
  if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="rej"){PEND_ACT=null;updateDoc(doc(X.db,"call",id),{st:"rej"}).catch(()=>{});return}
  if(C){updateDoc(doc(X.db,"call",id),{st:"busy"}).catch(()=>{});return}
- const c={id,inc:true,to:d.fr,name:String(d.frn||(String(d.fr||"").slice(0,1)==="b"?"فرع "+String(d.fr).slice(2):"مكالمة")),st:"ring",of:d.of,mute:false};C=c;
+ const c={id,inc:true,to:d.fr,name:String(d.frn||(String(d.fr||"").slice(0,1)==="b"?"فرع "+String(d.fr).slice(2):"مكالمة")),st:"ring",of:null,mute:false,tm:{},t00:Date.now(),via:via||"rt"};C=c;
+ {const lag=Date.now()-N(d.ts);if(lag>=0&&lag<6e5)c.tm.lag=lag}// من لحظة الاتصال لحد ما وصلت الجهاز ده (بساعة الجهازين، تقريبي)
  // 🛡 (17 نوفمبر 2026) الاسم اللي المتصل بعته (frn) ممكن يتزوّر، فالاسم الحقيقي من الدليل (الموظف من whdir، السائق من ddir)، وكود الفرع بيظهر دايماً
  {const fr=String(d.fr||""),k=fr.slice(0,1),idp=fr.slice(2);
   if(k==="b"&&idp&&c.name.indexOf(idp)<0)c.name=(c.name+" · "+idp).slice(0,70);
@@ -272,12 +385,12 @@ function incoming(id,d){
    if(n&&n!==c.name){c.name=n;const el=g("tzc-n"),av=g("tzc-av"),pn=g("tzcp-n");if(el)el.textContent=n;if(av)av.textContent=initial(n);if(pn)pn.textContent=n}}).catch(()=>{})}
  const quiet=QUIET===id||(!!NAT()&&document.hidden);// التطبيق هو اللي بيرن (الصفحة في الخلفية): مانكررش الرنة
  if(QUIET===id)QUIET="";
- paint();status("مكالمة واردة",true);if(!quiet)tone("in");c.iv=setInterval(tick,500);c.prep=prep(c);
- c.rt=setTimeout(()=>{if(C===c&&c.st==="ring"){cleanup();closeUi("مكالمة فائتة")}},RING_MS+5000);
- c.un=onSnapshot(doc(X.db,"call",id),s=>{if(C!==c||!s.exists())return;const x=s.data();
-  if(c.st==="ring"&&(x.st==="end"||x.st==="miss")){cleanup();closeUi("مكالمة فائتة من "+(x.frn||""))}
-  else if(c.st==="ring"&&(x.st==="acc"||x.st==="rej")){cleanup();closeUi(x.st==="acc"?"تم الرد من جهاز آخر":"تم الرفض من جهاز آخر")}
-  else if((c.st==="acc"||c.st==="conn")&&x.st==="end"&&x.by!==X.party){const t0=c.t0;cleanup();closeUi(t0?"انتهت المكالمة · "+mmss(Date.now()-t0):"انتهت المكالمة")}},()=>{});
+ paint();status("مكالمة واردة",true);if(!quiet)tone("in");c.iv=setInterval(tick,500);
+ if(d.of)gotOffer(c,d.of);
+ c.rt=setTimeout(()=>{if(C===c&&c.st==="ring"){cleanup("miss");closeUi("مكالمة فائتة")}},RING_MS+5000);
+ c.un=onSnapshot(doc(X.db,"call",id),s=>{if(s.exists())onDoc(c,s.data())},()=>{});
+ // والسماع اللحظي ممكن يكون نايم (الصفحة في الخلفية): بنسأل كل 0.7 ثانية وهي بترن، فالـ offer والإلغاء يوصلوا في كل الأحوال
+ c.opoll=setInterval(()=>{if(C!==c)return;if(c.st!=="ring"&&c.of){clearInterval(c.opoll);c.opoll=0;return}docPoll(c)},700);
  if(!quiet&&document.hidden&&"Notification" in window&&Notification.permission==="granted"){try{new Notification("📞 "+c.name+" يتصل بك",{body:"اضغط للرد",tag:"call"+id})}catch(e){}}
  if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="acc"){PEND_ACT=null;setTimeout(()=>{if(C===c&&c.st==="ring")accept()},0)}
 }
@@ -285,36 +398,36 @@ function incoming(id,d){
 // ⚡ نجيب المكالمة برقمها فوراً (من غير انتظار السماع اللحظي: والصفحة في الخلفية الاتصال اللحظي بيكون نايم فالرد كان بيتأخر)
 function fetchCall(id){
  if(!X||!id||SEEN.has(id)||!/^[A-Za-z0-9_-]{8,64}$/.test(String(id)))return Promise.resolve();
- return getDoc(doc(X.db,"call",id)).then(s=>{if(!X||!s.exists())return;const d=s.data();if(d&&d.to===X.party&&d.st==="ring"&&d.of&&Math.abs(Date.now()-N(d.ts))<WIN)incoming(id,d)}).catch(()=>{});
+ return getDoc(doc(X.db,"call",id)).then(s=>{if(!X||!s.exists())return;const d=s.data();if(d&&d.to===X.party&&d.st==="ring"&&Math.abs(Date.now()-N(d.ts))<WIN)incoming(id,d,"fx")}).catch(()=>{});
 }
 const callAct=(id,act)=>{if(!X||!id)return;if(C&&C.id===id&&C.st==="ring"){if(act==="rej")hang("rej");else accept()}else if(!C){PEND_ACT={id,act};fetchCall(id)}};
 window.__tzCallAct=callAct;
 // 📱 تطبيق تاسومة وهو بيرن (والصفحة في الخلفية) بينادي دي: نجهّز الرد بصمت، فلما يضغط «رد» الصوت يتوصّل فوراً
 window.__tzCallWarm=id=>{if(!X||!id||C||SEEN.has(id))return;QUIET=String(id);fetchCall(id)};
-const NAT=()=>window.TasoomaApp||null;
-// نوقّف الرنة على أجهزة التطبيق عند الطرف التاني (اتلغت / اترد عليها / خلصت)
-const pushEnd=id=>{if(!X||!id)return;token().then(t=>fetch(PUSH_URL+"/call",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({id,end:true})})).catch(()=>{})};
 // رسالة من الـ SW (المنصة مفتوحة وضغط رد/رفض من الإشعار)
 if(navigator.serviceWorker)navigator.serviceWorker.addEventListener("message",e=>{const m=e.data;if(m&&m.t==="tz-call")callAct(m.id,m.act)});
 async function accept(){
- const c=C;if(!c||!c.inc||c.st!=="ring")return;tone(null);c.st="conn";paint();status("جارٍ توصيل الصوت",true);
- try{c.stream=await mic()}catch(e){hang("rej");closeUi("اسمح للمنصة باستخدام الميكروفون للرد");return}
- if(C!==c)return;
+ const c=C;if(!c||!c.inc||c.st!=="ring")return;tone(null);c.st="conn";mark(c,"tap");paint();status("جارٍ توصيل الصوت",true);
+ try{c.stream=await mic()}catch(e){if(C===c){hang("rej");closeUi("اسمح للمنصة باستخدام الميكروفون للرد")}return}
+ if(C!==c){c.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});return}
+ mark(c,"mic");
  try{
+  // «الرنة أولاً»: لو ضغط رد قبل ما الـ offer يوصل بنستناه (لحد 12 ثانية) بدل ما نفشل
+  if(!c.of){await new Promise(ok=>{c.ofRes=ok;setTimeout(ok,12000)});if(C!==c)return;if(!c.of)throw new Error("no-offer")}
   await c.prep;if(C!==c)return;
   let sdp=c.ready;
   if(sdp&&c.tr){await c.tr.sender.replaceTrack(c.stream.getAudioTracks()[0])}
   else{// التجهيز المسبق فشل: الطريقة العادية
    if(c.pc)try{c.pc.close()}catch(e){}
-   const pc=await mkPc();c.pc=pc;c.stream.getTracks().forEach(t=>pc.addTrack(t,c.stream));
+   const pc=mkPc(await iceServers());c.pc=pc;c.stream.getTracks().forEach(t=>pc.addTrack(t,c.stream));
    await pc.setRemoteDescription({type:"offer",sdp:hiq(c.of.s)});const an=await pc.createAnswer();await pc.setLocalDescription({type:"answer",sdp:hiq(an.sdp)});await gathered(pc);sdp=pc.localDescription.sdp}
   if(C!==c)return;
-  await updateDoc(doc(X.db,"call",c.id),{st:"acc",an:{t:"answer",s:sdp},at:Date.now()});if(C!==c)return;c.st="acc";clearTimeout(c.rt);connectWatch();pushEnd(c.id);
-  if(c.pc&&c.pc.connectionState==="connected"&&!c.t0){c.t0=Date.now();status("");try{const A=NAT();if(A&&A.callOn)A.callOn(String(c.name||""))}catch(e){}spkInit(c);paint()}
- }catch(e){cleanup();closeUi("تعذّر الرد على المكالمة")}
+  await updateDoc(doc(X.db,"call",c.id),{st:"acc",an:{t:"answer",s:sdp},at:Date.now()});if(C!==c)return;c.st="acc";mark(c,"anw");clearTimeout(c.rt);connectWatch();pushEnd(c.id);
+  if(c.pc)connState(c.pc);
+ }catch(e){if(C===c){cleanup("fail");closeUi("تعذّر الرد على المكالمة")}}
 }
 // ---------- الضغطات ----------
-document.addEventListener("click",e=>{if(C&&C.tap){C.tap=false;const au=g("tzc-au");if(au){const p=au.play();if(p&&p.catch)p.catch(()=>{})}ac();status("")}const t=e.target.closest&&e.target.closest("[data-tzc]");if(!t||!X)return;const a=t.dataset.tzc;
+document.addEventListener("click",e=>{if(C&&C.tap){C.tap=false;const au=g("tzc-au");if(au){const p=au.play();if(p&&p.catch)p.catch(()=>{})}if(!IOS)ac();status("")}const t=e.target.closest&&e.target.closest("[data-tzc]");if(!t||!X)return;const a=t.dataset.tzc;
  if(a==="acc")accept();else if(a==="rej")hang("rej");else if(a==="end")hang("end");
  else if(a==="mute"&&C&&C.stream){C.mute=!C.mute;C.stream.getAudioTracks().forEach(x=>x.enabled=!C.mute);buttons()}
  else if(a==="spk")spkToggle()
@@ -324,16 +437,21 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target&&e.target.i
 addEventListener("tz-call-start",e=>{const d=e.detail||{};if(d.to)startCall(d.to,d.name)});
 // قفل الصفحة: المكالمة الشغالة بتتقفل، والصادرة اللي لسه بترن بتتلغي (كانت بتفضل ترن عند الطرف التاني 45 ثانية)
 addEventListener("pagehide",e=>{if(C&&!e.persisted&&(C.st==="acc"||(C.st==="ring"&&!C.inc)))hang("end")});
+// النت رجع والمكالمة شغالة ومقطوعة: نحاول فوراً بدل انتظار المهلة
+addEventListener("online",()=>{const c=C;if(c&&c.t0&&c.pc&&c.pc.connectionState!=="connected"){if(!c.inc)restart(c);docPoll(c)}});
 
 // ---------- البداية ----------
 // ctx: {db, auth, party:"w-…"|"b-…"|"d-…", name:()=>اسمي, toast}
 export function initCall(ctx){
- stopCall();if(!ctx||!ctx.db||!/^[bdw]-./.test(String(ctx.party||"")))return;
+ if(!ctx||!ctx.db||!/^[bdw]-./.test(String(ctx.party||""))){stopCall();return}
+ // نفس الحساب اتبدأ قبل كده (earlyCall أو رسمة تانية): نحدّث البيانات بس، من غير ما نقفل مكالمة شغالة ولا نعيد السماع
+ if(X&&UN&&X.party===ctx.party&&X.db===ctx.db){X=ctx;window.__tzCall=!!(window.RTCPeerConnection&&navigator.mediaDevices);return}
+ stopCall();
  X=ctx;window.__tzCall=!!(window.RTCPeerConnection&&navigator.mediaDevices);
  // مكالمات آخر 10 دقايق (بساعة الجهاز ده)، والفلترة الحقيقية بالحالة "بترن" + الرنة من لحظة الوصول، فاختلاف ساعة الموبايل مايضيّعش المكالمة
  UN=onSnapshot(query(collection(X.db,"call"),where("to","==",X.party),where("ts",">=",Date.now()-WIN)),sn=>{
-  sn.docs.forEach(s=>{const d=s.data();if(d&&d.st==="ring"&&d.of&&Math.abs(Date.now()-N(d.ts))<WIN)incoming(s.id,d)})},()=>{});
- setTimeout(()=>{if(X)iceServers()},2500);// نجهّز خوادم الاتصال قبل أول مكالمة
+  sn.docs.forEach(s=>{const d=s.data();if(d&&d.st==="ring"&&Math.abs(Date.now()-N(d.ts))<WIN)incoming(s.id,d,"rt")})},()=>{});
+ iceCached();setTimeout(()=>{if(X)iceServers()},1200);// خوادم الاتصال: من المحفوظ على الجهاز فوراً، ونجدّدها بعد لحظة
  // 🛡 (17 نوفمبر 2026) الرد التلقائي من الرابط (act=acc) كان يخلّي أي حد يبعت رابط "…?call=رقم&act=acc" ثم يتصل، فالمكالمة تترد لوحدها والمايك يفتح.
  // دلوقتي: الرابط بيتقبل جوه تطبيق تاسومة بس ولما التطبيق نفسه هو اللي فتح الصفحة (من غير referrer؛ الضغط على رابط جوه الصفحة له referrer).
  // في المتصفح: "رد/رفض" من الإشعار بيوصل من الـ SW نفسه (call-pend) مش من الرابط.
@@ -342,5 +460,19 @@ export function initCall(ctx){
   if(u.searchParams.has("call")||u.searchParams.has("act")){u.searchParams.delete("call");u.searchParams.delete("act");history.replaceState(null,"",u.pathname+(u.search||"")+u.hash)}}catch(e){}
  try{const sw=navigator.serviceWorker;if(sw&&sw.controller)sw.controller.postMessage({t:"call-pend"})}catch(e){}
 }
-export const callState=()=>C?{id:C.id,st:C.st,inc:C.inc,conn:C.pc?C.pc.connectionState:"",t0:!!C.t0,ready:!!C.ready,spkCan:!!C.spkCan,spk:!!C.spk}:null;// للتشخيص والاختبار
+// ⚡ الصفحة اتفتحت على مكالمة (?call=، من إشعار أو من زر «رد» في التطبيق): نبدأ المكالمات أول ما الدخول يتعرف،
+// من غير انتظار باقي تحميل الصفحة (قراءة الدور والوحدات). الطرف من بريد الدخول نفسه؛ والقواعد هي اللي بتحكم مين يقرا المكالمة.
+// الصفحة بتنادي initCall بعدها عادي (بنفس الطرف) فبتحدّث الاسم والتنبيهات بس.
+export function earlyCall(ctx){
+ try{if(X||!ctx||!ctx.db||!ctx.auth||!new URL(location.href).searchParams.get("call"))return;
+  let un=null,done=false;
+  un=onAuthStateChanged(ctx.auth,u=>{
+   if(done||!u||!u.email)return;done=true;setTimeout(()=>{try{if(typeof un==="function")un()}catch(e){}},0);
+   if(X)return;const em=String(u.email).toLowerCase(),b=em.match(/^(\d{3})@tasooma\.app$/),d=em.match(/^(drv\d{1,2})@tasooma\.app$/);
+   const party=b?"b-"+b[1]:d?"d-"+d[1]:em.indexOf("@tasooma.app")>0?"":"w-"+em;
+   if(party)initCall({db:ctx.db,auth:ctx.auth,party,name:()=>"",toast:ctx.toast||(()=>{})})});
+ }catch(e){}
+}
+export const callState=()=>C?{id:C.id,st:C.st,inc:C.inc,conn:C.pc?C.pc.connectionState:"",t0:!!C.t0,ready:!!C.ready,of:!!(C.of||(!C.inc&&C.tm&&C.tm.ofw!=null)),spkCan:!!C.spkCan,spk:!!C.spk,rs:C.rs||0,rn:C.rn||0,pair:C.pair||"",tm:Object.assign({},C.tm),legacy:LEGACY}:null;// للتشخيص والاختبار
+export const callRestart=()=>{if(C&&!C.inc)return restart(C)};// للاختبار: إعادة التفاوض يدوياً
 export function stopCall(){if(C)hang("end");if(UN){try{UN()}catch(e){}UN=null}X=null;window.__tzCall=false}

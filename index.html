@@ -509,8 +509,9 @@ import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.
 import {initTrack,stopTrack,trackBtn} from "./track.js";
 import {initSheet,stopSheet} from "./brsheet.js";
 import {catLoad,catSheet} from "./cat.js";
-import {initCall,stopCall} from "./call.js";
+import {initCall,stopCall,earlyCall} from "./call.js";
 const {app,db,auth}=makeFb("branch");
+earlyCall({db,auth,toast:(m,t)=>{try{toast(m,t)}catch(e){}}});// 📞 الصفحة اتفتحت على مكالمة: نبدأ المكالمات قبل باقي التحميل
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام",go:"في الطريق إليك 🚚"};
 const ST=x=>LBL[x]?x:"new";
 const g=id=>document.getElementById(id);

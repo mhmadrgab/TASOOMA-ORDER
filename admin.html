@@ -142,6 +142,7 @@ a.bt{text-decoration:none;display:inline-block;color:inherit}.tg{background:#f2e
 import {makeFb,pushRegister,nativePush,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,withTimeout,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,adminSetPw,tmpPw} from "./fb.js";
 window.__tzMod=1;// (15 نوفمبر 2026) الكود الأساسي اشتغل: ui.js مايمسحش النسخة المحفوظة ومايعملش ريفرش لو الدخول بطيء بس
 const {app,db,auth}=makeFb("admin");
+earlyCall({db,auth,toast:(m,t)=>{try{toast(m,t)}catch(e){}}});// 📞 الصفحة اتفتحت على مكالمة: نبدأ المكالمات قبل باقي التحميل
 import {initExtra,view as cusView,stop as stopExtra,adminHdr,ledger} from "./ad-extra.js";
 import {initFleet,view as fleetView,stop as stopFleet,cars as fleetCars} from "./fleet.js";
 import {initZoom} from "./zoom.js";
@@ -152,7 +153,7 @@ import {initPoRcv,stopPoRcv,poRcvView,poRcvCount} from "./porcv.js";
 import {initCat,catAdminView,catLoad} from "./cat.js";
 import {initHealth,stopHealth,healthView} from "./health.js";
 import {initPwSelf,stopPwSelf} from "./pwself.js";
-import {initCall,stopCall} from "./call.js";
+import {initCall,stopCall,earlyCall} from "./call.js";
 import {initAnn,stopAnn,annBtn} from "./ann.js";
 import {initShort,stopShort,shortView,weeklyCfgView} from "./short.js";
 import {initStaff,view as staffView,permView,lockView,stop as stopStaff,syncDir,staffName,OWNER_NAME} from "./staff.js";
