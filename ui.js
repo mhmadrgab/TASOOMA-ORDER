@@ -198,7 +198,7 @@
  addEventListener("online",upd);addEventListener("focus",upd);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)upd();tick()});
  // 2) هل ينفع نعمل ريفرش دلوقتي من غير ما نضيّع شغل؟
- const MOD="#mtm,#pom,#clm,#osh,#xm,#wkm,#zbx,#bciv,#anniv,#annm,#annp,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,.cm,.fm,.gfm,.mdl,.wkm,.ov";
+ const MOD="#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#zbx,#bciv,#anniv,#annm,#annp,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,.cm,.fm,.gfm,.mdl,.wkm,.ov";
  const overlayOpen=()=>{if(document.getElementById("tz-news"))return true;try{return [...document.querySelectorAll(MOD)].some(e=>e.classList.contains("on")&&!e.classList.contains("is-closing"))}catch(x){return false}};
  const typing=()=>{const a=document.activeElement;if(!a)return false;const t=a.tagName;
   if(a.isContentEditable)return String(a.textContent||"").length>0;

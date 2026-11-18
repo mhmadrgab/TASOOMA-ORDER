@@ -148,6 +148,7 @@ import {initZoom} from "./zoom.js";
 import {initGifts,stopGifts,giftsView,pendingCount as giftPend} from "./gifts.js";
 import {initMnt,stopMnt,mntView,mntCount} from "./mnt.js";
 import {initPo,stopPo,poView,poCount} from "./po.js";
+import {initPoRcv,stopPoRcv,poRcvView,poRcvCount} from "./porcv.js";
 import {initCat,catAdminView,catLoad} from "./cat.js";
 import {initHealth,stopHealth,healthView} from "./health.js";
 import {initPwSelf,stopPwSelf} from "./pwself.js";
@@ -187,10 +188,15 @@ const can=k=>ROLE.admin||ROLE.p[k]===true;
 let LOCK={},LOCKR=false,LKC=null;
 const SEC_EXP={po:["po","rcv"],cus:["cus"],gift:["gm","ga","gift"],mt:["mt"],log:[]};
 const meMail=()=>String(auth.currentUser&&auth.currentUser.email||"").toLowerCase();
-const secHidNow=()=>{if(ROLE.co===true)return "";
+const lkState=()=>{if(ROLE.co===true)return "";
  if(!LOCKR){if(LKC!==null)return LKC;try{return localStorage.getItem("tz_lk_"+meMail())||""}catch(x){return ""}}
  const me=meMail(),has=a=>Array.isArray(a)&&a.map(v=>String(v).toLowerCase()).includes(me);
- return Object.keys(SEC_EXP).filter(k=>{const x=LOCK&&LOCK[k];if(!x||typeof x!=="object")return false;if(has(x.hide))return true;return x.on===true&&!has(x.al)&&!SEC_EXP[k].some(p=>ROLE.p[p]===true)}).join(",")};
+ return Object.keys(SEC_EXP).filter(k=>{const x=LOCK&&LOCK[k];if(!x||typeof x!=="object")return false;if(has(x.hide))return true;return x.on===true&&!has(x.al)&&!SEC_EXP[k].some(p=>ROLE.p[p]===true)}).join(",")+(ROLE.v!==true&&has(LOCK&&LOCK.po&&LOCK.po.rcv)?";r":"")};
+const secHidNow=()=>lkState().split(";")[0];
+// 📦 استلام الحاويات بلا تفاصيل (cfg/lock.po.rcv): الشاشة لمن أُذن له ولا يستلم من القسم نفسه (حُجب عنه، أو يراه بلا صلاحية استلام)
+const rcvIn=()=>lkState().split(";")[1]==="r";
+const rcvLim=()=>rcvIn()&&!(secOk("po")&&(ROLE.owner===true||ROLE.p.rcv===true));
+const rcvLbl=()=>{const n=poRcvCount();return `📦 استلام الحاويات${n?` <b class="tbn">${n}</b>`:""}`};
 const secOk=k=>(","+secHidNow()+",").indexOf(","+k+",")<0;
 const poFree=()=>secOk("po");
 // مدير التسويق (p.gm): مديول الهدايا والعينات فقط (يعتمد ويرفض)، بدون الدردشة وباقي التبويبات
@@ -206,7 +212,7 @@ const see=k=>can(k)||ROLE.v===true;
 // شات الفروع: الرقم الأحمر = عدد الفروع اللي باعتة رسايل لم تُقرأ بعد
 const chatLbl=()=>{const n=bcUnread();return `💬 الدردشة${n?` <b class="tbn">${n}</b>`:""}`};
 const giftLbl=()=>{const n=giftPend();return `🎁 الهدايا${n?` <b class="tbn">${n}</b>`:""}`};
-const TABS=[["req","📦 الطلبات",()=>see("req")],["chat",chatLbl,()=>ROLE.owner===true||ROLE.p.nc!==true],["fl","🚚 السيارات",()=>see("fl")],["cus","💵 العهدة",()=>see("cus")&&secOk("cus")],["wk","👷 العمال",()=>ROLE.admin||ROLE.v===true],["set","⚙ الإعدادات",()=>ROLE.admin],["gift",giftLbl,()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift")],["mnt",mntLbl,()=>(ROLE.admin||can("mt")||ROLE.v===true)&&secOk("mt")],["po",poLbl,()=>(ROLE.admin||ROLE.p.po===true||ROLE.p.rcv===true||ROLE.v===true)&&poFree()],["log","📜 السجل",()=>(ROLE.owner===true||ROLE.v===true)&&secOk("log")],["sh","📝 ورقة يدوية",()=>can("req")]];
+const TABS=[["req","📦 الطلبات",()=>see("req")],["chat",chatLbl,()=>ROLE.owner===true||ROLE.p.nc!==true],["fl","🚚 السيارات",()=>see("fl")],["cus","💵 العهدة",()=>see("cus")&&secOk("cus")],["wk","👷 العمال",()=>ROLE.admin||ROLE.v===true],["set","⚙ الإعدادات",()=>ROLE.admin],["gift",giftLbl,()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift")],["mnt",mntLbl,()=>(ROLE.admin||can("mt")||ROLE.v===true)&&secOk("mt")],["po",poLbl,()=>(ROLE.admin||ROLE.p.po===true||ROLE.p.rcv===true||ROLE.v===true)&&poFree()],["rcv",rcvLbl,()=>rcvLim()],["log","📜 السجل",()=>(ROLE.owner===true||ROLE.v===true)&&secOk("log")],["sh","📝 ورقة يدوية",()=>can("req")]];
 // حساب المتابع: أزرار الحفظ والتعديل والحذف بتستخبى وبتتقفل (والقواعد في Firebase بتمنع أي كتابة أصلاً). العرض والطباعة والتقارير شغّالة
 const RO_SEL='[data-a]:not([data-a="print"]),[data-fl]:not([data-fl="trd"]):not([data-fl="tmap"]):not([data-fl="pmap"]):not([data-fl="mfit"]):not([data-fl="rep"]):not([data-fl="mrep"]):not([data-fl="cancel"]),[data-cx]:not([data-cx="img"]):not([data-cx="ps"]):not([data-cx="stmt"]):not([data-cx="cancel"]),[data-wk]:not([data-wk="rep"]):not([data-wk="slip"]),[data-gf="ok"],[data-gf="no"],[data-gf="new"],[data-gf="edit"],[data-gf="del"],[data-wst],[data-asd],[data-asc],[data-bk],#bkall,[data-bkd],#bkd,#bkc';
 document.addEventListener("click",e=>{if(ROLE.v===true&&e.target.closest(RO_SEL)){e.preventDefault();e.stopImmediatePropagation();toast("👁 حسابك للمتابعة فقط، وليس للتعديل")}},true);
@@ -252,7 +258,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -348,8 +354,10 @@ function start(){
     edit:!vw&&(ROLE.owner===true||ROLE.p.po===true),rcv:!vw&&(ROLE.owner===true||ROLE.p.rcv===true),redraw:draw,active:()=>tab==="po",
     ping:ids=>ping(auth,[],[],[],[],[],ids),badge:()=>{const b=document.querySelector('[data-t="po"]');if(b)b.innerHTML=poLbl()}});
    // حالة الأقسام الخاصة (كل موظف يقرؤها ليعرف ما حُجب عنه). تغيّر ما حُجب عني = إعادة تشغيل اللوحة مرة واحدة بالحالة الجديدة
-   {const K0=secHidNow();
-    unsubs.push(onSnapshot(doc(db,"cfg","lock"),d=>{LOCK=d.exists()?(d.data()||{}):{};LOCKR=true;const k=secHidNow();LKC=k;try{localStorage.setItem("tz_lk_"+me,k)}catch(x){}
+   if(rcvLim())initPoRcv({db,toast,me:{e:me,get n(){return ROLE.name||me}},redraw:draw,active:()=>tab==="rcv",ping:ids=>ping(auth,[],[],[],[],[],ids),
+    badge:()=>{const b=document.querySelector('[data-t="rcv"]');if(b)b.innerHTML=rcvLbl()}});
+   {const K0=lkState();
+    unsubs.push(onSnapshot(doc(db,"cfg","lock"),d=>{LOCK=d.exists()?(d.data()||{}):{};LOCKR=true;const k=lkState();LKC=k;try{localStorage.setItem("tz_lk_"+me,k)}catch(x){}
      if(k!==K0){setTimeout(()=>{if(authed){stop();start()}},0);return}
      draw()},()=>{}))}
    // ➕ الفروع المضافة
@@ -439,7 +447,7 @@ function drawNow(){
  if(!authed)return;
  document.body.classList.toggle("ro",ROLE.v===true);
  const keep=window.scrollY,ui=snapUi();
- g("app").innerHTML=`<div class="hd"><div class="hi"><div class="br"><img class="lg1" src="${LOGO1}" alt=""><img class="lg2" src="${LOGO2}" alt=""><div><h1>لوحة المستودع</h1><small>${ROLE.v?"👁 متابعة فقط":ROLE.admin?"طلبات الفروع":E(ROLE.name||"محاسب")}</small></div></div><div class="tabs">${TABS.filter(a=>a[2]()).map(a=>`<button class="${tab===a[0]?"on":""}" data-t="${a[0]}">${typeof a[1]==="function"?a[1]():a[1]}</button>`).join("")}</div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="live"><i></i>مباشر</div><div class="tools">${TZL.btn()}${annBtn()}${meChip()}${backupBtn()}<button id="bell" type="button" hidden>🔔</button><button data-install type="button" hidden>📲 تثبيت</button></div><button class="tabs-out" id="logout" type="button">🚪 خروج</button></div></div></div><main>${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="wk"?wkView():brView()}</main>`;
+ g("app").innerHTML=`<div class="hd"><div class="hi"><div class="br"><img class="lg1" src="${LOGO1}" alt=""><img class="lg2" src="${LOGO2}" alt=""><div><h1>لوحة المستودع</h1><small>${ROLE.v?"👁 متابعة فقط":ROLE.admin?"طلبات الفروع":E(ROLE.name||"محاسب")}</small></div></div><div class="tabs">${TABS.filter(a=>a[2]()).map(a=>`<button class="${tab===a[0]?"on":""}" data-t="${a[0]}">${typeof a[1]==="function"?a[1]():a[1]}</button>`).join("")}</div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="live"><i></i>مباشر</div><div class="tools">${TZL.btn()}${annBtn()}${meChip()}${backupBtn()}<button id="bell" type="button" hidden>🔔</button><button data-install type="button" hidden>📲 تثبيت</button></div><button class="tabs-out" id="logout" type="button">🚪 خروج</button></div></div></div><main>${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="wk"?wkView():brView()}</main>`;
  showSheet();
  if(tab==="chat")mountWh(g("bchost"));else hideWh();// الدردشة عنصر ثابت بيتحط في مكانه (الكتابة والتسجيل مايضيعوش)
  wireButtons();document.getElementById("bell").hidden=!("Notification" in window);adminHdr();

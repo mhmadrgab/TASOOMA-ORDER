@@ -28,7 +28,7 @@ const SECS=[["po","أوامر الشراء"],["cus","العهدة"],["gift","ا�
 const SEC_EXP={po:["po","rcv"],cus:["cus"],gift:["gm","ga","gift"],mt:["mt"],log:[]};
 const SEC_KEY={po:"po",rcv:"po",cus:"cus",gm:"gift",ga:"gift",gift:"gift",mt:"mt"};
 const lkArr=a=>Array.isArray(a)?a.map(x=>String(x).toLowerCase()):[];
-const lkGet=()=>{const L=(X&&X.lock&&X.lock())||{},o={};SECS.forEach(a=>{const x=(L[a[0]]&&typeof L[a[0]]==="object")?L[a[0]]:{};o[a[0]]={on:x.on===true,al:lkArr(x.al),hide:lkArr(x.hide),mute:lkArr(x.mute)}});return o};
+const lkGet=()=>{const L=(X&&X.lock&&X.lock())||{},o={};SECS.forEach(a=>{const x=(L[a[0]]&&typeof L[a[0]]==="object")?L[a[0]]:{};o[a[0]]={on:x.on===true,al:lkArr(x.al),hide:lkArr(x.hide),mute:lkArr(x.mute),rcv:lkArr(x.rcv)}});return o};
 // القسم محجوب عني (أو «خاص») ولست مالك النظام: لا أمنح صلاحياته لأحد (القواعد ترفض)
 const secDeny=k=>{if(!X||X.co)return false;const x=lkGet()[k];return !!x&&(x.on||x.hide.includes(String(X.me||"").toLowerCase()))};
 const secDenyKey=pk=>!!SEC_KEY[pk]&&secDeny(SEC_KEY[pk]);
@@ -165,7 +165,7 @@ const LKM_CSS=`.lkm-t{border-collapse:separate;border-spacing:0;width:100%;min-w
 .lkm-c{display:inline-flex;gap:6px;align-items:center;justify-content:center}
 .lkm-b{font:inherit;font-size:16px;line-height:1;width:38px;height:36px;padding:0;border-radius:10px;border:1px solid var(--line);background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .lkm-b:disabled{cursor:default}.lkm-b.v{background:color-mix(in srgb,var(--olive,#6f7d45) 14%,transparent);border-color:color-mix(in srgb,var(--olive,#6f7d45) 45%,transparent);color:var(--olive,#6f7d45)}
-.lkm-b.h{background:rgba(196,54,43,.12);border-color:rgba(196,54,43,.4);color:#c4362b}.lkm-b.n{color:var(--ink)}.lkm-b.m{color:var(--mut);opacity:.6;border-style:dashed}
+.lkm-b.h{background:rgba(196,54,43,.12);border-color:rgba(196,54,43,.4);color:#c4362b}.lkm-b.r{background:color-mix(in srgb,var(--acc) 16%,transparent);border-color:var(--acc);color:var(--acc)}.lkm-b.x{color:var(--mut);opacity:.5;border-style:dashed}.lkm-b.n{color:var(--ink)}.lkm-b.m{color:var(--mut);opacity:.6;border-style:dashed}
 .lkm-leg{display:flex;gap:6px 18px;flex-wrap:wrap;color:var(--mut);font-size:13px;margin:12px 0 0}.lkm-n{color:var(--mut);font-size:13px;line-height:1.9;margin:10px 0 0}
 @media (max-width:760px){.lkm-t{min-width:0}.lkm-t thead{display:none}.lkm-t tr{display:block;border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px}
  .lkm-t td{display:flex;align-items:center;justify-content:space-between;gap:8px;border:0;border-bottom:1px dashed var(--line);padding:8px 0;text-align:start}.lkm-t td:last-child{border-bottom:0}
@@ -186,20 +186,22 @@ export function lockView(){
  const o=lkGet(),P=lkPeople(),co=X.co===true,dis=co?"":"disabled",me=String(X.me||"").toLowerCase();
  const modeBtn=k=>co?`<button type="button" class="lkm-on ${o[k].on?"on":""}" data-lkon="${k}" title="خاص: يُحجب عن كل من ليس له صلاحية القسم صراحةً، حتى من يُضاف لاحقاً">${o[k].on?"🔒 خاص":"عادي"}</button>`:o[k].on?"<small>🔒 خاص</small>":"";
  const cell=(u,a)=>{const k=a[0],l=a[1],role=secRole(u,k),ntf=secNtf(u,k);
-  if(!role&&!ntf)return `<td data-l="${l}"><span class="pmx-na" style="color:var(--mut);opacity:.5">—</span></td>`;
   const vis=role&&secVis(o,u,k),mu=o[k].mute.includes(u.id),nm=E(u.n)+" · "+l;
-  return `<td data-l="${l}"><span class="lkm-c">${role?`<button type="button" class="lkm-b ${vis?"v":"h"}" data-lkc="${E(u.id)}|${k}" ${dis} aria-label="${nm}: ${vis?"يرى":"مخفي عنه"}" title="${vis?"يرى القسم":"مخفي عنه"}">${vis?"👁":"🚫"}</button>`:""}${ntf?`<button type="button" class="lkm-b ${mu?"m":"n"}" data-lkb="${E(u.id)}|${k}" ${dis} aria-label="${nm}: ${mu?"الإشعارات متوقفة":"تصله الإشعارات"}" title="${mu?"الإشعارات متوقفة":"تصله الإشعارات"}">${mu?"🔕":"🔔"}</button>`:""}</span></td>`};
+  // 📦 استلام الحاويات بلا تفاصيل (عمود أوامر الشراء فقط): لمن لا يستلم من القسم نفسه. المتابع لا يستلم
+  const rOn=k==="po"&&o.po.rcv.includes(u.id),rc=k==="po"&&!u.vw&&!(vis&&(u.root||u.p.rcv===true))&&(co||rOn);
+  if(!role&&!ntf&&!rc)return `<td data-l="${l}"><span class="pmx-na" style="color:var(--mut);opacity:.5">—</span></td>`;
+  return `<td data-l="${l}"><span class="lkm-c">${role?`<button type="button" class="lkm-b ${vis?"v":"h"}" data-lkc="${E(u.id)}|${k}" ${dis} aria-label="${nm}: ${vis?"يرى":"مخفي عنه"}" title="${vis?"يرى القسم":"مخفي عنه"}">${vis?"👁":"🚫"}</button>`:""}${ntf?`<button type="button" class="lkm-b ${mu?"m":"n"}" data-lkb="${E(u.id)}|${k}" ${dis} aria-label="${nm}: ${mu?"الإشعارات متوقفة":"تصله الإشعارات"}" title="${mu?"الإشعارات متوقفة":"تصله الإشعارات"}">${mu?"🔕":"🔔"}</button>`:""}${rc?`<button type="button" class="lkm-b ${rOn?"r":"x"}" data-lkr="${E(u.id)}|po" ${dis} aria-label="${nm}: ${rOn?"يستلم الحاويات بلا تفاصيل":"لا يستلم الحاويات"}" title="${rOn?"يستلم الحاويات بلا تفاصيل":"لا يستلم الحاويات"}">📦</button>`:""}</span></td>`};
  const rows=P.map(u=>`<tr><td class="pn"><b data-notr>${E(u.n)}</b>${u.id===me?' <span class="pill go">أنت</span>':""}<small>${u.r}</small></td>${SECS.map(a=>cell(u,a)).join("")}</tr>`).join("");
  const mine=SECS.filter(a=>{const u=P.find(p=>p.id===me);return u&&secRole(u,a[0])&&!secVis(o,u,a[0])}).map(a=>a[1]);
  return `<div class="pan"><h3 style="margin:0 0 4px">🔒 الأقسام الخاصة</h3>
  <p class="off" style="margin:0 0 10px;font-size:13.5px;line-height:1.8">${co?"اضغط العين لتخفي القسم عن الشخص أو تظهره له، والجرس لتوقف إشعاراته عنه أو تشغّلها. يُحفظ فوراً، والتعديل هنا لك وحدك.":"للعرض فقط. الإخفاء والإظهار والإشعارات يحددها مالك النظام."}</p>
  ${co?`<div class="lkm-mode">${SECS.map(a=>`<span>${a[1]} ${modeBtn(a[0])}</span>`).join("")}</div>`:""}
  <div class="tw"><table class="lkm-t"><thead><tr><th class="pn">الشخص</th>${SECS.map(a=>`<th><span>${a[1]}</span>${modeBtn(a[0])}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
- <div class="lkm-leg"><span>👁 يرى القسم</span><span>🚫 مخفي عنه</span><span>🔔 تصله إشعاراته</span><span>🔕 إشعاراته متوقفة</span><span>— ليس من صلاحيته</span></div>
- ${co?`<p class="lkm-n">«خاص» يحجب القسم عن كل من ليس له صلاحيته صراحةً (الأدمن والمديرون والمتابع)، حتى من يُضاف لاحقاً، ثم تُظهره لمن تريد من الجدول. والإخفاء بالاسم يغلب أي صلاحية.<br>الإخفاء لا يوقف الإشعارات: أطفئ الجرس لمن لا تريد أن تصله. لا أسعار ولا مرفقات في أي إشعار.<br>القسم المحجوب عن شخص لا يدخل نسخته الاحتياطية، فخذ نسختك من زر «📥 نسخة». كل تغيير هنا يُسجَّل في «📜 السجل».</p>`
+ <div class="lkm-leg"><span>👁 يرى القسم</span><span>🚫 مخفي عنه</span><span>🔔 تصله إشعاراته</span><span>🔕 إشعاراته متوقفة</span><span>📦 يستلم الحاويات بلا تفاصيل</span><span>— ليس من صلاحيته</span></div>
+ ${co?`<p class="lkm-n">«خاص» يحجب القسم عن كل من ليس له صلاحيته صراحةً (الأدمن والمديرون والمتابع)، حتى من يُضاف لاحقاً، ثم تُظهره لمن تريد من الجدول. والإخفاء بالاسم يغلب أي صلاحية.<br>الإخفاء لا يوقف الإشعارات: أطفئ الجرس لمن لا تريد أن تصله. لا أسعار ولا مرفقات في أي إشعار.<br>📦 في عمود أوامر الشراء يفتح للشخص شاشة «استلام الحاويات» فقط، حتى لو كان القسم مخفياً عنه: يرى المورد والوصف وأرقام الحاويات والأصناف ويؤكد الاستلام، بلا قيمة ولا مرفقات.<br>القسم المحجوب عن شخص لا يدخل نسخته الاحتياطية، فخذ نسختك من زر «📥 نسخة». كل تغيير هنا يُسجَّل في «📜 السجل».</p>`
  :mine.length?`<p class="lkm-n">ما حُجب عنك (${mine.join("، ")}) لا يدخل في النسخة الاحتياطية التي تأخذها. النسخة الكاملة عند مالك النظام.</p>`:""}</div>`;
 }
-async function lockSave(o){const out={at:Date.now(),by:String(X.me||"").slice(0,120)};SECS.forEach(a=>{const x=o[a[0]];if(x.on||x.al.length||x.hide.length||x.mute.length)out[a[0]]={on:x.on,al:x.al.slice(0,80),hide:x.hide.slice(0,80),mute:x.mute.slice(0,80)}});await setDoc(doc(X.db,"cfg","lock"),out)}
+async function lockSave(o){const out={at:Date.now(),by:String(X.me||"").slice(0,120)};SECS.forEach(a=>{const x=o[a[0]];if(x.on||x.al.length||x.hide.length||x.mute.length||x.rcv.length){out[a[0]]={on:x.on,al:x.al.slice(0,80),hide:x.hide.slice(0,80),mute:x.mute.slice(0,80)};if(a[0]==="po"&&x.rcv.length)out.po.rcv=x.rcv.slice(0,80)}});await setDoc(doc(X.db,"cfg","lock"),out)}
 async function lockClick(t){
  if(!X.co){X.toast("قفل الأقسام وفتحها لمالك النظام فقط");return}
  const o=lkGet(),P=lkPeople();
@@ -207,6 +209,8 @@ async function lockClick(t){
   if(t.dataset.lkon){const k=t.dataset.lkon,nm=(SECS.find(a=>a[0]===k)||[])[1],x=o[k];if(!x)return;
    if(!confirm(x.on?`إلغاء «خاص» عن ${nm}؟\n\nسيراه كل من يسمح له دوره، إلا من أخفيته عنه بالاسم.`:`جعل ${nm} قسماً خاصاً؟\n\nسيُحجب عن كل من ليس له صلاحيته صراحةً (الأدمن والمديرون والمتابع)، حتى من يُضاف لاحقاً. بعدها أظهره لمن تريد من الجدول.\n\nتذكّر: خذ نسختك الاحتياطية بنفسك، فنسخة غيرك لن تشمل هذا القسم.`))return;
    x.on=!x.on;await lockSave(o);X.toast(x.on?"🔒 أصبح القسم خاصاً":"🔓 أُلغي «خاص» عن القسم");return}
+  if(t.dataset.lkr){const rid=t.dataset.lkr.split("|")[0],ru=P.find(p=>p.id===rid),rx=o.po;if(!ru)return;const ri=rx.rcv.indexOf(rid);if(ri>=0)rx.rcv.splice(ri,1);else rx.rcv.push(rid);await lockSave(o);
+   X.toast(ri>=0?"أُلغي استلام الحاويات عن "+ru.n:"📦 أصبح "+ru.n+" يستلم الحاويات من شاشة الاستلام، بلا قيمة ولا مرفقات");return}
   const parts=String(t.dataset.lkc||t.dataset.lkb||"").split("|"),id=parts[0],k=parts[1],u=P.find(p=>p.id===id),x=o[k],nm=(SECS.find(a=>a[0]===k)||[])[1];if(!u||!x)return;
   if(t.dataset.lkb){const i=x.mute.indexOf(id);if(i>=0)x.mute.splice(i,1);else x.mute.push(id);await lockSave(o);X.toast(i>=0?"🔔 عادت إشعارات «"+nm+"» إلى "+u.n:"🔕 أُوقفت إشعارات «"+nm+"» عن "+u.n);return}
   const vis=secVis(o,u,k);
@@ -245,7 +249,7 @@ async function add(){
  busy=false;X.redraw();
 }
 async function click(e){
- const lk=e.target.closest("[data-lkc],[data-lkb],[data-lkon]");if(lk&&X){lockClick(lk);return}
+ const lk=e.target.closest("[data-lkc],[data-lkb],[data-lkon],[data-lkr]");if(lk&&X){lockClick(lk);return}
  const t=e.target.closest("[data-sf]");if(!t||!X)return;
  const a=t.dataset.sf,id=t.dataset.id,s=S.find(x=>x.id===id);
  if(!X.owner&&a!=="show"){X.toast("التعديل لمالك النظام فقط");return}
