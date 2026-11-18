@@ -65,17 +65,31 @@ export function mapErr(e) {
 }
 
 // ---------- القراءة ----------
+// 🛟 (18 نوفمبر 2026، محمد: "المنصة بتفقد الوصول كتير وكل حاجة بتيجي صفر وتظهر تعذر القراءة")
+// السبب: أي خطأ مؤقت في أول قراءة (النت قطع لحظة، السيرفر مشغول، لحظة تجديد الدخول، أو وقت لصق القواعد في Supabase)
+// كان بيوقف القايمة للأبد: السماع (onSnapshot) كان بيبلّغ الصفحة بالخطأ ومايحاولش تاني، فالصفحة تفضل فاضية لحد الريفرش.
+// دلوقتي: كل قراءة بتعيد المحاولة لوحدها (RETRY)، والصفحة مابتتبلّغش بالخطأ غير بعد 3 محاولات فاشلة، والمحاولات بتكمّل في الخلفية
+// (وفوراً لما النت يرجع أو الصفحة ترجع قدام المستخدم). "غير مسموح" بتتجرّب مرة تانية بعد ثانية ونص (ممكن تكون لحظة تجديد الدخول).
+const RETRY = [800, 1500, 3000, 6000, 12000, 20000, 30000];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const transient = e => { const c = mapErr(e).code; return c !== "permission-denied" && c !== "not-found" };
 const rowSnap = (db, row) => new DocSnap(docRef(db, row.path), row.data);
-async function runQ(q) {
+async function runQ1(q) {
   const {data, error} = await q.db.c.rpc("q", {p_col: q.path, p_where: q.w || [], p_order: q.order || null, p_desc: !!q.desc, p_limit: q.lim == null ? null : q.lim});
   if (error) throw mapErr(error);
   return (data || []).map(r => rowSnap(q.db, r));
 }
-export async function getDoc(ref) {
+async function getDoc1(ref) {
   const {data, error} = await ref.db.c.from("docs").select("path,data").eq("path", ref.path).maybeSingle();
   if (error) throw mapErr(error);
   return new DocSnap(ref, data ? data.data : null);
 }
+// قراءة لمرة واحدة: لو الخطأ مؤقت نجرّب مرتين كمان (بعد 0.6 ثم 1.5 ثانية) قبل ما نرجّع الخطأ للصفحة
+async function twice(fn) {
+  for (let i = 0; ; i++) { try { return await fn() } catch (e) { if (i >= 2 || !transient(e)) throw e; await sleep(i ? 1500 : 600) } }
+}
+const runQ = q => twice(() => runQ1(q));
+export const getDoc = ref => twice(() => getDoc1(ref));
 export async function getDocs(ref) {
   const q = ref.type === "query" ? ref : query(ref);
   const docs = await runQ(q);
@@ -256,6 +270,7 @@ async function hubPoll(h) {
 }
 function wake(h, away) {
   if (!h.subs.size) return;
+  h.subs.forEach(s => { if (s.retry) s.retry() });// قراءات فشلت ومستنية: نجرّبها حالاً
   if (!h.live && !h.pend) { clearTimeout(h.rt); h.rt = null; h.tries = 0; hubConnect(h) }
   if (away > 5 * 60000) hubReloadAll(h); else hubPoll(h);
 }
@@ -279,16 +294,25 @@ function hubRemove(h, s) {
 export function onSnapshot(target, next, onErr) {
   const db = target.db, c = db.c, isDoc = target.type === "doc";
   const q = isDoc ? null : (target.type === "query" ? target : query(target));
-  let alive = true, loaded = false, cur = [], curDoc, pend = [], timer = null, refetching = false, again = false;
+  let alive = true, loaded = false, cur = [], curDoc, pend = [], timer = null, refetching = false, again = false, fails = 0, denied = false, rt = null;
   const fail = e => { if (alive && onErr) try { onErr(mapErr(e)) } catch (x) {} };
   const emit = list => { const prev = cur; cur = list; if (alive) try { next(new QuerySnap(q, list, changes(prev, list))) } catch (x) { console.error(x) } };
   const emitDoc = data => { if (!alive) return; const s = new DocSnap(target, data); if (loaded && eq(curDoc, data)) return; curDoc = data; try { next(s) } catch (x) { console.error(x) } };
   async function load() {
-    if (refetching) { again = true; return } refetching = true;
+    if (refetching) { again = true; return } refetching = true; clearTimeout(rt); rt = null;
     try {
-      if (isDoc) { const s = await getDoc(target); loaded = true; emitDoc(s._d) }
-      else { const docs = await runQ(q); loaded = true; const b = pend; pend = []; let list = docs; for (const ev of b) list = apply(list, ev); emit(sortDocs(q, list)) }
-    } catch (e) { fail(e) } finally { refetching = false; if (again && alive) { again = false; load() } }
+      if (isDoc) { const s = await getDoc1(target); loaded = true; emitDoc(s._d) }
+      else { const docs = await runQ1(q); loaded = true; const b = pend; pend = []; let list = docs; for (const ev of b) list = apply(list, ev); emit(sortDocs(q, list)) }
+      fails = 0; denied = false;
+    } catch (e) {
+      if (!alive) return;
+      if (transient(e)) {
+        // خطأ مؤقت: نحاول تاني لوحدنا (اللي معروض يفضل زي ما هو)، ونبلّغ الصفحة مرة واحدة بعد 3 محاولات
+        fails++; if (fails === 3) fail(e);
+        rt = setTimeout(load, RETRY[Math.min(fails - 1, RETRY.length - 1)]);
+      } else if (mapErr(e).code === "permission-denied" && !denied) { denied = true; rt = setTimeout(load, 1500) }// ممكن تكون لحظة تجديد الدخول
+      else fail(e);
+    } finally { refetching = false; if (again && alive) { again = false; load() } }
   }
   function apply(list, ev) {
     const path = (ev.new && ev.new.path) || (ev.old && ev.old.path);
@@ -310,10 +334,12 @@ export function onSnapshot(target, next, onErr) {
   // ⚡ (12 نوفمبر 2026) القراءة بتبدأ على طول، مش بعد ما خط اللايف يفتح. والتحديثات من "المحطة" (فوق)
   const h = hubOf(c);
   const sub = {isDoc, path: isDoc ? target.path : null, col: isDoc ? null : q.path, onEv,
-    reload: () => { if (!alive) return; if (!loaded) return; clearTimeout(timer); timer = setTimeout(load, 150) }};
+    reload: () => { if (!alive) return; if (!loaded) return; clearTimeout(timer); timer = setTimeout(load, 150) },
+    // النت رجع / الصفحة رجعت قدام المستخدم وفيه قراءة لسه فاشلة: نجرّب حالاً بدل ما نستنى المهلة
+    retry: () => { if (alive && rt && !refetching) { clearTimeout(rt); rt = null; load() } }};
   hubAdd(h, sub);
   load();
-  return () => { alive = false; clearTimeout(timer); hubRemove(h, sub) };
+  return () => { alive = false; clearTimeout(timer); clearTimeout(rt); rt = null; hubRemove(h, sub) };
 }
 
 // ---------- الدخول (زي Firebase Auth) ----------
