@@ -301,6 +301,87 @@ export function quality(D){
  const neg=[],ns=[];for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(!a)continue;for(let j=0;j<a.length;j+=4){if(a[j+1]<0)neg.push({ki,ti:a[j],on:a[j+1],sold:a[j+2]});if(a[j+2]<0)ns.push({ki,ti:a[j],on:a[j+1],sold:a[j+2]})}}
  return {neg:neg.sort((p,r)=>p.on-r.on),ns:ns.sort((p,r)=>p.sold-r.sold)};
 }
+/* ---- (v180) الترتيب، «مين عنده»، المورد، المقارنة: جمع مباشر من الصفوف كما في البطاقات ---- */
+// يمرّ على كل (صنف، فرع، مورد): fn(صنف، فرع، مورد، رصيد، مبيعات). السطر المكتوب في التقرير بموردين يُقسم بنصيب كلٍّ منهما (كبطاقة الفرع).
+// المبيعات من ملف الكميات، أو من ملفات التاريخ لو أُعطيت P (وتُنسب لمورد السطر، أو لمورد الصنف لو لم يكن له سطر في ملف الكميات)
+function eachCell(D,P,ids,fn){
+ const seen=P?new Set():null,idset=ids?new Set(ids):null;
+ const one=ki=>{const a=D.q[ki];if(!a)return;for(let j=0;j<a.length;j+=4){const ti=a[j],key=ki*1000+ti,sp=D.vx?D.vx.get(key):null;let mo=a[j+1],ms=P?0:a[j+2];
+   if(P&&!seen.has(key)){seen.add(key);ms=P.get(key)||0}
+   if(sp)for(let i=0;i<sp.length;i+=3){mo-=sp[i+1];if(!P)ms-=sp[i+2];fn(ki,ti,sp[i],sp[i+1],P?0:sp[i+2])}
+   fn(ki,ti,a[j+3],mo,ms)}};
+ if(ids)ids.forEach(one);else for(let ki=0;ki<D.q.length;ki++)one(ki);
+ if(P)P.forEach((v,key)=>{if(seen.has(key))return;const ki=Math.floor(key/1000);if(idset&&!idset.has(ki))return;fn(ki,key%1000,D.k[ki][3],0,v)});
+}
+const idsOf=(D,o)=>o.code?(D.code.get(String(o.code).trim())||[]).filter(ki=>(!o.cl||D.k[ki][1]===o.cl)&&(!o.z||D.k[ki][2]===o.z)):null;
+// ترتيب «أكثر/أقل»: by = code | store | vendor | color | size | var (لون ومقاس الكود)، m = sold | on، dir = -1 الأعلى أولاً، 1 الأقل أولاً.
+// ترتيب الفروع بلا المستودع والمخازن المستثناة (كترتيب بطاقة الفرع)، ويشمل كل فرع حتى لو صفر. غير ذلك: كل المخازن (كبطاقة الصنف).
+export function rankBy(D,C,o){
+ o=o||{};const P=o.period?soldMap(D,o.period.from,o.period.to):null,wh=D.sti.get(C.wh),ex=exSet(C,D),fs=o.store?D.sti.get(o.store):undefined,fv=o.vendor?D.vn.indexOf(o.vendor):-2;
+ if((o.store&&fs===undefined)||(o.vendor&&fv<0))return null;const ids=idsOf(D,o);if(ids&&!ids.length)return null;
+ const by=o.by||(o.code?(o.store?"var":"store"):"code"),m=o.m==="on"?"on":"sold",om=m==="on"?"sold":"on",dir=o.dir===1?1:-1,G=new Map();
+ const gk=(ki,ti,vi)=>by==="code"?D.k[ki][0]:by==="store"?ti:by==="vendor"?vi:by==="color"?D.k[ki][1]:by==="size"?D.k[ki][2]:ki;
+ if(by==="store")for(let ti=0;ti<D.st.length;ti++)if(ti!==wh&&!ex.has(ti)&&(fs===undefined||ti===fs))G.set(ti,{k:ti,on:0,sold:0});
+ eachCell(D,P,ids,(ki,ti,vi,on,sold)=>{if(fs!==undefined&&ti!==fs)return;if(fv!==-2&&vi!==fv)return;if(by==="store"&&(ti===wh||ex.has(ti)))return;
+  const k=gk(ki,ti,vi);let g=G.get(k);if(!g){g={k,on:0,sold:0};G.set(k,g)}g.on+=on;g.sold+=sold});
+ const lab=g=>by==="store"?D.st[g.k]:by==="vendor"?(g.k>=0?D.vn[g.k]||"":""):by==="var"?"":String(g.k);
+ const rows=[...G.values()].filter(g=>by==="store"||g.on!==0||g.sold!==0).sort((p,r)=>dir*(p[m]-r[m])||(r[om]-p[om])||(by==="var"?cmpK(D.k[p.k],D.k[r.k]):by==="size"?zk(lab(p))-zk(lab(r))||(lab(p)<lab(r)?-1:lab(p)>lab(r)?1:0):lab(p)<lab(r)?-1:lab(p)>lab(r)?1:0));
+ let on=0,sold=0;for(const g of rows){on+=g.on;sold+=g.sold}
+ return {by,m,dir,rows,on,sold};
+}
+// «مين عنده الصنف؟»: المخازن التي لها رصيد منه (المستودع أولاً ثم الأكثر رصيداً)، والفروع التي نفد عندها وهي تبيعه
+export function whoHas(D,C,code,o){
+ o=o||{};const ids=idsOf(D,{code,cl:o.cl,z:o.z});if(!ids||!ids.length)return null;const P=o.period?soldMap(D,o.period.from,o.period.to):null,wh=D.sti.get(C.wh),S=new Map();
+ eachCell(D,P,ids,(ki,ti,vi,on,sold)=>{let s=S.get(ti);if(!s){s={ti,on:0,sold:0};S.set(ti,s)}s.on+=on;s.sold+=sold});
+ const all=[...S.values()],nm=(p,r)=>D.st[p.ti]<D.st[r.ti]?-1:1;
+ const has=all.filter(s=>s.on>0).sort((p,r)=>(p.ti===wh?-1:r.ti===wh?1:0)||r.on-p.on||r.sold-p.sold||nm(p,r));
+ const out=all.filter(s=>s.on<=0&&s.sold>0&&s.ti!==wh).sort((p,r)=>r.sold-p.sold||nm(p,r));
+ let on=0;for(const s of has)on+=s.on;const w=S.get(wh);
+ return {ids,has,out,on,wh:w?w.on:0,n:has.filter(s=>s.ti!==wh).length};
+}
+// بطاقة مورد: رصيده ومبيعاته (في كل الفروع أو فرع واحد)، أكواده، كل فرع، ترتيبه بين الموردين، نواقصه وراكده، وما نفد من المستودع وهو يُباع
+export function vendorCard(D,C,vendor,o){
+ o=o||{};const fv=D.vn.indexOf(vendor);if(fv<0||!vendor)return null;const P=o.period?soldMap(D,o.period.from,o.period.to):null,wh=D.sti.get(C.wh),fs=o.store?D.sti.get(o.store):undefined;if(o.store&&fs===undefined)return null;
+ let on=0,sold=0,whOn=0;const byC=new Map(),byS=new Map(),ks=new Set(),ksOn=new Map();
+ eachCell(D,P,null,(ki,ti,vi,o1,s1)=>{if(vi!==fv)return;const x=D.k[ki];let c=byC.get(x[0]);if(!c){c={code:x[0],on:0,sold:0,wh:0};byC.set(x[0],c)}if(ti===wh)c.wh+=o1;
+  if(fs!==undefined&&ti!==fs)return;on+=o1;sold+=s1;if(ti===wh)whOn+=o1;c.on+=o1;c.sold+=s1;
+  let s=byS.get(ti);if(!s){s={ti,on:0,sold:0};byS.set(ti,s)}s.on+=o1;s.sold+=s1;if(o1!==0||s1!==0)ks.add(ki);ksOn.set(ki,(ksOn.get(ki)||0)+o1)});
+ const codes=[...byC.values()].filter(c=>c.on!==0||c.sold!==0).sort((p,r)=>r.sold-p.sold||r.on-p.on||(p.code<r.code?-1:1));
+ const reorder=codes.filter(c=>c.sold>0&&c.wh<=0);
+ const RV=rankBy(D,C,{by:"vendor",store:o.store,period:o.period}),sv=RV?RV.rows.filter(r=>r.sold>0):[],me=sv.findIndex(r=>r.k===fv);
+ const SH=shortages(D,C,{vendor,store:o.store,period:o.period,sold:1}),ST=stale(D,C,{vendor,store:o.store,period:o.period});
+ let inSt=0;ksOn.forEach(v=>{if(v>0)inSt++});
+ return {fv,on,sold,wh:whOn,br:on-whOn,skus:ks.size,inSt,codes,reorder,stores:[...byS.values()].filter(s=>s.on!==0||s.sold!==0).sort((p,r)=>r.sold-p.sold||r.on-p.on||(D.st[p.ti]<D.st[r.ti]?-1:1)),
+  rank:me>=0?me+1:0,of:sv.length,share:RV&&RV.sold>0?sold/RV.sold:null,short:{n:SH.length,need:SH.reduce((s,l)=>s+l.need,0)},idle:{n:ST.length,pcs:ST.reduce((s,l)=>s+l.on,0)}};
+}
+// مقارنة فروع (2–4) جنباً إلى جنب: لكل فرع رصيده ومبيعاته وأصنافه، ولكل كود (أو لكل لون ومقاس لو حُدّد كود) رصيده ومبيعاته في كل فرع (الأعلى مبيعاً في الفروع معاً أولاً)
+export function cmpStores(D,C,stores,o){
+ o=o||{};const tis=[];for(const s of stores||[]){const ti=D.sti.get(s);if(ti!==undefined&&tis.indexOf(ti)<0)tis.push(ti)}if(tis.length<2)return null;
+ const ids=idsOf(D,o);if(ids&&!ids.length)return null;const fv=o.vendor?D.vn.indexOf(o.vendor):-2;if(o.vendor&&fv<0)return null;
+ const P=o.period?soldMap(D,o.period.from,o.period.to):null,col=new Map(tis.map((t,i)=>[t,i])),tot=tis.map(ti=>({ti,on:0,sold:0})),cell=new Map(),byC=new Map();
+ eachCell(D,P,ids,(ki,ti,vi,on,sold)=>{const i=col.get(ti);if(i===undefined||(fv!==-2&&vi!==fv))return;tot[i].on+=on;tot[i].sold+=sold;
+  const k=ki*8+i;let c=cell.get(k);if(!c){c=[0,0];cell.set(k,c)}c[0]+=on;c[1]+=sold;
+  const gk=ids?ki:D.k[ki][0];let r=byC.get(gk);if(!r){r={k:gk,v:tis.map(()=>({on:0,sold:0})),sold:0};byC.set(gk,r)}r.v[i].on+=on;r.v[i].sold+=sold;r.sold+=sold});
+ tot.forEach(t=>{t.inSt=0;t.out=0});cell.forEach((c,k)=>{const t=tot[k%8];if(c[0]>0)t.inSt++;if(c[0]<=0&&c[1]>0)t.out++});
+ const rows=[...byC.values()].filter(r=>r.v.some(x=>x.on!==0||x.sold!==0)).sort((p,r)=>r.sold-p.sold||(ids?cmpK(D.k[p.k],D.k[r.k]):p.k<r.k?-1:1));
+ return {tis,tot,rows,by:ids?"var":"code"};
+}
+// مقارنة فترتين (أ = الفترة المسؤول عنها، ب = التي تُقارن بها) من ملفات التاريخ: المجموع والمرتجع وأيام البيع، والأكثر صعوداً وهبوطاً.
+// التجميع: بالكود؛ ولكود بعينه: بالفرع؛ ولكود في فرع: باللون والمقاس
+export function cmpPeriods(D,C,o){
+ o=o||{};const A=o.a,B=o.b;if(!A||!B)return null;const fs=o.store?D.sti.get(o.store):undefined;if(o.store&&fs===undefined)return null;const ids=idsOf(D,o);if(ids&&!ids.length)return null;
+ const idset=ids?new Set(ids):null,fv=o.vendor?D.vn.indexOf(o.vendor):-2;if(o.vendor&&fv<0)return null;
+ let vm=null;if(fv!==-2){vm=new Map();for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(a)for(let j=0;j<a.length;j+=4)if(!vm.has(ki*1000+a[j]))vm.set(ki*1000+a[j],a[j+3])}}
+ const by=o.code?(o.store?"var":"store"):"code",S={a:{sold:0,ret:0,days:new Set()},b:{sold:0,ret:0,days:new Set()}},G=new Map();
+ const from=A.from<B.from?A.from:B.from,to=A.to>B.to?A.to:B.to;
+ scan(D,from,to,(ki,ti,d,n)=>{if(idset&&!idset.has(ki))return;if(fs!==undefined&&ti!==fs)return;if(vm){const v=vm.has(ki*1000+ti)?vm.get(ki*1000+ti):D.k[ki][3];if(v!==fv)return}
+  const inA=d>=A.from&&d<=A.to,inB=d>=B.from&&d<=B.to;if(!inA&&!inB)return;const k=by==="code"?D.k[ki][0]:by==="store"?ti:ki;let g=G.get(k);if(!g){g={k,a:0,b:0};G.set(k,g)}
+  if(inA){g.a+=n;S.a.sold+=n;if(n<0)S.a.ret-=n;else if(n>0)S.a.days.add(d)}if(inB){g.b+=n;S.b.sold+=n;if(n<0)S.b.ret-=n;else if(n>0)S.b.days.add(d)}});
+ const rows=[...G.values()].filter(g=>g.a!==0||g.b!==0);rows.forEach(g=>{g.d=g.a-g.b});
+ const key=g=>by==="store"?D.st[g.k]:by==="var"?D.k[g.k].join(" "):String(g.k),kc=(p,r)=>key(p)<key(r)?-1:key(p)>key(r)?1:0;
+ return {by,a:{sold:S.a.sold,ret:S.a.ret,days:S.a.days.size},b:{sold:S.b.sold,ret:S.b.ret,days:S.b.days.size},rows:rows.sort((p,r)=>r.a-p.a||r.b-p.b||kc(p,r)),
+  up:rows.filter(g=>g.d>0).sort((p,r)=>r.d-p.d||kc(p,r)),down:rows.filter(g=>g.d<0).sort((p,r)=>p.d-r.d||kc(p,r))};
+}
 
 /* ---- (v174) فهم السؤال: قواعد ثابتة، لا تخمين. ما لم يُفهم يُعاد في unk، وما يحتمل أكثر من معنى في amb ---- */
 const arDig=s=>s.replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632)).replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776));
@@ -339,12 +420,28 @@ function askTable(ctx){
 const STW=new Set(["فرع","الفرع","بفرع","لفرع","محل","المحل","مخزن","المخزن","معرض","branch","store","shop"]),CDW=new Set(["كود","الكود","صنف","الصنف","موديل","الموديل","code","item","model","sku"]),SZW=new Set(["مقاس","المقاس","مقاسات","قياس","نمره","size"]);
 const UNITS={"يوم":1,"ايام":1,"يوما":1,"day":1,"days":1,"اسبوع":7,"اسابيع":7,"week":7,"weeks":7,"شهر":30,"شهور":30,"اشهر":30,"month":30,"months":30},DUAL={"يومين":2,"اسبوعين":14,"شهرين":60};
 const ENSTOP=new Set(["the","in","of","at","for","from","to","and","how","many","much","sold","sales","sale","stock","has","have","did","does","on","hand","qty","quantity","last","this","year","since","until","till","show","me","what","is","was","by","with","between","received","receive"]);
+/* (v180) نوع السؤال: ترتيب «أكثر/أقل»، «مين عنده»، المقارنة، والمورد */
+const RK_D=new Set(["اكتر","اكثر","الاكتر","الاكثر","اعلي","الاعلي","افضل","الافضل","اكبر","الاكبر","ترتيب","رتب","رتبلي","top","most","best","highest","rank","ranking"]),RK_A=new Set(["اقل","الاقل","اضعف","الاضعف","اسوا","الاسوا","اصغر","least","lowest","worst","bottom"]);
+const ENT_P={"اكواد":"code","الاكواد":"code","كودات":"code","اصناف":"code","الاصناف":"code","موديلات":"code","الموديلات":"code","codes":"code","items":"code","products":"code","models":"code","skus":"code","فروع":"store","الفروع":"store","محلات":"store","المحلات":"store","معارض":"store","المعارض":"store","branches":"store","stores":"store","shops":"store","موردين":"vendor","الموردين":"vendor","vendors":"vendor","suppliers":"vendor","الوان":"color","الالوان":"color","colors":"color","colours":"color","مقاسات":"size","المقاسات":"size","sizes":"size"};
+const ENT_S={"كود":"code","الكود":"code","صنف":"code","الصنف":"code","موديل":"code","code":"code","item":"code","product":"code","فرع":"store","الفرع":"store","محل":"store","معرض":"store","branch":"store","store":"store","shop":"store","مورد":"vendor","المورد":"vendor","vendor":"vendor","supplier":"vendor","لون":"color","اللون":"color","color":"color","colour":"color","مقاس":"size","المقاس":"size","size":"size"};
+const MS_SOLD=new Set(["مبيعا","مبيعات","المبيعات","بالمبيعات","بيعا","بيع","مبيع","باع","باعو","باعوا","اتباع","اتباعت","sold","selling","sales","seller","sellers"]),MS_ON=new Set(["رصيد","رصيدا","الرصيد","بالرصيد","مخزون","مخزونا","المخزون","عنده","عندها","عندهم","stock","inventory","onhand"]);
+const CMPW=new Set(["قارن","قارنلي","قارني","قارنه","مقارنه","المقارنه","بمقارنه","مقابل","بالمقابل","ضد","vs","vs.","versus","compare","comparison","compared"]),WHW=new Set(["مين","فين","وين","اين","where","who"]);
+const VMK=new Set(["مورد","المورد","للمورد","لمورد","بمورد","والمورد","vendor","supplier"]);
+// كلمات عامة في أسماء الموردين لا تدل وحدها على مورد بعينه
+const VGEN=new Set(["مورد","شركه","متنوع","تركي","تركيا","صيني","الصين","اسباني","اسبانيا","اسبانى","محلي","وطني","داخلي","قديم","ملابس","للملابس","مريح","مصنع","ابو","علي"]);
+let VTC=null;
+function vendTable(vs){
+ const sig=vs.join("|");if(VTC&&VTC.sig===sig)return VTC;const list=[],cnt=new Map();
+ vs.forEach(v=>{if(!v)return;const raw=normAr(v).replace(/[^a-z0-9؀-ۿ]+/g," ").trim().split(" ").filter(Boolean),ws=new Set();raw.forEach(w=>{ws.add(w);ws.add(bare(w))});list.push({v,raw,bw:raw.map(bare),ws});new Set(raw).forEach(w=>cnt.set(w,(cnt.get(w)||0)+1))});
+ const uniq=new Map();for(const e of list)for(const w of e.raw){if(cnt.get(w)!==1||w.length<4||VGEN.has(w)||/^\d+$/.test(w)||ARCOL[w]||STW.has(w)||CDW.has(w)||SZW.has(w)||UNITS[w]||ENSTOP.has(w)||MONN[w])continue;uniq.set(w,e.v);const b=bare(w);if(b!==w&&b.length>=4&&!uniq.has(b))uniq.set(b,e.v)}
+ VTC={sig,list:list.slice().sort((p,r)=>r.raw.length-p.raw.length),uniq};return VTC;
+}
 const okDate=(y,m,d)=>y>=2000&&y<=2100&&m>=1&&m<=12&&d>=1&&d<=new Date(y,m,0).getDate();
 const ds=(y,m,d)=>y+"-"+p2(m)+"-"+p2(d);
 // سؤال حر ← {kind, store, code, cl, z, per:"ytd"|"c", from, to, amb:{store,code,cl}, unk, rc}
 // ctx = {stores:[أسماء المخازن], codes:Map(كود←أصنافه), k:[[كود،لون،مقاس]], alias:[{k,s}], today, end (آخر يوم في البيانات), wh}
 export function parseAsk(text,ctx){
- const out={kind:"",store:"",code:"",cl:"",z:"",per:"ytd",from:"",to:"",amb:{store:[],code:[],cl:[]},unk:[],rc:false,txt:String(text||"").slice(0,200)};
+ const out={kind:"",store:"",code:"",cl:"",z:"",vendor:"",per:"ytd",from:"",to:"",amb:{store:[],code:[],cl:[],vendor:[]},unk:[],rc:false,rank:null,where:false,cmp:null,txt:String(text||"").slice(0,200)};
  const t=normAr(out.txt).replace(/[،؛؟?!()«»"'`:\[\]{}]|,(?!\d)/g," ").replace(/\s+/g," ").trim();if(!t)return out;
  out.rc=/استلم|مستلم|استلام|وارد|received|receiv/.test(t);
  const W=t.split(" "),U=W.map(()=>false),B=W.map(bare),end=ctx.end||ctx.today,ey=+end.slice(0,4),T=askTable(ctx);
@@ -359,11 +456,12 @@ export function parseAsk(text,ctx){
   if(w==="اخر"||w==="last"||w==="past"||w==="اخير"){if(DUAL[nx]){lastN=DUAL[nx];U[i]=U[i+1]=true;continue}if(isNum(nx)&&UNITS[n2]){lastN=Math.min(3660,(+nx)*UNITS[n2]);U[i]=U[i+1]=U[i+2]=true;continue}if(UNITS[nx]){lastN=UNITS[nx];U[i]=U[i+1]=true;continue}}
   if(DUAL[w]&&(pv==="اخر")){lastN=DUAL[w];U[i]=true;continue}
   const d=dayTok(w);if(d){dts.push({i,from:d,to:d,kind:"d"});U[i]=true;continue}
-  if((w==="شهر"||w==="month")&&isNum(nx)&&+nx>=1&&+nx<=12){const y=/^20\d{2}$/.test(n2)?+n2:0;dts.push(Object.assign({i,kind:"m"},monRange(+nx,y)));U[i]=U[i+1]=true;if(y)U[i+2]=true;continue}
-  if(MONN[w]&&!isNum(w)){const y=/^20\d{2}$/.test(nx)?+nx:0;dts.push(Object.assign({i,kind:"m"},monRange(MONN[w],y)));U[i]=true;if(y)U[i+1]=true;if(pv==="شهر"||pv==="month")U[i-1]=true;continue}
+  if((w==="شهر"||w==="بشهر"||w==="وشهر"||w==="month")&&isNum(nx)&&+nx>=1&&+nx<=12){const y=/^20\d{2}$/.test(n2)?+n2:0;dts.push(Object.assign({i,kind:"m"},monRange(+nx,y)));U[i]=U[i+1]=true;if(y)U[i+2]=true;continue}
+  const mw=MONN[w]||(/^[وب][؀-ۿ]{3,}$/.test(w)?MONN[w.slice(1)]:0);// «بأكتوبر»، «وسبتمبر»
+  if(mw&&!isNum(w)){const y=/^20\d{2}$/.test(nx)?+nx:0;dts.push(Object.assign({i,kind:"m"},monRange(mw,y)));U[i]=true;if(y)U[i+1]=true;if(pv==="شهر"||pv==="month")U[i-1]=true;continue}
   if(w==="اليوم"||w==="النهارده"||w==="today"){dts.push({i,from:ctx.today,to:ctx.today,kind:"d"});U[i]=true;continue}
   if(w==="امس"||w==="امبارح"||w==="yesterday"){const y=addDays(ctx.today,-1);dts.push({i,from:y,to:y,kind:"d"});U[i]=true;continue}
-  if(w==="الشهر"){const prev=/^(اللي|الماضي|السابق|الفايت|فات)$/.test(nx);U[i]=true;if(/^(ده|دا|الحالي|هذا|الجاري|اللي|الماضي|السابق|الفايت)$/.test(nx))U[i+1]=true;if(nx==="اللي"&&n2==="فات")U[i+2]=true;
+  if(w==="الشهر"||w==="بالشهر"||w==="والشهر"||w==="للشهر"){const prev=/^(اللي|الماضي|السابق|الفايت|فات)$/.test(nx);U[i]=true;if(/^(ده|دا|الحالي|هذا|الجاري|اللي|الماضي|السابق|الفايت)$/.test(nx))U[i+1]=true;if(nx==="اللي"&&n2==="فات")U[i+2]=true;
    const y0=+end.slice(0,4),m0=+end.slice(5,7);if(prev){const pm=m0===1?12:m0-1,py=m0===1?y0-1:y0;dts.push(Object.assign({i,kind:"m"},monRange(pm,py)))}else dts.push({i,kind:"m",from:ds(y0,m0,1),to:end});continue}
   if(w==="السنه"||w==="سنه"||w==="العام"||w==="ytd"||(w==="year"&&pv==="this")){ytd=true;U[i]=true;continue}}
  if(lastN){out.per="c";out.to=end;out.from=addDays(end,-(lastN-1))}
@@ -372,6 +470,26 @@ export function parseAsk(text,ctx){
   if(a.kind==="d"){if(/^(من|منذ|from|since)$/.test(pv))out.to=end>a.from?end:a.from;else if(/^(حتي|لحد|لغايه|الي|to|until|till)$/.test(pv))out.from=a.from.slice(0,4)+"-01-01"}}
  else if(ytd)out.per="ytd";
  if(out.per==="c"&&out.to>end&&out.from<=end&&dts.every(d=>d.kind==="m"))out.to=end;// شهر لم يكتمل: حتى آخر يوم في البيانات
+ /* 1ب) (v180) نوع السؤال: «أكثر/أقل» (ترتيب)، «قارن/مقابل»، «مين عنده/فين» */
+ let rk=0,rkI=-1,rkN=0,rkBy="",rkM="",cmpW=false;
+ for(let i=0;i<W.length;i++){if(U[i])continue;const w=W[i];
+  if(RK_D.has(w)||RK_A.has(w)){if(!rk){rk=RK_A.has(w)?1:-1;rkI=i}U[i]=true}
+  else if(CMPW.has(w)){cmpW=true;U[i]=true}
+  else if(WHW.has(w)){out.where=true;U[i]=true}}
+ if(rk){for(const j of [rkI+1,rkI+2,rkI-1]){const w=W[j];if(w&&!U[j]&&/^\d{1,3}$/.test(w)&&+w>=1&&+w<=500){rkN=+w;U[j]=true;break}}
+  for(let i=0;i<W.length;i++){if(U[i]||rkBy)continue;const e=ENT_P[W[i]]||(i>rkI&&i<=rkI+3?ENT_S[W[i]]:"");if(e){rkBy=e;U[i]=true}}
+  for(let i=0;i<W.length;i++){if(U[i])continue;if(MS_SOLD.has(W[i])){rkM="sold";U[i]=true}else if(MS_ON.has(W[i])){if(!rkM)rkM="on";U[i]=true}}
+  out.rank={dir:rk,n:rkN||10,by:rkBy,m:rkM||"sold"}}
+ // مقارنة فترتين: «أكتوبر مقابل سبتمبر»، «قارن الشهر ده بالشهر اللي فات»، أو فترة واحدة تُقارن بالتي قبلها مباشرة
+ if(cmpW){const cut=x=>({from:x.from,to:x.kind==="m"&&x.to>end&&x.from<=end?end:x.to});let A=null,Bp=null;
+  if(dts.length>=2){A=cut(dts[0]);Bp=cut(dts[1]);
+   // الشهر الحالي لم يكتمل (حتى آخر يوم في البيانات) ويُقارن بشهر كامل: نفس الأيام منه (1–18 مقابل 1–18)
+   const dimOf=s=>new Date(+s.slice(0,4),+s.slice(5,7),0).getDate();
+   if(dts[0].kind==="m"&&dts[1].kind==="m"&&+A.to.slice(8,10)<dimOf(A.to)&&A.from.slice(8)==="01"&&Bp.from.slice(8)==="01"&&+Bp.to.slice(8,10)===dimOf(Bp.to)){const y=+Bp.from.slice(0,4),m=+Bp.from.slice(5,7);Bp={from:Bp.from,to:ds(y,m,Math.min(+A.to.slice(8,10),new Date(y,m,0).getDate()))}}}
+  else if(dts.length===1||lastN){A=lastN?{from:addDays(end,-(lastN-1)),to:end}:cut(dts[0]);
+   if(!lastN&&dts[0].kind==="m"){const y=+A.from.slice(0,4),m=+A.from.slice(5,7),py=m===1?y-1:y,pm=m===1?12:m-1,dd=Math.min(+A.to.slice(8,10),new Date(py,pm,0).getDate());Bp={from:ds(py,pm,1),to:ds(py,pm,A.to.slice(0,7)===A.from.slice(0,7)&&+A.to.slice(8,10)===new Date(y,m,0).getDate()?new Date(py,pm,0).getDate():dd)}}
+   else{const len=Math.round((new Date(A.to+"T12:00:00")-new Date(A.from+"T12:00:00"))/864e5)+1;Bp={from:addDays(A.from,-len),to:addDays(A.from,-1)}}}
+  if(A&&Bp&&A.from<=A.to&&Bp.from<=Bp.to){out.per="c";out.from=A.from;out.to=A.to;out.cmp={a:A,b:Bp}}}
  /* 2) المخازن: أطول عبارة أولاً */
  const lower=new Map();ctx.codes.forEach((v,c)=>{lower.set(String(c).toLowerCase().replace(/\s+/g,""),c)});// الكود بحروف صغيرة وبلا مسافات ← الكود كما في السيستم
  const stores=[],pushSt=a=>{for(const s of a)if(stores.indexOf(s)<0)stores.push(s)},ambSt=[];
@@ -387,9 +505,10 @@ export function parseAsk(text,ctx){
  for(let i=0;i<W.length;i++){if(U[i]||!isNum(W[i])||W[i].length>3)continue;const pv=W[i-1]||"",p=("00"+W[i]).slice(-3),s=T.pre.get(p);if(!s)continue;
   if(STW.has(pv)){pushSt([s]);U[i]=U[i-1]=true}else if(W[i].length===3&&!CDW.has(pv)){if(lower.has(W[i])){if(ambSt.indexOf(s)<0)ambSt.push(s)}else{pushSt([s]);U[i]=true}}}
  // اسم بعد كلمة «فرع» لم يُعرف: اقتراح بالهيكل الصوتي (اقتراح فقط، لا يُعتمد وحده)
- for(let i=1;i<W.length;i++){if(U[i]||!STW.has(W[i-1])||!/[؀-ۿ]/.test(W[i]))continue;const k=skAr(B[i]),hit=k.length>=3?T.sk.get(k):null;U[i]=U[i-1]=true;
+ for(let i=1;i<W.length;i++){if(U[i]||U[i-1]||!STW.has(W[i-1])||!/[؀-ۿ]/.test(W[i]))continue;const k=skAr(B[i]),hit=k.length>=3?T.sk.get(k):null;U[i]=U[i-1]=true;
   if(hit){for(const s of hit)if(ambSt.indexOf(s)<0)ambSt.push(s)}else out.unk.push(W[i])}
- if(stores.length){out.store=stores[0];out.amb.store=stores.length>1?stores.slice():[]}else if(ambSt.length)out.amb.store=ambSt.slice(0,8);
+ // (v180) فرعان أو أكثر مكتوبان صراحة = مقارنة بينهم (حتى 4)، لا سؤال «أيهما؟»
+ if(stores.length){out.store=stores[0];if(stores.length>1&&!out.cmp)out.cmp={st:stores.slice(0,4)}}else if(ambSt.length)out.amb.store=ambSt.slice(0,8);
  if(stores.length&&ambSt.length)for(const s of ambSt)if(out.amb.store.indexOf(s)<0&&s!==out.store){if(!out.amb.store.length)out.amb.store.push(out.store);out.amb.store.push(s)}
  /* 3) الأكواد: مطابقة تامة (حتى 3 كلمات متتالية للأكواد التي فيها مسافات مثل «31001 - T») */
  const codes=[];
@@ -401,6 +520,17 @@ export function parseAsk(text,ctx){
   if(CDW.has(pv)&&W[i].length<5){const c=lower.get(("00000"+W[i]).slice(-5));if(c){codes.push(c);U[i]=true;continue}}
   if(W[i].length>=3){const sug=[],pad=W[i].length<5?("00000"+W[i]).slice(-5):"";lower.forEach((c,k)=>{if(sug.length<8&&(k.indexOf(W[i])===0||(pad&&k===pad)))sug.push(c)});if(sug.length){out.amb.code=sug;U[i]=true}}}
  if(codes.length){out.code=codes[0];if(codes.length>1)out.amb.code=codes.slice()}
+ /* 3ب) (v180) المورد: بعد كلمة «مورد» تكفي كلمة أو أكثر من اسمه؛ وبلا «مورد» يُقبل اسمه كاملاً أو كلمة لا توجد إلا في اسمه */
+ if(ctx.vendors&&ctx.vendors.length){const VT=vendTable(ctx.vendors),has=(e,j)=>e.ws.has(W[j])||e.ws.has(B[j]);let vh=null;
+  // الاسم كاملاً أولاً (الأطول أولاً): «مورد شربات» لا يلتبس بـ«مورد شربات اسباني»
+  for(const e of VT.list){if(e.raw.length<2)continue;const n=e.raw.length;for(let i=0;i+n<=W.length&&!vh;i++){let eq=true;for(let j=0;j<n;j++)if(U[i+j]||(W[i+j]!==e.raw[j]&&B[i+j]!==e.bw[j])){eq=false;break}if(eq){vh=[e.v];for(let j=0;j<n;j++)U[i+j]=true;if(i>0&&VMK.has(W[i-1]))U[i-1]=true}}if(vh)break}
+  for(let i=0;i<W.length&&!vh;i++){if(U[i]||!VMK.has(W[i]))continue;U[i]=true;
+   for(let n=Math.min(4,W.length-i-1);n>=1&&!vh;n--){let free=true;for(let j=i+1;j<=i+n;j++)if(U[j])free=false;if(!free)continue;
+    const hit=VT.list.filter(e=>{for(let j=i+1;j<=i+n;j++)if(!has(e,j))return false;return true});
+    if(hit.length){vh=hit.map(e=>e.v);for(let j=i+1;j<=i+n;j++)U[j]=true}}
+   if(!vh){const nx=W[i+1];if(nx&&!U[i+1]&&!isNum(nx)){out.unk.push(nx);U[i+1]=true}}}
+  if(!vh)for(let i=0;i<W.length;i++){if(U[i])continue;const v=VT.uniq.get(W[i])||VT.uniq.get(B[i]);if(v){vh=[v];U[i]=true;break}}
+  if(vh){if(vh.length===1)out.vendor=vh[0];else out.amb.vendor=vh.slice(0,8)}}
  /* 4) اللون والمقاس: من ألوان ومقاسات هذا الكود فقط */
  if(out.code){const ids=ctx.codes.get(out.code)||[],cols=[],szs=[];for(const ki of ids){const x=ctx.k[ki];if(cols.indexOf(x[1])<0)cols.push(x[1])}
   const cl=new Map();cols.forEach(c=>{if(c)cl.set(normAr(c).replace(/\s+/g," ").trim(),c)});
@@ -411,7 +541,8 @@ export function parseAsk(text,ctx){
   for(let i=0;i<W.length&&!out.z;i++){if(U[i])continue;const z=sz.get(W[i])||(W[i+1]&&!U[i+1]?sz.get(W[i]+W[i+1]):undefined);if(!z)continue;if(/^[a-z]+$/.test(W[i])&&!SZW.has(W[i-1]||""))continue;out.z=z;U[i]=true;if(!sz.get(W[i]))U[i+1]=true}}
  /* 5) ما لم يُفهم: الكلمات التي فيها أرقام أو حروف لاتينية فقط (الكلمات العربية الباقية حشو السؤال) */
  for(let i=0;i<W.length;i++){if(U[i])continue;const w=W[i];if(/[a-z0-9]/.test(w)&&!ENSTOP.has(w)&&!STW.has(w)&&!CDW.has(w)&&!SZW.has(w)&&!UNITS[w]&&out.unk.indexOf(w)<0)out.unk.push(w)}
- out.kind=out.code&&out.store?"cs":out.code?"c":out.store?"s":"";return out;
+ if(cmpW&&!out.cmp)out.cmp={need:1};// «قارن» بلا فرعين ولا فترة: يُطلب منه ما يقارنه
+ out.kind=out.cmp&&!out.cmp.need?"x":out.rank?"r":out.where&&out.code&&!out.store?"w":out.vendor&&!out.code?"v":out.code&&out.store?"cs":out.code?"c":out.store?"s":"";return out;
 }
 const near=(a,b)=>Math.abs(N(a)-N(b))<1e-6;
 const dim=ym=>new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();// عدد أيام الشهر
@@ -553,6 +684,8 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 .stk-tile.go{cursor:pointer;background:var(--soft)}.stk-tile.go:hover{border-color:var(--acc)}.stk-tile.go span::after{content:" ‹";font-weight:800}
 .stk-act{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}.stk-src{color:var(--mut);font-size:12.5px;line-height:1.9;margin:12px 4px 0}.stk-ph{margin:8px 10px 6px;font-size:16px}.stk-t td.n{direction:ltr}
 :where([data-theme=dark]) .stk-tile.bad b{color:#f1a5a0}
+.stk-t td.rk{color:var(--mut);width:34px}.stk-t td.up{color:var(--olive,#6f7d45);font-weight:800}.stk-t td.dn{color:#c4362b;font-weight:800}.stk-cmp td.best{background:var(--olive-s,#e9ecd9);color:var(--olive-t,#3f4a22);font-weight:800;border-radius:8px}.stk-cmp th a{font-weight:700}.stk-cmp td:first-child{white-space:normal;min-width:96px;line-height:1.5}.stk-cmp th{white-space:normal}@media (max-width:560px){.stk-cmp td,.stk-cmp th{padding:7px 6px;font-size:13px}}.stk-und+.stk-und{margin-top:-4px}
+:where([data-theme=dark]) .stk-t td.up{color:#a4b46e}:where([data-theme=dark]) .stk-t td.dn{color:#f1a5a0}:where([data-theme=dark]) .stk-cmp td.best{background:#2c3318;color:#cbd89a}
 @media (max-width:760px){.stk-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.stk-tile b{font-size:21px}.stk-askb .bt{padding:0 16px}}
 .stk-busy{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--acc);border-radius:12px;padding:10px 14px;margin:0 0 12px;font-weight:700}.stk-busy::before{content:"";width:16px;height:16px;border:2.5px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:ui-spin .7s linear infinite}
 :where([data-theme=dark]) .stk-tabs button.on{color:#141015}:where([data-theme=dark]) .stk-rep.r,:where([data-theme=dark]) .stk-mx td.need{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .stk-rep.w,:where([data-theme=dark]) .stk-mx td.idle{background:#3a2a08;color:#f6c770}:where([data-theme=dark]) .stk-t .z{color:#f1a5a0}:where([data-theme=dark]) .stk-t .no{color:#f6c770}
@@ -729,40 +862,52 @@ function vCfg(){
 const pct=x=>x==null?"—":(Math.round(x*1000)/10)+"%";
 const tile=(v,l,cls,extra)=>`<div class="stk-tile${cls?" "+cls:""}"${extra||""}><b><bdi dir="ltr" data-notr>${E(v)}</bdi></b><span>${l}</span></div>`;
 const em=t=>`<div class="stk-pan"><div class="stk-em">${t}</div></div>`;
-const askCtx=()=>({stores:DATA.st,codes:DATA.code,k:DATA.k,alias:(CFG.ov||[]).filter(o=>o&&o.t==="a"),today:today(),end:qEnd(),wh:CFG.wh});
+const askCtx=()=>({stores:DATA.st,codes:DATA.code,k:DATA.k,vendors:DATA.vn,alias:(CFG.ov||[]).filter(o=>o&&o.t==="a"),today:today(),end:qEnd(),wh:CFG.wh});
 const askP=()=>{const a=UI.a;return a&&a.per==="c"&&a.from&&a.to&&a.from<=a.to?{from:a.from,to:a.to}:null};
 // الفترة التي يحتاج الجواب شهورها من ملفات التاريخ: الفترة المحددة، أو السنة كلها لصنف (أيام البيع وآخر بيع)
 // (السنة كلها تُحمَّل فقط لو ملفات التاريخ تغطيها كاملة؛ وإلا فأيام البيع لا تُعرض أصلاً حتى لا يظهر رقم ناقص)
 const yearR=()=>{const R=dHas()?fullR():null;return R&&coverage(META,R).ok?R:null};
-const askNeed=()=>{const a=UI.a;if(!a||!DATA||!DATA.has)return null;return askP()||(a.code?yearR():null)};
+const askB=()=>{const a=UI.a,b=a&&a.cmp&&a.cmp.b;return b&&b.from&&b.to&&b.from<=b.to?b:null};// الفترة التي تُقارن بها
+const askNeed=()=>{const a=UI.a;if(!a||!DATA||!DATA.has)return null;const P=askP(),B=askB();if(P&&B)return {from:P.from<B.from?P.from:B.from,to:P.to>B.to?P.to:B.to};return P||(kindA(a)==="c"?yearR():null)};
+// نوع الجواب من حقول السؤال الحالية (بعد أي تعديل من الشريط): x مقارنة، r ترتيب، w مين عنده، v مورد، c صنف، s فرع
+function kindA(a){if(!a)return "";const c=a.cmp;if(c&&((c.st&&c.st.length>1)||(c.a&&c.b)))return "x";if(a.rank)return "r";if(a.where&&a.code&&!a.store)return "w";if(a.vendor&&!a.code)return "v";return a.code?"c":a.store?"s":""}
 const hGet=()=>{try{const a=JSON.parse(localStorage.getItem("stk_ask")||"[]");return Array.isArray(a)?a.filter(x=>typeof x==="string"&&x).slice(0,8):[]}catch(e){return []}};
 const hAdd=q=>{try{localStorage.setItem("stk_ask",JSON.stringify([q].concat(hGet().filter(x=>x!==q)).slice(0,8)))}catch(e){}};
 function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||!DATA||!DATA.has){UI.a=null;paint(false);return}UI.a=parseAsk(q,askCtx());hAdd(q);paint(false)}
 let EXC=null;// أمثلة من بيانات الملف نفسه (أعلى كود وأعلى فرع مبيعاً)
 function askEx(en){
  if(!EXC||EXC.D!==DATA){const bc=new Map(),bs={},wh=DATA.sti.get(CFG.wh);DATA.q.forEach((a,ki)=>{if(!a)return;const c=DATA.k[ki][0];for(let j=0;j<a.length;j+=4){bc.set(c,(bc.get(c)||0)+a[j+2]);if(a[j]!==wh)bs[a[j]]=(bs[a[j]]||0)+a[j+2]}});
-  let c="",cm=-1;bc.forEach((v,k)=>{if(v>cm&&/^[0-9A-Za-z]+$/.test(k)){cm=v;c=k}});let s=-1,sm=-1;for(const t in bs)if(bs[t]>sm&&/^\d{3}-/.test(DATA.st[t])){sm=bs[t];s=+t}
-  EXC={D:DATA,c,s:s>=0?DATA.st[s]:""}}
- const c=EXC.c,s=EXC.s,p=s.slice(0,3),ar=ALIAS[p]?ALIAS[p][0].replace(/ه$/,"ة"):"",nm=s.slice(4),out=[];if(!c||!s)return out;
- if(en){out.push("code "+c,"branch "+p,c+" "+nm.toLowerCase());if(dHas())out.push(c+" last 30 days","branch "+p+" last 7 days")}
- else{const b=ar?"فرع "+ar:"فرع "+p;out.push("الكود "+c+" بيع منه كم",b+" باع كم وعنده كم",c+" في "+(ar||nm));if(dHas())out.push(c+" آخر 30 يوم",b+" آخر 7 أيام")}
+  let c="",cm=-1;bc.forEach((v,k)=>{if(v>cm&&/^[0-9A-Za-z]+$/.test(k)){cm=v;c=k}});const so=Object.keys(bs).filter(t=>/^\d{3}-/.test(DATA.st[t])&&ALIAS[DATA.st[t].slice(0,3)]).sort((x,y)=>bs[y]-bs[x]);
+  const RV=rankBy(DATA,CFG,{by:"vendor"}),v=RV&&RV.rows.find(r=>r.k>=0&&DATA.vn[r.k]);
+  EXC={D:DATA,c,s:so.length?DATA.st[so[0]]:"",s2:so.length>1?DATA.st[so[1]]:"",v:v?DATA.vn[v.k]:""}}
+ const c=EXC.c,s=EXC.s,p=s.slice(0,3),arOf=x=>ALIAS[x.slice(0,3)]?ALIAS[x.slice(0,3)][0].replace(/ه$/,"ة"):"",ar=arOf(s),nm=s.slice(4),out=[];if(!c||!s)return out;
+ if(en){out.push("code "+c,"branch "+p,"top 10 codes","who has "+c);if(EXC.s2)out.push("compare "+nm.toLowerCase()+" vs "+EXC.s2.slice(4).toLowerCase());if(dHas())out.push(c+" last 30 days")}
+ else{const b=ar?"فرع "+ar:"فرع "+p;out.push("الكود "+c+" بيع منه كم",b+" باع كم وعنده كم","أكثر 10 أكواد مبيعاً","مين عنده "+c);if(EXC.v)out.push("المورد "+EXC.v);if(EXC.s2)out.push("قارن "+(ar||p)+" و"+(arOf(EXC.s2)||EXC.s2.slice(0,3)));
+  if(dHas())out.push("أقل الفروع مبيعاً آخر 30 يوم","الشهر ده مقابل الشهر اللي فات")}
  return out;
 }
 const chip=x=>`<button type="button" data-sk="ex" data-x="${E(x)}" data-notr>${E(x)}</button>`;
 function vAsk(){
  const en=document.documentElement.classList.contains("tz-en"),a=UI.a,H=hGet(),X0=askEx(en);
- const box=`<div class="stk-card stk-ask"><h3>💬 اسأل عن أي صنف أو فرع</h3><p>اكتب الكود أو اسم الفرع أو كليهما، ومعهما الفترة إن أردت. كل رقم يُحسب مباشرة من الملفين المرفوعين.</p>
- <div class="stk-askb"><input type="search" id="stk-ask" value="${E(UI.aq)}" placeholder="الكود، الفرع، الفترة" autocomplete="off" enterkeyhint="search" maxlength="200"><button class="bt p" type="button" data-sk="ask">اسأل</button></div>
+ const box=`<div class="stk-card stk-ask"><h3>💬 اسأل عن أي صنف أو فرع أو مورد</h3><p>اكتب الكود أو الفرع أو المورد، ومعها الفترة إن أردت. وتستطيع أن تسأل: «أكثر 10 أكواد مبيعاً»، «مين عنده الكود»، «قارن فرعين»، أو «الشهر ده مقابل اللي فات». كل رقم يُحسب مباشرة من الملفين المرفوعين.</p>
+ <div class="stk-askb"><input type="search" id="stk-ask" value="${E(UI.aq)}" placeholder="الكود، الفرع، المورد، الفترة" autocomplete="off" enterkeyhint="search" maxlength="200"><button class="bt p" type="button" data-sk="ask">اسأل</button></div>
  ${X0.length?`<div class="stk-chips"><i>أمثلة</i>${X0.map(chip).join("")}</div>`:""}${H.length?`<div class="stk-chips"><i>آخر أسئلتك</i>${H.map(chip).join("")}</div>`:""}</div>`;
  if(!a){LASTX=null;return box}
  const P=askP(),ids=a.code?DATA.code.get(a.code)||[]:[],cols=[...new Set(ids.map(k=>DATA.k[k][1]))].sort(),szs=[...new Set(ids.filter(k=>!a.cl||DATA.k[k][1]===a.cl).map(k=>DATA.k[k][2]))].sort((x,y)=>zk(x)-zk(y));
- const curZ=a.z,pEnd=P?P.to:"";
- const und=`<div class="stk-bar stk-und"><b class="stk-undt">فهمتُ سؤالك هكذا (غيّر ما تريد)</b><label>الفرع<select data-af="store" id="stk-a-st">${opt(stores(0),a.store,"كل الفروع")}</select></label><label>الكود<input type="text" data-af="code" id="stk-a-code" list="stk-codes" value="${E(a.code)}" placeholder="كل الأصناف" dir="ltr" autocomplete="off"></label>${ids.length?`<label>اللون<select data-af="cl" id="stk-a-cl">${opt(cols,a.cl,"كل الألوان")}</select></label><label>المقاس<select data-af="z" id="stk-a-z">${opt(szs,curZ,"كل المقاسات")}</select></label>`:""}
- <label>الفترة<select data-af="per" id="stk-a-per"><option value="ytd"${a.per!=="c"?" selected":""}>من أول السنة</option><option value="c"${a.per==="c"?" selected":""}>فترة أحددها</option></select></label>${a.per==="c"?`<label>من يوم<input type="date" data-af="from" id="stk-a-from" value="${E(a.from)}"></label><label>إلى يوم<input type="date" data-af="to" id="stk-a-to" value="${E(a.to)}"></label>`:""}<span class="sp"></span><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div><datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
+ const curZ=a.z,pEnd=P?P.to:"",K=kindA(a),B=askB(),cs=a.cmp&&a.cmp.st&&a.cmp.st.length>1?a.cmp.st:null,r=a.rank;
+ const stSel=cs?cs.map((s,i)=>`<label>${i?"مع":"قارن"}<select data-af="cst" data-i="${i}" id="stk-a-cs${i}">${opt(stores(0),s,"— بلا —")}</select></label>`).join("")+(cs.length<4?`<label>فرع آخر<select data-af="cst" data-i="${cs.length}" id="stk-a-cs${cs.length}">${opt(stores(0),"","— أضف —")}</select></label>`:""):`<label>الفرع<select data-af="store" id="stk-a-st">${opt(stores(0),a.store,"كل الفروع")}</select></label>`;
+ const rkBar=r?`<div class="stk-bar stk-und"><b class="stk-undt">الترتيب</b><label>رتّب<select data-af="rby" id="stk-a-rby">${[["","تلقائي"],["code","الأكواد"],["store","الفروع"],["vendor","الموردين"],["color","الألوان"],["size","المقاسات"],["var","ألوان ومقاسات الكود"]].filter(x=>x[0]!=="var"||a.code).map(x=>`<option value="${x[0]}"${(r.by||"")===x[0]?" selected":""}>${x[1]}</option>`).join("")}</select></label><label>حسب<select data-af="rm" id="stk-a-rm"><option value="sold"${r.m!=="on"?" selected":""}>المبيعات</option><option value="on"${r.m==="on"?" selected":""}>الرصيد</option></select></label><label>من<select data-af="rdir" id="stk-a-rdir"><option value="-1"${r.dir!==1?" selected":""}>الأعلى</option><option value="1"${r.dir===1?" selected":""}>الأقل</option></select></label><label>العدد<input type="number" min="1" max="100" data-af="rn" id="stk-a-rn" value="${E(r.n||10)}"></label><span class="sp"></span><button class="bt s" type="button" data-sk="norank">✕ بلا ترتيب</button></div>`:"";
+ const und=`<div class="stk-bar stk-und"><b class="stk-undt">فهمتُ سؤالك هكذا (غيّر ما تريد)</b>${stSel}<label>المورد<select data-af="vendor" id="stk-a-vn">${opt(vendors(),a.vendor,"كل الموردين")}</select></label><label>الكود<input type="text" data-af="code" id="stk-a-code" list="stk-codes" value="${E(a.code)}" placeholder="كل الأصناف" dir="ltr" autocomplete="off"></label>${ids.length?`<label>اللون<select data-af="cl" id="stk-a-cl">${opt(cols,a.cl,"كل الألوان")}</select></label><label>المقاس<select data-af="z" id="stk-a-z">${opt(szs,curZ,"كل المقاسات")}</select></label>`:""}
+ <label>الفترة<select data-af="per" id="stk-a-per"><option value="ytd"${a.per!=="c"?" selected":""}>من أول السنة</option><option value="c"${a.per==="c"?" selected":""}>فترة أحددها</option></select></label>${a.per==="c"?`<label>من يوم<input type="date" data-af="from" id="stk-a-from" value="${E(a.from)}"></label><label>إلى يوم<input type="date" data-af="to" id="stk-a-to" value="${E(a.to)}"></label>`:""}${a.cmp&&a.cmp.b?`<label>مقابل من يوم<input type="date" data-af="bfrom" id="stk-a-bfrom" value="${E(a.cmp.b.from)}"></label><label>إلى يوم<input type="date" data-af="bto" id="stk-a-bto" value="${E(a.cmp.b.to)}"></label>`:""}<span class="sp"></span>${a.cmp&&!a.cmp.need?`<button class="bt s" type="button" data-sk="nocmp">✕ بلا مقارنة</button>`:""}<button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${rkBar}<datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
  const pk=(k,v)=>`<button class="bt s" type="button" data-sk="pick" data-k="${k}" data-v="${E(v)}" data-notr>${E(v)}</button>`,nt=[];
  if(a.amb.store.length)nt.push(`<div class="stk-rep w">أكثر من فرع يطابق ما كتبت. اختر الفرع: ${a.amb.store.map(s=>pk("store",s)).join(" ")}</div>`);
  if(a.amb.code.length)nt.push(`<div class="stk-rep w">${a.code?"كتبت أكثر من كود. اختر الكود:":"لم أجد هذا الكود كاملاً. أكواد تبدأ بما كتبت:"} ${a.amb.code.map(s=>pk("code",s)).join(" ")}</div>`);
  if(a.amb.cl.length)nt.push(`<div class="stk-rep w">أكثر من لون يطابق ما كتبت. اختر اللون: ${a.amb.cl.map(s=>pk("cl",s)).join(" ")}</div>`);
+ if(a.amb.vendor&&a.amb.vendor.length)nt.push(`<div class="stk-rep w">أكثر من مورد يطابق ما كتبت. اختر المورد: ${a.amb.vendor.map(s=>pk("vendor",s)).join(" ")}</div>`);
+ if(a.cmp&&a.cmp.need)nt.push(`<div class="stk-rep w">للمقارنة اكتب فرعين (مثل «قارن الملقا والمدار») أو فترتين (مثل «أكتوبر مقابل سبتمبر»)، أو فترة واحدة لتُقارن بالتي قبلها (مثل «قارن آخر 30 يوم»).</div>`);
+ if(a.cmp&&a.cmp.b&&!B)nt.push(`<div class="stk-rep w">فترة المقارنة: تاريخ البداية بعد تاريخ النهاية.</div>`);
+ if(a.where&&!a.code&&K!=="r")nt.push(`<div class="stk-rep">«مين عنده» تحتاج كود الصنف: اكتبه في السؤال أو في خانة الكود.</div>`);
+ if(K==="x"&&cs&&a.cmp.b)nt.push(`<div class="stk-rep">قارنتُ الفروع في الفترة الأولى فقط. لمقارنة فترتين اترك فرعاً واحداً.</div>`);
  if(a.unk.length)nt.push(`<div class="stk-rep">لم أفهم من سؤالك: <b data-notr>${E(a.unk.join(" · "))}</b> — لم يدخل في الحساب.</div>`);
  if(a.rc)nt.push(`<div class="stk-rep w">«المستلم» غير متاح: عمود <b data-notr>RCVD_QTY</b> في تقرير السيستم ليس استلام الفرع (رقم واحد يتكرر على كل الفروع)، فلا يُعرض. المتاح: الرصيد والمبيعات.</div>`);
  if(a.per==="c"&&!dHas())nt.push(`<div class="stk-rep w">المبيعات بين يومين تحتاج ملف التاريخ، ولم يُرفع بعد. ارفعه من تبويب «الملفات».</div>`);
@@ -771,10 +916,82 @@ function vAsk(){
  const src=`<p class="stk-src">المصدر: الأرصدة من ملف الكميات المرفوع ${sp(dts(q.at))}${q.to?` (حتى نهاية يوم ${sp(qEnd())})`:""}. المبيعات ${P?`من ملفات التاريخ، من ${sp(P.from)} إلى ${sp(pEnd)}`:`من ملف الكميات${q.from?`، من ${sp(q.from)} إلى ${sp(qEnd())}`:"، من أول السنة"}`}. الأرقام صافية بعد المرتجع.</p>`;
  let ans="";const perBad=a.per==="c"&&!P;
  if(perBad){LASTX=null}
+ else if(K==="x")ans=cs?ansCmpSt(a,P,cs):ansCmpP(a,P,B);
+ else if(K==="r")ans=ansRank(a,P);
+ else if(K==="w")ans=ansWhere(a,P);
+ else if(K==="v")ans=ansVendor(a,P);
  else if(a.code)ans=ansCode(a,P);
  else if(a.store)ans=ansStore(a,P);
- else{LASTX=null;ans=em("لم أجد في سؤالك كوداً ولا فرعاً.<br>اكتب كود الصنف (مثل الأمثلة في الأعلى) أو اسم الفرع أو رقمه، أو اخترهما من القوائم.")}
- return box+und+nt.join("")+gapNote(P)+ans+(ans&&(a.code||a.store)&&!perBad?src:"");
+ else{LASTX=null;ans=em("لم أجد في سؤالك كوداً ولا فرعاً ولا مورداً.<br>اكتب كود الصنف (مثل الأمثلة في الأعلى) أو اسم الفرع أو رقمه أو اسم المورد، أو اخترها من القوائم.")}
+ const vnote=a.vendor&&(K==="c"||K==="w")?`<div class="stk-rep">الجواب عن الكود كله؛ المورد لا يغيّر أرقام كود بعينه.</div>`:"";
+ return box+und+nt.join("")+gapNote(P)+(K==="x"&&B&&!cs?gapNote(B):"")+vnote+ans+(ans&&K&&!perBad?src:"");
+}
+/* (v180) أجوبة الترتيب و«مين عنده» والمورد والمقارنة. الضغط على أي اسم في جدول يفتح بطاقته (rgo) */
+const stL=ti=>`<a href="#" data-sk="rgo" data-k="store" data-v="${E(DATA.st[ti])}" style="color:inherit">${sn(ti)}</a>`;
+const codeL=c=>`<a href="#" data-sk="rgo" data-k="code" data-v="${E(c)}" style="color:inherit" data-notr dir="ltr">${E(c)}</a>`;
+const vnL=vi=>vi>=0&&DATA.vn[vi]?`<a href="#" data-sk="rgo" data-k="vendor" data-v="${E(DATA.vn[vi])}" style="color:inherit" data-notr>${E(DATA.vn[vi])}</a>`:"—";
+const varL=ki=>{const x=DATA.k[ki];return `<span data-notr>${E([x[1],x[2]].filter(Boolean).join(" · ")||"—")}</span>`};
+const sg=d=>(d>0?"+":"")+fmt(d);
+// سطر «في الفرع … · المورد … · الكود …» تحت عنوان الجواب
+const ctxL=(a,skip)=>{const o=[];if(a.store&&skip!=="store")o.push(`الفرع: ${sn(DATA.sti.get(a.store))}`);if(a.vendor&&skip!=="vendor")o.push(`المورد: <bdi data-notr>${E(a.vendor)}</bdi>`);if(a.code&&skip!=="code")o.push(`الكود: <bdi data-notr dir="ltr">${E([a.code,a.cl,a.z].filter(Boolean).join(" · "))}</bdi>`);return o.length?`<small>${o.join(" · ")}</small>`:""};
+const RKN={code:"الأكواد",store:"الفروع",vendor:"الموردون",color:"الألوان",size:"المقاسات",var:"ألوان ومقاسات الكود"};
+function ansRank(a,P){
+ const r=a.rank,R=rankBy(DATA,CFG,{by:r.by,m:r.m,dir:r.dir,store:a.store,vendor:a.vendor,code:a.code,cl:a.cl,z:a.z,period:P});
+ if(!R){LASTX=null;return em("لا بيانات بهذه الشروط: الكود أو الفرع أو المورد غير موجود في ملف الكميات.")}
+ const n=Math.max(1,Math.min(100,N(r.n)||10)),L=R.rows.slice(0,n),by=R.by,m=R.m,tot=m==="on"?R.on:R.sold,top=L.reduce((s,g)=>s+g[m],0);
+ const lab=g=>by==="code"?codeL(g.k):by==="store"?stL(g.k):by==="vendor"?vnL(g.k):by==="var"?varL(g.k):`<span data-notr dir="ltr">${E(g.k||"—")}</span>`;
+ const txt=g=>by==="store"?DATA.st[g.k]:by==="vendor"?(g.k>=0?DATA.vn[g.k]||"":""):by==="var"?DATA.k[g.k].slice(1,3).join(" "):String(g.k);
+ LASTX={name:"ترتيب-"+by,head:["الترتيب",RKN[by],"المبيعات","الرصيد"],rows:()=>R.rows.map((g,i)=>[i+1,txt(g),g.sold,g.on])};
+ const T=[tile(fmt(R.sold),"قطعة مباعة (الصافي)","k"),tile(fmt(R.on),"قطعة رصيد الآن"),tile(fmt(R.rows.length),"العدد في القائمة كلها")];
+ if(r.dir!==1&&tot>0&&L.length<R.rows.length)T.push(tile(pct(top/tot),"نصيب أول "+L.length+" من المجموع"));
+ return `<div class="stk-ttl"><h3>${r.dir===1?"الأقل":"الأعلى"} ${m==="on"?"رصيداً":"مبيعاً"}: ${RKN[by]}</h3>${ctxL(a)}</div><div class="stk-tiles">${T.join("")}</div>
+ ${r.dir===1&&m==="sold"?`<div class="stk-rep">الأقل مبيعاً يبدأ بما له رصيد ولم يُبع${by==="store"?"، ويشمل كل الفروع (بلا المستودع)":""}.</div>`:""}
+ ${L.length?`<div class="stk-pan"><div class="tw"><table class="stk-t"><thead><tr><th class="n">#</th><th>${RKN[by]}</th><th class="n">المبيعات</th><th class="n">الرصيد</th>${tot>0?`<th class="n">النصيب</th>`:""}</tr></thead><tbody>${L.map((g,i)=>`<tr><td class="n rk">${i+1}</td><td>${lab(g)}</td><td class="n">${m==="sold"?`<b>${fmt(g.sold)}</b>`:fmt(g.sold)}</td><td class="n${g.on<=0?" z":""}">${m==="on"?`<b>${fmt(g.on)}</b>`:fmt(g.on)}</td>${tot>0?`<td class="n">${pct(g[m]/tot)}</td>`:""}</tr>`).join("")}</tbody></table></div>${R.rows.length>L.length?`<p class="stk-src">معروض ${fmt(L.length)} من ${fmt(R.rows.length)}. غيّر «العدد» أو نزّل القائمة كلها من «إكسل».</p>`:""}</div>`:em("لا شيء بهذه الشروط.")}`;
+}
+function ansWhere(a,P){
+ const R=whoHas(DATA,CFG,a.code,{cl:a.cl,z:a.z,period:P});if(!R){LASTX=null;return em(DATA.code.get(a.code)?"لا يوجد هذا اللون أو المقاس لهذا الكود.":`الكود <b data-notr dir="ltr">${E(a.code)}</b> غير موجود في ملف الكميات.`)}
+ const wh=DATA.sti.get(CFG.wh);LASTX={name:"مين-عنده-"+a.code,head:["الفرع","الرصيد","المبيعات"],rows:()=>R.has.concat(R.out).map(s=>[DATA.st[s.ti],s.on,s.sold])};
+ const T=[tile(fmt(R.n),"فرع عنده رصيد","k"),tile(fmt(R.wh),"قطعة في المستودع","k"),tile(fmt(R.on),"قطعة في المستودع والفروع"),tile(fmt(R.out.length),"فرع نفد عنده وهو يبيعه",R.out.length?"bad":"")];
+ const tb=(L,first)=>`<table class="stk-t"><thead><tr><th>الفرع</th><th class="n">الرصيد</th><th class="n">المبيعات</th></tr></thead><tbody>${L.map(s=>`<tr><td>${stL(s.ti)}${s.ti===wh?" <small>(المستودع)</small>":""}</td><td class="n${s.on<=0?" z":""}">${first?`<b>${fmt(s.on)}</b>`:fmt(s.on)}</td><td class="n">${first?fmt(s.sold):`<b>${fmt(s.sold)}</b>`}</td></tr>`).join("")}</tbody></table>`;
+ return `<div class="stk-ttl"><h3>مين عنده <bdi dir="ltr" data-notr>${E(a.code)}</bdi>${a.cl||a.z?` <small data-notr>${E([a.cl,a.z].filter(Boolean).join(" · "))}</small>`:""}</h3></div><div class="stk-tiles">${T.join("")}</div>
+ <div class="stk-act"><button class="bt" type="button" data-sk="nowhere">📋 بطاقة الصنف كاملة</button><button class="bt" type="button" data-sk="goitem">🔍 جدول الصنف في كل الفروع</button></div>
+ <div class="stk-up"><div class="stk-card"><h3>عنده رصيد (${fmt(R.has.length)})</h3>${R.has.length?tb(R.has,true):`<p>لا أحد عنده رصيد من هذا الصنف.</p>`}</div>
+ <div class="stk-card"><h3>نفد عنده وهو يبيعه (${fmt(R.out.length)})</h3>${R.out.length?tb(R.out,false):`<p>لا يوجد فرع نفد عنده وهو يبيعه.</p>`}</div></div>`;
+}
+function ansVendor(a,P){
+ const R=vendorCard(DATA,CFG,a.vendor,{store:a.store,period:P});if(!R){LASTX=null;return em("هذا المورد غير موجود في ملف الكميات.")}
+ LASTX={name:"مورد",head:["الكود","المبيعات","الرصيد","رصيد المستودع"],rows:()=>R.codes.map(c=>[c.code,c.sold,c.on,c.wh])};
+ const T=[tile(fmt(R.sold),"قطعة باعها (الصافي)","k"),tile(fmt(R.on),a.store?"قطعة عند الفرع":"قطعة رصيد (المستودع والفروع)","k")];
+ if(!a.store)T.push(tile(fmt(R.wh),"قطعة في المستودع"),tile(fmt(R.br),"قطعة في الفروع"));
+ T.push(tile(fmt(R.codes.length),"كود له رصيد أو مبيعات"));if(R.rank)T.push(tile(R.rank+" / "+R.of,"ترتيبه بين الموردين في المبيعات"),tile(pct(R.share),"نصيبه من المبيعات"));
+ T.push(tile(fmt(R.short.n),"صنف يُباع ورصيده ناقص في فرع","go",` data-sk="goneed" role="button" tabindex="0"`),tile(fmt(R.idle.n),"سطر راكد","go",` data-sk="gostale" role="button" tabindex="0"`),tile(fmt(R.reorder.length),"كود نفد من المستودع وهو يُباع",R.reorder.length?"bad":""));
+ const top=R.codes.slice(0,25),ro=R.reorder.slice(0,40);
+ return `<div class="stk-ttl"><h3 data-notr>${E(a.vendor)}</h3>${a.store?`<small>الفرع: ${sn(DATA.sti.get(a.store))}</small>`:`<small>بطاقة المورد</small>`}</div><div class="stk-tiles">${T.join("")}</div>
+ <div class="stk-up"><div class="stk-card"><h3>أكواده الأعلى مبيعاً</h3>${top.length?`<table class="stk-t"><thead><tr><th>الكود</th><th class="n">المبيعات</th><th class="n">الرصيد</th><th class="n">المستودع</th></tr></thead><tbody>${top.map(c=>`<tr><td class="c">${codeL(c.code)}</td><td class="n"><b>${fmt(c.sold)}</b></td><td class="n${c.on<=0?" z":""}">${fmt(c.on)}</td><td class="n${c.wh<=0?" z":""}">${fmt(c.wh)}</td></tr>`).join("")}</tbody></table>`:`<p>لا أكواد.</p>`}</div>
+ ${a.store?"":`<div class="stk-card"><h3>حسب الفرع</h3><table class="stk-t"><thead><tr><th>الفرع</th><th class="n">المبيعات</th><th class="n">الرصيد</th></tr></thead><tbody>${R.stores.map(s=>`<tr><td>${stL(s.ti)}</td><td class="n"><b>${fmt(s.sold)}</b></td><td class="n${s.on<=0?" z":""}">${fmt(s.on)}</td></tr>`).join("")}</tbody></table></div>`}</div>
+ ${ro.length?`<div class="stk-pan"><h3 class="stk-ph">نفد من المستودع وهو يُباع (${fmt(R.reorder.length)}) — يحتاج طلباً من المورد</h3><div class="tw"><table class="stk-t"><thead><tr><th>الكود</th><th class="n">المبيعات</th><th class="n">${a.store?"رصيد الفرع":"رصيد الفروع"}</th></tr></thead><tbody>${ro.map(c=>`<tr><td class="c">${codeL(c.code)}</td><td class="n"><b>${fmt(c.sold)}</b></td><td class="n${c.on-c.wh<=0?" z":""}">${fmt(a.store?c.on:c.on-c.wh)}</td></tr>`).join("")}</tbody></table></div></div>`:""}`;
+}
+function ansCmpSt(a,P,cs){
+ const R=cmpStores(DATA,CFG,cs,{code:a.code,cl:a.cl,z:a.z,vendor:a.vendor,period:P});if(!R){LASTX=null;return em("اختر فرعين على الأقل موجودين في ملف الكميات.")}
+ const cards=!a.code&&!a.vendor?R.tis.map(ti=>storeCard(DATA,CFG,DATA.st[ti],P)):null,M=[["الرصيد",R.tot.map(t=>t.on),0],["المبيعات (الصافي)",R.tot.map(t=>t.sold),1],[a.code?"لون ومقاس له رصيد":"صنف له رصيد",R.tot.map(t=>t.inSt),0],["نفد وهو يبيعه",R.tot.map(t=>t.out),-1]];
+ if(cards){M.push(["الترتيب بين الفروع في المبيعات",cards.map(c=>c.rank?c.rank+" / "+c.of:"—"),0],["النصيب من مبيعات الفروع",cards.map(c=>pct(c.share)),0]);if(cards.every(c=>c.short))M.push(["صنف يبيعه ورصيده ناقص",cards.map(c=>c.short.n),-1],["أصناف راكدة",cards.map(c=>c.idle.n),-1],["قطع راكدة",cards.map(c=>c.idle.pcs),-1])}
+ const best=(v,d)=>{if(!d||v.some(x=>typeof x!=="number"))return -1;const b=d>0?Math.max.apply(null,v):Math.min.apply(null,v);return v.filter(x=>x===b).length===1?v.indexOf(b):-1};
+ const rows=R.rows.slice(0,40),lab=r=>R.by==="var"?varL(r.k):codeL(r.k);
+ LASTX={name:"مقارنة-فروع",head:[R.by==="var"?"اللون والمقاس":"الكود"].concat(...R.tis.map(ti=>[DATA.st[ti]+" مبيعات",DATA.st[ti]+" رصيد"])),rows:()=>R.rows.map(r=>[R.by==="var"?DATA.k[r.k].slice(1,3).join(" "):r.k].concat(...r.v.map(x=>[x.sold,x.on])))};
+ return `<div class="stk-ttl"><h3>مقارنة الفروع</h3>${ctxL(a,"store")}</div>
+ <div class="stk-pan"><div class="tw"><table class="stk-t stk-cmp"><thead><tr><th></th>${R.tis.map(ti=>`<th class="n">${stL(ti)}</th>`).join("")}</tr></thead><tbody>${M.map(m=>{const b=best(m[1],m[2]);return `<tr><td>${m[0]}</td>${m[1].map((v,i)=>`<td class="n${i===b?" best":""}">${typeof v==="number"?fmt(v):`<bdi dir="ltr" data-notr>${E(v)}</bdi>`}</td>`).join("")}</tr>`}).join("")}</tbody></table></div></div>
+ ${rows.length?`<div class="stk-pan" style="margin-top:12px"><h3 class="stk-ph">${R.by==="var"?"الألوان والمقاسات":"الأكواد الأعلى مبيعاً في هذه الفروع معاً"} (المبيعات، وتحتها الرصيد)</h3><div class="tw"><table class="stk-t stk-mx"><thead><tr><th class="s">${R.by==="var"?"اللون والمقاس":"الكود"}</th>${R.tis.map(ti=>`<th>${sn(ti)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr><td class="s">${lab(r)}</td>${r.v.map(x=>`<td class="${x.on<=0&&x.sold>0?"need":""}"><b>${fmt(x.sold)}</b><i>رصيد ${fmt(x.on)}</i></td>`).join("")}</tr>`).join("")}</tbody></table></div>${R.rows.length>rows.length?`<p class="stk-src">معروض ${fmt(rows.length)} من ${fmt(R.rows.length)}. القائمة كلها في «إكسل».</p>`:""}</div>`:""}`;
+}
+function ansCmpP(a,P,B){
+ if(!P||!B){LASTX=null;return em("مقارنة فترتين تحتاج فترة أولى محددة (اختر «فترة أحددها») وفترة مقارنة.")}const R=cmpPeriods(DATA,CFG,{a:P,b:B,store:a.store,code:a.code,cl:a.cl,z:a.z,vendor:a.vendor});if(!R){LASTX=null;return em("لا بيانات بهذه الشروط: الكود أو الفرع أو المورد غير موجود في ملف الكميات.")}
+ const dd=x=>Math.round((new Date(x.to+"T12:00:00")-new Date(x.from+"T12:00:00"))/864e5)+1,la=dd(P),lb=dd(B),fm=x=>x.from.slice(8)==="01"&&x.from.slice(0,7)===x.to.slice(0,7)&&+x.to.slice(8,10)===new Date(+x.to.slice(0,4),+x.to.slice(5,7),0).getDate(),/* شهر كامل */sp=d=>`<bdi data-notr dir="ltr">${E(d)}</bdi>`,rg=x=>sp(x.from)+" ← "+sp(x.to);
+ const lab=g=>R.by==="store"?stL(g.k):R.by==="var"?varL(g.k):codeL(g.k),txt=g=>R.by==="store"?DATA.st[g.k]:R.by==="var"?DATA.k[g.k].slice(1,3).join(" "):String(g.k),d=R.a.sold-R.b.sold;
+ LASTX={name:"مقارنة-فترتين",head:[R.by==="store"?"الفرع":R.by==="var"?"اللون والمقاس":"الكود","الفترة الأولى","فترة المقارنة","الفرق"],rows:()=>R.rows.map(g=>[txt(g),g.a,g.b,g.d])};
+ const T=[tile(fmt(R.a.sold),"قطعة في الفترة الأولى","k"),tile(fmt(R.b.sold),"قطعة في فترة المقارنة"),tile(sg(d),"الفرق",d<0?"bad":"k"),tile(R.b.sold>0?(d>0?"+":"")+pct(d/R.b.sold):"—","نسبة التغيّر"),tile(fmt(R.a.days)+" / "+fmt(R.b.days),"أيام فيها بيع (الأولى / المقارنة)"),tile(fmt(R.a.ret)+" / "+fmt(R.b.ret),"قطع مرتجعة (الأولى / المقارنة)")];
+ const NM=R.by==="store"?"الفرع":R.by==="var"?"اللون والمقاس":"الكود",tb=L=>`<table class="stk-t"><thead><tr><th>${NM}</th><th class="n">الأولى</th><th class="n">المقارنة</th><th class="n">الفرق</th></tr></thead><tbody>${L.slice(0,20).map(g=>`<tr><td${R.by==="code"?` class="c"`:""}>${lab(g)}</td><td class="n">${fmt(g.a)}</td><td class="n">${fmt(g.b)}</td><td class="n ${g.d>0?"up":"dn"}">${sg(g.d)}</td></tr>`).join("")}</tbody></table>`;
+ return `<div class="stk-ttl"><h3>مقارنة فترتين</h3><small>الأولى: ${rg(P)} · المقارنة: ${rg(B)}</small>${ctxL(a)}</div><div class="stk-tiles">${T.join("")}</div>
+ ${la!==lb&&!(fm(P)&&fm(B))?`<div class="stk-rep w">الفترتان مختلفتان في الطول (${fmt(la)} يوماً مقابل ${fmt(lb)} يوماً)، فالفرق ليس مقارنة يوم بيوم.</div>`:""}
+ <div class="stk-up"><div class="stk-card"><h3>الأكثر صعوداً (${fmt(R.up.length)})</h3>${R.up.length?tb(R.up):`<p>لا شيء ارتفع.</p>`}</div><div class="stk-card"><h3>الأكثر هبوطاً (${fmt(R.down.length)})</h3>${R.down.length?tb(R.down):`<p>لا شيء انخفض.</p>`}</div></div>`;
 }
 function ansStore(a,P){
  const R=storeCard(DATA,CFG,a.store,P);if(!R){LASTX=null;return em("هذا الفرع غير موجود في ملف الكميات.")}
@@ -850,12 +1067,17 @@ function wire(){
   else if(a==="code"){e.preventDefault();UI.code=t.dataset.c;UI.tab="item";UI.cl="";UI.sz="";paint(false);window.scrollTo(0,0)}
   else if(a==="ask"){const el=g("stk-ask");doAsk(el?el.value:UI.aq)}
   else if(a==="ex")doAsk(t.dataset.x);
-  else if(a==="pick"&&UI.a){e.preventDefault();const k=t.dataset.k;if(k==="store"||k==="code"||k==="cl"){UI.a[k]=t.dataset.v||"";UI.a.amb[k]=[];if(k==="code"){UI.a.cl="";UI.a.z="";UI.a.amb.cl=[]}paint(false)}}
+  else if(a==="pick"&&UI.a){e.preventDefault();const k=t.dataset.k;if(k==="store"||k==="code"||k==="cl"||k==="vendor"){UI.a[k]=t.dataset.v||"";UI.a.amb[k]=[];if(k==="code"){UI.a.cl="";UI.a.z="";UI.a.amb.cl=[]}paint(false)}}
+  // (v180) اسم في جدول ترتيب أو مقارنة ← بطاقته (بلا ترتيب ولا مقارنة ولا «مين عنده»)
+  else if(a==="rgo"&&UI.a){e.preventDefault();const q=UI.a,k=t.dataset.k,v=t.dataset.v||"";if(k!=="store"&&k!=="code"&&k!=="vendor")return;if(q.cmp&&q.cmp.st)q.store=k==="store"?v:"";q[k]=v;if(k==="code"){q.cl="";q.z=""}q.rank=null;q.where=false;q.cmp=null;UI.lim=200;paint(false);window.scrollTo(0,0)}
+  else if(a==="norank"&&UI.a){UI.a.rank=null;paint(false)}
+  else if(a==="nowhere"&&UI.a){UI.a.where=false;paint(false)}
+  else if(a==="nocmp"&&UI.a){const q=UI.a;if(q.cmp&&q.cmp.st)q.store=q.cmp.st[0]||"";q.cmp=null;paint(false)}
   else if(a==="acode"&&UI.a){e.preventDefault();UI.a.code=t.dataset.c;UI.a.cl="";UI.a.z="";UI.a.amb.code=[];paint(false);window.scrollTo(0,0)}
   else if((a==="goneed"||a==="gostale"||a==="goitem"||a==="gosales")&&UI.a){const q=UI.a,P=askP();
    if(a==="goitem"){UI.code=q.code;UI.tab="item"}
    else if(a==="gosales"){UI.code=q.code;UI.cl=q.cl;UI.sz=q.z;UI.st=q.store;if(P){UI.from=P.from;UI.to=P.to}UI.tab="sales"}
-   else{UI.st=q.store;UI.vn="";UI.q="";UI.tab=a==="goneed"?"need":"stale";if(P){UI.per="c";UI.from=P.from;UI.to=P.to}else UI.per="ytd"}
+   else{UI.st=q.store;UI.vn=q.vendor||"";UI.q="";UI.tab=a==="goneed"?"need":"stale";if(P){UI.per="c";UI.from=P.from;UI.to=P.to}else UI.per="ytd"}
    UI.lim=200;paint(false);window.scrollTo(0,0)}
   else if(a==="recon")doRecon();
   else if(a==="pub")publish(false);
@@ -871,6 +1093,10 @@ function wire(){
   else if(a==="ova"){const ty=g("stk-ot").value,k=String(ty==="c"?g("stk-oc").value:g("stk-ov").value).trim(),mn=N(g("stk-om").value);if(!k||mn<1){if(X.toast)X.toast(ty==="c"?"اكتب الكود":"اختر المورد");return}
    CFG.ov=(CFG.ov||[]).filter(o=>!(o.t===ty&&o.k===k)).concat([{t:ty,k:k.slice(0,60),min:Math.min(9999,mn)}]);paint()}});
  const set=t=>{const af=t.dataset.af;
+  if(af&&UI.a&&(af==="cst"||af==="rby"||af==="rm"||af==="rdir"||af==="rn"||af==="bfrom"||af==="bto")){const q=UI.a,v=t.value;UI.lim=200;
+   if(af==="cst"){if(!q.cmp||!q.cmp.st)return false;const L=q.cmp.st.slice(),i=+t.dataset.i;if(v)L[i]=v;else L.splice(i,1);q.cmp.st=L.filter((s,j)=>s&&L.indexOf(s)===j).slice(0,4);if(q.cmp.st.length<2){q.store=q.cmp.st[0]||"";q.cmp=null}else q.store=q.cmp.st[0];return true}
+   if(af==="bfrom"||af==="bto"){if(q.cmp&&q.cmp.b)q.cmp.b[af==="bfrom"?"from":"to"]=v;return true}
+   if(!q.rank)return false;if(af==="rby")q.rank.by=v;else if(af==="rm")q.rank.m=v==="on"?"on":"sold";else if(af==="rdir")q.rank.dir=v==="1"?1:-1;else q.rank.n=Math.max(1,Math.min(100,N(v)||10));return true}
   if(af&&UI.a){const q=UI.a;q[af]=t.value;UI.lim=200;if(af==="code"){q.code=String(t.value).trim();q.cl="";q.z="";q.amb.code=[];q.amb.cl=[]}if(af==="cl")q.z="";if(af==="store")q.amb.store=[];
    if(af==="per"&&t.value==="c"&&!(q.from&&q.to)){q.to=qEnd();q.from=addDays(q.to,-29)}return true}
   const k=t.dataset.sf;if(k){UI[k]=t.type==="checkbox"?(t.checked?1:0):t.value;UI.lim=200;if(k==="code"){UI.cl="";UI.sz=""}if(k==="cl")UI.sz="";return true}
