@@ -382,6 +382,19 @@ export function cmpPeriods(D,C,o){
  return {by,a:{sold:S.a.sold,ret:S.a.ret,days:S.a.days.size},b:{sold:S.b.sold,ret:S.b.ret,days:S.b.days.size},rows:rows.sort((p,r)=>r.a-p.a||r.b-p.b||kc(p,r)),
   up:rows.filter(g=>g.d>0).sort((p,r)=>r.d-p.d||kc(p,r)),down:rows.filter(g=>g.d<0).sort((p,r)=>p.d-r.d||kc(p,r))};
 }
+/* ---- (v182) مقارنة أكواد (2–15): أيها الأعلى مبيعاً، ورصيد كلٍّ منها، ومن الأعلى في كل فرع ---- */
+export function cmpCodes(D,C,codes,o){
+ o=o||{};const P=o.period?soldMap(D,o.period.from,o.period.to):null,wh=D.sti.get(C.wh),ex=exSet(C,D),fs=o.store?D.sti.get(o.store):undefined;if(o.store&&fs===undefined)return null;
+ const L=[];for(const code of codes||[]){const ids=D.code.get(code);if(!ids||!ids.length||L.some(r=>r.code===code))continue;const r={code,on:0,sold:0,wh:0,st:new Map()};
+  eachCell(D,P,ids,(ki,ti,vi,on,sold)=>{if(ti===wh)r.wh+=on;let s=r.st.get(ti);if(!s){s={on:0,sold:0};r.st.set(ti,s)}s.on+=on;s.sold+=sold;if(fs!==undefined&&ti!==fs)return;r.on+=on;r.sold+=sold});
+  r.nSold=0;r.st.forEach((s,ti)=>{if(ti!==wh&&s.sold>0)r.nSold++});r.thru=r.sold+Math.max(0,r.on)>0&&r.sold>=0?r.sold/(r.sold+Math.max(0,r.on)):null;L.push(r)}
+ if(L.length<2)return null;let tot=0;for(const r of L)tot+=r.sold;
+ const rows=L.sort((p,r)=>r.sold-p.sold||r.on-p.on||(p.code<r.code?-1:1));rows.forEach(r=>{r.share=tot>0?r.sold/tot:null;r.wins=0});
+ const stores=[];for(let ti=0;ti<D.st.length;ti++){if(ti===wh||ex.has(ti)||(fs!==undefined&&ti!==fs))continue;const v=rows.map(r=>r.st.get(ti)||{on:0,sold:0});if(!v.some(x=>x.on||x.sold))continue;
+  const mx=Math.max.apply(null,v.map(x=>x.sold));if(mx>0)v.forEach((x,i)=>{if(x.sold===mx)rows[i].wins++});stores.push({ti,v,sold:v.reduce((s,x)=>s+x.sold,0),mx})}
+ stores.sort((p,r)=>r.sold-p.sold||(D.st[p.ti]<D.st[r.ti]?-1:1));
+ return {rows,stores,tot};
+}
 /* ---- (v181) «تحليل صنف» v2: جدول محوري لصنف واحد بدل جداول إكسل المحورية ---- */
 // خانات الصنف: (لون ومقاس، مخزن) ← {رصيد، مبيعات، ناقص؟، راكد؟}. ناقص = فرع يبيعه ورصيده أقل من الحد، راكد = فرع عنده ≥ حد الراكد ولم يبع (كجدول الصنف القديم)
 function itemAtoms(D,C,code,o){
@@ -544,14 +557,15 @@ export function parseAsk(text,ctx){
  if(stores.length&&ambSt.length)for(const s of ambSt)if(out.amb.store.indexOf(s)<0&&s!==out.store){if(!out.amb.store.length)out.amb.store.push(out.store);out.amb.store.push(s)}
  /* 3) الأكواد: مطابقة تامة (حتى 3 كلمات متتالية للأكواد التي فيها مسافات مثل «31001 - T») */
  const codes=[];
- for(let n=3;n>=1;n--)for(let i=0;i+n<=W.length;i++){let free=true;for(let j=i;j<i+n;j++)if(U[j])free=false;if(!free)continue;const c=lower.get(W.slice(i,i+n).join(""));if(!c)continue;
+ for(let n=3;n>=1;n--)for(let i=0;i+n<=W.length;i++){let free=true;for(let j=i;j<i+n;j++)if(U[j])free=false;if(!free)continue;const c=lower.get(W.slice(i,i+n).join(""))||(n===1&&/^و[0-9a-z]/.test(W[i])?lower.get(W[i].slice(1)):undefined);if(!c)continue;// «و15002»
   if(n>1&&!/\s/.test(c))continue;// ضمّ كلمتين لا يُقبل إلا لكود مكتوب في السيستم بمسافات (فلا يُركَّب كود من رقمين متجاورين)
   if(n===1&&W[i].length<3&&!CDW.has(W[i-1]||""))continue;if(codes.indexOf(c)<0)codes.push(c);for(let j=i;j<i+n;j++)U[j]=true}
  for(let i=0;i<W.length;i++)if(!U[i]&&/^20\d{2}$/.test(W[i])&&!lower.has(W[i]))U[i]=true;// سنة مكتوبة وحدها
  if(!codes.length)for(let i=0;i<W.length;i++){if(U[i]||!isNum(W[i]))continue;const pv=W[i-1]||"";
   if(CDW.has(pv)&&W[i].length<5){const c=lower.get(("00000"+W[i]).slice(-5));if(c){codes.push(c);U[i]=true;continue}}
   if(W[i].length>=3){const sug=[],pad=W[i].length<5?("00000"+W[i]).slice(-5):"";lower.forEach((c,k)=>{if(sug.length<8&&(k.indexOf(W[i])===0||(pad&&k===pad)))sug.push(c)});if(sug.length){out.amb.code=sug;U[i]=true}}}
- if(codes.length){out.code=codes[0];if(codes.length>1)out.amb.code=codes.slice()}
+ // (v182) كودان أو أكثر = مقارنة أكواد (حتى 15)، إلا لو السؤال مقارنة فترات أو فروع فيُسأل «أي كود؟» كما كان
+ if(codes.length){out.code=codes[0];if(codes.length>1){if(!out.cmp){out.cmp={codes:codes.slice(0,15)};out.code=""}else out.amb.code=codes.slice()}}
  /* 3ب) (v180) المورد: بعد كلمة «مورد» تكفي كلمة أو أكثر من اسمه؛ وبلا «مورد» يُقبل اسمه كاملاً أو كلمة لا توجد إلا في اسمه */
  if(ctx.vendors&&ctx.vendors.length){const VT=vendTable(ctx.vendors),has=(e,j)=>e.ws.has(W[j])||e.ws.has(B[j]);let vh=null;
   // الاسم كاملاً أولاً (الأطول أولاً): «مورد شربات» لا يلتبس بـ«مورد شربات اسباني»
@@ -573,6 +587,7 @@ export function parseAsk(text,ctx){
   for(let i=0;i<W.length&&!out.z;i++){if(U[i])continue;const z=sz.get(W[i])||(W[i+1]&&!U[i+1]?sz.get(W[i]+W[i+1]):undefined);if(!z)continue;if(/^[a-z]+$/.test(W[i])&&!SZW.has(W[i-1]||""))continue;out.z=z;U[i]=true;if(!sz.get(W[i]))U[i+1]=true}}
  /* 5) ما لم يُفهم: الكلمات التي فيها أرقام أو حروف لاتينية فقط (الكلمات العربية الباقية حشو السؤال) */
  for(let i=0;i<W.length;i++){if(U[i])continue;const w=W[i];if(/[a-z0-9]/.test(w)&&!ENSTOP.has(w)&&!STW.has(w)&&!CDW.has(w)&&!SZW.has(w)&&!UNITS[w]&&out.unk.indexOf(w)<0)out.unk.push(w)}
+ if(out.cmp&&out.cmp.codes){out.rank=null;out.where=false}// «13016 و15002 مين الأعلى» = مقارنة أكواد، لا ترتيب ولا «مين عنده»
  if(cmpW&&!out.cmp)out.cmp={need:1};// «قارن» بلا فرعين ولا فترة: يُطلب منه ما يقارنه
  out.kind=out.cmp&&!out.cmp.need?"x":out.rank?"r":out.where&&out.code&&!out.store?"w":out.vendor&&!out.code?"v":out.code&&out.store?"cs":out.code?"c":out.store?"s":"";return out;
 }
@@ -722,6 +737,7 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 .stk-crv i.s,.stk-crvl i.s{background:var(--acc)}.stk-crv i.o,.stk-crvl i.o{background:var(--olive,#6f7d45)}:where([data-theme=dark]) .stk-crv i.o,:where([data-theme=dark]) .stk-crvl i.o{background:#a4b46e}
 .stk-piv{margin-top:12px}.stk-pvb{box-shadow:none;border:0;padding:8px 6px 4px;margin:0}.stk-mx td.t{font-weight:800;border-inline-start:2px solid var(--line)}.stk-mx tr.whr td.s{background:var(--soft)}
 .stk-lg{border-radius:6px;padding:1px 8px;font-weight:700}.stk-lg.need{background:#fdecea;color:#8a2218}.stk-lg.idle{background:#fff4e2;color:#6b4300}.stk-lg.wh{background:var(--soft);color:var(--ink)}:where([data-theme=dark]) .stk-lg.need{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .stk-lg.idle{background:#3a2a08;color:#f6c770}
+.stk-bar input.cc{width:280px}.stk-cbar{display:block;height:8px;border-radius:4px;background:var(--acc);min-width:2px;margin-top:4px}.stk-t td.win{background:var(--olive-s,#e9ecd9);color:var(--olive-t,#3f4a22);font-weight:800}:where([data-theme=dark]) .stk-t td.win{background:#2c3318;color:#cbd89a}
 .stk-t td.rk{color:var(--mut);width:34px}.stk-t td.up{color:var(--olive,#6f7d45);font-weight:800}.stk-t td.dn{color:#c4362b;font-weight:800}.stk-cmp td.best{background:var(--olive-s,#e9ecd9);color:var(--olive-t,#3f4a22);font-weight:800;border-radius:8px}.stk-cmp th a{font-weight:700}.stk-cmp td:first-child{white-space:normal;min-width:96px;line-height:1.5}.stk-cmp th{white-space:normal}@media (max-width:560px){.stk-cmp td,.stk-cmp th{padding:7px 6px;font-size:13px}}.stk-und+.stk-und{margin-top:-4px}
 :where([data-theme=dark]) .stk-t td.up{color:#a4b46e}:where([data-theme=dark]) .stk-t td.dn{color:#f1a5a0}:where([data-theme=dark]) .stk-cmp td.best{background:#2c3318;color:#cbd89a}
 @media (max-width:760px){.stk-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.stk-tile b{font-size:21px}.stk-askb .bt{padding:0 16px}}
@@ -945,7 +961,7 @@ const yearR=()=>{const R=dHas()?fullR():null;return R&&coverage(META,R).ok?R:nul
 const askB=()=>{const a=UI.a,b=a&&a.cmp&&a.cmp.b;return b&&b.from&&b.to&&b.from<=b.to?b:null};// الفترة التي تُقارن بها
 const askNeed=()=>{const a=UI.a;if(!a||!DATA||!DATA.has)return null;const P=askP(),B=askB();if(P&&B)return {from:P.from<B.from?P.from:B.from,to:P.to>B.to?P.to:B.to};return P||(kindA(a)==="c"?yearR():null)};
 // نوع الجواب من حقول السؤال الحالية (بعد أي تعديل من الشريط): x مقارنة، r ترتيب، w مين عنده، v مورد، c صنف، s فرع
-function kindA(a){if(!a)return "";const c=a.cmp;if(c&&((c.st&&c.st.length>1)||(c.a&&c.b)))return "x";if(a.rank)return "r";if(a.where&&a.code&&!a.store)return "w";if(a.vendor&&!a.code)return "v";return a.code?"c":a.store?"s":""}
+function kindA(a){if(!a)return "";const c=a.cmp;if(c&&((c.st&&c.st.length>1)||(c.a&&c.b)||(c.codes&&c.codes.length>1)))return "x";if(a.rank)return "r";if(a.where&&a.code&&!a.store)return "w";if(a.vendor&&!a.code)return "v";return a.code?"c":a.store?"s":""}
 const hGet=()=>{try{const a=JSON.parse(localStorage.getItem("stk_ask")||"[]");return Array.isArray(a)?a.filter(x=>typeof x==="string"&&x).slice(0,8):[]}catch(e){return []}};
 const hAdd=q=>{try{localStorage.setItem("stk_ask",JSON.stringify([q].concat(hGet().filter(x=>x!==q)).slice(0,8)))}catch(e){}};
 function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||!DATA||!DATA.has){UI.a=null;paint(false);return}UI.a=parseAsk(q,askCtx());hAdd(q);paint(false)}
@@ -954,17 +970,18 @@ function askEx(en){
  if(!EXC||EXC.D!==DATA){const bc=new Map(),bs={},wh=DATA.sti.get(CFG.wh);DATA.q.forEach((a,ki)=>{if(!a)return;const c=DATA.k[ki][0];for(let j=0;j<a.length;j+=4){bc.set(c,(bc.get(c)||0)+a[j+2]);if(a[j]!==wh)bs[a[j]]=(bs[a[j]]||0)+a[j+2]}});
   let c="",cm=-1;bc.forEach((v,k)=>{if(v>cm&&/^[0-9A-Za-z]+$/.test(k)){cm=v;c=k}});const so=Object.keys(bs).filter(t=>/^\d{3}-/.test(DATA.st[t])&&ALIAS[DATA.st[t].slice(0,3)]).sort((x,y)=>bs[y]-bs[x]);
   const RV=rankBy(DATA,CFG,{by:"vendor"}),v=RV&&RV.rows.find(r=>r.k>=0&&DATA.vn[r.k]);
-  EXC={D:DATA,c,s:so.length?DATA.st[so[0]]:"",s2:so.length>1?DATA.st[so[1]]:"",v:v?DATA.vn[v.k]:""}}
+  const c3=[...bc].filter(x=>/^[0-9A-Za-z]+$/.test(x[0])).sort((x,y)=>y[1]-x[1]).slice(0,3).map(x=>x[0]);
+  EXC={D:DATA,c,c3,s:so.length?DATA.st[so[0]]:"",s2:so.length>1?DATA.st[so[1]]:"",v:v?DATA.vn[v.k]:""}}
  const c=EXC.c,s=EXC.s,p=s.slice(0,3),arOf=x=>ALIAS[x.slice(0,3)]?ALIAS[x.slice(0,3)][0].replace(/ه$/,"ة"):"",ar=arOf(s),nm=s.slice(4),out=[];if(!c||!s)return out;
- if(en){out.push("code "+c,"branch "+p,"top 10 codes","who has "+c);if(EXC.s2)out.push("compare "+nm.toLowerCase()+" vs "+EXC.s2.slice(4).toLowerCase());if(dHas())out.push(c+" last 30 days")}
- else{const b=ar?"فرع "+ar:"فرع "+p;out.push("الكود "+c+" بيع منه كم",b+" باع كم وعنده كم","أكثر 10 أكواد مبيعاً","مين عنده "+c);if(EXC.v)out.push("المورد "+EXC.v);if(EXC.s2)out.push("قارن "+(ar||p)+" و"+(arOf(EXC.s2)||EXC.s2.slice(0,3)));
+ if(en){out.push("code "+c,"branch "+p,"top 10 codes","who has "+c);if(EXC.c3.length>2)out.push("compare "+EXC.c3.join(" "));if(EXC.s2)out.push("compare "+nm.toLowerCase()+" vs "+EXC.s2.slice(4).toLowerCase());if(dHas())out.push(c+" last 30 days")}
+ else{const b=ar?"فرع "+ar:"فرع "+p;out.push("الكود "+c+" بيع منه كم",b+" باع كم وعنده كم","أكثر 10 أكواد مبيعاً","مين عنده "+c);if(EXC.c3.length>2)out.push("قارن "+EXC.c3.join(" و"));if(EXC.v)out.push("المورد "+EXC.v);if(EXC.s2)out.push("قارن "+(ar||p)+" و"+(arOf(EXC.s2)||EXC.s2.slice(0,3)));
   if(dHas())out.push("أقل الفروع مبيعاً آخر 30 يوم","الشهر ده مقابل الشهر اللي فات")}
  return out;
 }
 const chip=x=>`<button type="button" data-sk="ex" data-x="${E(x)}" data-notr>${E(x)}</button>`;
 function vAsk(){
  const en=document.documentElement.classList.contains("tz-en"),a=UI.a,H=hGet(),X0=askEx(en);
- const box=`<div class="stk-card stk-ask"><h3>💬 اسأل عن أي صنف أو فرع أو مورد</h3><p>اكتب الكود أو الفرع أو المورد، ومعها الفترة إن أردت. وتستطيع أن تسأل: «أكثر 10 أكواد مبيعاً»، «مين عنده الكود»، «قارن فرعين»، أو «الشهر ده مقابل اللي فات». كل رقم يُحسب مباشرة من الملفين المرفوعين.</p>
+ const box=`<div class="stk-card stk-ask"><h3>💬 اسأل عن أي صنف أو فرع أو مورد</h3><p>اكتب الكود أو الفرع أو المورد، ومعها الفترة إن أردت. وتستطيع أن تسأل: «أكثر 10 أكواد مبيعاً»، «مين عنده الكود»، «قارن فرعين» أو «قارن عدة أكواد»، أو «الشهر ده مقابل اللي فات». كل رقم يُحسب مباشرة من الملفين المرفوعين.</p>
  <div class="stk-askb"><input type="search" id="stk-ask" value="${E(UI.aq)}" placeholder="الكود، الفرع، المورد، الفترة" autocomplete="off" enterkeyhint="search" maxlength="200"><button class="bt p" type="button" data-sk="ask">اسأل</button></div>
  ${X0.length?`<div class="stk-chips"><i>أمثلة</i>${X0.map(chip).join("")}</div>`:""}${H.length?`<div class="stk-chips"><i>آخر أسئلتك</i>${H.map(chip).join("")}</div>`:""}</div>`;
  if(!a){LASTX=null;return box}
@@ -972,7 +989,7 @@ function vAsk(){
  const curZ=a.z,pEnd=P?P.to:"",K=kindA(a),B=askB(),cs=a.cmp&&a.cmp.st&&a.cmp.st.length>1?a.cmp.st:null,r=a.rank;
  const stSel=cs?cs.map((s,i)=>`<label>${i?"مع":"قارن"}<select data-af="cst" data-i="${i}" id="stk-a-cs${i}">${opt(stores(0),s,"— بلا —")}</select></label>`).join("")+(cs.length<4?`<label>فرع آخر<select data-af="cst" data-i="${cs.length}" id="stk-a-cs${cs.length}">${opt(stores(0),"","— أضف —")}</select></label>`:""):`<label>الفرع<select data-af="store" id="stk-a-st">${opt(stores(0),a.store,"كل الفروع")}</select></label>`;
  const rkBar=r?`<div class="stk-bar stk-und"><b class="stk-undt">الترتيب</b><label>رتّب<select data-af="rby" id="stk-a-rby">${[["","تلقائي"],["code","الأكواد"],["store","الفروع"],["vendor","الموردين"],["color","الألوان"],["size","المقاسات"],["var","ألوان ومقاسات الكود"]].filter(x=>x[0]!=="var"||a.code).map(x=>`<option value="${x[0]}"${(r.by||"")===x[0]?" selected":""}>${x[1]}</option>`).join("")}</select></label><label>حسب<select data-af="rm" id="stk-a-rm"><option value="sold"${r.m!=="on"?" selected":""}>المبيعات</option><option value="on"${r.m==="on"?" selected":""}>الرصيد</option></select></label><label>من<select data-af="rdir" id="stk-a-rdir"><option value="-1"${r.dir!==1?" selected":""}>الأعلى</option><option value="1"${r.dir===1?" selected":""}>الأقل</option></select></label><label>العدد<input type="number" min="1" max="100" data-af="rn" id="stk-a-rn" value="${E(r.n||10)}"></label><span class="sp"></span><button class="bt s" type="button" data-sk="norank">✕ بلا ترتيب</button></div>`:"";
- const und=`<div class="stk-bar stk-und"><b class="stk-undt">فهمتُ سؤالك هكذا (غيّر ما تريد)</b>${stSel}<label>المورد<select data-af="vendor" id="stk-a-vn">${opt(vendors(),a.vendor,"كل الموردين")}</select></label><label>الكود<input type="text" data-af="code" id="stk-a-code" list="stk-codes" value="${E(a.code)}" placeholder="كل الأصناف" dir="ltr" autocomplete="off"></label>${ids.length?`<label>اللون<select data-af="cl" id="stk-a-cl">${opt(cols,a.cl,"كل الألوان")}</select></label><label>المقاس<select data-af="z" id="stk-a-z">${opt(szs,curZ,"كل المقاسات")}</select></label>`:""}
+ const und=`<div class="stk-bar stk-und"><b class="stk-undt">فهمتُ سؤالك هكذا (غيّر ما تريد)</b>${stSel}<label>المورد<select data-af="vendor" id="stk-a-vn">${opt(vendors(),a.vendor,"كل الموردين")}</select></label>${a.cmp&&a.cmp.codes&&a.cmp.codes.length>1?`<label>الأكواد (افصل بينها بفاصلة)<input type="text" data-af="ccodes" id="stk-a-ccodes" value="${E(a.cmp.codes.join("، "))}" dir="ltr" autocomplete="off" class="cc"></label>`:`<label>الكود<input type="text" data-af="code" id="stk-a-code" list="stk-codes" value="${E(a.code)}" placeholder="كل الأصناف" dir="ltr" autocomplete="off"></label>`}${ids.length?`<label>اللون<select data-af="cl" id="stk-a-cl">${opt(cols,a.cl,"كل الألوان")}</select></label><label>المقاس<select data-af="z" id="stk-a-z">${opt(szs,curZ,"كل المقاسات")}</select></label>`:""}
  <label>الفترة<select data-af="per" id="stk-a-per"><option value="ytd"${a.per!=="c"?" selected":""}>من أول السنة</option><option value="c"${a.per==="c"?" selected":""}>فترة أحددها</option></select></label>${a.per==="c"?`<label>من يوم<input type="date" data-af="from" id="stk-a-from" value="${E(a.from)}"></label><label>إلى يوم<input type="date" data-af="to" id="stk-a-to" value="${E(a.to)}"></label>`:""}${a.cmp&&a.cmp.b?`<label>مقابل من يوم<input type="date" data-af="bfrom" id="stk-a-bfrom" value="${E(a.cmp.b.from)}"></label><label>إلى يوم<input type="date" data-af="bto" id="stk-a-bto" value="${E(a.cmp.b.to)}"></label>`:""}<span class="sp"></span>${a.cmp&&!a.cmp.need?`<button class="bt s" type="button" data-sk="nocmp">✕ بلا مقارنة</button>`:""}<button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${rkBar}<datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
  const pk=(k,v)=>`<button class="bt s" type="button" data-sk="pick" data-k="${k}" data-v="${E(v)}" data-notr>${E(v)}</button>`,nt=[];
  if(a.amb.store.length)nt.push(`<div class="stk-rep w">أكثر من فرع يطابق ما كتبت. اختر الفرع: ${a.amb.store.map(s=>pk("store",s)).join(" ")}</div>`);
@@ -981,7 +998,7 @@ function vAsk(){
  if(a.amb.vendor&&a.amb.vendor.length)nt.push(`<div class="stk-rep w">أكثر من مورد يطابق ما كتبت. اختر المورد: ${a.amb.vendor.map(s=>pk("vendor",s)).join(" ")}</div>`);
  if(a.cmp&&a.cmp.need)nt.push(`<div class="stk-rep w">للمقارنة اكتب فرعين (مثل «قارن الملقا والمدار») أو فترتين (مثل «أكتوبر مقابل سبتمبر»)، أو فترة واحدة لتُقارن بالتي قبلها (مثل «قارن آخر 30 يوم»).</div>`);
  if(a.cmp&&a.cmp.b&&!B)nt.push(`<div class="stk-rep w">فترة المقارنة: تاريخ البداية بعد تاريخ النهاية.</div>`);
- if(a.where&&!a.code&&K!=="r")nt.push(`<div class="stk-rep">«مين عنده» تحتاج كود الصنف: اكتبه في السؤال أو في خانة الكود.</div>`);
+ if(a.where&&!a.code&&K!=="r"&&K!=="x")nt.push(`<div class="stk-rep">«مين عنده» تحتاج كود الصنف: اكتبه في السؤال أو في خانة الكود.</div>`);
  if(K==="x"&&cs&&a.cmp.b)nt.push(`<div class="stk-rep">قارنتُ الفروع في الفترة الأولى فقط. لمقارنة فترتين اترك فرعاً واحداً.</div>`);
  if(a.unk.length)nt.push(`<div class="stk-rep">لم أفهم من سؤالك: <b data-notr>${E(a.unk.join(" · "))}</b> — لم يدخل في الحساب.</div>`);
  if(a.rc)nt.push(`<div class="stk-rep w">«المستلم» غير متاح: عمود <b data-notr>RCVD_QTY</b> في تقرير السيستم ليس استلام الفرع (رقم واحد يتكرر على كل الفروع)، فلا يُعرض. المتاح: الرصيد والمبيعات.</div>`);
@@ -991,7 +1008,7 @@ function vAsk(){
  const src=`<p class="stk-src">المصدر: الأرصدة من ملف الكميات المرفوع ${sp(dts(q.at))}${q.to?` (حتى نهاية يوم ${sp(qEnd())})`:""}. المبيعات ${P?`من ملفات التاريخ، من ${sp(P.from)} إلى ${sp(pEnd)}`:`من ملف الكميات${q.from?`، من ${sp(q.from)} إلى ${sp(qEnd())}`:"، من أول السنة"}`}. الأرقام صافية بعد المرتجع.</p>`;
  let ans="";const perBad=a.per==="c"&&!P;
  if(perBad){LASTX=null}
- else if(K==="x")ans=cs?ansCmpSt(a,P,cs):ansCmpP(a,P,B);
+ else if(K==="x")ans=cs?ansCmpSt(a,P,cs):a.cmp.codes&&a.cmp.codes.length>1?ansCmpCodes(a,P):ansCmpP(a,P,B);
  else if(K==="r")ans=ansRank(a,P);
  else if(K==="w")ans=ansWhere(a,P);
  else if(K==="v")ans=ansVendor(a,P);
@@ -1056,6 +1073,16 @@ function ansCmpSt(a,P,cs){
  return `<div class="stk-ttl"><h3>مقارنة الفروع</h3>${ctxL(a,"store")}</div>
  <div class="stk-pan"><div class="tw"><table class="stk-t stk-cmp"><thead><tr><th></th>${R.tis.map(ti=>`<th class="n">${stL(ti)}</th>`).join("")}</tr></thead><tbody>${M.map(m=>{const b=best(m[1],m[2]);return `<tr><td>${m[0]}</td>${m[1].map((v,i)=>`<td class="n${i===b?" best":""}">${typeof v==="number"?fmt(v):`<bdi dir="ltr" data-notr>${E(v)}</bdi>`}</td>`).join("")}</tr>`}).join("")}</tbody></table></div></div>
  ${rows.length?`<div class="stk-pan" style="margin-top:12px"><h3 class="stk-ph">${R.by==="var"?"الألوان والمقاسات":"الأكواد الأعلى مبيعاً في هذه الفروع معاً"} (المبيعات، وتحتها الرصيد)</h3><div class="tw"><table class="stk-t stk-mx"><thead><tr><th class="s">${R.by==="var"?"اللون والمقاس":"الكود"}</th>${R.tis.map(ti=>`<th>${sn(ti)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr><td class="s">${lab(r)}</td>${r.v.map(x=>`<td class="${x.on<=0&&x.sold>0?"need":""}"><b>${fmt(x.sold)}</b><i>رصيد ${fmt(x.on)}</i></td>`).join("")}</tr>`).join("")}</tbody></table></div>${R.rows.length>rows.length?`<p class="stk-src">معروض ${fmt(rows.length)} من ${fmt(R.rows.length)}. القائمة كلها في «إكسل».</p>`:""}</div>`:""}`;
+}
+function ansCmpCodes(a,P){
+ const R=cmpCodes(DATA,CFG,a.cmp.codes,{store:a.store,period:P});if(!R){LASTX=null;return em("اكتب كودين على الأقل موجودين في ملف الكميات.")}
+ const top=R.rows[0],mx=Math.max(1,...R.rows.map(r=>Math.max(0,r.sold))),tie=R.rows.length>1&&R.rows[1].sold===top.sold;
+ LASTX={name:"مقارنة-أكواد",head:["الترتيب","الكود","المبيعات","النصيب","الرصيد","رصيد المستودع","فروع باعت منه","نسبة ما بيع","فروع هو الأعلى فيها"],rows:()=>R.rows.map((r,i)=>[i+1,r.code,r.sold,r.share==null?"":Math.round(r.share*1000)/10+"%",r.on,r.wh,r.nSold,r.thru==null?"":Math.round(r.thru*1000)/10+"%",r.wins])};
+ const T=[tile(tie?"—":top.code,tie?"تعادل في المبيعات":"الأعلى مبيعاً بينها","k"),tile(fmt(top.sold),"قطعة باعها الأعلى"),tile(pct(top.share),"نصيبه من مبيعات هذه الأكواد"),tile(fmt(R.tot),"مبيعات الأكواد معاً")];
+ const sv=R.stores.slice(0,40);
+ return `<div class="stk-ttl"><h3>مقارنة الأكواد</h3>${ctxL(a,"code")}</div><div class="stk-tiles">${T.join("")}</div>
+ <div class="stk-pan"><div class="tw"><table class="stk-t"><thead><tr><th class="n">#</th><th>الكود</th><th class="n">المبيعات</th><th class="n">النصيب</th><th class="n">${a.store?"رصيد الفرع":"الرصيد"}</th><th class="n">المستودع</th>${a.store?"":`<th class="n">فروع باعت</th>`}<th class="n">نسبة ما بيع</th>${a.store?"":`<th class="n">الأعلى في</th>`}</tr></thead><tbody>${R.rows.map((r,i)=>`<tr><td class="n rk">${i+1}</td><td class="c">${codeL(r.code)}</td><td class="n${i===0&&!tie?" win":""}"><b>${fmt(r.sold)}</b><span class="stk-cbar" style="width:${Math.round(Math.max(0,r.sold)/mx*100)}%"></span></td><td class="n">${pct(r.share)}</td><td class="n${r.on<=0?" z":""}">${fmt(r.on)}</td><td class="n${r.wh<=0?" z":""}">${fmt(r.wh)}</td>${a.store?"":`<td class="n">${fmt(r.nSold)}</td>`}<td class="n">${pct(r.thru)}</td>${a.store?"":`<td class="n">${fmt(r.wins)} فرع</td>`}</tr>`).join("")}</tbody></table></div></div>
+ ${!a.store&&sv.length?`<div class="stk-pan" style="margin-top:12px"><h3 class="stk-ph">في كل فرع: المبيعات، وتحتها الرصيد (الأخضر الأعلى في الفرع)</h3><div class="tw"><table class="stk-t stk-mx"><thead><tr><th class="s">الفرع</th>${R.rows.map(r=>`<th data-notr dir="ltr">${E(r.code)}</th>`).join("")}</tr></thead><tbody>${sv.map(s=>`<tr><td class="s">${stL(s.ti)}</td>${s.v.map(x=>`<td class="${s.mx>0&&x.sold===s.mx?"win":x.on<=0&&x.sold>0?"need":""}"><b>${fmt(x.sold)}</b><i>رصيد ${fmt(x.on)}</i></td>`).join("")}</tr>`).join("")}</tbody></table></div>${R.stores.length>sv.length?`<p class="stk-src">معروض ${fmt(sv.length)} من ${fmt(R.stores.length)}.</p>`:""}</div>`:""}`;
 }
 function ansCmpP(a,P,B){
  if(!P||!B){LASTX=null;return em("مقارنة فترتين تحتاج فترة أولى محددة (اختر «فترة أحددها») وفترة مقارنة.")}const R=cmpPeriods(DATA,CFG,{a:P,b:B,store:a.store,code:a.code,cl:a.cl,z:a.z,vendor:a.vendor});if(!R){LASTX=null;return em("لا بيانات بهذه الشروط: الكود أو الفرع أو المورد غير موجود في ملف الكميات.")}
@@ -1152,7 +1179,7 @@ function wire(){
   else if(a==="pswap"){const r=UI.pr||"store",c=UI.pc===undefined?"size":UI.pc;if(c){UI.pr=c;UI.pc=r;paint()}}
   else if(a==="norank"&&UI.a){UI.a.rank=null;paint(false)}
   else if(a==="nowhere"&&UI.a){UI.a.where=false;paint(false)}
-  else if(a==="nocmp"&&UI.a){const q=UI.a;if(q.cmp&&q.cmp.st)q.store=q.cmp.st[0]||"";q.cmp=null;paint(false)}
+  else if(a==="nocmp"&&UI.a){const q=UI.a;if(q.cmp&&q.cmp.st)q.store=q.cmp.st[0]||"";if(q.cmp&&q.cmp.codes){q.code=q.cmp.codes[0]||"";q.cl="";q.z=""}q.cmp=null;paint(false)}
   else if(a==="acode"&&UI.a){e.preventDefault();UI.a.code=t.dataset.c;UI.a.cl="";UI.a.z="";UI.a.amb.code=[];paint(false);window.scrollTo(0,0)}
   else if((a==="goneed"||a==="gostale"||a==="goitem"||a==="gosales")&&UI.a){const q=UI.a,P=askP();
    if(a==="goitem"){UI.code=q.code;UI.tab="item"}
@@ -1173,6 +1200,9 @@ function wire(){
   else if(a==="ova"){const ty=g("stk-ot").value,k=String(ty==="c"?g("stk-oc").value:g("stk-ov").value).trim(),mn=N(g("stk-om").value);if(!k||mn<1){if(X.toast)X.toast(ty==="c"?"اكتب الكود":"اختر المورد");return}
    CFG.ov=(CFG.ov||[]).filter(o=>!(o.t===ty&&o.k===k)).concat([{t:ty,k:k.slice(0,60),min:Math.min(9999,mn)}]);paint()}});
  const set=t=>{const af=t.dataset.af;
+  if(af==="ccodes"&&UI.a){const q=UI.a,low=new Map();DATA.code.forEach((v,c)=>low.set(String(c).toLowerCase().replace(/\s+/g,""),c));const got=[],bad=[];
+   String(t.value).split(/[,،؛\n]+/).map(s=>s.trim()).filter(Boolean).forEach(s=>{const c=low.get(s.toLowerCase().replace(/\s+/g,""));if(c){if(got.indexOf(c)<0)got.push(c);return}s.split(/\s+/).forEach(w=>{const c2=low.get(w.toLowerCase());if(c2){if(got.indexOf(c2)<0)got.push(c2)}else if(w)bad.push(w)})});
+   q.unk=bad.slice(0,10);UI.lim=200;if(got.length>1)q.cmp={codes:got.slice(0,15)};else{q.cmp=null;q.code=got[0]||""}return true}
   if(af&&UI.a&&(af==="cst"||af==="rby"||af==="rm"||af==="rdir"||af==="rn"||af==="bfrom"||af==="bto")){const q=UI.a,v=t.value;UI.lim=200;
    if(af==="cst"){if(!q.cmp||!q.cmp.st)return false;const L=q.cmp.st.slice(),i=+t.dataset.i;if(v)L[i]=v;else L.splice(i,1);q.cmp.st=L.filter((s,j)=>s&&L.indexOf(s)===j).slice(0,4);if(q.cmp.st.length<2){q.store=q.cmp.st[0]||"";q.cmp=null}else q.store=q.cmp.st[0];return true}
    if(af==="bfrom"||af==="bto"){if(q.cmp&&q.cmp.b)q.cmp.b[af==="bfrom"?"from":"to"]=v;return true}
@@ -1183,8 +1213,9 @@ function wire(){
   if(t.dataset.cf){const c=t.dataset.cf;CFG[c]=c==="wh"?t.value:Math.max(0,Math.min(9999,N(t.value)));return false}
   if(t.dataset.cx!==undefined){const s=new Set(CFG.ex||[]);if(t.checked)s.add(t.dataset.cx);else s.delete(t.dataset.cx);CFG.ex=[...s];return false}return false};
  ROOT.addEventListener("keydown",e=>{const t=e.target;if(e.key==="Enter"&&t&&t.id==="stk-ask"){e.preventDefault();doAsk(t.value)}
+  else if(e.key==="Enter"&&t&&t.id==="stk-a-ccodes"){e.preventDefault();t.blur()}
   else if((e.key==="Enter"||e.key===" ")&&t&&t.classList&&t.classList.contains("go")){e.preventDefault();t.click()}});
- ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file")return;if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an")return;if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
+ ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file")return;if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes")return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
  ROOT.addEventListener("change",e=>{const t=e.target;if(t.id==="stk-file"){const f=[...t.files];t.value="";onFiles(f);return}if(set(t)){clearTimeout(PT);paint()}});
  ROOT.addEventListener("dragover",e=>{const d=e.target.closest&&e.target.closest("#stk-drop");if(d){e.preventDefault();d.classList.add("ov")}});
  ROOT.addEventListener("dragleave",e=>{const d=e.target.closest&&e.target.closest("#stk-drop");if(d)d.classList.remove("ov")});

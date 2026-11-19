@@ -3559,4 +3559,17 @@ export default {
 "المستودع.":"warehouse.",
 "لكل لون ومقاس في كل فرع اختر الصفوف «اللون والمقاس» والأعمدة «الفرع».":"For every color and size in every branch, choose rows “Color and size” and columns “Branch”.",
 "الفترة:":"Period:",
+/* v182 (19 نوفمبر 2026): مقارنة الأكواد */
+"اكتب الكود أو الفرع أو المورد، ومعها الفترة إن أردت. وتستطيع أن تسأل: «أكثر 10 أكواد مبيعاً»، «مين عنده الكود»، «قارن فرعين» أو «قارن عدة أكواد»، أو «الشهر ده مقابل اللي فات». كل رقم يُحسب مباشرة من الملفين المرفوعين.":"Type a code, branch or vendor, with a period if you like. You can also ask: “top 10 codes”, “who has <code>”, “compare two branches” or “compare several codes”, or “this month vs last month”. Every number is calculated directly from the two uploaded files.",
+"الأكواد (افصل بينها بفاصلة)":"Codes (separate with commas)",
+"اكتب كودين على الأقل موجودين في ملف الكميات.":"Type at least two codes that are in the quantities file.",
+"تعادل في المبيعات":"Tied in sales",
+"الأعلى مبيعاً بينها":"Top seller among them",
+"قطعة باعها الأعلى":"pcs sold by the top one",
+"نصيبه من مبيعات هذه الأكواد":"Its share of these codes' sales",
+"مبيعات الأكواد معاً":"Sales of these codes together",
+"مقارنة الأكواد":"Code comparison",
+"فروع باعت":"Branches sold",
+"الأعلى في":"Top in",
+"في كل فرع: المبيعات، وتحتها الرصيد (الأخضر الأعلى في الفرع)":"In each branch: sales, with stock below (green = top in the branch)",
 };
