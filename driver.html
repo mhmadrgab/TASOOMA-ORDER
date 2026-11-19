@@ -98,6 +98,7 @@ import {initSettings} from "./tzset.js";
 import {shrink} from "./cust.js";
 import {multiPick,saveExtras} from "./att.js";
 import {initBChat,stopBChat,openBr} from "./bchat.js";
+import {initNotes,stopNotes} from "./notes.js";// 🔔 (v179) سجل الإشعارات
 import {initCall,stopCall,earlyCall} from "./call.js";
 // قائمة الفروع (نفس اللي في admin.html و index.html و sheet.html): للشات مع الفروع
 const BRL=["002-BAHA","003-EL MALQA","004-GERNATA","005-EL MADAR","006-KING ABDALLA","007-EL RABYE","008-ELEZDHAR","009-Z LABAN","010-EL ROWPY","011-EL SADA","012-BRANCH","013-ABHA CITY","014-RAFAL PLAZA","015-ONLINE","017-ELQASEEM","019-EL AQEQ","021-HAMDANIA","022-HAFAR AL BATIN","023-Al Ahsa","024-JED-AlSamer","027-HAIL","028-KHAMIS MUSHAIT","029-ALAJAWEED","030-TABUK","031-KHOBAR","032-JIZAN","033-SUWAIDI","034-DAREEN MALL"];
@@ -290,7 +291,7 @@ g("gp").addEventListener("keydown",e=>{if(e.key==="Enter")g("gg").click()});
 g("out").onclick=()=>{const a=active();if(a&&!confirm("لديك رحلة جارية. هل تريد الخروج؟ (ستبقى الرحلة مفتوحة)"))return;signOut(auth)};
 onAuthStateChanged(auth,u=>check(u));
 async function check(u){
- if(!u){stopAll();stopCall();stopBChat();g("app").hidden=true;g("gate").hidden=false;window.uiReady&&uiReady();return}
+ if(!u){stopAll();stopCall();stopBChat();stopNotes();g("app").hidden=true;g("gate").hidden=false;window.uiReady&&uiReady();return}
  const id=(u.email||"").split("@")[0];
  if(!/^drv\d{1,2}$/.test(id)){await signOut(auth);g("ge").textContent="حساب غير صالح لهذه الصفحة";return}
  try{
@@ -308,7 +309,7 @@ async function check(u){
  }
  g("gate").hidden=true;g("app").hidden=false;g("nm").textContent=me.name;wireButtons();initSettings({kind:"driver",who:()=>me.name,sub:"سائق التوصيل",toast});/* ⚙ (v172) المظهر واللغة وتحديث المنصة والشروط */startAll();window.uiReady&&uiReady();
  // الدردشة الخاص: السائق يتواصل مع المستودع والفروع (زرار 💬 عائم + زرار فوق). كل محادثة بين طرفين بس
- initCall({db,auth,party:"d-"+me.id,name:()=>"🚚 "+me.name,toast});initBChat({db,app,party:"d-"+me.id,codes:BRL,name:()=>me.name,myLabel:()=>me.name,brn:c=>BRL.find(b=>codeOf(b)===c)||c,toast,beep,notify,ping:c=>ping(auth,[],[c]),
+ initCall({db,auth,party:"d-"+me.id,name:()=>"🚚 "+me.name,toast});initNotes({acct:"d-"+me.id,anchor:()=>document.querySelector(".hd [data-tzset]")});initBChat({db,app,party:"d-"+me.id,codes:BRL,name:()=>me.name,myLabel:()=>me.name,brn:c=>BRL.find(b=>codeOf(b)===c)||c,toast,beep,notify,ping:c=>ping(auth,[],[c]),
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))}});
  {const qc=(q=>/^g_/.test(q)?q:q.toLowerCase())(String(new URLSearchParams(location.search).get("chat")||""));if(/^([bdw]-.|g_.)/.test(qc)){setTimeout(()=>openBr(qc),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}}
  if(NAT){// جوه تطبيق TASOOMA: الإشعارات من التطبيق نفسه (رقمه بيتسجّل باسم السائق)

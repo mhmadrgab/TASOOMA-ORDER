@@ -39,6 +39,8 @@ let X=null,SUMS={},SO={},SN={},SG={},UNG=null,DIR={},DDIR={},AVA={},FILT="",CUR=
 const MC=new Map(),LC=new Map();let SEENM=new Set(),NEWB=0;
 // 💬 الرد والتعديل: RPL[cid] = {id,n,t} الرد الجاهز للإرسال، EDT = {cid,id} الرسالة اللي بتتعدّل
 const RPL={};let EDT=null;
+// (v179) 🔍 البحث داخل المحادثة · ✍️ يكتب الآن · ↪️ التحويل · 📌 التثبيت
+let SRCH={on:false,q:"",hits:[],i:-1},TCH=null,TCID=null,TYP={},TYT=0,TYLAST=0;
 const EDIT_MS=15*6e4;// التعديل خلال 15 دقيقة (نفس القاعدة msg_edit_ok)
 const AUD=new Map();let SCR={t:0,end:true,l:0};
 const STYLE=`
@@ -105,6 +107,46 @@ img.av{background:#2a1d2c}
 #bcam hr{border:0;height:1px;background:var(--line,#e3d5c3);margin:4px 8px}
 #bcam .rd{color:#d4342a}#bcam .rd svg{opacity:1}#bcam .rd.cf{background:#d4342a;color:#fff}
 #bcam .inf{display:block;font-size:12px;color:var(--mut);padding:6px 12px 4px;line-height:1.5}
+/* 🔍 (v179) البحث داخل المحادثة */
+.bch #bcsrb svg{width:20px;height:20px}
+.bcsb{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--card);border-bottom:1px solid var(--line);flex:none;animation:bc-dn .2s cubic-bezier(.2,.8,.2,1) both}
+.bcsb input{flex:1;min-width:0;font:inherit;font-size:15px;border:0;border-radius:999px;background:var(--field,#f2e9dd);color:var(--ink);padding:8px 14px}
+.bcsb input:focus{outline:0;box-shadow:0 0 0 2px rgba(180,138,171,.55)}
+.bcsb small{font-size:12.5px;color:var(--mut);white-space:nowrap;min-width:44px;text-align:center;direction:ltr}
+.bcsb button{font:inherit;border:0;background:none;color:var(--ink);width:34px;height:34px;border-radius:50%;cursor:pointer;display:grid;place-items:center;flex:none}
+.bcsb button:hover{background:var(--soft,#f6eee3)}.bcsb button svg{width:18px;height:18px}.bcsb button:disabled{opacity:.35;cursor:default}
+@keyframes bc-dn{from{opacity:0;transform:translateY(-6px)}}
+.bcg mark{background:#ffe08a;color:inherit;border-radius:3px;padding:0 1px}
+.bcg.bcfcur{box-shadow:0 0 0 2.5px #e8a317,0 1px 1px rgba(0,0,0,.12)}
+.bcsmore{align-self:center;font:inherit;font-size:13px;font-weight:700;border:0;background:rgba(255,253,248,.95);color:#8a5a83;border-radius:999px;padding:6px 16px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:4px 0}
+/* 📌 الرسالة المثبّتة */
+.bcpin{display:flex;align-items:center;gap:10px;width:100%;font:inherit;text-align:start;border:0;border-bottom:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 14px;cursor:pointer;flex:none}
+.bcpin svg{width:17px;height:17px;flex:none;color:#8a5a83}
+.bcpin span{flex:1;min-width:0}.bcpin b{display:block;font-size:12px;color:#8a5a83;font-weight:800}
+.bcpin i{display:block;font-style:normal;font-size:13.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bcpin:hover{background:var(--soft,#f6eee3)}
+/* ↪️ محوَّلة · ✍️ يكتب الآن */
+.bcfwd{flex-basis:100%;display:flex;align-items:center;gap:4px;font-size:12px;font-style:italic;opacity:.65;margin-bottom:1px}.bcfwd svg{width:13px;height:13px}
+.bcty{color:#1f9d55;font-weight:700;display:inline-flex;align-items:center;gap:5px}
+.bcty i{display:inline-flex;gap:2px}.bcty i b{width:4px;height:4px;border-radius:50%;background:currentColor;animation:bc-dot 1.2s infinite ease-in-out}
+.bcty i b:nth-child(2){animation-delay:.15s}.bcty i b:nth-child(3){animation-delay:.3s}
+@keyframes bc-dot{0%,60%,100%{opacity:.25;transform:none}30%{opacity:1;transform:translateY(-2px)}}
+.bcr .nm small .bcty{font-weight:700}
+/* ↪️ نافذة التحويل */
+#bcfw{position:fixed;inset:0;z-index:98;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:14px;animation:ui-fade .15s ease both}
+#bcfw .fwp{width:100%;max-width:440px;max-height:min(640px,calc(100dvh - 28px));display:flex;flex-direction:column;background:var(--card);color:var(--ink);border-radius:20px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.4);animation:bc-am .22s cubic-bezier(.2,.9,.25,1.12) both}
+#bcfw .fwh{display:flex;align-items:center;gap:10px;padding:14px 16px 8px}#bcfw .fwh b{flex:1;font-size:17px}
+#bcfw .fwh button{font:inherit;border:0;background:rgba(0,0,0,.06);color:inherit;border-radius:50%;width:34px;height:34px;cursor:pointer;display:grid;place-items:center}#bcfw .fwh button svg{width:16px;height:16px}
+#bcfw .fwq{margin:0 16px 8px;font:inherit;font-size:15px;border:0;border-radius:999px;background:var(--field,#f2e9dd);color:var(--ink);padding:9px 14px}
+#bcfw .fwm{margin:0 16px 8px;font-size:13px;color:var(--mut);background:var(--soft,#f6eee3);border-radius:10px;padding:7px 11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bcfw .fwl{overflow-y:auto;padding:0 8px 10px;flex:1}
+#bcfw .fwl button{display:flex;align-items:center;gap:11px;width:100%;font:inherit;text-align:start;border:0;background:none;color:inherit;border-radius:12px;padding:8px 10px;cursor:pointer}
+#bcfw .fwl button:hover,#bcfw .fwl button:focus-visible{background:var(--soft,#f6eee3);outline:0}#bcfw .fwl button span{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bcfw .fwl button small{color:var(--mut);font-size:12px}#bcfw .fwl button.go{background:#8a5a83;color:#fff}#bcfw .fwl button.go small{color:#f1e3ee}
+#bcfw .fwe{padding:24px;text-align:center;color:var(--mut)}
+:where([data-theme=dark]) .bcg mark{background:#8a6a10;color:#fff}:where([data-theme=dark]) .bcpin b,:where([data-theme=dark]) .bcpin svg{color:#e3c8dd}
+:where([data-theme=dark]) #bcfw .fwh button{background:rgba(255,255,255,.1)}
+@media (prefers-reduced-motion:reduce){.bcty i b,.bcsb,#bcfw .fwp{animation:none}}
 .bcdown b{position:absolute;top:-6px;inset-inline-end:-4px;background:#8a5a83;color:#fff;border-radius:999px;font-size:11px;min-width:19px;line-height:19px;padding:0 5px;font-weight:800}
 .bcg.cont{margin-top:2px}
 .bcg>i{flex-basis:100%;display:flex;align-items:center;gap:6px;font-style:normal;font-size:12.5px;font-weight:800;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -268,7 +310,9 @@ const SV=(d,sw)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 // (v178) أيقونات قائمة الرسالة (رسم بسيط بلون الكلام، بلا إيموجي حتى لا يحوّلها icons.js)
 const IM={reply:SV('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'),copy:SV('<rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>'),
   edit:SV('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),del:SV('<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>'),
-  more:SV('<path d="m6 9 6 6 6-6"/>',2.4),ban:SV('<circle cx="12" cy="12" r="9"/><path d="m5.7 5.7 12.6 12.6"/>'),x:SV('<path d="M18 6 6 18M6 6l12 12"/>',2.4),info:SV('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>')};
+  more:SV('<path d="m6 9 6 6 6-6"/>',2.4),ban:SV('<circle cx="12" cy="12" r="9"/><path d="m5.7 5.7 12.6 12.6"/>'),x:SV('<path d="M18 6 6 18M6 6l12 12"/>',2.4),info:SV('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
+  search:SV('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),fwd:SV('<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5V20"/>'),
+  pin:SV('<path d="M12 17v5"/><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3z"/>'),unpin:SV('<path d="M12 17v5M3 3l18 18"/><path d="M9 4h6l-1 5 3 3v2H8"/>'),up:SV('<path d="m18 15-6-6-6 6"/>',2.4),dn:SV('<path d="m6 9 6 6 6-6"/>',2.4)};
 const IC={
   send:`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>`,
   mic:`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-6a3.5 3.5 0 0 0-7 0v6A3.5 3.5 0 0 0 12 15zm6-3.5a1 1 0 1 0-2 0 4 4 0 0 1-8 0 1 1 0 1 0-2 0 6 6 0 0 0 5 5.9V20H8.5a1 1 0 1 0 0 2h7a1 1 0 1 0 0-2H13v-2.6a6 6 0 0 0 5-5.9z"/></svg>`,
@@ -328,7 +372,9 @@ const GRP={w:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإد�
 const IMG_IC=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.1a6 6 0 0 1-8.5-8.4l9.2-9.2a4 4 0 0 1 5.7 5.6l-9.2 9.2a2 2 0 0 1-2.9-2.8l8.5-8.5"/></svg>`;
 // ---------- المحادثة نفسها (مشتركة بين اللوحة والفرع والسائق) ----------
 function convHtml(){
-  return `<div class="bch"><button class="bcback" data-bcback type="button" aria-label="رجوع">→</button><span id="bcav"></span><div><b id="bct"></b><small id="bcsub"></small></div><button id="bccall" data-bccall type="button" aria-label="مكالمة صوتية" title="مكالمة صوتية" hidden>📞</button>${modal()?`<button data-bcclose type="button" aria-label="إغلاق">✕</button>`:""}</div>
+  return `<div class="bch"><button class="bcback" data-bcback type="button" aria-label="رجوع">→</button><span id="bcav"></span><div><b id="bct"></b><small id="bcsub"></small></div><button id="bcsrb" data-bcsearch type="button" aria-label="بحث في المحادثة" title="بحث في المحادثة">${IM.search}</button><button id="bccall" data-bccall type="button" aria-label="مكالمة صوتية" title="مكالمة صوتية" hidden>📞</button>${modal()?`<button data-bcclose type="button" aria-label="إغلاق">✕</button>`:""}</div>
+  <div class="bcsb" id="bcsb" hidden><input id="bcsq" type="search" placeholder="ابحث في هذه المحادثة..." autocomplete="off" aria-label="بحث في المحادثة"><small id="bcsn"></small><button data-bcsnav="-1" type="button" aria-label="السابق">${IM.up}</button><button data-bcsnav="1" type="button" aria-label="التالي">${IM.dn}</button><button data-bcsx type="button" aria-label="إغلاق البحث">${IM.x}</button></div>
+  <button class="bcpin" id="bcpin" data-bcpingo type="button" hidden></button>
   <div class="bcms" id="bcms"></div>
   <button class="bcdown" id="bcdown" data-bcdown type="button" aria-label="آخر رسالة" title="آخر رسالة" hidden>${IC.down}</button>
   <div class="bcrq" id="bcrq" hidden></div>
@@ -354,6 +400,10 @@ function wire(el){
     // (v178) قائمة الرسالة (زر الحاسوب)، الضغط على مقتطف الرد، وإلغاء الرد/التعديل
     if(t.closest("[data-bcmenu]")){const b=t.closest("[data-bcmenu]"),el=b.closest(".bcg[data-mid]");if(el){const r=b.getBoundingClientRect();openMenu(el.dataset.mid,{x:r.left+r.width/2})}return}
     if(t.closest("[data-rpgo]"))return void goTo(t.closest("[data-rpgo]").dataset.rpgo);
+    if(t.closest("[data-bcsearch]"))return void searchOpen(!SRCH.on);
+    if(t.closest("[data-bcsx]"))return void searchOpen(false);
+    if(t.closest("[data-bcsnav]"))return void searchNav(+t.closest("[data-bcsnav]").dataset.bcsnav);
+    if(t.closest("[data-bcpingo]")){const id=g("bcpin").dataset.id;if(id)goTo(id);return}
     if(t.closest("[data-bcbarx]")){if(EDT)cancelEdit();else if(CUR){delete RPL[CUR];paintBar()}focusIn();return}
     if(t.closest("#bcpic")){const f=g("bcfile");if(f){f.value="";f.click()}return}
     if(t.closest("[data-img]"))return void viewImg(t.closest("[data-img]").dataset.img);
@@ -381,11 +431,12 @@ function wire(el){
     // الحاسوب: Enter يبعت و Shift+Enter سطر جديد. الجوال: Enter سطر جديد عادي
     if(e.target.id==="bcin"&&e.key==="Enter"&&!e.shiftKey&&!isMob()){e.preventDefault();sendText()}
     // (v178) Esc يلغي الرد/التعديل أولاً (قبل قفل النافذة)، والسهم ↑ في خانة فاضية = تعديل آخر رسالة لي
+    if(e.target.id==="bcsq"&&(e.key==="Enter"||e.key==="Escape")){e.preventDefault();e.stopPropagation();if(e.key==="Escape")searchOpen(false);else searchNav(e.shiftKey?1:-1);return}
     if(e.target.id==="bcin"&&e.key==="Escape"&&CUR&&(EDT||RPL[CUR])){e.preventDefault();e.stopPropagation();if(EDT)cancelEdit();else{delete RPL[CUR];paintBar()}}
     if(e.target.id==="bcin"&&e.key==="ArrowUp"&&!e.target.value&&!isMob()&&CUR){const m=[...MSGS].reverse().find(x=>mine(CUR,x.by)&&!x.x);if(m&&canEdit(m)){e.preventDefault();setEdit(m)}}
   });
   el.addEventListener("change",e=>{if(e.target.id==="bcfile"&&e.target.files&&e.target.files.length)sendFiles([...e.target.files])});
-  el.addEventListener("input",e=>{if(e.target.id==="bcin"){grow();if(CUR&&!EDT)DRAFT[CUR]=e.target.value}if(e.target.id==="bcqs"){Q=e.target.value.trim().toLowerCase();paintList()}});
+  el.addEventListener("input",e=>{if(e.target.id==="bcin"){grow();if(CUR&&!EDT){DRAFT[CUR]=e.target.value;typingSend(!!e.target.value.trim())}}if(e.target.id==="bcsq")searchInput(e.target.value);if(e.target.id==="bcqs"){Q=e.target.value.trim().toLowerCase();paintList()}});
 }
 // خانة الكتابة بتكبر مع النص، والزرار بيتبدّل: 🎤 لما فاضية، وسهم الإرسال لما فيها كلام
 // ⚡ (v178) كانت كل ضغطة حرف تعمل height=auto ثم تقيس = إعادة حساب شكل المحادثة كلها مع كل حرف (سبب التقل وقت الكتابة).
@@ -404,16 +455,18 @@ function paintHead(){
   if(!g("bct"))return;
   const av=g("bcav");if(av)av.innerHTML="";
   {const cb=g("bccall");if(cb)cb.hidden=!CUR||!window.__tzCall||isG(CUR)}
-  if(!CUR){g("bct").textContent="";g("bcsub").textContent="";return}
+  if(!CUR){g("bct").textContent="";g("bcsub").textContent="";paintPin();return}
   const p=peerOf(CUR),k=pk(p),n=pname(p,CUR);
   if(isG(CUR)){const G=SUMS[CUR]||{},ms=Array.isArray(G.ms)?G.ms:[];
     g("bct").innerHTML=`<bdi>${E(n)}</bdi>`;
-    g("bcsub").innerHTML=`👥 ${ms.length} عضو · اضغط لعرض الأعضاء`;
+    paintPin();const ty=typingTxt();g("bcsub").innerHTML=ty||`👥 ${ms.length} عضو · اضغط لعرض الأعضاء`;
     if(av)av.innerHTML=avHtml(CUR,n," sm");return}
   g("bct").innerHTML=`<bdi${p[0]==="b"?' dir="ltr"':""}>${E(n)}</bdi>`;
   const kind=p[0]==="d"?"سائق":p[0]==="b"?"فرع":"";
   // 🟢 متصل الآن / آخر ظهور (لو مفيش معلومة: "محادثة خاصة" زي الأول)
   const pr=presTxt(p),on=pr&&presOf(p).on;
+  const ty=typingTxt();paintPin();
+  if(ty){g("bcsub").innerHTML=ty;if(av)av.innerHTML=avHtml(p,n," sm");return}
   g("bcsub").innerHTML=`${k?E(k)+" · ":kind?E(kind)+" · ":""}${pr?`<span class="${on?"bcpr":""}">${on?"🟢 ":""}${E(pr)}</span>`:`${IC.lock} محادثة خاصة بينكما فقط`}`;
   if(av)av.innerHTML=avHtml(p,n," sm");
 }
@@ -425,7 +478,8 @@ function setCode(cid){
   stopRec(true);stopPlay();
   if(UNM){UNM();UNM=null}
   closeMenu();if(EDT){const i0=g("bcin");if(i0&&EDT.cid===CUR)DRAFT[CUR]=EDT.draft||"";EDT=null}
-  CUR=cid;GEN++;MSGS=[];LIM=PAGE;keepTop=null;SCR.end=true;SEENM=new Set();NEWB=0;
+  if(SRCH.on)searchOpen(false);typingSend(false);
+  CUR=cid;GEN++;MSGS=[];LIM=PAGE;keepTop=null;SCR.end=true;SEENM=new Set();NEWB=0;typingJoin(cid);
   if(cid&&PEND){CTX[cid]=PEND;PEND=null;paintPend()}
   const v=ROOT&&ROOT.querySelector(".bcv");if(v)v.classList.toggle("empty",!cid);
   if(!g("bcms"))return;
@@ -466,6 +520,10 @@ function patch(box,items,cache){
   while(cur){const n=cur.nextSibling;box.removeChild(cur);cur=n}
   if(cache.size>keep.size+200)for(const k of [...cache.keys()])if(!keep.has(k))cache.delete(k);
 }
+// 🔍 (v179) إبراز كلمة البحث: النص يُقسَّم على الكلمة (بلا فرق حروف كبيرة/صغيرة) وكل جزء يمر بـ E()، فلا HTML من النص أبداً
+const escH=s=>{s=String(s==null?"":s);const q=SRCH.on?SRCH.q:"";if(!q)return E(s);const L=s.toLowerCase(),ql=q.toLowerCase();let o="",i=0,j;
+  while((j=L.indexOf(ql,i))>=0){o+=E(s.slice(i,j))+"<mark>"+E(s.slice(j,j+q.length))+"</mark>";i=j+q.length}return o+E(s.slice(i))};
+const hitOf=m=>{const q=SRCH.q.toLowerCase();if(!q||!m||m.x)return false;return [m.t,m.fn].some(v=>typeof v==="string"&&v.toLowerCase().indexOf(q)>=0)};
 // مقتطف الرسالة (للرد وللملخّص)
 const snip=m=>!m?"":m.x?"رسالة محذوفة":m.v?"🎤 رسالة صوتية":m.f?"📄 "+String(m.fn||"ملف"):m.img?"📷 "+String(m.t||"صورة"):String(m.t||"");
 const canEdit=m=>!!m&&!m.x&&typeof m.t==="string"&&!m.img&&!m.v&&!m.f&&Date.now()-N(m.ts)<EDIT_MS-20000;
@@ -492,15 +550,15 @@ function paintMsgs(){
     // gone: السيرفر مسح الصوت بعد 30 يوم (علشان مساحة Firebase المجانية)
     const body=m.v&&m.gone?`<div class="bcgone">🎤 رسالة صوتية (${mmss(m.d)}) · حُذفت تلقائياً بعد 30 يوماً</div>`:m.v?`<div class="bcvo"><button data-play="${E(m.id)}" type="button" aria-label="تشغيل">${PLAY.id===m.id?"⏸":"▶"}</button><span class="bar"><b id="bcpb-${E(m.id)}"></b></span><span class="du">${mmss(m.d)}</span></div>`
       // صورة: المصغّرة جوه الرسالة، والأصلية بجودة عالية بتتحمّل لما يدوس عليها
-      :m.f?`<button class="bcfile" data-file="${E(m.id)}" type="button" aria-label="فتح الملف"><i>📄</i><span><b data-notr>${E(m.fn||"ملف.pdf")}</b><small data-notr>${E(m.fp?fileLabel(m.fn):"PDF")} · ${kbs(m.fs)}</small></span></button>`
-      :m.img?`<button class="bcimg" data-img="${E(m.id)}" type="button" aria-label="فتح الصورة" style="aspect-ratio:${N(m.w)||4}/${N(m.h)||3}">${/^data:image\/jpeg;base64,/.test(m.th||"")?`<img src="${m.th}" alt="">`:"📷"}</button>${m.t?`<span class="bcx" data-notr>${E(m.t)}</span>`:""}`
-      :QALL.has(m.t)?`<span class="bcx">${E(m.t)}</span>`:`<span class="bcx" data-notr>${E(m.t||"")}</span>`;
+      :m.f?`<button class="bcfile" data-file="${E(m.id)}" type="button" aria-label="فتح الملف"><i>📄</i><span><b data-notr>${escH(m.fn||"ملف.pdf")}</b><small data-notr>${E(m.fp?fileLabel(m.fn):"PDF")} · ${kbs(m.fs)}</small></span></button>`
+      :m.img?`<button class="bcimg" data-img="${E(m.id)}" type="button" aria-label="فتح الصورة" style="aspect-ratio:${N(m.w)||4}/${N(m.h)||3}">${/^data:image\/jpeg;base64,/.test(m.th||"")?`<img src="${m.th}" alt="">`:"📷"}</button>${m.t?`<span class="bcx" data-notr>${escH(m.t)}</span>`:""}`
+      :QALL.has(m.t)?`<span class="bcx">${escH(m.t)}</span>`:`<span class="bcx" data-notr>${escH(m.t||"")}</span>`;
     const rq=m.rq&&m.rq.no?`<span class="rqt">📦 بخصوص طلب <bdi dir="ltr">${E(m.rq.no)}</bdi></span>`:"";
     // اسم اللي كتب (للطرف التاني بس، وأول المجموعة) + الوقت + علامة القراءة لرسايلي (والوقت بالظبط لما تقف عليها)
     const who=!me&&!cont?`<i>${whoHtml(byParty(CUR,m.by),m)}</i>`:"";
     const rn=grp&&me?readN(m):0,allRd=grp?rn>=gms.length-1&&gms.length>1:!!m.rd;
     const rdT=me?(grp?`قرأها ${rn} من ${Math.max(0,gms.length-1)}`:m.rd?`قُرئت ${rdAt(m.rd,m.ts)}`:"لم تُقرأ بعد"):"";
-    I.push({k:"m:"+m.id,h:`<div class="bcg ${me?"me":"ot"}${cont?" cont":""}${m.img?" pic":""}" data-mid="${E(m.id)}">${who}${rq}${rpq}${body}<small${rdT?` title="${E(rdT)}"`:""}>${m.ed?`<span class="bced">معدّلة</span>`:""}${hm(m.ts)}${me?tick(allRd):""}</small><span class="bcsw">${IM.reply}</span><button class="bcmb" data-bcmenu type="button" aria-label="خيارات الرسالة" tabindex="-1">${IM.more}</button></div>`});
+    I.push({k:"m:"+m.id,h:`<div class="bcg ${me?"me":"ot"}${cont?" cont":""}${m.img?" pic":""}" data-mid="${E(m.id)}">${who}${m.fw?`<span class="bcfwd">${IM.fwd}محوَّلة</span>`:""}${rq}${rpq}${body}<small${rdT?` title="${E(rdT)}"`:""}>${m.ed?`<span class="bced">معدّلة</span>`:""}${hm(m.ts)}${me?tick(allRd):""}</small><span class="bcsw">${IM.reply}</span><button class="bcmb" data-bcmenu type="button" aria-label="خيارات الرسالة" tabindex="-1">${IM.more}</button></div>`});
     // تحت آخر رسالة ليا: "قُرئت الساعة كام" (زي "Seen" في تطبيقات التواصل)، وفي الجروب "قرأها كام من كام"
     if(m===lastMe&&m===MSGS[MSGS.length-1])I.push({k:"seen",h:`<div class="bcseen">${grp?`${tick(allRd)} 👁 قرأها ${rn} من ${Math.max(0,gms.length-1)}`:m.rd?`${tick(1)} قُرئت ${rdAt(m.rd,m.ts)}`:`${tick(0)} لم تُقرأ بعد`}</div>`})});
   if(firstPaint){SEENM=new Set(MSGS.map(m=>m.id));MC.clear();box.textContent=""}
@@ -510,8 +568,75 @@ function paintMsgs(){
   if(keepTop){box.scrollTop=box.scrollHeight-keepTop.h+keepTop.t;keepTop=null}
   else if(atEnd||firstPaint)box.scrollTop=box.scrollHeight;
   else if(added){const last=MSGS[MSGS.length-1];if(last&&!mine(CUR,last.by))NEWB+=added}
+  if(SRCH.on)searchMark(false);
   paintDown();
 }
+function searchMark(jump){
+  const box=g("bcms"),n=g("bcsn");if(!box)return;const prevId=SRCH.hits[SRCH.i];
+  SRCH.hits=SRCH.q?MSGS.filter(hitOf).map(m=>m.id):[];
+  let i=prevId?SRCH.hits.indexOf(prevId):-1;if(i<0||jump)i=SRCH.hits.length-1;SRCH.i=i;
+  box.querySelectorAll(".bcfcur").forEach(e=>e.classList.remove("bcfcur"));
+  const id=SRCH.hits[i],el=id&&box.querySelector(`[data-mid="${CSS.escape(id)}"]`);
+  if(el){el.classList.add("bcfcur");if(jump)el.scrollIntoView({block:"center",behavior:"auto"})}
+  if(n)n.textContent=!SRCH.q?"":SRCH.hits.length?`${i+1} / ${SRCH.hits.length}`:"لا نتائج";
+  const b=g("bcsb");if(b)b.querySelectorAll("[data-bcsnav]").forEach(x=>x.disabled=SRCH.hits.length<2);
+  const mb=box.querySelector("[data-bcmore]");if(mb)mb.textContent=SRCH.q?"⬆ ابحث في الرسائل الأقدم":"⬆ رسائل أقدم";
+}
+function searchNav(d){if(!SRCH.hits.length)return;SRCH.i=(SRCH.i+d+SRCH.hits.length)%SRCH.hits.length;const box=g("bcms");box.querySelectorAll(".bcfcur").forEach(e=>e.classList.remove("bcfcur"));
+  const el=box.querySelector(`[data-mid="${CSS.escape(SRCH.hits[SRCH.i])}"]`);if(el){el.classList.add("bcfcur");el.scrollIntoView({block:"center",behavior:"smooth"})}const n=g("bcsn");if(n)n.textContent=`${SRCH.i+1} / ${SRCH.hits.length}`}
+function searchOpen(on){const b=g("bcsb");if(!b)return;SRCH={on:!!on,q:"",hits:[],i:-1};b.hidden=!on;const q=g("bcsq");if(q)q.value="";const n=g("bcsn");if(n)n.textContent="";
+  if(CUR)paintMsgs();if(on&&q)setTimeout(()=>q.focus(),30)}
+let STM=0;function searchInput(v){clearTimeout(STM);STM=setTimeout(()=>{SRCH.q=String(v||"").trim().slice(0,60);paintMsgs();searchMark(true)},140)}
+// ---------- 📌 (v179) التثبيت ----------
+const sumRef=cid=>isG(cid)?doc(X.db,"grp",gidOf(cid)):doc(X.db,"dm",cid);
+function paintPin(){const b=g("bcpin");if(!b)return;const s=CUR&&SUMS[CUR],p=s&&s.pin&&typeof s.pin==="object"?s.pin:null;
+  if(!p){if(!b.hidden){b.hidden=true;b.innerHTML="";b.dataset.h=""}return}
+  const h=`${IM.pin}<span><b>رسالة مثبّتة${p.pb?` · <bdi data-notr>${E(p.pb)}</bdi>`:""}</b><i data-notr>${E(p.t)}</i></span>`;if(b.dataset.h!==h){b.innerHTML=h;b.dataset.h=h;b.dataset.id=String(p.id||"")}b.hidden=false}
+async function pinMsg(m,on){if(!CUR)return;const cid=CUR;
+  try{await withTimeout(updateDoc(sumRef(cid),on?{pin:{id:String(m.id).slice(0,40),t:snip(m).slice(0,200),n:String(mine(cid,m.by)?(X.name()||""):whoName(byParty(cid,m.by),m)).slice(0,60),pb:String(X.myLabel?X.myLabel():X.name()||"").slice(0,60),at:Date.now()}}:{pin:deleteField()}),15000);X.toast(on?"📌 ثُبّتت الرسالة":"أُلغي التثبيت")}
+  catch(x){const w=await failReason(x);X.toast(w==="denied"?"تعذّر التثبيت. ربما لم تتحدّث القواعد بعد":FAIL_MSG[w]||"تعذّر التثبيت",true)}}
+// ---------- ✍️ (v179) يكتب الآن… (قناة Realtime خاصة لطرفي المحادثة، بلا أي كتابة في القاعدة) ----------
+function typingJoin(cid){
+  if(TCH){const c0=X&&X.app&&X.app.sb;try{if(c0)c0.removeChannel(TCH);else TCH.unsubscribe()}catch(e){}TCH=null}TCID=null;TYP={};TYLAST=0;clearTimeout(TYT);
+  const c=X&&X.app&&X.app.sb;if(!c||!cid)return;
+  try{TCID=cid;TCH=c.channel("tz-t:"+cid,{config:{private:true,broadcast:{self:false}}});
+    TCH.on("broadcast",{event:"ty"},m=>typingGot(cid,m&&m.payload)).subscribe(()=>{})}catch(e){TCH=null}
+}
+function typingGot(cid,pl){if(!X||!pl||cid!==CUR||typeof pl.p!=="string"||pl.p===X.me)return;
+  if(pl.s)TYP[pl.p]={n:String(pl.n||"").slice(0,40),u:Date.now()+6000};else delete TYP[pl.p];paintHead();
+  clearTimeout(TYT);TYT=setTimeout(()=>{const now=Date.now();Object.keys(TYP).forEach(k=>{if(TYP[k].u<now)delete TYP[k]});paintHead()},6200)}
+function typingSend(on){if(!TCH||TCID!==CUR)return;const now=Date.now();if(on&&now-TYLAST<2500)return;if(!on&&!TYLAST)return;TYLAST=on?now:0;
+  try{TCH.send({type:"broadcast",event:"ty",payload:{p:X.me,n:String(X.name()||"").slice(0,40),s:on?1:0}})}catch(e){}}
+const typingTxt=()=>{const L=Object.entries(TYP).filter(e=>e[1].u>Date.now());if(!L.length)return "";
+  const dots="<i><b></b><b></b><b></b></i>";return isG(CUR)?`<span class="bcty"><bdi data-notr>${E(L[0][1].n.split(" ")[0]||"عضو")}</bdi>${L.length>1?" وآخرون":""} يكتب ${dots}</span>`:`<span class="bcty">يكتب الآن ${dots}</span>`};
+// ---------- ↪️ (v179) تحويل رسالة لمحادثة أخرى ----------
+let FWM=null;
+const kindLbl=p=>p[0]==="g"?"جروب":p[0]==="b"?"فرع":p[0]==="d"?"سائق":"";
+function fwdOpen(m){FWM=m;let v=g("bcfw");if(v)v.remove();v=document.createElement("div");v.id="bcfw";v.setAttribute("role","dialog");v.setAttribute("aria-modal","true");
+  v.innerHTML=`<div class="fwp"><div class="fwh"><b>تحويل الرسالة إلى…</b><button data-fwx type="button" aria-label="إغلاق">${IM.x}</button></div><div class="fwm" data-notr>${E(snip(m))}</div><input class="fwq" type="search" placeholder="ابحث عن اسم أو فرع" autocomplete="off"><div class="fwl"></div></div>`;
+  document.body.appendChild(v);const L=v.querySelector(".fwl"),q=v.querySelector(".fwq");
+  const lastTs=p=>{const s=SUMS[cidFor(p)];return N(s&&s.last&&s.last.ts)};
+  const rows=()=>{const s=q.value.trim().toLowerCase();const P=people().concat(Object.keys(SUMS).filter(isG)).filter((p,i,a)=>a.indexOf(p)===i&&p!==X.me&&cidFor(p)!==CUR);
+    const R=P.map(p=>({p,n:pname(p,cidFor(p))})).filter(x=>!s||x.n.toLowerCase().includes(s)||x.p.toLowerCase().includes(s))
+      .sort((a,b)=>lastTs(b.p)-lastTs(a.p)||a.n.localeCompare(b.n)).slice(0,60);
+    L.innerHTML=R.length?R.map(x=>`<button type="button" data-fwto="${E(x.p)}">${avHtml(x.p,x.n," sm")}<span><bdi${x.p[0]==="b"?" dir=\"ltr\"":""} data-notr>${E(x.n)}</bdi></span><small>${kindLbl(x.p)}</small></button>`).join(""):`<div class="fwe">لا توجد نتائج</div>`};
+  rows();q.addEventListener("input",rows);setTimeout(()=>{if(!isMob())q.focus()},40);
+  v.addEventListener("click",async e=>{if(e.target===v||e.target.closest("[data-fwx]")){v.remove();FWM=null;return}
+    const b=e.target.closest("[data-fwto]");if(!b||b.disabled)return;
+    if(!b.classList.contains("go")){L.querySelectorAll(".go").forEach(x=>{x.classList.remove("go");const sm=x.querySelector("small");if(sm)sm.textContent=kindLbl(x.dataset.fwto)});b.classList.add("go");const sm=b.querySelector("small");if(sm)sm.textContent="اضغط مرة أخرى للإرسال";return}
+    b.disabled=true;const p=b.dataset.fwto;v.remove();const m0=FWM;FWM=null;await fwdTo(m0,p)});
+  v.addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();v.remove();FWM=null}})}
+async function fwdTo(m,p){if(!m||!p)return;const src=CUR,cid=cidFor(p),nm=pname(p,cid),ok=()=>X.toast("↪️ حُوّلت إلى "+nm);
+  for(let w=0;busy&&w<300;w++)await new Promise(r=>setTimeout(r,200));
+  try{
+    if(m.img){X.toast("⏳ جاري التحويل…");const s=await withTimeout(getDoc(subDoc(src,"img",m.id)),30000),full=s.exists()?String(s.data().i||""):"";
+      const mm={img:1,w:N(m.w)||4,h:N(m.h)||3,th:String(m.th||""),fw:1};if(m.t)mm.t=String(m.t);return void deliver(cid,mm,null,ok,/^data:image\/jpeg;base64,/.test(full)?full:null)}
+    if(m.v){if(m.gone)return void X.toast("انتهت مدة حفظ هذه الرسالة الصوتية، فلا يمكن تحويلها",true);X.toast("⏳ جاري التحويل…");const s=await withTimeout(getDoc(subDoc(src,"aud",m.id)),30000),a=s.exists()?String(s.data().a||""):"";if(!a)throw new Error("gone");return void deliver(cid,{v:true,d:N(m.d)||1,fw:1},a,ok)}
+    if(m.f&&N(m.fp)){X.toast("⏳ جاري تحويل الملف…");const fv=await withTimeout(getParts(j=>subDoc(src,"fil",m.id+"_"+j),m.fp,m.fs),150000),mid=doc(sub(cid,"msgs")).id;
+      const pn=await withTimeout(putParts(j=>subDoc(cid,"fil",mid+"_"+j),fv.b64,1),150000);return void deliver(cid,{f:1,fn:m.fn,fs:m.fs,fp:pn,fw:1},null,ok,null,mid)}
+    if(m.f){X.toast("⏳ جاري تحويل الملف…");const s=await withTimeout(getDoc(subDoc(src,"fil",m.id)),30000),pp=s.exists()?String(s.data().p||""):"";if(!pp)throw new Error("gone");return void deliver(cid,{f:1,fn:m.fn,fs:m.fs,fw:1},null,ok,pp)}
+    if(typeof m.t==="string"&&m.t)return void deliver(cid,{t:m.t.slice(0,LEN),fw:1},null,ok);
+  }catch(x){const w=await failReason(x);X.toast(w==="denied"?"تعذّر التحويل. ربما لم تتحدّث القواعد بعد":x&&x.message==="gone"?"المحتوى الأصلي لم يعد موجوداً":FAIL_MSG[w]||"تعذّر التحويل",true)}}
 // ---------- 💬 (v178) قائمة الرسالة: رد · نسخ · تعديل · حذف ----------
 let MENU=null;
 function closeMenu(){const v=g("bcamv"),m=g("bcam");if(v)v.remove();if(m)m.remove();if(MENU&&MENU.el)MENU.el.classList.remove("sel");MENU=null}
@@ -522,6 +647,8 @@ function openMenu(id,at){
   const it=[];
   if(!m.x)it.push(`<button type="button" data-am="reply">${IM.reply}<span>ردّ</span></button>`);
   if(!m.x&&(m.t||m.f))it.push(`<button type="button" data-am="copy">${IM.copy}<span>${m.f?"نسخ اسم الملف":"نسخ النص"}</span></button>`);
+  if(!m.x&&!(m.v&&m.gone))it.push(`<button type="button" data-am="fwd">${IM.fwd}<span>تحويل لمحادثة أخرى</span></button>`);
+  if(!m.x){const pd=SUMS[CUR]&&SUMS[CUR].pin&&SUMS[CUR].pin.id===m.id;it.push(`<button type="button" data-am="${pd?"unpin":"pin"}">${pd?IM.unpin:IM.pin}<span>${pd?"إلغاء التثبيت":"تثبيت الرسالة"}</span></button>`)}
   if(me&&canEdit(m))it.push(`<button type="button" data-am="edit">${IM.edit}<span>تعديل</span><small>${Math.max(1,Math.ceil((EDIT_MS-(Date.now()-N(m.ts)))/6e4))} د</small></button>`);
   if(me&&!m.x&&!rd)it.push(`<hr><button type="button" class="rd" data-am="del">${IM.del}<span>حذف</span></button>`);
   if(me&&!m.x)it.push(`<span class="inf">${rd?(grp?"قرأها بعض الأعضاء، فلا يمكن حذفها.":"قرأها الطرف الآخر، فلا يمكن حذفها."):(grp?"يمكنك حذفها حتى يقرأها أحد الأعضاء.":"يمكنك حذفها حتى يقرأها الطرف الآخر.")}${canEdit(m)?"":m.t&&!m.img&&!m.v&&!m.f?" انتهت مهلة التعديل (15 دقيقة).":""}</span>`);
@@ -538,7 +665,7 @@ function openMenu(id,at){
   if(navigator.vibrate&&at&&at.touch)try{navigator.vibrate(8)}catch(e){}
   p.addEventListener("click",e=>{const b=e.target.closest("[data-am]");if(!b)return;const a=b.dataset.am;
     if(a==="del"&&!b.classList.contains("cf")){b.classList.add("cf");b.querySelector("span").textContent="تأكيد الحذف";return}
-    closeMenu();if(a==="reply")setReply(m);else if(a==="copy")copyMsg(m);else if(a==="edit")setEdit(m);else if(a==="del")delMsg(m)});
+    closeMenu();if(a==="reply")setReply(m);else if(a==="fwd")fwdOpen(m);else if(a==="pin")pinMsg(m,true);else if(a==="unpin")pinMsg(m,false);else if(a==="copy")copyMsg(m);else if(a==="edit")setEdit(m);else if(a==="del")delMsg(m)});
   const f=p.querySelector("button");if(f&&!(at&&at.touch))f.focus({preventScroll:true});
   p.addEventListener("keydown",e=>{const bs=[...p.querySelectorAll("button")],i=bs.indexOf(document.activeElement);
     if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();const j=(i+(e.key==="ArrowDown"?1:-1)+bs.length)%bs.length;bs[j].focus()}
@@ -623,9 +750,9 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)markRead()
 function write(cid,m,a,full,mid){
   // mid = رقم رسالة محجوز مسبقاً (ملف مقسوم: أجزاؤه fil/{mid}_{k} رُفعت قبل الرسالة)
   const ts=Date.now(),n=String(X.name()||"").trim().slice(0,60),b=writeBatch(X.db),ref=mid?subDoc(cid,"msgs",mid):doc(sub(cid,"msgs"));
-  const old=isOld(cid),by=old?oldBy():X.me,rq=CTX[cid],msg={by,n,ts,...m,...(rq?{rq:{id:String(rq.id).slice(0,40),no:String(rq.no).slice(0,40)}}:{})};
+  const old=isOld(cid),by=old?oldBy():X.me,rq=m.fw?null:CTX[cid],msg={by,n,ts,...m,...(rq?{rq:{id:String(rq.id).slice(0,40),no:String(rq.no).slice(0,40)}}:{})};
   // ↩️ (v178) الرد على رسالة: يُرسل مع أول رسالة بعده (نص أو صورة أو صوت أو ملف) ثم يختفي
-  const rp=RPL[cid];if(rp){msg.rp={id:rp.id,t:rp.t,...(rp.n?{n:rp.n}:{})};delete RPL[cid];if(CUR===cid)paintBar()}
+  const rp=m.fw?null:RPL[cid];if(rp){msg.rp={id:rp.id,t:rp.t,...(rp.n?{n:rp.n}:{})};delete RPL[cid];if(CUR===cid)paintBar()}
   if(a)b.set(subDoc(cid,"aud",ref.id),{a});
   if(full)b.set(subDoc(cid,m.f?"fil":"img",ref.id),m.f?{p:full}:{i:full});// الصورة بجودتها الكاملة لوحدها (بتتحمّل بس لما حد يفتحها)
   b.set(ref,msg);
@@ -664,6 +791,7 @@ async function deliver(cid,m,a,onOk,full,mid){
 }
 function sendText(){
   if(EDT&&EDT.cid===CUR)return void saveEdit();
+  typingSend(false);
   const i=g("bcin");if(!i||!CUR||busy)return;
   const t=i.value.trim().slice(0,LEN),cid=CUR;if(!t)return;
   deliver(cid,{t},null,()=>{DRAFT[cid]="";if(CUR===cid){i.value="";grow()}});
@@ -961,6 +1089,7 @@ export function initBChat(ctx){
   if(!/^[bdw]-./.test(party))return;
   X={...ctx,me:party,by:party[0]==="b"?"br":party[0]==="w"?"wh":"d",canBr:party[0]==="w"?ctx.canBr!==false:false,brn:ctx.brn||(c=>c)};
   first=true;SUMS={};SO={};SN={};SG={};DIR={};DDIR={};FILT="";
+  if(window.__mock)window.__bcTyping=(p,n,s)=>typingGot(CUR,{p,n,s});// نسخة التجربة فقط (لا Realtime فيها)
   if(!g("bc-css")){const s=document.createElement("style");s.id="bc-css";s.textContent=STYLE;document.head.appendChild(s)}
   if(!window.__bcrq){window.__bcrq=1;document.addEventListener("click",e=>{const b=e.target.closest("[data-bcrq]");if(!b||!X)return;
     const rq={id:b.dataset.bcrq,no:b.dataset.no};if(T()==="w"){if(X.show)X.show();openWh(b.dataset.br,rq)}else openBr(null,rq)})}
@@ -1004,6 +1133,7 @@ export function stopBChat(){
   if(!X)return;stopRec(true);stopPlay();stopPres();clearInterval(PRT);[UNM,UNS,UNS2,UND,UNA,UNDD,UNG].forEach(f=>f&&f());UNM=UNS=UNS2=UND=UNA=UNDD=UNG=null;
   CUR=null;GEN++;MSGS=[];SUMS={};SO={};SN={};SG={};DIR={};DDIR={};AVA={};DRAFT={};CTX={};PEND=null;AUD.clear();
   closeMenu();MC.clear();LC.clear();SEENM=new Set();EDT=null;Object.keys(RPL).forEach(k=>delete RPL[k]);
+  typingJoin(null);SRCH={on:false,q:"",hits:[],i:-1};{const v=g("bcfw");if(v)v.remove()}
   const m=g("bcm");if(m)m.remove();["bcfab","bcme"].forEach(id=>{const e=g(id);if(e)e.remove()});
   if(ROOT){ROOT.remove();ROOT=null}
   X=null;

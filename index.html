@@ -333,6 +333,15 @@ let st=lib.sheets.find(x=>x.id===lib.cur)||lib.sheets[lib.sheets.length-1];
 if(!st){let old=null;try{old=JSON.parse(localStorage.getItem("form"))}catch(e){}st=mk(old);if(old&&old.rows)Object.assign(st,{dt:old.dt||st.dt,dr:old.dr||"",rows:old.rows})}
 lib.cur=st.id;
 const save=()=>{st.ts=Date.now();lib.cur=st.id;try{localStorage.setItem("lib",JSON.stringify(lib))}catch(e){}hist()};
+// ✨ (v179) «الطلب المقترح» (brstock.js) يضيف أصنافاً للورقة: السطر الموجود بنفس الكود واللون والمقاس بلا كمية تُكتب كميته، وبكمية يُترك كما هو،
+// والجديد يملأ أول سطر فاضي ثم يُضاف آخر الورقة. يرجّع {a: أُضيف، u: حُدّثت كميته، s: موجود بكميته}
+window.__sheetAdd=list=>{let a=0,u=0,s=0;const L=x=>String(x||"").trim().toLowerCase();
+ (Array.isArray(list)?list:[]).forEach(x=>{const k=String(x&&x.k||"").trim().slice(0,40),q=Math.max(1,Math.min(9999,Math.round(+x.q||0)));if(!k)return;
+  const r=st.rows.find(r=>String(r.k||"").trim()===k&&L(r.c)===L(x.c)&&L(r.z)===L(x.z));
+  if(r){if(+r.q>0)s++;else{r.q=String(q);u++}return}
+  const row={k,c:String(x.c||"").slice(0,40),z:String(x.z||"").slice(0,20),q:String(q),n:""},e=st.rows.findIndex(r=>!String(r.k||"").trim()&&!String(r.c||"").trim()&&!String(r.z||"").trim()&&!String(r.q||"").trim());
+  if(e>=0)st.rows[e]=row;else st.rows.push(row);a++});
+ if(a||u){save();draw()}return {a,u,s}};
 function route(){
  const tr=st.ty==="tr",fr=tr?(st.fr||BR[0]):"المستودع الرئيسي";
  $(".hd h1").textContent=tr?"ورقة تحويل بين الفروع":"ورقة تحميل النواقص";
@@ -507,9 +516,11 @@ import {initAnn,stopAnn} from "./ann.js";
 import {notify,beep,badge,autoPush,wireButtons} from "./notify.js";
 import {initSettings,stopSettings} from "./tzset.js";
 import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.js";
+import {initNotes,stopNotes} from "./notes.js";// 🔔 (v179) سجل الإشعارات
 import {initTrack,stopTrack,trackBtn} from "./track.js";
 import {initSheet,stopSheet,refreshSheet} from "./brsheet.js";
 import {catLoad,catSheet} from "./cat.js";
+import {initBrStock,stopBrStock} from "./brstock.js";// 📦 (v179) المتوفر في المستودع + الطلب المقترح
 import {initCall,stopCall,earlyCall} from "./call.js";
 const {app,db,auth}=makeFb("branch");
 earlyCall({db,auth,toast:(m,t)=>{try{toast(m,t)}catch(e){}}});// 📞 الصفحة اتفتحت على مكالمة: نبدأ المكالمات قبل باقي التحميل
@@ -626,6 +637,7 @@ function enter(b){
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
  // 📦 كتالوج الأصناف: اقتراحات الكود ← ألوانه ← مقاساته في ورقة النواقص (لو مفيش كتالوج مرفوع الورقة زي ما هي)
  catLoad(db).then(c=>{if(c)catSheet()}).catch(()=>{});
+ initBrStock({db,code:code(b),toast}).catch(()=>{});// 📦 (v179) «متوفر/قليل/غير متوفر» في الورقة و«✨ الطلب المقترح»
   // 📄 ورقة الطلب (15 نوفمبر 2026): الضغط على كارت الطلب بيفتحه في شكل ورقة، ومعاه صور التسليم/إيصال الشحن
   initSheet({db,toast,get:id=>REQS[id],lbl,isShip,ship:()=>SHIP,brn:()=>B});
  // 🎁 الهدايا والعينات: زرار فوق جنب "تغيير الفرع"، والفرع يسجّل الهدية بالسند والمستودع بيعتمدها
@@ -641,6 +653,7 @@ function enter(b){
  initCall({db,auth,party:"b-"+code(b),name:()=>"فرع "+b,toast});initPwSelf({auth,toast,label:"فرع "+b});
  // ⚙ الإعدادات (v172): كلمة المرور، المظهر، اللغة، الإشعارات، التثبيت، الشروط، والخروج في نافذة واحدة
  initSettings({kind:"branch",who:()=>b,tag:()=>code(b),sub:"أنت مسجّل الدخول في فرع",pw:true,bell:true,wire:wireButtons,logout:()=>signOut(auth),outLabel:"تسجيل الخروج",outHint:"للدخول بفرع آخر من هذا الجهاز",toast});
+ initNotes({acct:"b-"+code(b),anchor:()=>document.getElementById("mx")});// 🔔 (v179) جرس سجل الإشعارات جنب الإعدادات
  initBChat({db,app,party:"b-"+code(b),codes:BR,name:()=>String(st&&st.dr||"").trim(),myLabel:()=>b,brn:c=>BR.find(x=>code(x)===c)||(c===code(b)?b:c),toast,beep,notify,ping:c=>ping(auth,[],[c]),
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))},onBadge:setBadge});
  // فتح من الإشعار: index.html?chat=إيميل الشخص (بيفتح محادثته على طول بعد ما الأسماء تتحمّل)
@@ -661,7 +674,7 @@ function deepReq(id){
 // كارت التحديث (ui.js) زرار "اعرض طلباتي": ننزل لقايمة الطلبات ونفتح آخر طلب كورقة (لو فيه طلبات)
 window.addEventListener("tz-news-go",()=>{const my=g("my");if(my)my.scrollIntoView({behavior:"smooth",block:"start"});const c=document.querySelector("#ml .mr[data-id]"),b=c&&c.querySelector("[data-osh]");if(b)setTimeout(()=>b.click(),500)});
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
-function gateOn(){B=null;stopSettings();stopPwSelf();stopCall();stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBrStock();stopNotes();stopSettings();stopPwSelf();stopCall();stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");
  if(!p){showErr("اكتب كلمة المرور");return}
