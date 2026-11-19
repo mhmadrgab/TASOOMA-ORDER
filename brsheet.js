@@ -41,6 +41,9 @@ const OSH_CSS=`
 #osh .os-tl .os-s i{position:absolute;top:0;inset-inline-start:calc(50% - 8px);width:16px;height:16px;border-radius:50%;background:#e7dfe6;border:3px solid #fffdf8;box-sizing:border-box;z-index:1}
 #osh .os-tl .os-s.ok{color:#231a25}#osh .os-tl .os-s.ok i{background:#6f7d45}#osh .os-tl .os-s.ok:before{background:#6f7d45}
 #osh .os-tl .os-s.cur i{background:#8a5a83;box-shadow:0 0 0 4px rgba(138,90,131,.2)}
+#osh .os-tl.os-up .os-s.cur i{animation:os-pulse .9s var(--ease-smooth-out,ease-out)}
+@keyframes os-pulse{0%{box-shadow:0 0 0 0 rgba(138,90,131,.55)}100%{box-shadow:0 0 0 12px rgba(138,90,131,0)}}
+@media (prefers-reduced-motion:reduce){#osh .os-tl.os-up .os-s.cur i{animation:none}}
 #osh .os-tl .os-s b{display:block;font-size:12.5px}#osh .os-tl .os-s small{display:block;font-size:11px;direction:ltr}
 @media (max-width:560px){
  #osh .os-tl{flex-direction:column;overflow:visible;margin-bottom:12px}
@@ -102,8 +105,21 @@ function steps(r,ship){
  let last=-1;S.forEach((s,i)=>{if(s[1])last=i});
  return `<div class="os-tl">${S.map((s,i)=>`<div class="os-s ${s[1]?"ok":""} ${i===last+1&&r.st!=="recv"?"cur":""}"><i></i><b>${s[0]}</b>${s[1]>1?`<small>${E(dt(s[1]))}</small>`:""}</div>`).join("")}</div>`;
 }
-export function openSheet(id){
- if(!X)return;const r=X.get(id);if(!r)return;css();CUR=id;
+// ⚡ (v176، 19 نوفمبر 2026، محمد: "مراحل تجهيز الطلب عند الفروع مش بتتحدث لايف") الورقة المفتوحة تتحدّث لوحدها
+// مع أي تغيير في الطلب (index.html بينادي refreshSheet بعد كل بيانات جديدة). نرسم من جديد بس لو الطلب اتغيّر فعلاً،
+// ونحافظ على مكان التمرير، ومابنرسمش وقت الطباعة. لو الطلب خرج من القائمة بتفضل آخر نسخة ظاهرة.
+let SIG="";
+export function refreshSheet(){
+ if(!X||!CUR)return;const m=g("osh");if(!m||m.className!=="on"||document.body.classList.contains("osh-pr"))return;
+ const r=X.get(CUR);if(!r)return;let s="";try{s=JSON.stringify(r)+"|"+(X.ship?X.ship():"")}catch(e){return}
+ if(s===SIG)return;
+ const top=m.scrollTop,f=document.activeElement&&m.contains(document.activeElement)?document.activeElement.getAttribute("data-osh-a"):null;
+ openSheet(CUR,true);m.scrollTop=top;
+ if(f){const b=m.querySelector(`[data-osh-a="${f}"]`);if(b)try{b.focus({preventScroll:true})}catch(e){}}
+ const st=m.querySelector(".os-tl");if(st&&!document.documentElement.classList.contains("lite")){st.classList.add("os-up");setTimeout(()=>st.classList.remove("os-up"),900)}
+}
+export function openSheet(id,live){
+ if(!X)return;const r=X.get(id);if(!r)return;css();CUR=id;try{SIG=JSON.stringify(r)+"|"+(X.ship?X.ship():"")}catch(e){SIG=""}
  const ship=!!(X.isShip&&X.isShip(r)),pod=r.pod&&typeof r.pod==="object"?r.pod:null,v=r.rcv&&typeof r.rcv==="object"?r.rcv:null;
  const hasPics=pod&&(pod.ph||isImg(pod.img)),hasSig=pod&&(pod.sg||isImg(pod.sig));
  const dv=pod||r.asg?`<h4>${ship?"📦 التسليم لشركة الشحن":"🚚 التسليم"}</h4><div class="os-dv">
@@ -126,9 +142,10 @@ export function openSheet(id){
  ${r.gn?`<h4>🗒 ملاحظات</h4><div class="os-nt" data-notr>${E(r.gn)}</div>`:""}
  ${dv}${rc}
  <div class="os-ft"><button type="button" data-osh-a="print">🖨 طباعة</button>${r.st==="done"?`<button type="button" class="p" data-osh-a="rcv">✅ استلمت الطلب</button>`:""}<button type="button" data-osh-a="close">إغلاق</button></div></div>`;
+ if(live)return;
  m.className="on";m.scrollTop=0;document.documentElement.style.overflow="hidden";
 }
-export function closeSheet(){const m=g("osh");if(m){m.className="";m.innerHTML=""}document.documentElement.style.overflow="";document.body.classList.remove("osh-pr");CUR=null}
+export function closeSheet(){const m=g("osh");if(m){m.className="";m.innerHTML=""}document.documentElement.style.overflow="";document.body.classList.remove("osh-pr");CUR=null;SIG=""}
 // صور التسليم/إيصال الشحن والتوقيع: قراءة وقت الضغط بس (pods/{رقم الطلب} + x/N)
 async function pics(which,btn){
  if(!X||!CUR)return;const r=X.get(CUR);if(!r)return;const t0=btn.textContent;btn.disabled=true;btn.textContent="⏳ جاري التحميل...";

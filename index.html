@@ -508,7 +508,7 @@ import {notify,beep,badge,autoPush,wireButtons} from "./notify.js";
 import {initSettings,stopSettings} from "./tzset.js";
 import {initBChat,stopBChat,openBr,unreadTotal as bcUnread,rqBtn} from "./bchat.js";
 import {initTrack,stopTrack,trackBtn} from "./track.js";
-import {initSheet,stopSheet} from "./brsheet.js";
+import {initSheet,stopSheet,refreshSheet} from "./brsheet.js";
 import {catLoad,catSheet} from "./cat.js";
 import {initCall,stopCall,earlyCall} from "./call.js";
 const {app,db,auth}=makeFb("branch");
@@ -611,6 +611,7 @@ function listen(){
   setBadge();
   prev={};rs.forEach(r=>prev[r.id]={st:r.st,eat:+r.eat||0,near:+r.near||0});
   paint();
+  refreshSheet();// ⚡ (v176) ورقة الطلب المفتوحة تتحدّث لايف (المراحل، الأصناف، التسليم)
  }
  // بنرسم القائمة لوحدها أيضاً لما المحادثة تتقفل (علشان رقم الرسائل الجديدة يتحدّث)
  paint=()=>{const rs=Object.values(REQS).sort((a,b)=>b.ts-a.ts);

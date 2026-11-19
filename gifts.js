@@ -237,7 +237,7 @@ export function initGifts(ctx){
  if(!g("gf-css")){const s=document.createElement("style");s.id="gf-css";s.textContent=CSS;document.head.appendChild(s);ensurePrintCss()}
  if(ctx.mode==="branch"){initZoom({db:ctx.db,toast:ctx.toast,owner:()=>false});addBranchButton()}
  else{
-  const draw=()=>{if(X&&X.tab()==="gift")X.redraw();else if(X&&X.badge)X.badge()};
+  const draw=()=>{if(X&&X.tab()==="gift")X.redraw();else if(X&&X.badge)X.badge();liveView()};
   if(canApprove())un.push(onSnapshot(query(collection(X.db,"gifts"),where("st","==","pend")),sn=>{PEND=new Map(sn.docs.map(d=>[d.id,{id:d.id,...d.data()}]));draw()},()=>{}));
   const err=()=>X.toast("تعذر قراءة الهدايا. تأكد من نشر القواعد (Rules) الجديدة");
   if(accOnly()){
@@ -266,7 +266,7 @@ function addBranchButton(){
  if(g("gfbtn"))return;const me=g("me");if(!me)return;
  const b=document.createElement("button");b.id="gfbtn";b.type="button";b.dataset.gf="bopen";
  me.parentNode.insertBefore(b,me.nextSibling);paintBtn();
- if(!bun)bun=onSnapshot(query(collection(X.db,"gifts"),where("br","==",X.code)),sn=>{BL=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>N(b.ts)-N(a.ts));paintBtn();if(g("gfm")&&g("gfm").dataset.v==="list")paintBranch()},e=>{});
+ if(!bun)bun=onSnapshot(query(collection(X.db,"gifts"),where("br","==",X.code)),sn=>{BL=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>N(b.ts)-N(a.ts));paintBtn();if(g("gfm")&&g("gfm").dataset.v==="list")paintBranch();liveView()},e=>{});
 }
 function paintBtn(){
  const b=g("gfbtn");if(!b)return;const rw=BL.filter(waitRet).length,p=BL.filter(r=>r.st==="pend").length,no=BL.filter(r=>r.st==="no"&&N(r.ap&&r.ap.at)>Date.now()-7*D).length;
@@ -542,8 +542,18 @@ function sheetHtml(r,print){
  ${st==="no"&&ap.note?`<div class="gs-nt" style="background:#fbe3e0;border-color:#c4362b">❌ سبب الرفض: ${E(ap.note)}</div>`:""}
  ${print?"":`<div class="gs-tl">${step(true,"on","1. التسجيل",`<bdi>${E(r.by&&r.by.n||"")}</bdi><br>${hm(r.ts)}`)}${step(st!=="pend",st==="no"?"no":"on",st==="no"?"2. مرفوضة":"2. الاعتماد",ap.n?`${E(ap.n)}<br>${hm(ap.at)}`:"بانتظار مدير التسويق")}${r.rt===true?step(!!r.rb,"on","↩️ رجوع العينة",r.rb?`${N(r.rb.q)} قطعة<br>${hm(r.rb.at)}`:"لم ترجع بعد"):""}${step(st==="set","on","3. التسوية",r.sa?`مرجع <bdi dir="ltr">${E(r.sa.ref||"")}</bdi><br>${hm(r.sa.at)}`:"بانتظار المحاسب")}</div>`}`;
 }
+// ⚡ (v176) السند المفتوح يتحدّث لايف (اعتماد، رفض، تسوية، رجوع العينة) من غير قفله وفتحه.
+// مابنرسمش لو حد بيكتب جوّاه (مرجع التسوية) أو صندوق مرفقات المحاسب مفتوح، ونحافظ على مكان التمرير.
+let VID=null,VSIG="";
+const vsig=r=>{try{return JSON.stringify(r)}catch(e){return ""}};
+function liveView(){
+ const m=g("gfm");if(!X||!VID||!m||m.dataset.v!=="view")return;
+ const r=all().find(x=>x.id===VID)||BL.find(x=>x.id===VID);if(!r)return;const s=vsig(r);if(s===VSIG)return;
+ const a=document.activeElement;if(ACC||(a&&m.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))||[...m.querySelectorAll("input,textarea")].some(i=>i.value))return;
+ const k=m.querySelector(".gfk"),top=k?k.scrollTop:0,mt=m.scrollTop;viewGift(VID);const k2=m.querySelector(".gfk");if(k2)k2.scrollTop=top;m.scrollTop=mt;
+}
 function viewGift(id){
- const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r)return;
+ const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r)return;VID=id;VSIG=vsig(r);
  const st=r.st||"pend",wh=X.mode!=="branch";
  openM(`<div class="gs"><div class="gs-hd"><img src="./icon-192.png" alt=""><div><b>${isSample(r)?"سند عينة":"سند هدية"}</b><small>${E(r.no)}</small></div><span class="gf-st ${st}">${STL[st]||st}</span></div>
  <div class="gs-bd">${(()=>{const x=wh?repOf(r):null;if(!x)return "";const L=all().filter(y=>y.id!==r.id&&y.st!=="no"&&Math.abs(N(y.ts)-N(r.ts))<=30*864e5&&y.to&&(x.by==="ph"?phK(y.to.ph)===phK(r.to.ph):(y.br===r.br&&nmK(y.to.n)===nmK(r.to.n)))).sort((a,b)=>N(b.ts)-N(a.ts)).slice(0,5);
