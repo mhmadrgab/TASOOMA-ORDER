@@ -471,7 +471,7 @@ function podForm(rid){
  cv.onpointermove=e=>{if(!dn)return;const [x,y]=pt(e);cx.lineTo(x,y);cx.stroke()};
  cv.onpointerup=cv.onpointercancel=()=>{dn=false};
  g("pcl").onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);drawn=false};
- const PKD=multiPick(g("pfmp"),{w:800,cap:120000,toast,add:sh?"صورة أو PDF للإيصال":"صور أو PDF"});// زرار «📷 تصوير» بيفتح الكاميرا على طول
+ const PKD=multiPick(g("pfmp"),{w:800,cap:120000,toast,add:sh?"صورة أو ملف للإيصال":"صور أو ملفات"});// زرار «📷 تصوير» بيفتح الكاميرا على طول
  g("p0").onclick=closeM;
  g("p1").onclick=async()=>{
   const IMS=PKD.imgs(),PDFS=PKD.files(),EXTRA=IMS.slice(1).concat(PDFS);img=IMS[0]||"";busy=PKD.busy();

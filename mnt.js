@@ -154,7 +154,7 @@ function form(){
  <label>الشيء المطلوب صيانته *</label><input id="mt-it" maxlength="100" placeholder="مثلاً: مكيف الصالة، باب المخزن، لمبة الواجهة">
  <label>وصف المشكلة</label><textarea id="mt-ds" maxlength="1000" placeholder="اكتب ما الذي يحدث بالضبط"></textarea>
  <label>الأولوية</label><div class="pr" id="mt-pr">${Object.entries(PRI).map(([k,[l,c]])=>`<button type="button" data-p="${k}" class="${k===pri?"on":""}" ${k===pri?`style="background:${c}"`:""}>${l}</button>`).join("")}</div>
- <label>صور المشكلة أو ملف PDF (اختياري)</label><div id="mt-mp"></div>
+ <label>صور المشكلة أو ملفات (اختياري)</label><div id="mt-mp"></div>
  <div class="act"><button class="p" data-mt="save" type="button">إرسال الطلب</button><button data-mt="${wh?"close":"bopen"}" type="button">رجوع</button></div>`,"form");
  PK=multiPick(g("mt-mp"),{w:1400,cap:230000,toast:X.toast});
  g("mt-cats").onclick=e=>{const b=e.target.closest("[data-c]");if(!b)return;cat=b.dataset.c;g("mt-cats").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))};

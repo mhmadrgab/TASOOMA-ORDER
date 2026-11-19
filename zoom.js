@@ -3,7 +3,8 @@
 // 📎 (13 نوفمبر 2026) عرض أكتر من صورة: zoomGallery(list) بأسهم ‹ › وعدّاد وسحب بالصباع، والصورة الإضافية
 // (x/2..x/10 من att.js) بتتمسح كمستند كامل: del = "doc:المسار".
 import {doc,getDoc,updateDoc,deleteDoc,deleteField} from "./fb.js";
-import {loadExtras,isPdfData,openPdf} from "./att.js";// (15 نوفمبر 2026) الملفات PDF بتظهر كارت فيه «فتح» و«تحميل» وسط الصور
+import {loadExtras,isPdfData,openPdf,isFileRef,parseRef,openRef,dropAtt,attDb,extOf,fileLabel,kbText} from "./att.js";// (15 نوفمبر 2026) الملفات PDF بتظهر كارت فيه «فتح» و«تحميل» وسط الصور
+// 📎 (19 نوفمبر 2026، v175) أي ملف (إكسل، وورد...) = كارت فيه «تنزيل» (و«فتح» للـ PDF فقط). عنصره src = مرجع "tzf:..." (att.js)، ومحتواه يُنزَّل عند الضغط فقط.
 let C=null,cur=null;
 // الحاجات اللي ينفع تتمسح من هنا بس (مايتمسحش أي حقل مجدداً بالغلط)
 const OK={"requests":["pod.img","pod.sig"],"ledger":["img"],"pods":["img","sig"],"giftimg":["img"]};
@@ -26,6 +27,9 @@ const CSS=`#zbx{display:none;position:fixed;inset:0;z-index:95;background:rgba(0
 #zbx .zpdf i{font-style:normal;font-size:64px;line-height:1}#zbx .zpdf b{font-size:15px;word-break:break-all}#zbx .zpdf small{color:#74687a}
 #zbx .zd .zt2{width:46px;height:46px;border-radius:8px;opacity:.5;cursor:pointer;border:2px solid transparent;background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none;padding:0}
 #zbx .zd .zt2.on{opacity:1;border-color:#fff}
+#zbx .zpdf em{font-style:normal;font-weight:800;font-size:12px;letter-spacing:.5px;background:#2a1d2c;color:#fff;border-radius:8px;padding:3px 10px}
+#zbx .zs{color:#fff;font-size:13.5px;min-height:1.4em;text-align:center}#zbx .zs.er{color:#ffb4a8}
+#zbx .zb button:disabled{opacity:.6;cursor:progress}
 img[data-zoom]{cursor:zoom-in}`;
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function box(){
@@ -45,20 +49,29 @@ export function zoomOpen(src,title,del){zoomGallery([{src,del}],title,0)}
 const zcss=()=>{if(!document.getElementById("zb-css")){const s=document.createElement("style");s.id="zb-css";s.textContent=CSS;document.head.appendChild(s)}};
 let keys=false;// الأسهم وEscape (لو الصفحة مانادتش initZoom، زي التعميمات عند الفرع)
 export function zoomGallery(list,title,start=0){
- list=(list||[]).filter(x=>x&&(isData(x.src)||isPdfData(x.src)));if(!list.length)return;zcss();
+ list=(list||[]).filter(x=>x&&(isData(x.src)||isPdfData(x.src)||isFileRef(x.src)));if(!list.length)return;zcss();
  if(!keys&&!window.__zoom){keys=true;document.addEventListener("keydown",onKey)}
  cur={list,i:Math.max(0,Math.min(start,list.length-1)),title};
  const b=box();b.className="on";draw();
 }
 function draw(){
  const b=box();if(!cur)return;const {list,i,title}=cur,it=list[i],many=list.length>1;
- const pdf=isPdfData(it.src),ext=pdf?"pdf":it.src.startsWith("data:image/png")?"png":"jpg",del=canDelOf(it.del),rtl=document.documentElement.dir!=="ltr";
- const kb=Math.max(1,Math.round(it.src.length*0.75/1024));
- b.innerHTML=`<div class="zi">${pdf?`<div class="zpdf"><i>📄</i><b data-notr><bdi>${E(it.nm||"ملف PDF")}</bdi></b><small>PDF · ${kb>=1024?(kb/1024).toFixed(1)+" MB":kb+" KB"}</small></div>`:`<img alt="" src="${it.src}">`}${many?`<button class="zn p" type="button" data-zx="prev" aria-label="السابقة" ${i===0?"disabled":""}>${rtl?"›":"‹"}</button><button class="zn n" type="button" data-zx="next" aria-label="التالية" ${i===list.length-1?"disabled":""}>${rtl?"‹":"›"}</button>`:""}</div>
+ const fref=isFileRef(it.src)?parseRef(it.src):null,pdf=!fref&&isPdfData(it.src),ext=pdf?"pdf":it.src.startsWith("data:image/png")?"png":"jpg",del=canDelOf(it.del),rtl=document.documentElement.dir!=="ltr";
+ const kb=Math.max(1,Math.round(it.src.length*0.75/1024)),fpdf=!!fref&&extOf(it.nm)==="pdf";
+ b.innerHTML=`<div class="zi">${fref?`<div class="zpdf"><i>📄</i><em data-notr>${E(fileLabel(it.nm))}</em><b data-notr><bdi>${E(it.nm||"ملف")}</bdi></b><small data-notr>${E(kbText(fref.sz))}</small></div>`:pdf?`<div class="zpdf"><i>📄</i><b data-notr><bdi>${E(it.nm||"ملف PDF")}</bdi></b><small>PDF · ${kb>=1024?(kb/1024).toFixed(1)+" MB":kb+" KB"}</small></div>`:`<img alt="" src="${it.src}">`}${many?`<button class="zn p" type="button" data-zx="prev" aria-label="السابقة" ${i===0?"disabled":""}>${rtl?"›":"‹"}</button><button class="zn n" type="button" data-zx="next" aria-label="التالية" ${i===list.length-1?"disabled":""}>${rtl?"‹":"›"}</button>`:""}</div>
  ${many?`<span class="zc">${i+1} / ${list.length}</span>`:""}<div class="zt">${E(title||"")}</div>
- ${many?`<div class="zd">${list.map((x,k)=>isPdfData(x.src)?`<button type="button" class="zt2 ${k===i?"on":""}" data-zx="go" data-k="${k}" aria-label="PDF">📄</button>`:`<img src="${x.src}" alt="" data-zx="go" data-k="${k}" class="${k===i?"on":""}">`).join("")}</div>`:""}
- <div class="zb">${pdf?`<button type="button" data-zx="open">📄 فتح الملف</button><button type="button" data-zx="dl">⬇️ تحميل</button>`:`<a href="${it.src}" download="tasooma-${Date.now()}-${i+1}.${ext}">⬇️ حفظ الصورة</a>`}${del?'<button class="d" type="button" data-zx="del">🗑 حذف</button>':""}<button type="button" data-zx="close">إغلاق</button></div>`;
+ ${many?`<div class="zd">${list.map((x,k)=>isPdfData(x.src)||isFileRef(x.src)?`<button type="button" class="zt2 ${k===i?"on":""}" data-zx="go" data-k="${k}" aria-label="فتح الملف">📄</button>`:`<img src="${x.src}" alt="" data-zx="go" data-k="${k}" class="${k===i?"on":""}">`).join("")}</div>`:""}
+ ${fref?'<div class="zs" id="zbs" role="status"></div>':""}
+ <div class="zb">${fref?`${fpdf?'<button type="button" data-zx="fopen">📄 فتح الملف</button>':""}<button type="button" data-zx="fsave">⬇️ تنزيل الملف</button>`:pdf?`<button type="button" data-zx="open">📄 فتح الملف</button><button type="button" data-zx="dl">⬇️ تحميل</button>`:`<a href="${it.src}" download="tasooma-${Date.now()}-${i+1}.${ext}">⬇️ حفظ الصورة</a>`}${del?'<button class="d" type="button" data-zx="del">🗑 حذف</button>':""}<button type="button" data-zx="close">إغلاق</button></div>`;
  b.querySelector('[data-zx="close"]').onclick=zoomClose;
+ if(fref){
+  // الملف يُنزَّل على أجزاء عند الضغط فقط، والحالة تُكتب تحت الكارت (العارض يعمل أيضاً في صفحات بلا toast)
+  const st=b.querySelector("#zbs"),say=(m,er)=>{if(st&&cur&&cur.list[cur.i]===it){st.textContent=m||"";st.className="zs"+(er?" er":"")}};
+  const go=async how=>{const bs=[...b.querySelectorAll('[data-zx="fopen"],[data-zx="fsave"]')];bs.forEach(x=>x.disabled=true);say("⏳ جاري تحميل الملف...");
+   const okk=await openRef((C&&C.db)||attDb(),it.src,it.nm,how,(m)=>say(m,true),(a,n)=>say(`⏳ جاري تحميل الملف... ${a} من ${n}`));
+   if(okk)say(how==="open"?"فُتح الملف في تبويب جديد":"نُزِّل الملف ✅");bs.forEach(x=>x.disabled=false)};
+  const fo=b.querySelector('[data-zx="fopen"]'),fs=b.querySelector('[data-zx="fsave"]');if(fo)fo.onclick=()=>go("open");if(fs)fs.onclick=()=>go("save");
+ }
  if(pdf){const o=b.querySelector('[data-zx="open"]'),dl=b.querySelector('[data-zx="dl"]');if(o)o.onclick=()=>openPdf(it.src,it.nm);
   if(dl)dl.onclick=()=>{try{const i2=it.src.indexOf(","),bin=atob(it.src.slice(i2+1)),u8=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u8[k]=bin.charCodeAt(k);const url=URL.createObjectURL(new Blob([u8],{type:"application/pdf"}));const a=document.createElement("a");a.href=url;a.download=String(it.nm||"tasooma.pdf").replace(/[\\/:*?"<>|]/g,"")||"tasooma.pdf";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}catch(e){}}}
  const nv=d=>{if(!cur)return;const j=cur.i+d;if(j<0||j>=cur.list.length)return;cur.i=j;draw()};
@@ -73,11 +86,11 @@ function draw(){
  big.ontouchend=e=>{if(x0==null||!many)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)<50)return;const rtl=document.documentElement.dir!=="ltr";nv((dx<0)!==rtl?1:-1)};
  const d=b.querySelector('[data-zx="del"]');
  if(d)d.onclick=async()=>{
-  if(!confirm(pdf?"هل تريد حذف هذا الملف نهائياً؟ لن تتمكن من استعادته.":"هل تريد حذف هذه الصورة نهائياً؟ لن تتمكن من استعادتها."))return;
+  if(!confirm(pdf||fref?"هل تريد حذف هذا الملف نهائياً؟ لن تتمكن من استعادته.":"هل تريد حذف هذه الصورة نهائياً؟ لن تتمكن من استعادتها."))return;
   d.disabled=true;d.textContent="جاري الحذف...";
   const s=String(it.del);
   try{
-   if(s.startsWith("doc:")){await deleteDoc(doc(C.db,...s.slice(4).split("/")))}
+   if(s.startsWith("doc:")){if(fref)await dropAtt(C.db,s.slice(4),it.src);else await deleteDoc(doc(C.db,...s.slice(4).split("/")))}
    else{const [col,id,field]=s.split("/");
     await updateDoc(doc(C.db,col,id),{[field]:deleteField()});
     if(col==="pods")PC.delete(id);

@@ -11,7 +11,7 @@
 //   كل شخص بيظهر باسمه وكنيته وصورته بس (من غير "مدير" أو "مالك النظام")
 import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,orderBy,limit,writeBatch,increment,deleteField,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {initPres,stopPres,presOf,presTxt} from "./pres.js";
-import {readPdf,openPdf} from "./att.js";// 🟢 متصل الآن / آخر ظهور
+import {openPdf,readFile,fileErr,putParts,getParts,openBytes,fileLabel,extOf,FILE_ACCEPT} from "./att.js";// 📎 (v175) أي ملف مسموح حتى 3 ميجا، مقسوم على أجزاء// 🟢 متصل الآن / آخر ظهور
 const LEN=1000,MAXS=60,MAXB=470000,PAGE=40,SEP="__";// نفس الحدود اللي في firestore.rules
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const N=x=>Number.isFinite(+x)?+x:0;
@@ -267,7 +267,8 @@ export function unreadTotal(){if(!X)return 0;return Object.values(SUMS).reduce((
 export const rqBtn=(r,cls)=>X&&T()!=="d"?`<button class="${cls||"bcrqb"}" data-bcrq="${E(r.id)}" data-no="${E(r.no||"")}" data-br="${E(r.br||"")}" type="button" title="محادثة خاصة بخصوص هذا الطلب">💬 ${T()==="b"?"تواصل مع المستودع":"تواصل مع الفرع"}</button>`:"";
 const modal=()=>T()!=="w";// الفرع والسائق: نافذة. المستودع: تبويب
 const GRP={w:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["b","الفروع"],["d","السائقين"],["s","الموظفين"]],b:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["d","السائقين"],["b","الفروع"]],d:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["b","الفروع"],["s","الموظفين"]]};
-const IMG_IC=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
+// (v175) الزر صار مشبك مرفقات: صور وملفات معاً
+const IMG_IC=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.1a6 6 0 0 1-8.5-8.4l9.2-9.2a4 4 0 0 1 5.7 5.6l-9.2 9.2a2 2 0 0 1-2.9-2.8l8.5-8.5"/></svg>`;
 // ---------- المحادثة نفسها (مشتركة بين اللوحة والفرع والسائق) ----------
 function convHtml(){
   return `<div class="bch"><button class="bcback" data-bcback type="button" aria-label="رجوع">→</button><span id="bcav"></span><div><b id="bct"></b><small id="bcsub"></small></div><button id="bccall" data-bccall type="button" aria-label="مكالمة صوتية" title="مكالمة صوتية" hidden>📞</button>${modal()?`<button data-bcclose type="button" aria-label="إغلاق">✕</button>`:""}</div>
@@ -275,7 +276,7 @@ function convHtml(){
   <button class="bcdown" id="bcdown" data-bcdown type="button" aria-label="آخر رسالة" title="آخر رسالة" hidden>${IC.down}</button>
   <div class="bcrq" id="bcrq" hidden></div>
   <div class="bcq">${(QUICK[T()]||[]).map(q=>`<button data-bcq="${E(q)}" type="button">${E(q)}</button>`).join("")}</div>
-  <div class="bcf" id="bcfoot"><button class="pic" id="bcpic" type="button" title="إرسال صورة أو ملف PDF" aria-label="إرسال صورة أو ملف PDF">${IMG_IC}</button><input type="file" id="bcfile" accept="image/*,application/pdf,.pdf" multiple hidden><textarea id="bcin" rows="1" maxlength="${LEN}" placeholder="اكتب رسالة..."></textarea><button class="mic" id="bcmic" type="button" title="رسالة صوتية" aria-label="رسالة صوتية">${IC.mic}</button><button id="bcsend" type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>
+  <div class="bcf" id="bcfoot"><button class="pic" id="bcpic" type="button" title="إرسال صورة أو ملف" aria-label="إرسال صورة أو ملف">${IMG_IC}</button><input type="file" id="bcfile" accept="${FILE_ACCEPT}" multiple hidden><textarea id="bcin" rows="1" maxlength="${LEN}" placeholder="اكتب رسالة..."></textarea><button class="mic" id="bcmic" type="button" title="رسالة صوتية" aria-label="رسالة صوتية">${IC.mic}</button><button id="bcsend" type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>
   <div class="bcr2" id="bcrec" hidden><button class="x" data-bccancel type="button" title="إلغاء" aria-label="إلغاء">${IC.trash}</button><div class="pill"><span class="dot"></span><span class="tm" id="bcrt">0:00</span></div><button class="ok" data-bcstop type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>`;
 }
 const emptyTxt=()=>`<div class="bcnone"><b>💬</b>اختر من القائمة لتبدأ محادثة<br><small>🔒 محادثاتك خاصة بك، لا يراها أحد غيرك</small></div>`;
@@ -389,7 +390,7 @@ function paintMsgs(){
     // gone: السيرفر مسح الصوت بعد 30 يوم (علشان مساحة Firebase المجانية)
     const body=m.v&&m.gone?`<div class="bcgone">🎤 رسالة صوتية (${mmss(m.d)}) · حُذفت تلقائياً بعد 30 يوماً</div>`:m.v?`<div class="bcvo"><button data-play="${E(m.id)}" type="button" aria-label="تشغيل">${PLAY.id===m.id?"⏸":"▶"}</button><span class="bar"><b id="bcpb-${E(m.id)}"></b></span><span class="du">${mmss(m.d)}</span></div>`
       // صورة: المصغّرة جوه الرسالة، والأصلية بجودة عالية بتتحمّل لما يدوس عليها
-      :m.f?`<button class="bcfile" data-file="${E(m.id)}" type="button" aria-label="فتح الملف"><i>📄</i><span><b data-notr>${E(m.fn||"ملف.pdf")}</b><small>PDF · ${kbs(m.fs)}</small></span></button>`
+      :m.f?`<button class="bcfile" data-file="${E(m.id)}" type="button" aria-label="فتح الملف"><i>📄</i><span><b data-notr>${E(m.fn||"ملف.pdf")}</b><small data-notr>${E(m.fp?fileLabel(m.fn):"PDF")} · ${kbs(m.fs)}</small></span></button>`
       :m.img?`<button class="bcimg" data-img="${E(m.id)}" type="button" aria-label="فتح الصورة" style="aspect-ratio:${N(m.w)||4}/${N(m.h)||3}">${/^data:image\/jpeg;base64,/.test(m.th||"")?`<img src="${m.th}" alt="">`:"📷"}</button>${m.t?`<span class="bcx" data-notr>${E(m.t)}</span>`:""}`
       :QALL.has(m.t)?`<span class="bcx">${E(m.t)}</span>`:`<span class="bcx" data-notr>${E(m.t||"")}</span>`;
     const rq=m.rq&&m.rq.no?`<span class="rqt">📦 بخصوص طلب <bdi dir="ltr">${E(m.rq.no)}</bdi></span>`:"";
@@ -420,8 +421,9 @@ function markRead(){
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)markRead()});
 // ---------- الإرسال ----------
-function write(cid,m,a,full){
-  const ts=Date.now(),n=String(X.name()||"").trim().slice(0,60),b=writeBatch(X.db),ref=doc(sub(cid,"msgs"));
+function write(cid,m,a,full,mid){
+  // mid = رقم رسالة محجوز مسبقاً (ملف مقسوم: أجزاؤه fil/{mid}_{k} رُفعت قبل الرسالة)
+  const ts=Date.now(),n=String(X.name()||"").trim().slice(0,60),b=writeBatch(X.db),ref=mid?subDoc(cid,"msgs",mid):doc(sub(cid,"msgs"));
   const old=isOld(cid),by=old?oldBy():X.me,rq=CTX[cid],msg={by,n,ts,...m,...(rq?{rq:{id:String(rq.id).slice(0,40),no:String(rq.no).slice(0,40)}}:{})};
   if(a)b.set(subDoc(cid,"aud",ref.id),{a});
   if(full)b.set(subDoc(cid,m.f?"fil":"img",ref.id),m.f?{p:full}:{i:full});// الصورة بجودتها الكاملة لوحدها (بتتحمّل بس لما حد يفتحها)
@@ -447,9 +449,9 @@ function write(cid,m,a,full){
   }
   return b.commit();
 }
-async function deliver(cid,m,a,onOk,full){
+async function deliver(cid,m,a,onOk,full,mid){
   busy=true;const sb=g("bcsend");if(sb)sb.disabled=true;
-  try{await withTimeout(write(cid,m,a,full),full?45000:20000);onOk&&onOk();X.ping(cid)}
+  try{await withTimeout(write(cid,m,a,full,mid),full?45000:20000);onOk&&onOk();X.ping(cid)}
   catch(x){
     const w=await failReason(x);
     // النت بطيء: الرسالة محفوظة على الجهاز وهتتبعت لوحدها (ما نبعتهاش مجدداً علشان ما تتكررش)
@@ -471,24 +473,43 @@ const IMG_MAX=950000;
 function loadImg(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(u);ok(im)};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error("img"))};im.src=u})}
 function toJpeg(im,side,q){const s=Math.min(1,side/Math.max(im.naturalWidth,im.naturalHeight)),w=Math.max(1,Math.round(im.naturalWidth*s)),h=Math.max(1,Math.round(im.naturalHeight*s));
   const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,w,h);x.imageSmoothingQuality="high";x.drawImage(im,0,0,w,h);return {d:c.toDataURL("image/jpeg",q),w,h}}
-// صور وملفات PDF مع بعض: الـ PDF بيتبعت كرسالة ملف، والصور زي ما هي
+// 📎 (v175) صور وملفات معاً: الصور كما هي (كل صورة رسالة)، وأي ملف مسموح (PDF، إكسل، وورد...) حتى 3 ميجا يُرسل كرسالة ملف:
+// أجزاؤه fil/{رقم الرسالة}_{k} = {d} تُرفع أولاً واحداً واحداً، ثم الرسالة {f:1, fn, fs, fp} مع ملخّص المحادثة في دفعة واحدة.
+// (الشكل القديم: PDF كامل في fil/{رقم الرسالة} = {p} والرسالة بلا fp، ما زال يُفتح)
 const kbs=n=>{n=N(n);return n>=1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB"};
-const isPdfF=f=>f&&(f.type==="application/pdf"||/\.pdf$/i.test(f.name||""));
+const isImgF=f=>!!f&&/^image\//.test(f.type||"");
 async function sendFiles(files){
-  const P=files.filter(isPdfF).slice(0,5),I=files.filter(f=>!isPdfF(f));
+  const P=files.filter(f=>!isImgF(f)),I=files.filter(isImgF);
+  if(P.length>5)X.toast("الحد الأقصى 5 ملفات في المرة، سيُرسل أول 5");
   if(I.length)await sendImages(I);
   const cid=CUR;
-  for(const f of P){
+  for(const f of P.slice(0,5)){
     for(let w=0;busy&&w<300;w++)await new Promise(r=>setTimeout(r,200));
     if(CUR!==cid)return;
-    let x;try{x=await readPdf(f)}catch(e){X.toast(e&&e.message==="big"?"ملف PDF أكبر من 2 ميجا، صغّره ثم أعد المحاولة":"هذا الملف ليس PDF صالحاً",true);continue}
-    X.toast("⏳ جاري إرسال الملف...");
-    await deliver(cid,{f:1,fn:x.nm,fs:x.sz},null,()=>X.toast("📄 أُرسل الملف"),x.pdf);
+    let x;try{x=await readFile(f)}catch(e){X.toast(fileErr(e),true);continue}
+    const mid=doc(sub(cid,"msgs")).id;let pn=0;
+    busy=true;X.toast("⏳ جاري إرسال الملف...");
+    try{pn=await withTimeout(putParts(j=>subDoc(cid,"fil",mid+"_"+j),x.b64,1,(a,n)=>{if(n>1&&a<n)X.toast(`⏳ جاري إرسال الملف... ${a} من ${n}`)}),150000)}
+    catch(e){busy=false;const w=await failReason(e);X.toast(w==="denied"?"غير مسموح لك بالإرسال في هذه المحادثة (ربما لم تتحدّث القواعد بعد)":w==="slow"?"الإنترنت بطيء: تعذّر رفع الملف، حاول مجدداً":FAIL_MSG[w]||"تعذّر رفع الملف",true);continue}
+    busy=false;
+    await deliver(cid,{f:1,fn:x.nm,fs:x.sz,fp:pn},null,()=>X.toast("📄 أُرسل الملف"),null,mid);
   }
 }
-const FILC=new Map();
+const FILC=new Map(),FILN=new Map();let FBUSY=false;
 async function viewFile(id){
   const m=MSGS.find(x=>x.id===id),cid=CUR;if(!m)return;
+  if(m.fp){
+    // ملف مقسوم: ننزّل الأجزاء ونجمعها، ثم PDF يُفتح في تبويب جديد وأي نوع آخر يُنزَّل (لا يُعرض داخل الصفحة أبداً)
+    const key=cid+"/"+id;let v=FILN.get(key);
+    if(!v){
+      if(FBUSY)return;FBUSY=true;X.toast("⏳ جاري تحميل الملف...");
+      try{v=await withTimeout(getParts(j=>subDoc(cid,"fil",id+"_"+j),m.fp,m.fs,(a,n)=>{if(n>1&&a<n)X.toast(`⏳ جاري تحميل الملف... ${a} من ${n}`)}),150000);FILN.set(key,v);if(FILN.size>3)FILN.delete(FILN.keys().next().value)}
+      catch(e){FBUSY=false;X.toast(e&&e.message==="gone"?"الملف غير مكتمل أو حُذف":e&&e.message==="bad"?"الملف تالف ولا يمكن فتحه":"تعذر تحميل الملف",true);return}
+      FBUSY=false;
+    }
+    if(openBytes(v.u8,m.fn,X.toast,v.b64)&&extOf(m.fn)!=="pdf")X.toast("⬇️ نُزِّل الملف");
+    return;
+  }
   let p=FILC.get(cid+"/"+id);
   if(!p){X.toast("⏳ جاري تحميل الملف...");try{const s=await withTimeout(getDoc(subDoc(cid,"fil",id)),30000);p=s.exists()?String(s.data().p||""):""}catch(e){p=""}
     if(/^data:application\/pdf;base64,/.test(p)){FILC.set(cid+"/"+id,p);if(FILC.size>5)FILC.delete(FILC.keys().next().value)}}

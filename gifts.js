@@ -9,7 +9,7 @@
 import {collection,doc,getDoc,getDocs,setDoc,deleteDoc,updateDoc,onSnapshot,query,where,writeBatch,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {E,N,fmt,today,shrink,printStmt,ensurePrintCss} from "./cust.js";
 import {initZoom,zoomOpen,zoomGallery} from "./zoom.js";
-import {multiPick,saveExtras,loadExtras,dropExtras,isPdfData} from "./att.js";
+import {multiPick,saveExtras,loadExtras,dropExtras,loadAtts,putAtt,dropAtt} from "./att.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const WHY=["هدية لعميل","تعويض عميل","عينة","تسويق / مؤثر","مناسبة / حدث","أخرى"];
@@ -471,9 +471,9 @@ function form(r){
  <div class="gf-2"><div><div id="gfwbox" ${FK==="s"?"hidden":""}><label>السبب *</label><select id="gfw">${wl.map(w=>`<option ${r&&r.why===w?"selected":""}>${E(w)}</option>`).join("")}</select></div><div id="gfsbox" ${FK==="s"?"":"hidden"}><label>النوع</label><div class="g5-note">عينة: يحدد مدير التسويق عند الاعتماد هل سترجع أم لا.</div></div></div>
  <div><label>المسجِّل (تلقائي)</label><input id="gfby" dir="auto" maxlength="60" value="${E(r&&r.by?r.by.n:autoName)}" disabled title="يُكتب تلقائياً باسم الحساب الداخل"></div></div>
  <label>ملاحظة</label><textarea id="gfnote" rows="2" maxlength="300" placeholder="اختياري">${E(r&&r.note||"")}</textarea>
- ${r&&!isOwner()?`<div class="m" style="margin-top:12px;font-size:13px;color:var(--mut)">📎 صور السند تبقى كما هي. يمكنك التعديل حتى يعتمدها مدير التسويق.</div>`:`<label>${r?"مرفقات سند جديدة (اختياري، تستبدل الحالية)":"مرفقات السند: صور أو PDF (اختياري)"}</label><div id="gfmp"></div>`}
+ ${r&&!isOwner()?`<div class="m" style="margin-top:12px;font-size:13px;color:var(--mut)">📎 صور السند تبقى كما هي. يمكنك التعديل حتى يعتمدها مدير التسويق.</div>`:`<label>${r?"مرفقات سند جديدة (اختياري، تستبدل الحالية)":"مرفقات السند: صور أو ملفات (اختياري)"}</label><div id="gfmp"></div>`}
  <div class="gf-act"><button class="bt p" data-gf="save" type="button">${r?"💾 حفظ التعديل":"✅ تسجيل"}</button><button class="bt" data-gf="${X.mode==="branch"&&!r?"bopen":"close"}" type="button">رجوع</button></div>`,"form");
- PK=g("gfmp")?multiPick(g("gfmp"),{w:1400,cap:230000,toast:X.toast,add:"صور أو PDF للسند"}):null;
+ PK=g("gfmp")?multiPick(g("gfmp"),{w:1400,cap:230000,toast:X.toast,add:"صور أو ملفات للسند"}):null;
 }
 async function save(){
  if(PK&&PK.busy()){X.toast("انتظر حتى تنتهي الصور");return}
@@ -564,29 +564,29 @@ const canAcc=()=>canSettle()&&!X.view;
 async function loadAcc(id,open){
  const here=()=>{const el=g("gfacc");return el&&el.dataset.id===id?el:null};if(!here())return;
  let L=[],bad=false;
- try{const s=await withTimeout(getDocs(collection(X.db,"giftimg",id,"a")),15000);L=s.docs.map(d=>({k:+d.id,...(d.data()||{})})).filter(x=>x.k>=1&&((typeof x.img==="string"&&JPEG.test(x.img))||isPdfData(x.pdf))).sort((a,b)=>a.k-b.k)}
+ try{L=await withTimeout(loadAtts(X.db,"giftimg",id,"a"),15000)}// (v175) صور أو ملفات: {k, src, pdf?, file?, nm, n, at}، ومحتوى الملف يُنزَّل عند فتحه فقط
  catch(e){bad=true}
  const el=here();if(!el)return;ACCL=L;const can=canAcc();
  if(!can&&!L.length&&!bad){el.innerHTML="";ACC=null;return}
  el.innerHTML=`<div class="gs-ah"><b>📎 مرفقات المحاسب</b>${L.length?`<small>(${L.length}/10)</small>`:""}</div>${bad?'<div class="m">تعذّر تحميل المرفقات</div>':""}
- ${L.length?`<div class="gs-ag">${L.map((x,i)=>`<button type="button" data-gf="accimg" data-id="${E(id)}" data-i="${i}">${x.pdf?`<span class="gs-pdf">📄<small data-notr>${E(x.nm||"PDF")}</small></span>`:`<img src="${x.img}" alt="">`}<span data-notr><bdi>${E(x.n||"")}</bdi><br>${hm(x.at)}</span></button>`).join("")}</div>`:""}
- ${can&&!bad&&L.length<10?(open?`<div id="gfaccp"></div><div class="gf-act" style="margin-top:8px"><button class="bt g" data-gf="accsave" data-id="${E(id)}" type="button">💾 حفظ الصور</button><button class="bt" data-gf="accx" data-id="${E(id)}" type="button">إلغاء</button></div>`
-  :`<button class="bt s" data-gf="accadd" data-id="${E(id)}" type="button">📷 إرفاق صور</button>${L.length?"":'<div class="m" style="margin-top:6px">أرفق صوراً من جهازك لهذا السند (لا يغيّر أي شيء في الهدية).</div>'}`):""}`;
- ACC=open&&g("gfaccp")?multiPick(g("gfaccp"),{max:10-L.length,w:1400,cap:230000,toast:X.toast,add:"إضافة صور"}):null;
+ ${L.length?`<div class="gs-ag">${L.map((x,i)=>`<button type="button" data-gf="accimg" data-id="${E(id)}" data-i="${i}">${x.pdf||x.file?`<span class="gs-pdf">📄<small data-notr>${E(x.nm||"PDF")}</small></span>`:`<img src="${x.src}" alt="">`}<span data-notr><bdi>${E(x.n||"")}</bdi><br>${hm(x.at)}</span></button>`).join("")}</div>`:""}
+ ${can&&!bad&&L.length<10?(open?`<div id="gfaccp"></div><div class="gf-act" style="margin-top:8px"><button class="bt g" data-gf="accsave" data-id="${E(id)}" type="button">💾 حفظ المرفقات</button><button class="bt" data-gf="accx" data-id="${E(id)}" type="button">إلغاء</button></div>`
+  :`<button class="bt s" data-gf="accadd" data-id="${E(id)}" type="button">📎 إرفاق صور أو ملفات</button>${L.length?"":'<div class="m" style="margin-top:6px">أرفق صوراً أو ملفات من جهازك لهذا السند (لا يغيّر أي شيء في الهدية).</div>'}`):""}`;
+ ACC=open&&g("gfaccp")?multiPick(g("gfaccp"),{max:10-L.length,w:1400,cap:230000,toast:X.toast,add:"صور أو ملفات"}):null;
 }
 async function accSave(id){
  if(!ACC||!canAcc())return;if(ACC.busy()){X.toast("انتظر حتى تنتهي الصور");return}
- const IMS=ACC.imgs().filter(s=>JPEG.test(s)).map(s=>({img:s})).concat(ACC.files().map(f=>({pdf:f.pdf,nm:f.nm})));if(!IMS.length){X.toast("اختر صورة أو ملفاً واحداً على الأقل");return}
+ const IMS=ACC.imgs().filter(s=>JPEG.test(s)).concat(ACC.files());if(!IMS.length){X.toast("اختر صورة أو ملفاً واحداً على الأقل");return}
  const btn=document.querySelector('[data-gf="accsave"]');if(btn){btn.disabled=true;btn.textContent="⏳ جاري الرفع..."}
  const start=ACCL.reduce((m,x)=>Math.max(m,x.k),0)+1,nm=String(X.me.n||X.me.e||"").slice(0,60);let ok=0,bad=0,denied=false;
  for(let k=0;k<IMS.length;k++){const n=start+k;if(n>10){bad+=IMS.length-k;break}
-  try{await withTimeout(setDoc(doc(X.db,"giftimg",id,"a",String(n)),{...IMS[k],n:nm,at:Date.now()}),20000);ok++}
+  try{await withTimeout(putAtt(X.db,"giftimg",id,"a",n,IMS[k],{n:nm,at:Date.now()}),150000);ok++}// الملف: أجزاؤه في af ثم رأسه في a
   catch(e){bad++;if((await failReason(e))==="denied")denied=true}}
- if(!bad)X.toast("📎 تم إرفاق الصور ✅");
- else X.toast(denied&&!ok?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":"تعذّر رفع بعض الصور، حاول مرة أخرى","er");
+ if(!bad)X.toast("📎 تم إرفاق المرفقات ✅");
+ else X.toast(denied&&!ok?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":"تعذّر رفع بعض المرفقات، حاول مرة أخرى","er");
  loadAcc(id,false);
 }
-async function dropAcc(id){try{const s=await getDocs(collection(X.db,"giftimg",id,"a"));for(const d of s.docs){try{await deleteDoc(doc(X.db,"giftimg",id,"a",d.id))}catch(e){}}}catch(e){}}
+async function dropAcc(id){try{const A=await loadAtts(X.db,"giftimg",id,"a");for(const x of A){try{await dropAtt(X.db,x.path,x.file?x.src:"")}catch(e){}}}catch(e){}}
 function printGift(id){
  const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r)return;
  printStmt(`<div class="st"><div class="ph"><h2>${isSample(r)?"سند عينة":"سند هدية"}</h2><div>${E(r.no)} · ${E((STL[r.st]||"").replace(/^\S+\s/,""))}</div></div>
@@ -682,7 +682,7 @@ async function click(e){
  if(a==="img")return void showImg(id);
  if(a==="accadd"||a==="accx")return void loadAcc(id,a==="accadd");
  if(a==="accsave")return void accSave(id);
- if(a==="accimg"){const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);zoomGallery(ACCL.map(x=>({src:x.pdf||x.img,nm:x.nm,del:`doc:giftimg/${id}/a/${x.k}`})),`مرفقات المحاسب · ${r?r.no:""}`,+t.dataset.i||0);
+ if(a==="accimg"){const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);zoomGallery(ACCL.map(x=>({src:x.src,nm:x.nm,del:`doc:giftimg/${id}/a/${x.k}`})),`مرفقات المحاسب · ${r?r.no:""}`,+t.dataset.i||0);
   // لما الصورة تتقفل (أو المالك يمسح واحدة) نحدّث المرفقات في السند
   const zb=g("zbx");if(zb)new MutationObserver((_,o)=>{if(!zb.className){o.disconnect();loadAcc(id,false)}}).observe(zb,{attributes:true,attributeFilter:["class"]});return}
  if(a==="ok"||a==="no")return void decide(id,a==="ok");

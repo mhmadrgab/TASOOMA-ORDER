@@ -60,7 +60,7 @@ function form(type,e){
  ${ex?`<label>صور أو ملف الفاتورة PDF (اختياري)</label>${img||(e&&e.att)?`<small class="off">${X.owner?"توجد صور محفوظة ✅ (إن اخترت صوراً جديدة فستستبدلها كلها)":"توجد صور محفوظة ✅ (تغييرها أو حذفها للمالك فقط، ويمكنك إضافة صور أخرى)"}</small>`:""}<div id="fmp"></div>`:""}
  <div class="fl" style="margin-top:16px"><button class="bt p" data-cx="save" data-type="${type}" type="button">حفظ</button><button class="bt" data-cx="cancel" type="button">رجوع</button></div></div>`;
  g("fa").focus();
- PKL=ex&&g("fmp")?multiPick(g("fmp"),{w:1200,cap:200000,toast:X.toast,add:img&&!X.owner?"إضافة صور أو PDF":"صور أو PDF للفاتورة"}):null;
+ PKL=ex&&g("fmp")?multiPick(g("fmp"),{w:1200,cap:200000,toast:X.toast,add:img&&!X.owner?"إضافة صور أو ملفات":"صور أو ملفات للفاتورة"}):null;
 }
 async function save(type){
  if(imgBusy||(PKL&&PKL.busy())){X.toast("انتظر حتى تنتهي الصور");return}
