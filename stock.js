@@ -487,7 +487,9 @@ const ds=(y,m,d)=>y+"-"+p2(m)+"-"+p2(d);
 // ctx = {stores:[أسماء المخازن], codes:Map(كود←أصنافه), k:[[كود،لون،مقاس]], alias:[{k,s}], today, end (آخر يوم في البيانات), wh}
 export function parseAsk(text,ctx){
  const out={kind:"",store:"",code:"",cl:"",z:"",vendor:"",per:"ytd",from:"",to:"",amb:{store:[],code:[],cl:[],vendor:[]},unk:[],rc:false,rank:null,where:false,cmp:null,txt:String(text||"").slice(0,200)};
- const t=normAr(out.txt).replace(/[،؛؟?!()«»"'`:\[\]{}]|,(?!\d)/g," ").replace(/\s+/g," ").trim();if(!t)return out;
+ // (v183) «13038+13040+13037» و«13038,13040»: الزائد يفصل دائماً (لا كود فيه +)، والفاصلة بين رقمين تفصل لو كل جزء كود موجود (وإلا فهي رقم مثل 1,234)
+ const isC=s=>ctx.codes.has(s)||ctx.codes.has(s.toUpperCase());
+ const t=normAr(out.txt).replace(/[،؛؟?!()«»"'`:\[\]{}+]|,(?!\d)/g," ").split(/\s+/).map(w=>{if(w.indexOf(",")<0)return w;const p=w.split(",").filter(Boolean);return p.length>1&&p.every(isC)?p.join(" "):w}).join(" ").replace(/\s+/g," ").trim();if(!t)return out;
  out.rc=/استلم|مستلم|استلام|وارد|received|receiv/.test(t);
  const W=t.split(" "),U=W.map(()=>false),B=W.map(bare),end=ctx.end||ctx.today,ey=+end.slice(0,4),T=askTable(ctx);
  const isNum=w=>/^\d+$/.test(w);
