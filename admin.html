@@ -520,12 +520,14 @@ function drawNow(){
  const keep=window.scrollY,ui=snapUi();
  fixSub();shell();navSync();topSync();
  if(HT.getAttribute("data-tab")!==tab){HT.setAttribute("data-tab",tab);try{sessionStorage.setItem("tz_tab",tab)}catch(x){}}
- g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
+ // (v184) تحليل المخزون مفتوح ومركَّب: لا نعيد بناء الصفحة مع كل تحديث لحظي (كان يُنزع المديول ويُعاد، فتُقفل القوائم المفتوحة ويطير المؤشر من الخانة أثناء الكتابة)
+ const stkOn=tab==="stk"&&g("stkhost")&&g("stkhost").firstElementChild&&g("stkhost").firstElementChild.id==="stk";
+ if(!stkOn)g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
  showSheet();
  if(tab==="chat")mountWh(g("bchost"));else hideWh();// الدردشة عنصر ثابت بيتحط في مكانه (الكتابة والتسجيل مايضيعوش)
  if(tab==="stk")stockMount(g("stkhost"));// تحليل المخزون: عنصر ثابت كذلك
  wireButtons();document.getElementById("bell").hidden=!("Notification" in window);adminHdr();
- window.scrollTo(0,keep);restoreUi(ui);
+ if(!stkOn){window.scrollTo(0,keep);restoreUi(ui)}
 }
 // فتح وإغلاق الدرج (جوال وتابلت)، وطيّ القائمة إلى أيقونات (حاسوب، محفوظ في localStorage.tzn_col)
 const navOpen=on=>{on=!!on&&innerWidth<=1024;if(HT.classList.contains("tzn-open")===on)return;HT.classList.toggle("tzn-open",on);

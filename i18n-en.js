@@ -3572,4 +3572,9 @@ export default {
 "فروع باعت":"Branches sold",
 "الأعلى في":"Top in",
 "في كل فرع: المبيعات، وتحتها الرصيد (الأخضر الأعلى في الفرع)":"In each branch: sales, with stock below (green = top in the branch)",
+/* v184 */
+"✕ مسح الفلاتر":"✕ Clear filters",
+"✕ صنف آخر":"✕ Another item",
+"مسح الفلاتر":"Clear filters",
+"صنف آخر":"Another item",
 };
