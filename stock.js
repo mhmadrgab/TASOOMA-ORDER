@@ -217,8 +217,8 @@ export function pubData(D,C){
 }
 // راكد: رصيد الفرع ≥ الحد ولم يبع في الفترة
 export function stale(D,C,o){
- o=o||{};const wh=D.sti.get(C.wh),ex=exSet(C,D),out=[],P=o.period?soldMap(D,o.period.from,o.period.to):null,fs=o.store?D.sti.get(o.store):undefined,fv=o.vendor?D.vn.indexOf(o.vendor):-2,mn=Math.max(1,N(o.min==null||o.min===""?C.stale:o.min));
- for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(!a)continue;
+ o=o||{};const wh=D.sti.get(C.wh),ex=exSet(C,D),out=[],P=o.period?soldMap(D,o.period.from,o.period.to):null,fs=o.store?D.sti.get(o.store):undefined,fv=o.vendor?D.vn.indexOf(o.vendor):-2,mn=Math.max(1,N(o.min==null||o.min===""?C.stale:o.min)),q=String(o.q||"").trim().toLowerCase();
+ for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(!a)continue;if(q&&D.k[ki][0].toLowerCase().indexOf(q)<0)continue;
   for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti)||(fs!==undefined&&ti!==fs)||(fv!==-2&&!vHit(D,ki,ti,a[j+3],fv)))continue;if(a[j+1]<mn)continue;const sold=soldOf(P,ki,ti,a[j+2]);if(sold>0)continue;out.push({ki,ti,vi:a[j+3],on:a[j+1],sold})}}
  return out.sort((p,r)=>r.on-p.on);
 }
@@ -381,6 +381,38 @@ export function cmpPeriods(D,C,o){
  const key=g=>by==="store"?D.st[g.k]:by==="var"?D.k[g.k].join(" "):String(g.k),kc=(p,r)=>key(p)<key(r)?-1:key(p)>key(r)?1:0;
  return {by,a:{sold:S.a.sold,ret:S.a.ret,days:S.a.days.size},b:{sold:S.b.sold,ret:S.b.ret,days:S.b.days.size},rows:rows.sort((p,r)=>r.a-p.a||r.b-p.b||kc(p,r)),
   up:rows.filter(g=>g.d>0).sort((p,r)=>r.d-p.d||kc(p,r)),down:rows.filter(g=>g.d<0).sort((p,r)=>p.d-r.d||kc(p,r))};
+}
+/* ---- (v181) «تحليل صنف» v2: جدول محوري لصنف واحد بدل جداول إكسل المحورية ---- */
+// خانات الصنف: (لون ومقاس، مخزن) ← {رصيد، مبيعات، ناقص؟، راكد؟}. ناقص = فرع يبيعه ورصيده أقل من الحد، راكد = فرع عنده ≥ حد الراكد ولم يبع (كجدول الصنف القديم)
+function itemAtoms(D,C,code,o){
+ const ids=idsOf(D,{code,cl:o.cl,z:o.z});if(!ids||!ids.length)return null;const P=o.period?soldMap(D,o.period.from,o.period.to):null,wh=D.sti.get(C.wh),ex=exSet(C,D),A=new Map();
+ eachCell(D,P,ids,(ki,ti,vi,on,sold)=>{const k=ki*1000+ti;let a=A.get(k);if(!a){a={ki,ti,on:0,sold:0};A.set(k,a)}a.on+=on;a.sold+=sold});
+ const stl=Math.max(1,N(C.stale));A.forEach(a=>{const br=a.ti!==wh&&!ex.has(a.ti);a.need=br&&a.sold>0&&a.on<minOf(C,D,a.ki);a.idle=br&&a.on>=stl&&a.sold<=0});
+ return {ids,A,wh,ex};
+}
+// الجدول المحوري: rows/cols = store | color | size | var | "" (بلا أعمدة). كل خانة {on,sold,need,idle} = مجموع خاناتها. الإجماليات للصفوف والأعمدة والكل
+export function itemPivot(D,C,code,o){
+ o=o||{};const T=itemAtoms(D,C,code,o);if(!T)return null;const rd=o.rows||"store",cd=o.cols===undefined?"size":o.cols,wh=T.wh;
+ const key=(d,a)=>d==="store"?a.ti:d==="color"?D.k[a.ki][1]:d==="size"?D.k[a.ki][2]:d==="var"?a.ki:"";
+ const cells=new Map(),R=new Map(),Cc=new Map(),tot={on:0,sold:0,need:0,idle:0},add=(m,k,a)=>{let c=m.get(k);if(!c){c={k,on:0,sold:0,need:0,idle:0};m.set(k,c)}c.on+=a.on;c.sold+=a.sold;if(a.need)c.need++;if(a.idle)c.idle++;return c};
+ T.A.forEach(a=>{if(a.on===0&&a.sold===0)return;const r=key(rd,a),c=key(cd,a);add(R,r,a);add(Cc,c,a);const x=add(cells,JSON.stringify([r,c]),a);x.r=r;x.c=c;tot.on+=a.on;tot.sold+=a.sold;if(a.need)tot.need++;if(a.idle)tot.idle++});
+ const nm=(d,k)=>d==="store"?D.st[k]:String(k);
+ const ord=(d,m)=>{const L=[...m.values()];if(d==="size")return L.sort((p,r)=>zk(p.k)-zk(r.k)||(p.k<r.k?-1:p.k>r.k?1:0));if(d==="var")return L.sort((p,r)=>cmpK(D.k[p.k],D.k[r.k]));
+  return L.sort((p,r)=>(d==="store"?(p.k===wh?-1:r.k===wh?1:0):0)||r.sold-p.sold||r.on-p.on||(nm(d,p.k)<nm(d,r.k)?-1:1))};
+ return {rows:ord(rd,R),cols:ord(cd,Cc),cell:(r,c)=>cells.get(JSON.stringify([r,c]))||null,tot,rd,cd,wh};
+}
+// ملخّص الصنف: الأرصدة والمبيعات ونسبة ما بيع، وكم يوماً يكفي الرصيد بمعدل البيع، ومنحنى المقاسات والألوان (نصيب المبيعات مقابل نصيب الرصيد)، وما يُستنتج منها
+export function itemInfo(D,C,code,o){
+ o=o||{};const T=itemAtoms(D,C,code,o);if(!T)return null;const wh=T.wh;let whOn=0,brOn=0,sold=0,need=0,needWh=0,idle=0,idlePcs=0;const sell=new Set(),hold=new Set(),bz=new Map(),bc=new Map(),needSt=new Map();
+ const cur=(m,k)=>{let c=m.get(k);if(!c){c={k,on:0,sold:0};m.set(k,c)}return c};
+ const whK=new Map();T.A.forEach(a=>{if(a.ti===wh)whK.set(a.ki,(whK.get(a.ki)||0)+a.on)});
+ T.A.forEach(a=>{const x=D.k[a.ki];if(a.ti===wh)whOn+=a.on;else brOn+=a.on;sold+=a.sold;if(a.ti!==wh&&a.sold>0)sell.add(a.ti);if(a.ti!==wh&&a.on>0)hold.add(a.ti);
+  const z=cur(bz,x[2]),c=cur(bc,x[1]);z.on+=a.on;z.sold+=a.sold;c.on+=a.on;c.sold+=a.sold;
+  if(a.need){need++;if((whK.get(a.ki)||0)>0)needWh++;needSt.set(a.ti,1)}if(a.idle){idle++;idlePcs+=a.on}});
+ const days=o.days>0?o.days:0,rate=days?sold/days:0,on=whOn+brOn,cover=rate>0?Math.max(0,on)/rate:null;
+ const curve=m=>{const L=[...m.values()],ts=L.reduce((s,x)=>s+Math.max(0,x.sold),0),to=L.reduce((s,x)=>s+Math.max(0,x.on),0);L.forEach(x=>{x.ss=ts>0?Math.max(0,x.sold)/ts:0;x.os=to>0?Math.max(0,x.on)/to:0;x.gap=x.ss-x.os});return L};
+ const sizes=curve(bz).sort((p,r)=>zk(p.k)-zk(r.k)||(p.k<r.k?-1:p.k>r.k?1:0)),colors=curve(bc).sort((p,r)=>r.sold-p.sold||(p.k<r.k?-1:1));
+ return {ids:T.ids,wh:whOn,br:brOn,on,sold,thru:sold+Math.max(0,on)>0&&sold>=0?sold/(sold+Math.max(0,on)):null,rate,cover,sell:sell.size,hold:hold.size,need,needWh,needSt:needSt.size,idle,idlePcs,sizes,colors,vendor:D.k[T.ids[0]][3]};
 }
 
 /* ---- (v174) فهم السؤال: قواعد ثابتة، لا تخمين. ما لم يُفهم يُعاد في unk، وما يحتمل أكثر من معنى في amb ---- */
@@ -684,6 +716,12 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 .stk-tile.go{cursor:pointer;background:var(--soft)}.stk-tile.go:hover{border-color:var(--acc)}.stk-tile.go span::after{content:" ‹";font-weight:800}
 .stk-act{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}.stk-src{color:var(--mut);font-size:12.5px;line-height:1.9;margin:12px 4px 0}.stk-ph{margin:8px 10px 6px;font-size:16px}.stk-t td.n{direction:ltr}
 :where([data-theme=dark]) .stk-tile.bad b{color:#f1a5a0}
+.stk-ins{list-style:none;margin:0;padding:0}.stk-ins li{padding:9px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.85}.stk-ins li:first-child{border-top:0}.stk-ins .bt.s{margin-inline-start:4px;vertical-align:middle}
+.stk-crvl{display:flex;gap:14px;font-size:12.5px;color:var(--mut);margin:0 0 8px}.stk-crvl i{display:inline-block;width:12px;height:8px;border-radius:4px;margin-inline-end:5px;vertical-align:middle}
+.stk-crv{display:grid;grid-template-columns:minmax(44px,auto) 1fr auto;gap:7px 10px;align-items:center}.stk-crv>b{font-size:13.5px}.stk-crv .bars{display:flex;flex-direction:column;gap:3px;min-width:0}.stk-crv .bars i{display:block;height:8px;border-radius:4px;min-width:2px}.stk-crv>span{font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
+.stk-crv i.s,.stk-crvl i.s{background:var(--acc)}.stk-crv i.o,.stk-crvl i.o{background:var(--olive,#6f7d45)}:where([data-theme=dark]) .stk-crv i.o,:where([data-theme=dark]) .stk-crvl i.o{background:#a4b46e}
+.stk-piv{margin-top:12px}.stk-pvb{box-shadow:none;border:0;padding:8px 6px 4px;margin:0}.stk-mx td.t{font-weight:800;border-inline-start:2px solid var(--line)}.stk-mx tr.whr td.s{background:var(--soft)}
+.stk-lg{border-radius:6px;padding:1px 8px;font-weight:700}.stk-lg.need{background:#fdecea;color:#8a2218}.stk-lg.idle{background:#fff4e2;color:#6b4300}.stk-lg.wh{background:var(--soft);color:var(--ink)}:where([data-theme=dark]) .stk-lg.need{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .stk-lg.idle{background:#3a2a08;color:#f6c770}
 .stk-t td.rk{color:var(--mut);width:34px}.stk-t td.up{color:var(--olive,#6f7d45);font-weight:800}.stk-t td.dn{color:#c4362b;font-weight:800}.stk-cmp td.best{background:var(--olive-s,#e9ecd9);color:var(--olive-t,#3f4a22);font-weight:800;border-radius:8px}.stk-cmp th a{font-weight:700}.stk-cmp td:first-child{white-space:normal;min-width:96px;line-height:1.5}.stk-cmp th{white-space:normal}@media (max-width:560px){.stk-cmp td,.stk-cmp th{padding:7px 6px;font-size:13px}}.stk-und+.stk-und{margin-top:-4px}
 :where([data-theme=dark]) .stk-t td.up{color:#a4b46e}:where([data-theme=dark]) .stk-t td.dn{color:#f1a5a0}:where([data-theme=dark]) .stk-cmp td.best{background:#2c3318;color:#cbd89a}
 @media (max-width:760px){.stk-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.stk-tile b{font-size:21px}.stk-askb .bt{padding:0 16px}}
@@ -760,22 +798,59 @@ async function mkTransfer(fName,dName){
   BUSY="";paint();if(X.toast)X.toast("✅ أُنشئ طلب التحويل "+String(r.no||"")+" ووصل الفرعين إشعار")}
  else{BUSY="";paint();if(X.toast)X.toast("تعذّر إنشاء الطلب: "+String(r&&r.err||"").slice(0,90))}
 }
+/* (v181) «تحليل صنف» v2: ملخّص + ملاحظات + منحنى المقاسات والألوان + جدول محوري (الصفوف/الأعمدة/القيمة يختارها المستخدم) */
+const PDIM=[["store","الفرع"],["color","اللون"],["size","المقاس"],["var","اللون والمقاس"]];
+const pdName=d=>(PDIM.find(x=>x[0]===d)||["","—"])[1];
 function vItem(){
- const P=period(),code=String(UI.code||"").trim(),M=code?matrix(DATA,CFG,code,P):null;
- const bar=`<div class="stk-bar"><label>الكود<input type="text" data-sf="code" id="stk-code" list="stk-codes" value="${E(UI.code)}" placeholder="اكتب الكود" dir="ltr" autocomplete="off"></label>${perSel()}<label>أعرض<select data-sf="show" id="stk-show"><option value="b"${UI.show==="b"?" selected":""}>الرصيد والمبيعات</option><option value="o"${UI.show==="o"?" selected":""}>الرصيد فقط</option><option value="s"${UI.show==="s"?" selected":""}>المبيعات فقط</option></select></label><span class="sp"></span>${M?`<button class="bt" type="button" data-sk="xls">⬇️ إكسل</button>`:""}</div><datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
- if(!code){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">اكتب كود الصنف لترى كل الفروع في جدول واحد:<br>رصيد كل فرع ومبيعاته لكل لون ومقاس، ومن يحتاج ومن عنده راكد.</div></div>`}
- if(!M){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">الكود <b data-notr dir="ltr">${E(code)}</b> غير موجود في ملف الكميات.</div></div>`}
- const mn=k=>minOf(CFG,DATA,k),ex=exSet(CFG,DATA),tot={};let allOn=0,allSold=0;
- M.rows.forEach(r=>{for(const ti in r.m){const t=tot[ti]||(tot[ti]=[0,0]);t[0]+=r.m[ti][0];t[1]+=r.m[ti][1];if(+ti!==M.wh){allSold+=r.m[ti][1]}allOn+=r.m[ti][0]}});
- const cell=(v,ki,ti)=>{if(!v)return `<td class="e">·</td>`;const isWh=ti===M.wh,cls=isWh?"wh":ex.has(ti)?"":v[0]<mn(ki)&&v[1]>0?"need":v[0]>=N(CFG.stale)&&v[1]<=0?"idle":"";
-  return `<td class="${cls}">${UI.show==="s"?v[1]:UI.show==="o"?v[0]:`<b>${v[0]}</b><i>${v[1]}</i>`}</td>`};
- const vnm=DATA.k[M.rows[0].ki][3];
- LASTX={name:"تحليل-"+code,head:["اللون","المقاس"].concat([].concat.apply([],M.st.map(ti=>[DATA.st[ti]+" رصيد",DATA.st[ti]+" مبيعات"]))),rows:()=>M.rows.map(r=>{const x=DATA.k[r.ki];return [x[1],x[2]].concat([].concat.apply([],M.st.map(ti=>r.m[ti]?[r.m[ti][0],r.m[ti][1]]:["",""])))})};
- return bar+gapNote(P)+`<div class="stk-sum"><span data-notr><b dir="ltr">${E(code)}</b>${vnm>=0?E(DATA.vn[vnm]):""}</span><span><b>${fmt(tot[M.wh]?tot[M.wh][0]:0)}</b>رصيد المستودع</span><span><b>${fmt(allOn-(tot[M.wh]?tot[M.wh][0]:0))}</b>رصيد الفروع</span><span><b>${fmt(allSold)}</b>مبيعات الفروع</span><span><b>${M.rows.length}</b>لون ومقاس</span></div>
- <p class="off" style="margin:0 4px 10px;font-size:13px">في كل خانة: الرصيد في الأعلى والمبيعات تحته بخط أصغر. <span style="background:#fdecea;color:#8a2218;border-radius:6px;padding:1px 8px;font-weight:700">أحمر</span> = يبيع ورصيده أقل من الحد · <span style="background:#fff4e2;color:#6b4300;border-radius:6px;padding:1px 8px;font-weight:700">أصفر</span> = عنده ${N(CFG.stale)} أو أكثر ولم يبع.</p>
- <div class="stk-pan"><div class="tw"><table class="stk-t stk-mx"><thead><tr><th class="s">اللون / المقاس</th>${M.st.map(ti=>`<th>${sn(ti)}</th>`).join("")}<th>الإجمالي</th></tr></thead><tbody>${M.rows.map(r=>{const x=DATA.k[r.ki];let a=0,b=0;for(const ti in r.m){a+=r.m[ti][0];b+=r.m[ti][1]}return `<tr><td class="s" data-notr>${E(x[1]||"—")} · ${E(x[2]||"—")}</td>${M.st.map(ti=>cell(r.m[ti],r.ki,ti)).join("")}<td><b>${a}</b><i>${b}</i></td></tr>`}).join("")}
- <tr class="tot"><td class="s">الإجمالي</td>${M.st.map(ti=>`<td><b>${tot[ti]?tot[ti][0]:0}</b><i>${tot[ti]?tot[ti][1]:0}</i></td>`).join("")}<td><b>${allOn}</b><i>${allSold+(tot[M.wh]?tot[M.wh][1]:0)}</i></td></tr>
- <tr><td class="s">نسبة المبيعات</td>${M.st.map(ti=>`<td>${ti===M.wh||!allSold?"—":Math.round((tot[ti]?tot[ti][1]:0)/allSold*100)+"%"}</td>`).join("")}<td></td></tr></tbody></table></div></div>`;
+ const P=period(),code=String(UI.code||"").trim(),ids=code?DATA.code.get(code)||[]:[];
+ const cols=[...new Set(ids.map(k=>DATA.k[k][1]))].sort(),szs=[...new Set(ids.filter(k=>!UI.cl||DATA.k[k][1]===UI.cl).map(k=>DATA.k[k][2]))].sort((a,b)=>zk(a)-zk(b));
+ const bar=`<div class="stk-bar"><label>الكود<input type="text" data-sf="code" id="stk-code" list="stk-codes" value="${E(UI.code)}" placeholder="اكتب الكود" dir="ltr" autocomplete="off"></label>${ids.length?`<label>اللون<select data-sf="cl" id="stk-cl">${opt(cols,UI.cl,"كل الألوان")}</select></label><label>المقاس<select data-sf="sz" id="stk-sz">${opt(szs,UI.sz,"كل المقاسات")}</select></label>`:""}${perSel()}<span class="sp"></span>${ids.length?`<button class="bt" type="button" data-sk="xls">⬇️ إكسل</button>`:""}</div><datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
+ if(!code){LASTX=null;const RK=rankBy(DATA,CFG,{by:"code",period:P}),top=RK?RK.rows.slice(0,12):[];
+  return bar+`<div class="stk-pan"><div class="stk-em">اكتب كود الصنف لترى تحليله كاملاً: أين رصيده، وأين يُباع، وأي المقاسات والألوان تنقص أو تزيد، وجدولاً محورياً تختار صفوفه وأعمدته بنفسك.${top.length?`<div class="stk-chips" style="justify-content:center;margin-top:14px"><i>الأعلى مبيعاً</i>${top.map(g=>`<button type="button" data-sk="icode" data-c="${E(g.k)}" data-notr dir="ltr">${E(g.k)}</button>`).join("")}</div>`:""}</div></div>`}
+ if(!ids.length){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">الكود <b data-notr dir="ltr">${E(code)}</b> غير موجود في ملف الكميات.</div></div>`}
+ const R0=fullR(),dd=x=>x?Math.round((new Date(x.to+"T12:00:00")-new Date(x.from+"T12:00:00"))/864e5)+1:0,days=P?dd(P):dd(R0);
+ const I=itemInfo(DATA,CFG,code,{cl:UI.cl,z:UI.sz,period:P,days});if(!I){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">لا يوجد هذا اللون أو المقاس لهذا الكود.</div></div>`}
+ const pr=UI.pr||"store",pc0=UI.pc===undefined?"size":UI.pc,pc=pc0===pr||(pr==="var"&&(pc0==="color"||pc0==="size"))?"":pc0,pv=UI.pv||"on",V=pivotView(code,P,pr,pc,pv);
+ const sub=[UI.cl,UI.sz].filter(Boolean).join(" · "),go=(sk,lab)=>` data-sk="${sk}" role="button" tabindex="0"`;
+ const T=[tile(fmt(I.wh),"قطعة في المستودع","k"),tile(fmt(I.br),"قطعة في الفروع"),tile(fmt(I.sold),P?"قطعة مباعة في الفترة (الصافي)":"قطعة مباعة من أول السنة (الصافي)","k"),tile(pct(I.thru),"نسبة ما بيع منه"),
+  tile(fmt(I.sell),"فرع باع منه"),tile(I.cover==null?"—":I.cover>=999?"999+":fmt(I.cover),"يوماً يكفي الرصيد بمعدل البيع (تقريبي)"),
+  tile(fmt(I.need),"خانة يبيعها فرع ورصيده أقل من الحد",I.need?"go bad":"go",go("ineed")),tile(fmt(I.idlePcs),"قطعة راكدة في الفروع",I.idlePcs?"go":"",I.idlePcs?go("istale"):"")];
+ // ملاحظات تُستنتج من الأرقام نفسها (لا تخمين)
+ const NT=[],szL=I.sizes.filter(s=>s.k!==""),clL=I.colors.filter(c=>c.k!==""),pp=x=>pct(x),zv=k=>`<b data-notr dir="ltr">${E(k)}</b>`;
+ if(I.sold<=0)NT.push(`لم يُبع منه شيء ${P?"في هذه الفترة":"من أول السنة"}.`);
+ if(I.need)NT.push(`${fmt(I.needSt)} فرع يبيع ألواناً أو مقاسات منه ورصيده فيها أقل من الحد (${fmt(I.need)} خانة)${I.needWh?`، والمستودع عنده ${fmt(I.needWh)} منها`:"، والمستودع ليس عنده منها"}. <button class="bt s" type="button" data-sk="ineed">📋 النواقص</button>${I.need>I.needWh?` <button class="bt s" type="button" data-sk="itr">🔄 التحويلات المقترحة</button>`:""}`);
+ if(I.wh<=0&&I.sold>0)NT.push(`المستودع ليس عنده رصيد منه وهو يُباع في ${fmt(I.sell)} فرع.`);
+ const top=szL.length>1?szL.slice().sort((p,r)=>r.sold-p.sold)[0]:null;if(top&&top.sold>0)NT.push(`المقاس الأكثر مبيعاً ${zv(top.k)}: ${pp(top.ss)} من المبيعات مقابل ${pp(top.os)} من الرصيد${top.gap>=0.05?" — قد ينقص قريباً":""}.`);
+ const sh=(L,w)=>{if(L.length<2||I.sold<=0)return;const lo=L.slice().sort((p,r)=>r.gap-p.gap)[0],hi=L.slice().sort((p,r)=>p.gap-r.gap)[0];
+  if(lo.gap>=0.05&&!(w==="المقاس"&&top&&lo.k===top.k))NT.push(`${w} ${zv(lo.k)} يُباع أكثر من رصيده: ${pp(lo.ss)} من المبيعات مقابل ${pp(lo.os)} من الرصيد — قد ينقص قريباً.`);
+  if(hi.gap<=-0.05)NT.push(`${w} ${zv(hi.k)} رصيده أكبر من مبيعاته: ${pp(hi.os)} من الرصيد مقابل ${pp(hi.ss)} من المبيعات.`)};
+ if(!UI.sz)sh(szL,"المقاس");if(!UI.cl)sh(clL,"اللون");
+ if(I.idle)NT.push(`${fmt(I.idlePcs)} قطعة راكدة في ${fmt(I.idle)} خانة (عند الفرع ${fmt(N(CFG.stale))} أو أكثر ولم يبع).`);
+ const crv=(L,t)=>{if(L.length<2)return "";const mx=Math.max(0.0001,...L.map(x=>Math.max(x.ss,x.os)));return `<div class="stk-card"><h3>${t}</h3><div class="stk-crvl"><span><i class="s"></i>نصيب المبيعات</span><span><i class="o"></i>نصيب الرصيد</span></div><div class="stk-crv">${L.slice(0,24).map(x=>`<b data-notr dir="ltr">${E(x.k||"—")}</b><div class="bars"><i class="s" style="width:${Math.round(x.ss/mx*100)}%"></i><i class="o" style="width:${Math.round(x.os/mx*100)}%"></i></div><span class="n">${pp(x.ss)} · ${pp(x.os)}</span>`).join("")}</div>${L.length>24?`<p class="stk-src">معروض 24 من ${fmt(L.length)}.</p>`:""}</div>`};
+ const C1=crv(szL,"منحنى المقاسات"),C2=crv(clL,"منحنى الألوان");
+ const vnm=I.vendor>=0?DATA.vn[I.vendor]:"";
+ return bar+gapNote(P)+`<div class="stk-ttl"><h3 data-notr><bdi dir="ltr">${E(code)}</bdi>${sub?` <small>${E(sub)}</small>`:""}</h3>${vnm?`<small>المورد: <a href="#" data-sk="ivn" data-v="${E(vnm)}" style="color:inherit" data-notr>${E(vnm)}</a></small>`:""}${P?`<small>الفترة: <span data-notr dir="ltr">${E(P.from)} ← ${E(P.to)}</span></small>`:""}</div>
+ <div class="stk-tiles">${T.join("")}</div>
+ ${NT.length?`<div class="stk-card" style="margin:0 0 12px"><h3>💡 ملاحظات على الصنف</h3><ul class="stk-ins">${NT.map(x=>`<li>${x}</li>`).join("")}</ul></div>`:""}
+ ${C1||C2?`<div class="stk-up">${C1}${C2}</div>`:""}${V}`;
+}
+// الجدول المحوري للصنف
+function pivotView(code,P,pr,pc,pv){
+ const M=itemPivot(DATA,CFG,code,{cl:UI.cl,z:UI.sz,period:P,rows:pr,cols:pc});if(!M){LASTX=null;return ""}
+ const lab=(d,k)=>d==="store"?sn(k):d==="var"?varL(k):d===""?"الإجمالي":`<span data-notr dir="ltr">${E(k||"—")}</span>`,txt=(d,k)=>d==="store"?DATA.st[k]:d==="var"?DATA.k[k].slice(1,3).join(" "):d===""?"الإجمالي":String(k);
+ const val=c=>{if(!c)return "·";const st=c.sold+Math.max(0,c.on)>0&&c.sold>=0?c.sold/(c.sold+Math.max(0,c.on)):null;return pv==="sold"?fmt(c.sold):pv==="st"?pct(st):pv==="b"?`<b>${fmt(c.on)}</b><i>${fmt(c.sold)}</i>`:fmt(c.on)};
+ // اللون يتبع رقم الخانة نفسه (لا خانة داخلها): يبيع ومجموع رصيده أقل من الحد ← أحمر، مجموع رصيده ≥ حد الراكد ولم يبع ← أصفر. فقط لو أحد البعدين «الفرع»
+ const stD=pr==="store"||pc==="store",mn0=N(CFG.min),st0=Math.max(1,N(CFG.stale)),exS=exSet(CFG,DATA);
+ const cls=(c,isWh,ti)=>!c?"e":isWh?"wh":!stD||exS.has(ti)?"":c.sold>0&&c.on<mn0?"need":c.on>=st0&&c.sold<=0?"idle":"";
+ const one=pc==="",colsL=one?[]:M.cols,isWhR=r=>pr==="store"&&r.k===M.wh;
+ const optD=(id,cur,none)=>`<select data-sf="${id}" id="stk-${id}">${(none?[["","بلا أعمدة"]]:[]).concat(PDIM).map(x=>`<option value="${x[0]}"${cur===x[0]?" selected":""}>${x[1]}</option>`).join("")}</select>`;
+ const ctrl=`<div class="stk-bar stk-pvb"><b class="stk-undt">📊 الجدول المحوري</b><label>الصفوف${optD("pr",pr,false)}</label><label>الأعمدة${optD("pc",pc,true)}</label><label>القيمة<select data-sf="pv" id="stk-pv">${[["on","الرصيد"],["sold","المبيعات"],["b","الرصيد والمبيعات"],["st","نسبة ما بيع"]].map(x=>`<option value="${x[0]}"${pv===x[0]?" selected":""}>${x[1]}</option>`).join("")}</select></label><button class="bt s" type="button" data-sk="pswap" title="تبديل الصفوف والأعمدة">⇄ تبديل</button></div>`;
+ const head=pv==="b"?(c=>[txt(pc,c.k)+" رصيد",txt(pc,c.k)+" مبيعات"]):(c=>[txt(pc,c.k)]),cv=c=>{if(!c)return pv==="b"?["",""]:[""];const st=c.sold+Math.max(0,c.on)>0&&c.sold>=0?Math.round(c.sold/(c.sold+Math.max(0,c.on))*1000)/10+"%":"";return pv==="b"?[c.on,c.sold]:pv==="sold"?[c.sold]:pv==="st"?[st]:[c.on]};
+ LASTX={name:"تحليل-"+code,head:[pdName(pr)].concat(...colsL.map(head)).concat(pv==="b"?["الإجمالي رصيد","الإجمالي مبيعات"]:["الإجمالي"]),rows:()=>M.rows.map(r=>[txt(pr,r.k)].concat(...colsL.map(c=>cv(M.cell(r.k,c.k)))).concat(cv(r))).concat([["الإجمالي"].concat(...colsL.map(c=>cv(c))).concat(cv(Object.assign({},M.tot)))])};
+ const leg=`<p class="stk-src" style="margin:4px 4px 10px">${pv==="b"?"في كل خانة: الرصيد وتحته المبيعات. ":""}${stD?`<span class="stk-lg need">أحمر</span> باع منه ورصيده في الخانة أقل من ${fmt(mn0)} · <span class="stk-lg idle">أصفر</span> رصيده ${fmt(st0)} أو أكثر ولم يبع · `:""}<span class="stk-lg wh">رمادي</span> المستودع. لكل لون ومقاس في كل فرع اختر الصفوف «اللون والمقاس» والأعمدة «الفرع».</p>`;
+ return `<div class="stk-pan stk-piv">${ctrl}${leg}<div class="tw"><table class="stk-t stk-mx"><thead><tr><th class="s">${pdName(pr)}${one?"":" ⟍ "+pdName(pc)}</th>${colsL.map(c=>`<th>${lab(pc,c.k)}</th>`).join("")}<th>الإجمالي</th></tr></thead><tbody>
+ ${M.rows.map(r=>`<tr${isWhR(r)?` class="whr"`:""}><td class="s">${lab(pr,r.k)}</td>${colsL.map(c=>{const x=M.cell(r.k,c.k);return `<td class="${cls(x,isWhR(r)||(pc==="store"&&c.k===M.wh),pr==="store"?r.k:c.k)}">${val(x)}</td>`}).join("")}<td class="t">${val(r)}</td></tr>`).join("")}
+ <tr class="tot"><td class="s">الإجمالي</td>${colsL.map(c=>`<td>${val(c)}</td>`).join("")}<td>${val(M.tot)}</td></tr></tbody></table></div></div>`;
 }
 function vSales(){
  const code=String(UI.code||"").trim(),end=META&&META.q&&META.q.to?addDays(META.q.to,-1):today();if(!UI.from)UI.from=addDays(end,-29);if(!UI.to)UI.to=end;
@@ -794,9 +869,9 @@ function vSales(){
  <div class="stk-card"><h3>يوماً بيوم</h3>${days.length?days.map(d=>`<div class="stk-day"><span data-notr>${d}</span><i class="${R.byDay[d]<0?"m":""}" style="width:${Math.round(Math.abs(R.byDay[d])/mx*62)}%"></i><b>${R.byDay[d]}</b></div>`).join(""):`<p>لا مبيعات في الفترة.</p>`}</div></div>`;
 }
 function vStale(){
- const P=period(),L=stale(DATA,CFG,{store:UI.st,vendor:UI.vn,min:UI.son,period:P});
+ const P=period(),L=stale(DATA,CFG,{store:UI.st,vendor:UI.vn,min:UI.son,period:P,q:UI.q});
  LASTX={name:"الراكد",head:["الفرع","الكود","اللون","المقاس","المورد","الرصيد","المبيعات"],rows:()=>L.map(l=>{const x=DATA.k[l.ki];return [DATA.st[l.ti],x[0],x[1],x[2],l.vi>=0?DATA.vn[l.vi]:"",l.on,l.sold]})};
- return `<div class="stk-bar"><label>الفرع<select data-sf="st" id="stk-st">${opt(stores(1),UI.st,"كل الفروع")}</select></label><label>المورد<select data-sf="vn" id="stk-vn">${opt(vendors(),UI.vn,"كل الموردين")}</select></label><label>الرصيد من<input type="number" min="1" max="9999" data-sf="son" id="stk-son" value="${E(UI.son)}" placeholder="${E(CFG.stale)}"></label>${perSel()}<span class="sp"></span><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${gapNote(P)}
+ return `<div class="stk-bar"><label>الفرع<select data-sf="st" id="stk-st">${opt(stores(1),UI.st,"كل الفروع")}</select></label><label>المورد<select data-sf="vn" id="stk-vn">${opt(vendors(),UI.vn,"كل الموردين")}</select></label><label>بحث بالكود<input type="search" data-sf="q" id="stk-q" value="${E(UI.q)}" placeholder="مثلاً 13016" dir="ltr"></label><label>الرصيد من<input type="number" min="1" max="9999" data-sf="son" id="stk-son" value="${E(UI.son)}" placeholder="${E(CFG.stale)}"></label>${perSel()}<span class="sp"></span><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${gapNote(P)}
  <div class="stk-sum"><span><b>${fmt(L.length)}</b>سطر راكد</span><span><b>${fmt(L.reduce((s,l)=>s+l.on,0))}</b>قطعة</span></div>
  ${L.length?`<div class="stk-pan"><div class="tw"><table class="stk-t"><thead><tr>${UI.st?"":"<th>الفرع</th>"}<th>الكود</th><th>اللون</th><th class="n">المقاس</th><th class="n">الرصيد</th><th class="n">المبيعات</th></tr></thead><tbody>${L.slice(0,UI.lim).map(l=>`<tr>${UI.st?"":`<td>${sn(l.ti)}</td>`}${kCells(l.ki)}<td class="n"><b>${l.on}</b></td><td class="n">${l.sold}</td></tr>`).join("")}</tbody></table></div>${more(L.length)}</div>`:`<div class="stk-pan"><div class="stk-em">لا أصناف راكدة بهذه الشروط.</div></div>`}`;
 }
@@ -1070,6 +1145,11 @@ function wire(){
   else if(a==="pick"&&UI.a){e.preventDefault();const k=t.dataset.k;if(k==="store"||k==="code"||k==="cl"||k==="vendor"){UI.a[k]=t.dataset.v||"";UI.a.amb[k]=[];if(k==="code"){UI.a.cl="";UI.a.z="";UI.a.amb.cl=[]}paint(false)}}
   // (v180) اسم في جدول ترتيب أو مقارنة ← بطاقته (بلا ترتيب ولا مقارنة ولا «مين عنده»)
   else if(a==="rgo"&&UI.a){e.preventDefault();const q=UI.a,k=t.dataset.k,v=t.dataset.v||"";if(k!=="store"&&k!=="code"&&k!=="vendor")return;if(q.cmp&&q.cmp.st)q.store=k==="store"?v:"";q[k]=v;if(k==="code"){q.cl="";q.z=""}q.rank=null;q.where=false;q.cmp=null;UI.lim=200;paint(false);window.scrollTo(0,0)}
+  // (v181) تحليل صنف
+  else if(a==="icode"){UI.code=t.dataset.c||"";UI.cl="";UI.sz="";paint(false)}
+  else if(a==="ineed"||a==="istale"||a==="itr"){UI.q=UI.code;UI.st="";UI.vn="";UI.fr="";UI.tt="";if(a==="ineed")UI.sold=1;UI.tab=a==="ineed"?"need":a==="istale"?"stale":"tr";UI.lim=200;paint(false);window.scrollTo(0,0)}
+  else if(a==="ivn"){e.preventDefault();const v=t.dataset.v||"";UI.tab="ask";UI.aq="المورد "+v;UI.a=parseAsk(UI.aq,askCtx());UI.a.vendor=v;UI.a.amb.vendor=[];UI.lim=200;paint(false);window.scrollTo(0,0)}
+  else if(a==="pswap"){const r=UI.pr||"store",c=UI.pc===undefined?"size":UI.pc;if(c){UI.pr=c;UI.pc=r;paint()}}
   else if(a==="norank"&&UI.a){UI.a.rank=null;paint(false)}
   else if(a==="nowhere"&&UI.a){UI.a.where=false;paint(false)}
   else if(a==="nocmp"&&UI.a){const q=UI.a;if(q.cmp&&q.cmp.st)q.store=q.cmp.st[0]||"";q.cmp=null;paint(false)}
