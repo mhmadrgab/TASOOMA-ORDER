@@ -407,6 +407,19 @@
   document.body.insertBefore(d,document.body.firstChild);
  }
 })();
+// 🛑 (v177، 19 نوفمبر 2026، محمد: "لو حد فاتح أمر شراء أو أي حاجة وضغط في أي حتة فاضية بيطلع منها")
+// الضغط على الخلفية الفاضية حول أي نافذة لم يعد يقفلها (كان يضيع ما كُتب في النماذج). القفل من زر الإغلاق/رجوع/إلغاء أو Esc فقط.
+// نوقف الضغطة في مرحلة الالتقاط قبل أن تصل لمستمع النافذة (e.target===m)، فلا يحتاج أي ملف آخر أن يتغيّر.
+// مستثنى عن قصد: عارضات الصور (#zbx #bciv #anniv .ov) وخريطة التتبع: لا يُكتب فيها شيء، وقفلها بالضغط برّه طبيعي.
+// ⚠️ نافذة جديدة: أضف معرّفها هنا لو فيها نموذج. وتهتز اللوحة هزة خفيفة (tz-stay) ليعرف المستخدم أن الضغطة وصلت.
+(()=>{
+ const HOLD="#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#annm,#annp,#bcgm,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,#flm,#cmx,#gfm,.cm,.fm,.gfm,.mdl,.wkm,.xm";
+ const stop=e=>{const t=e.target;if(!(t instanceof Element)||!t.matches(HOLD)||!t.classList.contains("on")&&getComputedStyle(t).display==="none")return;
+  e.stopPropagation();e.stopImmediatePropagation();e.preventDefault();
+  if(e.type!=="click")return;const p=t.firstElementChild;if(!p||document.documentElement.classList.contains("lite"))return;
+  p.classList.remove("tz-stay");void p.offsetWidth;p.classList.add("tz-stay");setTimeout(()=>p.classList.remove("tz-stay"),420)};
+ addEventListener("click",stop,true);
+})();
 // 🎬 (13 نوفمبر 2026، transitions.dev) قفل النوافذ بنعومة: أي نافذة بتتقفل (بيتشال منها "on")، بنسيبها ظاهرة 150ms
 // بكلاس is-closing (الخلفية بتختفي بالتدريج واللوحة بتصغر)، وبعدين بتختفي. الملفات التانية مش محتاجة تتغيّر.
 // لو اتفتحت تاني في النص، بنلغي القفل على طول. الضغطات بتعدّي من تحتها وهي بتقفل (pointer-events:none في ui.css).

@@ -295,6 +295,10 @@ function wire(el){
     if(t.closest("#bcsend"))return void sendText();
     if(t.closest("#bcpic")){const f=g("bcfile");if(f){f.value="";f.click()}return}
     if(t.closest("[data-img]"))return void viewImg(t.closest("[data-img]").dataset.img);
+    // (v177) الضغط على صورة الشخص في رأس المحادثة يعرضها كبيرة
+    if(t.closest("#bcav img.av")){const src=t.closest("#bcav img.av").getAttribute("src")||"";if(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(src))return;
+      let v=g("bciv");if(!v){v=document.createElement("div");v.id="bciv";v.addEventListener("click",e=>{if(e.target===v||e.target.closest("[data-ivx]"))v.className=""});document.body.appendChild(v)}
+      v.className="on";v.innerHTML=`<div class="iv-t"><b>${E(g("bct")?g("bct").textContent:"")}</b><button data-ivx type="button" aria-label="إغلاق">✕</button></div><img src="${src}" alt="" style="width:min(320px,80vw);height:auto;border-radius:50%">`;return}
     if(t.closest("[data-file]"))return void viewFile(t.closest("[data-file]").dataset.file);
     if(t.closest("[data-bcng]"))return void groupForm(null);
     if(isG(CUR)&&t.closest(".bch")&&!t.closest("button"))return void groupInfo();

@@ -35,7 +35,9 @@ const CSTYLE=`#pfc{display:none;position:fixed;inset:0;z-index:92;background:rgb
 .pfcv{width:${VP}px;height:${VP}px;max-width:100%;margin:0 auto;border-radius:50%;overflow:hidden;position:relative;background:#111;touch-action:none;cursor:grab;box-shadow:0 0 0 4px #b48aab}
 .pfcv:active{cursor:grabbing}.pfcv img{position:absolute;left:0;top:0;transform-origin:0 0;user-select:none;-webkit-user-drag:none;pointer-events:none;max-width:none}
 #pfc input[type=range]{width:100%;margin:16px 0 4px;accent-color:#b48aab}#pfc .zl{display:flex;justify-content:space-between;font-size:12px;color:var(--mut)}
-#pfc .row{display:flex;gap:8px;justify-content:center;margin-top:14px}`;
+#pfc .row{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.pfcp{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;font-size:12px;color:var(--mut)}
+.pfcp canvas{border-radius:50%;width:50px;height:50px;background:#2a1d2c;flex:none}.pfcp canvas+canvas{width:40px;height:40px}.pfcp span{text-align:start;max-width:150px;line-height:1.4}`;
 function cropOpen(file){
   return new Promise((done,fail)=>{
     const url=URL.createObjectURL(file),img=new Image();
@@ -44,6 +46,7 @@ function cropOpen(file){
       let m=document.getElementById("pfc");if(!m){m=document.createElement("div");m.id="pfc";document.body.appendChild(m)}
       m.innerHTML=`<div class="bx"><h3>ضبط الصورة</h3><p>اسحب الصورة لتحريكها، وكبّرها حتى يملأ الوجه الدائرة</p>
       <div class="pfcv" id="pfcv"><img id="pfci" src="${url}" alt=""></div>
+      <div class="pfcp"><canvas id="pfcp1" width="100" height="100"></canvas><canvas id="pfcp2" width="80" height="80"></canvas><span>هكذا ستظهر صورتك في الدردشة عند الفروع</span></div>
       <input id="pfcz" type="range" min="1" max="4" step="0.01" value="1" aria-label="تكبير"><div class="zl"><span>➖</span><span>🔍 تكبير</span><span>➕</span></div>
       <div class="row"><button class="bt p" id="pfcok" type="button">✅ حفظ الصورة</button><button class="bt" id="pfcno" type="button">إلغاء</button></div></div>`;
       m.className="on";
@@ -52,7 +55,10 @@ function cropOpen(file){
       // نبدأ والصورة مالية الدايرة، ومايلة لفوق شوية (الوش غالباً في التلت الأعلاني)
       CR={x:0,y:0,k:1};const sc=()=>base()*CR.k;
       const clamp=()=>{const s=sc(),V=vp();CR.x=Math.min(0,Math.max(V-W*s,CR.x));CR.y=Math.min(0,Math.max(V-H*s,CR.y))};
-      const draw=()=>{clamp();el.style.transform=`translate(${CR.x}px,${CR.y}px) scale(${sc()})`};
+      // (v177، محمد: «صور الناس في الدردشة عند الفروع بتطلع وحشة») معاينة بالحجم الحقيقي في الدردشة (50 و40 بكسل) وقت الضبط،
+      // علشان اللي بيرفع صورته يشوف إن وشه صغير جداً قبل ما يحفظ، فيكبّرها.
+      const pv=()=>{const s=sc();["pfcp1","pfcp2"].forEach(id=>{const c=document.getElementById(id);if(!c)return;const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.imageSmoothingQuality="high";try{g.drawImage(img,-CR.x/s,-CR.y/s,vp()/s,vp()/s,0,0,c.width,c.height)}catch(e){}})};
+      const draw=()=>{clamp();el.style.transform=`translate(${CR.x}px,${CR.y}px) scale(${sc()})`;pv()};
       CR.x=(vp()-W*sc())/2;CR.y=H>W?-(H*sc()-vp())*.22:(vp()-H*sc())/2;draw();
       z.oninput=()=>{const V=vp(),cx=(V/2-CR.x)/sc(),cy=(V/2-CR.y)/sc();CR.k=+z.value;CR.x=V/2-cx*sc();CR.y=V/2-cy*sc();draw()};
       const P=new Map();let last=null,dist=0;

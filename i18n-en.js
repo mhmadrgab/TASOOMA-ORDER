@@ -3290,4 +3290,6 @@ export default {
 "جارٍ رفع الملفات…":"Uploading files…",
 "تعذّر رفع الملف، حاول مجدداً":"Could not upload the file, try again",
 "المرفقات أكبر من المسموح. احذف بعضها ثم حاول مجدداً":"The attachments are larger than allowed. Remove some and try again",
+/* v177 */
+"هكذا ستظهر صورتك في الدردشة عند الفروع":"This is how your photo will look in branch chats",
 };
