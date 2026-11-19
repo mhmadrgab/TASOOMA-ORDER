@@ -138,7 +138,7 @@ a.bt{text-decoration:none;display:inline-block;color:inherit}.tg{background:#f2e
 <div id="em"></div>
 <div id="pa"></div>
 <script type="module">
-import {makeFb,pushRegister,nativePush,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,withTimeout,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,adminSetPw,tmpPw} from "./fb.js";
+import {makeFb,pushRegister,nativePush,pushTest,ping,emailOf,ADMIN_EMAIL,setAudit,withTimeout,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,writeBatch,onSnapshot,query,where,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,adminSetPw,tmpPw} from "./fb.js";
 window.__tzMod=1;// (15 نوفمبر 2026) الكود الأساسي اشتغل: ui.js مايمسحش النسخة المحفوظة ومايعملش ريفرش لو الدخول بطيء بس
 const {app,db,auth}=makeFb("admin");
 earlyCall({db,auth,toast:(m,t)=>{try{toast(m,t)}catch(e){}}});// 📞 الصفحة اتفتحت على مكالمة: نبدأ المكالمات قبل باقي التحميل
@@ -149,6 +149,7 @@ import {initGifts,stopGifts,giftsView,pendingCount as giftPend} from "./gifts.js
 import {initMnt,stopMnt,mntView,mntCount} from "./mnt.js";
 import {initPo,stopPo,poView,poCount} from "./po.js";
 import {initPoRcv,stopPoRcv,poRcvView,poRcvCount} from "./porcv.js";
+import {initStock,stopStock,stockMount} from "./stock.js";
 import {initCat,catAdminView,catLoad} from "./cat.js";
 import {initHealth,stopHealth,healthView} from "./health.js";
 import {initPwSelf,stopPwSelf} from "./pwself.js";
@@ -220,11 +221,13 @@ const TABS=[
  ["rcv","📦","استلام الحاويات",()=>rcvLim(),()=>poRcvCount(),"fin"],
  ["cus","💵","العهدة",()=>see("cus")&&secOk("cus"),null,"fin"],
  ["gift","🎁","الهدايا",()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift"),()=>giftPend(),"fin"],
+ // 📊 (v173) تحليل المخزون من تقارير السيستم: للأدمن ومالك النظام فقط (والقواعد كذلك)
+ ["stk","📊","تحليل المخزون",()=>ROLE.owner===true,null,"fin"],
  ["chat","💬","الدردشة",()=>ROLE.owner===true||ROLE.p.nc!==true,()=>bcUnread(),"com"],
  ["set","⚙","الإعدادات",()=>ROLE.admin,null,"sys"],
  ["log","📜","السجل",()=>(ROLE.owner===true||ROLE.v===true)&&secOk("log"),null,"sys"]];
 // أول قسم يفتح لمن لا يرى الطلبات: نفس ترتيب الشريط القديم (حتى لا يتغيّر ما يراه أحد عند الدخول)
-const LAND=["req","chat","fl","cus","wk","set","gift","mnt","po","rcv","log","sh"];
+const LAND=["req","chat","fl","cus","wk","set","gift","mnt","po","rcv","log","sh","stk"];
 const landTab=()=>LAND.find(t=>okTab(t))||"req";
 // حساب المتابع: أزرار الحفظ والتعديل والحذف بتستخبى وبتتقفل (والقواعد في Firebase بتمنع أي كتابة أصلاً). العرض والطباعة والتقارير شغّالة
 const RO_SEL='[data-a]:not([data-a="print"]),[data-fl]:not([data-fl="trd"]):not([data-fl="tmap"]):not([data-fl="pmap"]):not([data-fl="mfit"]):not([data-fl="rep"]):not([data-fl="mrep"]):not([data-fl="cancel"]),[data-cx]:not([data-cx="img"]):not([data-cx="ps"]):not([data-cx="stmt"]):not([data-cx="cancel"]),[data-wk]:not([data-wk="rep"]):not([data-wk="slip"]),[data-gf="ok"],[data-gf="no"],[data-gf="new"],[data-gf="edit"],[data-gf="del"],[data-wst],[data-asd],[data-asc],[data-bk],#bkall,[data-bkd],#bkd,#bkc';
@@ -271,7 +274,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopWorkers();stopBChat();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -380,6 +383,7 @@ function start(){
  if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
  if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm"||sub==="lk")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,co:ROLE.co===true,lock:()=>LOCK,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
+ if(ROLE.owner===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,branches:()=>BR.map(code)});// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
  // النسخة الاحتياطية: لمالك النظام بس
  initBackup({db,toast,owner:ROLE.owner===true,redraw:draw});
@@ -514,9 +518,10 @@ function drawNow(){
  const keep=window.scrollY,ui=snapUi();
  fixSub();shell();navSync();topSync();
  if(HT.getAttribute("data-tab")!==tab){HT.setAttribute("data-tab",tab);try{sessionStorage.setItem("tz_tab",tab)}catch(x){}}
- g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="wk"?wkView():brView()}`;
+ g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
  showSheet();
  if(tab==="chat")mountWh(g("bchost"));else hideWh();// الدردشة عنصر ثابت بيتحط في مكانه (الكتابة والتسجيل مايضيعوش)
+ if(tab==="stk")stockMount(g("stkhost"));// تحليل المخزون: عنصر ثابت كذلك
  wireButtons();document.getElementById("bell").hidden=!("Notification" in window);adminHdr();
  window.scrollTo(0,keep);restoreUi(ui);
 }
@@ -598,6 +603,19 @@ addEventListener("message",async e=>{
   reply({ok:true,no,fr:F||""});toast(F?`✅ تم إنشاء التحويل ${no}: من ${F} ← ${B}، وقد وصل الفرعين إشعار`:`✅ تم إنشاء طلب ${no} لفرع ${B} ووصله إشعار`);
  }catch(x){reply({ok:false,err:x&&x.code==="permission-denied"?"غير مسموح: تأكد من نشر القواعد (Rules) الجديدة":"تعذر الإرسال. تأكد من الإنترنت واضغط مجدداً"})}
 });
+// 📊 تحليل المخزون ← طلب «تحويل بين الفروع» حقيقي (نفس ما تكتبه الورقة اليدوية: by:"wh" + tr)، ثم إشعار للفرعين
+async function stockTransfer(o){
+ if(!authed||!can("req"))return {ok:false,err:"غير مسموح لك بإنشاء طلبات للفروع"};
+ const F=BR.find(b=>code(b)===String(o&&o.fr)),B=BR.find(b=>code(b)===String(o&&o.to));
+ if(!F||!B)return {ok:false,err:"أحد المخزنين ليس فرعاً في المنصة"};if(F===B)return {ok:false,err:"الفرع المُرسِل هو نفس الفرع المستلم"};
+ const rows=(Array.isArray(o.rows)?o.rows:[]).filter(r=>r&&String(r.k||"").trim()&&+r.q>0).slice(0,400).map(r=>({k:String(r.k).trim().slice(0,40),c:String(r.c||"").trim().slice(0,40),z:String(r.z||"").trim().slice(0,20),q:Math.min(99999,Math.round(+r.q)),n:""}));
+ if(!rows.length)return {ok:false,err:"لا أصناف في التحويل"};
+ const A="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789",rid=[...crypto.getRandomValues(new Uint8Array(20))].map(x=>A[x%A.length]).join("");
+ const t=new Date(),p=n=>String(n).padStart(2,"0"),no=`TR-${code(F)}-${code(B)}-${p(t.getMonth()+1)}${p(t.getDate())}-${p(t.getHours())}${p(t.getMinutes())}`;
+ const codes=new Set(rows.map(r=>r.k)).size,pcs=rows.reduce((a,r)=>a+r.q,0);
+ await setDoc(doc(db,"requests",rid),{br:code(B),brn:B,no,dt:t.toLocaleDateString("en-CA"),dr:"",gn:String(o.gn||"").slice(0,1000),rows,codes,pcs,st:"new",ts:Date.now(),by:"wh",byn:String(ROLE.name||"المستودع").slice(0,60),tr:{fr:code(F),frn:F}});
+ ping(auth,[rid]);return {ok:true,no,n:rows.length,pcs};
+}
 const msg=c=>{const b=BR.find(x=>code(x)===c);return `أهلاً فرع ${b}\nرابط طلب البضاعة من المستودع:\n${new URL("./index.html",location.href).href}\nاختر فرعك (${b}) واكتب كلمة المرور: ${P[c]}`};
 const genPw=()=>{const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";return [...crypto.getRandomValues(new Uint32Array(10))].map(x=>a[x%a.length]).join("")};
 const sec=()=>makeFb("sec").auth;
