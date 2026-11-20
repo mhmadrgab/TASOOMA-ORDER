@@ -3577,4 +3577,5 @@ export default {
 "✕ صنف آخر":"✕ Another item",
 "مسح الفلاتر":"Clear filters",
 "صنف آخر":"Another item",
+"المتوفر والمقترح للفروع":"Availability and suggestions for branches",
 };

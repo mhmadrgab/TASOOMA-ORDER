@@ -45,7 +45,7 @@ function openRcv(id){
   if(!note)delete rcv.note;
   g("rc1").disabled=true;
   try{await withTimeout(updateDoc(doc(X.db,"requests",id),{st:"recv",rcv}),15000);if(X.ping)X.ping([id]);closeX();X.toast(rcv.ok?"تم تأكيد الاستلام ✅":"تم تسجيل الاستلام مع الملاحظات ✅")}
-  catch(e){g("rc1").disabled=false;const why=await failReason(e);X.toast(why==="denied"?"غير مسموح. ربما غيّر المستودع حالة الطلب.":FAIL_MSG[why],"er")}
+  catch(e){const b1=g("rc1");if(b1)b1.disabled=false;/* (v185) النافذة قد تكون أُغلقت قبل وصول الرد: كان يرمي خطأ ولا تظهر رسالة الفشل */const why=await failReason(e);X.toast(why==="denied"?"غير مسموح. ربما غيّر المستودع حالة الطلب.":FAIL_MSG[why],"er")}
  };
 }
 export function initBranch(ctx){X=ctx;ui()}
