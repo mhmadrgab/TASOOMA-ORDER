@@ -384,7 +384,7 @@ function start(){
  if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
  if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm"||sub==="lk")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,co:ROLE.co===true,lock:()=>LOCK,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
- if(ROLE.owner===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,branches:()=>BR.map(code),ship:()=>SH});// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
+ if(ROLE.owner===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH});// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
  // النسخة الاحتياطية: لمالك النظام بس
  initBackup({db,toast,owner:ROLE.owner===true,redraw:draw});
@@ -618,6 +618,21 @@ async function stockTransfer(o){
  const t=new Date(),p=n=>String(n).padStart(2,"0"),no=`TR-${code(F)}-${code(B)}-${p(t.getMonth()+1)}${p(t.getDate())}-${p(t.getHours())}${p(t.getMinutes())}`;
  const codes=new Set(rows.map(r=>r.k)).size,pcs=rows.reduce((a,r)=>a+r.q,0);
  await setDoc(doc(db,"requests",rid),{br:code(B),brn:B,no,dt:t.toLocaleDateString("en-CA"),dr:"",gn:String(o.gn||"").slice(0,1000),rows,codes,pcs,st:"new",ts:Date.now(),by:"wh",byn:String(ROLE.name||"المستودع").slice(0,60),tr:{fr:code(F),frn:F}});
+ ping(auth,[rid]);return {ok:true,no,n:rows.length,pcs};
+}
+// 🚚 (v188) توزيع حاوية ← طلب عادي من المستودع لفرع واحد (نفس ما تكتبه الورقة اليدوية: by:"wh")، ثم إشعار للفرع.
+// rid يأتي من المديول (20 حرفاً): لو الطلب موجود بنفس الفرع نرجّع رقمه ولا ننشئ آخر (ضغطتان أو انقطاع نت = لا تكرار).
+async function stockDispatch(o){
+ if(!authed||!can("req"))return {ok:false,err:"غير مسموح لك بإنشاء طلبات للفروع"};
+ const B=BR.find(b=>code(b)===String(o&&o.to));if(!B)return {ok:false,err:"ليس فرعاً في المنصة"};
+ const rid=String(o.rid||"");if(!/^[A-Za-z0-9]{20}$/.test(rid))return {ok:false,err:"رقم الطلب غير صالح"};
+ const rows=(Array.isArray(o.rows)?o.rows:[]).filter(r=>r&&String(r.k||"").trim()&&+r.q>0).map(r=>({k:String(r.k).trim().slice(0,40),c:String(r.c||"").trim().slice(0,40),z:String(r.z||"").trim().slice(0,20),q:Math.min(99999,Math.round(+r.q)),n:String(r.n||"").trim().slice(0,200)})).filter(r=>r.q>0);
+ if(!rows.length)return {ok:false,err:"لا أصناف لهذا الفرع"};if(rows.length>400)return {ok:false,err:"أكثر من 400 سطر لفرع واحد"};
+ const ref=doc(db,"requests",rid),ex=await getDoc(ref);
+ if(ex.exists()){const x=ex.data();return x.br===code(B)?{ok:true,no:x.no,dup:true,n:rows.length,pcs:x.pcs}:{ok:false,err:"تعارض في رقم الطلب، حاول مرة أخرى"}}
+ const t=new Date(),p=n=>String(n).padStart(2,"0"),no=`${code(B)}-${p(t.getMonth()+1)}${p(t.getDate())}-${p(t.getHours())}${p(t.getMinutes())}`;
+ const codes=new Set(rows.map(r=>r.k)).size,pcs=rows.reduce((a,r)=>a+r.q,0);
+ await setDoc(ref,{br:code(B),brn:B,no,dt:t.toLocaleDateString("en-CA"),dr:"",gn:String(o.gn||"").slice(0,1000),rows,codes,pcs,st:"new",ts:Date.now(),by:"wh",byn:String(ROLE.name||"المستودع").slice(0,60)});
  ping(auth,[rid]);return {ok:true,no,n:rows.length,pcs};
 }
 const msg=c=>{const b=BR.find(x=>code(x)===c);return `أهلاً فرع ${b}\nرابط طلب البضاعة من المستودع:\n${new URL("./index.html",location.href).href}\nاختر فرعك (${b}) واكتب كلمة المرور: ${P[c]}`};

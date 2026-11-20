@@ -781,7 +781,7 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 .stk-crv i.s,.stk-crvl i.s{background:var(--acc)}.stk-crv i.o,.stk-crvl i.o{background:var(--olive,#6f7d45)}:where([data-theme=dark]) .stk-crv i.o,:where([data-theme=dark]) .stk-crvl i.o{background:#a4b46e}
 .stk-piv{margin-top:12px}.stk-pvb{box-shadow:none;border:0;padding:8px 6px 4px;margin:0}.stk-mx td.t{font-weight:800;border-inline-start:2px solid var(--line)}.stk-mx tr.whr td.s{background:var(--soft)}
 .stk-lg{border-radius:6px;padding:1px 8px;font-weight:700}.stk-lg.need{background:#fdecea;color:#8a2218}.stk-lg.idle{background:#fff4e2;color:#6b4300}.stk-lg.wh{background:var(--soft);color:var(--ink)}:where([data-theme=dark]) .stk-lg.need{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .stk-lg.idle{background:#3a2a08;color:#f6c770}
-.stk-dl td{padding:4px 5px}.stk-dl input,.stk-dl select{height:38px;margin:0;width:118px;min-width:0}.stk-dl input.sm{width:78px;text-align:center}.stk-dl select{width:104px}
+.stk-t input.stk-tq{width:74px;height:36px;margin:0;text-align:center;font-weight:800}.stk-dl td{padding:4px 5px}.stk-dl input,.stk-dl select{height:38px;margin:0;width:118px;min-width:0}.stk-dl input.sm{width:78px;text-align:center}.stk-dl select{width:104px}
 .stk-dg th{font-size:11.5px;padding:6px 4px}.stk-dg th.rt{border-inline:2px solid var(--line);background:var(--soft);font-size:12.5px;color:var(--ink)}.stk-dg th.on,.stk-dg td.on{background:var(--soft)}.stk-dg th.off{opacity:.45;text-decoration:line-through}
 .stk-dg td{padding:3px 2px}.stk-dg td.s{padding:6px 10px;text-align:start;min-width:120px}.stk-dg td.s i,.stk-dg td.t i{white-space:nowrap}.stk-dg td.t,.stk-dg td.wh{padding:6px 10px}
 .stk-dg .dgi{width:44px;height:34px;margin:0;padding:0 2px;text-align:center;border:1px solid transparent;background:transparent;border-radius:8px;font:inherit;font-weight:700;font-variant-numeric:tabular-nums;color:inherit;-moz-appearance:textfield}.stk-dg .dgi::-webkit-outer-spin-button,.stk-dg .dgi::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
@@ -865,22 +865,29 @@ function vTrPairs(){
  const pairs=[...pm.values()].sort((a,b)=>b.pcs-a.pcs),can=!!(X&&X.transfer);
  LASTX={name:"تحويلات-مقترحة",head:["من فرع","إلى فرع","الكود","اللون","المقاس","المورد","الكمية","رصيد المُرسِل","مبيعات المُرسِل","رصيد المستلم","مبيعات المستلم","طلب التحويل"],rows:()=>L.map(l=>{const x=DATA.k[l.ki];return [DATA.st[l.src],DATA.st[l.dst],x[0],x[1],x[2],x[3]>=0?DATA.vn[x[3]]:"",l.n,l.fon,l.fsold,l.ton,l.tsold,l.sent?l.sent.no:""]})};
  const mkBtn=p=>{const ok=isBr(DATA.st[p.src])&&isBr(DATA.st[p.dst]);return ok?`<button class="bt g s" type="button" data-sk="mk" data-f="${E(DATA.st[p.src])}" data-d="${E(DATA.st[p.dst])}">📤 أنشئ طلب التحويل</button>`:`<small class="off">أحدهما ليس فرعاً في المنصة</small>`};
+ // (v188) مراجعة طلب التحويل قبل إنشائه: كل سطر كميته تُعدَّل (صفر = لا يُرسل)، ولا تزيد على رصيد المُرسِل
+ let rev="";if(UI.trx&&can){const fi=DATA.sti.get(UI.trx.f),di=DATA.sti.get(UI.trx.d),RL=TRL.filter(l=>l.src===fi&&l.dst===di),R4=RL.slice(0,400),Q=UI.trx.q||{};
+  if(!R4.length)UI.trx=null;else{let n=0,pcs=0;const qv=l=>Q[l.ki]!==undefined?N(Q[l.ki]):l.n;R4.forEach(l=>{const q=qv(l);if(q>0){n++;pcs+=q}});
+   rev=`<div class="stk-card" style="margin:0 0 12px;border:1.5px solid var(--acc)"><h3>📤 مراجعة طلب التحويل: ${sn(fi)} <span aria-hidden="true">←</span> ${sn(di)}</h3><p>عدّل كمية أي سطر قبل الإنشاء (صفر = لا يُرسل). الكمية لا تزيد على رصيد الفرع المُرسِل.${RL.length>400?" أول 400 سطر فقط، والباقي بطلب آخر.":""}</p>
+   <div class="tw"><table class="stk-t"><thead><tr><th>الكود</th><th>اللون</th><th class="n">المقاس</th><th class="n">رصيد المُرسِل</th><th class="n">مبيعاته</th><th class="n">رصيد المستلم</th><th class="n">مبيعاته</th><th class="n">المقترح</th><th class="n">الكمية</th></tr></thead><tbody>${R4.map(l=>{const q=qv(l);return `<tr${q>0?"":' class="snt"'}>${kCells(l.ki)}<td class="n">${l.fon}</td><td class="n">${l.fsold}</td><td class="n${l.ton<=0?" z":""}">${l.ton}</td><td class="n">${l.tsold}</td><td class="n">${N(l.n)}</td><td class="n"><input type="number" class="stk-tq" min="0" max="${Math.max(0,N(l.fon))}" step="1" data-tq="${l.ki}" id="tq${l.ki}" value="${q}" aria-label="الكمية"></td></tr>`}).join("")}</tbody></table></div>
+   <div class="stk-act" style="margin:12px 0 0"><button class="bt p" type="button" data-sk="mkgo"${n?"":" disabled"}>📤 أنشئ طلب التحويل (${fmt(n)} صنف · ${fmt(pcs)} قطعة)</button><button class="bt" type="button" data-sk="mkx">إلغاء</button></div></div>`}}
  return `<div class="stk-bar"><label>من فرع<select data-sf="fr" id="stk-fr">${opt(stores(1),UI.fr,"الكل")}</select></label><label>إلى فرع<select data-sf="tt" id="stk-tt">${opt(stores(1),UI.tt,"الكل")}</select></label><label>المورد<select data-sf="vn" id="stk-vn">${opt(vendors(),UI.vn,"كل الموردين")}</select></label><label>بحث بالكود<input type="search" data-sf="q" id="stk-q" value="${E(UI.q)}" dir="ltr"></label>${perSel()}<span class="sp"></span>${fclr("fr,tt,vn,q")}<button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${gapNote(P)}
  <div class="stk-sum"><span><b>${fmt(T.skus)}</b>صنف غير متاح بالمستودع ومتاح في فروع</span><span><b>${fmt(TRL.length)}</b>تحويل مقترح</span><span><b>${fmt(TRL.reduce((s,l)=>s+l.n,0))}</b>قطعة</span><span><b>${fmt(T.unmet)}</b>طلب بلا فرع يُسحب منه</span>${nSent?`<span><b>${fmt(nSent)}</b>أُنشئ لها طلب تحويل</span>`:""}</div>
  <p class="off" style="margin:0 4px 10px;font-size:13px">القاعدة: نسحب من فرع مبيعاته من الصنف ${N(CFG.slow)?"لا تزيد على "+N(CFG.slow):"صفر"} في الفترة ويبقى عنده ${N(CFG.keep)} على الأقل، ونرسل لفرع رصيده أقل من الحد ويبيع الصنف (الأعلى مبيعاً أولاً). تتغيّر من تبويب «القواعد».</p>
- ${can&&pairs.length?`<div class="stk-pan stk-prs"><h3>📤 حوّلها إلى طلبات تحويل</h3><p class="off">كل زر ينشئ طلب «تحويل بين الفروع» واحداً بأصناف هذا الزوج (حتى 400 سطر)، ويصل الفرعين إشعار ويظهر في «الطلبات». ما أُنشئ له طلب يبقى معلَّماً ${SENT_DAYS} يوماً فلا يتكرر.</p>${pairs.slice(0,UI.prs||8).map(p=>`<div class="stk-pr"><span>${sn(p.src)} <i aria-hidden="true">←</i> ${sn(p.dst)}</span><b>${fmt(p.n)} صنف · ${fmt(p.pcs)} قطعة</b><button class="bt s" type="button" data-sk="prv" data-f="${E(DATA.st[p.src])}" data-d="${E(DATA.st[p.dst])}">عرض الأصناف</button>${mkBtn(p)}</div>`).join("")}${pairs.length>(UI.prs||8)?`<button class="bt s stk-more" type="button" data-sk="prsmore">عرض المزيد (${fmt(pairs.length-(UI.prs||8))} زوج آخر)</button>`:""}</div>`:""}
- ${L.length?`<div class="stk-pan" style="margin-top:12px"><div class="tw"><table class="stk-t"><thead><tr><th>من فرع</th><th>إلى فرع</th><th>الكود</th><th>اللون</th><th class="n">المقاس</th><th class="n">الكمية</th><th class="n">رصيد المُرسِل</th><th class="n">مبيعاته</th><th class="n">رصيد المستلم</th><th class="n">مبيعاته</th></tr></thead><tbody>${L.slice(0,UI.lim).map(l=>`<tr${l.sent?' class="snt"':""}><td>${sn(l.src)}</td><td>${sn(l.dst)}</td>${kCells(l.ki)}<td class="n">${l.sent?`<span class="no" title="أُنشئ طلب التحويل" data-notr dir="ltr">${E(l.sent.no)}</span>`:`<span class="gv" style="padding:2px 10px">${N(l.n)}</span>`}</td><td class="n">${l.fon}</td><td class="n">${l.fsold}</td><td class="n${l.ton<=0?" z":""}">${l.ton}</td><td class="n">${l.tsold}</td></tr>`).join("")}</tbody></table></div>${more(L.length)}</div>`:`<div class="stk-pan"><div class="stk-em">لا تحويلات مقترحة بهذه الشروط.</div></div>`}`;
+ ${rev?rev:can&&pairs.length?`<div class="stk-pan stk-prs"><h3>📤 حوّلها إلى طلبات تحويل</h3><p class="off">كل زر ينشئ طلب «تحويل بين الفروع» واحداً بأصناف هذا الزوج (حتى 400 سطر)، ويصل الفرعين إشعار ويظهر في «الطلبات». ما أُنشئ له طلب يبقى معلَّماً ${SENT_DAYS} يوماً فلا يتكرر.</p>${pairs.slice(0,UI.prs||8).map(p=>`<div class="stk-pr"><span>${sn(p.src)} <i aria-hidden="true">←</i> ${sn(p.dst)}</span><b>${fmt(p.n)} صنف · ${fmt(p.pcs)} قطعة</b><button class="bt s" type="button" data-sk="prv" data-f="${E(DATA.st[p.src])}" data-d="${E(DATA.st[p.dst])}">عرض الأصناف</button>${mkBtn(p)}</div>`).join("")}${pairs.length>(UI.prs||8)?`<button class="bt s stk-more" type="button" data-sk="prsmore">عرض المزيد (${fmt(pairs.length-(UI.prs||8))} زوج آخر)</button>`:""}</div>`:""}
+ ${rev?"":L.length?`<div class="stk-pan" style="margin-top:12px"><div class="tw"><table class="stk-t"><thead><tr><th>من فرع</th><th>إلى فرع</th><th>الكود</th><th>اللون</th><th class="n">المقاس</th><th class="n">الكمية</th><th class="n">رصيد المُرسِل</th><th class="n">مبيعاته</th><th class="n">رصيد المستلم</th><th class="n">مبيعاته</th></tr></thead><tbody>${L.slice(0,UI.lim).map(l=>`<tr${l.sent?' class="snt"':""}><td>${sn(l.src)}</td><td>${sn(l.dst)}</td>${kCells(l.ki)}<td class="n">${l.sent?`<span class="no" title="أُنشئ طلب التحويل" data-notr dir="ltr">${E(l.sent.no)}</span>`:`<span class="gv" style="padding:2px 10px">${N(l.n)}</span>`}</td><td class="n">${l.fon}</td><td class="n">${l.fsold}</td><td class="n${l.ton<=0?" z":""}">${l.ton}</td><td class="n">${l.tsold}</td></tr>`).join("")}</tbody></table></div>${more(L.length)}</div>`:`<div class="stk-pan"><div class="stk-em">لا تحويلات مقترحة بهذه الشروط.</div></div>`}`;
 }
 // ينشئ طلب تحويل حقيقي بأصناف زوج (من ← إلى) المعروضة، ثم يعلّمها حتى لا تتكرر
-async function mkTransfer(fName,dName){
- if(BUSY||!X||!X.transfer)return;const fi=DATA.sti.get(fName),di=DATA.sti.get(dName),L=TRL.filter(l=>l.src===fi&&l.dst===di).slice(0,400);if(!L.length)return;
- const pcs=L.reduce((s,l)=>s+l.n,0),more=TRL.filter(l=>l.src===fi&&l.dst===di).length-L.length;
+async function mkTransfer(fName,dName,Q){
+ // Q = الكميات المعدَّلة في المراجعة {صنف: كمية} (صفر = لا يُرسل، ولا تزيد على رصيد المُرسِل)
+ if(BUSY||!X||!X.transfer)return;Q=Q||{};const fi=DATA.sti.get(fName),di=DATA.sti.get(dName),all=TRL.filter(l=>l.src===fi&&l.dst===di),L=all.slice(0,400).map(l=>Object.assign({},l,{n:Q[l.ki]!==undefined?Math.max(0,Math.min(Math.max(0,N(l.fon)),Math.round(N(Q[l.ki])))):l.n})).filter(l=>l.n>0);if(!L.length)return;
+ const pcs=L.reduce((s,l)=>s+l.n,0),more=all.length-Math.min(400,all.length);
  if(!confirm("إنشاء طلب تحويل من "+fName+" إلى "+dName+"؟\n\n"+L.length+" صنف · "+pcs+" قطعة"+(more>0?"\n(أول 400 سطر، والباقي "+more+" يُنشأ بطلب آخر)":"")+"\n\nسيصل الفرعين إشعار، ويظهر الطلب في «الطلبات»."))return;
  BUSY="جاري إنشاء طلب التحويل…";paint();let r=null;
  try{r=await X.transfer({fr:cd(fName),to:cd(dName),rows:L.map(l=>{const x=DATA.k[l.ki];return {k:x[0],c:x[1],z:x[2],q:l.n}}),gn:"تحويل مقترح من تحليل المخزون: الصنف غير متاح بالمستودع، والفرع المُرسِل لا يبيعه في الفترة."})}catch(e){r={ok:false,err:String(e&&(e.code||e.message)||e)}}
  if(r&&r.ok){const at=Date.now(),lim=at-SENT_DAYS*864e5;SENT=SENT.filter(e=>e&&N(e.at)>lim).concat(L.map(l=>{const x=DATA.k[l.ki];return {c:x[0],cl:x[1],z:x[2],f:cd(fName),t:cd(dName),n:l.n,at,no:String(r.no||"").slice(0,40)}})).slice(-3000);
   try{const fb=await FB();await fb.setDoc(fb.doc(X.db,"stk","sent"),{l:SENT,at,by:by().e})}catch(e){if(X.toast)X.toast("أُنشئ الطلب، لكن تعذّر حفظ علامته: لا تنشئه مرة أخرى")}
-  BUSY="";paint();if(X.toast)X.toast("✅ أُنشئ طلب التحويل "+String(r.no||"")+" ووصل الفرعين إشعار")}
+  BUSY="";UI.trx=null;UI.fr="";UI.tt="";paint();if(X.toast)X.toast("✅ أُنشئ طلب التحويل "+String(r.no||"")+" ووصل الفرعين إشعار")}
  else{BUSY="";paint();if(X.toast)X.toast("تعذّر إنشاء الطلب: "+String(r&&r.err||"").slice(0,90))}
 }
 /* (v181) «تحليل صنف» v2: ملخّص + ملاحظات + منحنى المقاسات والألوان + جدول محوري (الصفوف/الأعمدة/القيمة يختارها المستخدم) */
@@ -891,7 +898,28 @@ let DS=null;
 const dBlank=()=>({c:"",cl:"",z:"",ct:"",pk:"",md:"c",ref:""});
 function dLoad(){if(DS)return DS;let o=null;try{o=JSON.parse(localStorage.getItem("stk_dist")||"null")}catch(e){o=null}
  DS={lines:o&&Array.isArray(o.lines)?o.lines.slice(0,200).map(l=>Object.assign(dBlank(),l&&typeof l==="object"?l:{})):[],ov:o&&o.ov&&typeof o.ov==="object"?o.ov:{},rules:Object.assign({},DDEF,o&&o.rules&&typeof o.rules==="object"?o.rules:{})};
+ DS.sent=o&&o.sent&&typeof o.sent==="object"?o.sent:{};
  if(!DS.rules.lv||typeof DS.rules.lv!=="object")DS.rules.lv={};while(DS.lines.length<3)DS.lines.push(dBlank());return DS}
+// (v188) التوزيع ← طلبات حقيقية للفروع. طلب كل فرع = أصنافه بالحبة (سطر الكرتون: كراتينه × حبات الكرتون، وملاحظته «كم كرتوناً»).
+const rid20=()=>{const A="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789",u=crypto.getRandomValues(new Uint8Array(20));let s="";for(let i=0;i<20;i++)s+=A[u[i]%A.length];return s};
+const hsh=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return String(h)};
+export function distOrders(live,cols){
+ const o=[];for(const c of cols){const rows=[];let pcs=0;for(const x of live){const v=N(x.r.vals[c.c]);if(!(v>0))continue;const q=Math.round(v*x.r.pc);if(q<=0)continue;
+   rows.push({k:String(x.l.c).trim().slice(0,40),c:String(x.l.cl||"").slice(0,40),z:String(x.l.z||"").slice(0,20),q,n:x.r.md==="c"?fq(v)+" كرتون":""});pcs+=q}
+  if(rows.length)o.push({c:c.c,nm:c.nm,rows,pcs,h:hsh(rows.map(r=>[r.k,r.c,r.z,r.q].join("~")).join("|"))})}
+ return o;
+}
+let DORD=[];// طلبات الفروع من التوزيع المعروض الآن
+async function dSend(){
+ if(BUSY||!X||!X.dispatch)return;const S=dLoad(),sel=UI.dsel||{},L=DORD.filter(o=>{const s=S.sent[o.c],same=s&&s.h===o.h;return sel[o.c]!==undefined?!!sel[o.c]&&!same:!s});if(!L.length){if(X.toast)X.toast("لا فروع محدَّدة");return}
+ const pcs=L.reduce((s,o)=>s+o.pcs,0);
+ if(!confirm("إنشاء "+L.length+" طلباً للفروع ("+fq(pcs)+" قطعة)؟\n\nسيصل كل فرع إشعار، ويظهر الطلب في «الطلبات» كطلب من المستودع.\nلا يمكن التراجع إلا بحذف الطلبات من «الطلبات»."))return;
+ let okN=0;const bad=[];
+ for(let i=0;i<L.length;i++){const o=L[i];BUSY="جاري إنشاء الطلبات… "+(i+1)+" من "+L.length;paint();let r=null;
+  try{r=await X.dispatch({to:o.c,rows:o.rows,rid:rid20(),gn:"توزيع حاوية من تحليل المخزون. الكميات بالحبة."})}catch(e){r={ok:false,err:String(e&&(e.code||e.message)||e)}}
+  if(r&&r.ok){okN++;S.sent[o.c]={no:String(r.no||"").slice(0,40),at:Date.now(),h:o.h};dSave()}else bad.push(o.nm+": "+String(r&&r.err||"").slice(0,60))}
+ BUSY="";UI.dsel={};paint();if(X.toast)X.toast(bad.length?"أُنشئ "+okN+" طلباً، وتعذّر "+bad.length+": "+bad[0]:"✅ أُنشئ "+okN+" طلباً ووصل الفروع إشعار")
+}
 const dSave=()=>{try{localStorage.setItem("stk_dist",JSON.stringify(DS))}catch(e){}};
 const fq=n=>{const x=Math.round(N(n)*100)/100,p=String(x).split(".");return p[0].replace(/\B(?=(\d{3})+(?!\d))/g,",")+(p[1]?"."+p[1]:"")};
 // أعمدة التوزيع: الأونلاين أولاً، ثم فروع الرياض، ثم كل شركة شحن بفروعها (كشيت التوزيع اليدوي)
@@ -941,7 +969,17 @@ function vDist(){
  <tr class="tot"><td class="s">الإجمالي بالحبة</td><td>${fq(tP)}</td>${on?`<td>${fq(colP[on.c]||0)}</td>`:""}${br.map(c=>`<td>${fq(colP[c.c]||0)}</td>`).join("")}<td>${fq(wP)}</td></tr></tbody></table></div>
  <p class="stk-src" style="margin:8px 4px 0">كل خانة تُعدَّل باليد (تظهر بحد بنفسجي)، والمستودع يأخذ الباقي تلقائياً. الأرقام بوحدة السطر (كرتون أو حبة)، وسطر الإجمالي بالحبة.</p></div>`;
  return inp+rules+gapNote(P)+`<div class="stk-tiles">${T.join("")}</div>${neg?`<div class="stk-rep r">⚠️ ${fq(neg)} سطر وُزِّع فيه أكثر من كميته (المستودع بالسالب). راجِع الخانات المعدَّلة باليد.</div>`:""}
- <div class="stk-act">${ovn?`<button class="bt" type="button" data-sk="dovx">↺ إلغاء تعديلات اليد (${fq(ovn)})</button>`:""}<button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${grid}`;
+ <div class="stk-act">${ovn?`<button class="bt" type="button" data-sk="dovx">↺ إلغاء تعديلات اليد (${fq(ovn)})</button>`:""}<button class="bt" type="button" data-sk="xls">⬇️ إكسل</button>${X&&X.dispatch?`<button class="bt p" type="button" data-sk="dsn"${neg?" disabled":""}>📤 حوّل التوزيع إلى طلبات للفروع</button>`:""}</div>${X&&X.dispatch&&UI.dsn&&!neg?dSendCard(live,cols):""}${grid}`;
+}
+// بطاقة المراجعة قبل إنشاء الطلبات: فرعاً فرعاً، وما أُنشئ من قبل بنفس الكميات لا يُنشأ مرة أخرى
+function dSendCard(live,cols){
+ const S=dLoad(),sel=UI.dsel||{};DORD=distOrders(live,cols);let n=0,pcs=0;const noPk=live.some(x=>x.r.md==="c"&&!(x.r.pk>0));
+ const rows=DORD.map(o=>{const s=S.sent[o.c],same=!!s&&s.h===o.h,on=same?false:sel[o.c]!==undefined?!!sel[o.c]:!s;if(on){n++;pcs+=o.pcs}
+  return `<tr><td class="n"><input type="checkbox" data-dsb="${E(o.c)}" id="dsb-${E(o.c)}"${on?" checked":""}${same?" disabled":""} aria-label="${E(o.nm)}" style="width:18px;height:18px"></td><td><label for="dsb-${E(o.c)}" data-notr style="margin:0;font-weight:700">${E(o.nm)}</label></td><td class="n">${fq(o.rows.length)}</td><td class="n"><b>${fq(o.pcs)}</b></td><td>${same?`<span class="gv" style="padding:2px 10px">✅ أُنشئ <span data-notr dir="ltr">${E(s.no)}</span></span>`:s?`<span class="no">⚠️ تغيّر التوزيع بعد إنشاء <span data-notr dir="ltr">${E(s.no)}</span></span>`:"—"}</td></tr>`}).join("");
+ return `<div class="stk-card" style="margin:0 0 12px;border:1.5px solid var(--acc)"><h3>📤 طلبات الفروع من هذا التوزيع</h3><p>يُنشأ لكل فرع محدَّد طلب واحد من المستودع بأصنافه (بالحبة)، ويصله إشعار، ثم يُجهَّز ويُسلَّم ويؤكد الفرع استلامه كأي طلب. الفرع الذي أُنشئ طلبه بنفس الكميات لا يُنشأ له مرة أخرى.</p>
+ ${noPk?`<div class="stk-rep w">سطور توزَّع بالكرتون بلا «حبات الكرتون»: كميتها في الطلب ستكون بعدد الكراتين. اكتب حبات الكرتون لتتحوّل إلى حبات.</div>`:""}
+ ${DORD.length?`<div class="tw"><table class="stk-t"><thead><tr><th></th><th>الفرع</th><th class="n">أصناف</th><th class="n">قطعة</th><th>الحالة</th></tr></thead><tbody>${rows}</tbody></table></div>
+ <div class="stk-act" style="margin:12px 0 0"><button class="bt p" type="button" data-sk="dgo"${n?"":" disabled"}>📤 أنشئ ${fq(n)} طلباً (${fq(pcs)} قطعة)</button><button class="bt" type="button" data-sk="dsall" data-v="1">تحديد الكل</button><button class="bt" type="button" data-sk="dsall" data-v="0">إلغاء التحديد</button><button class="bt" type="button" data-sk="dsn">إغلاق</button></div>`:`<p>لا فرع له نصيب في هذا التوزيع.</p>`}</div>`;
 }
 /* (v186) 🛒 الشراء المقترح */
 const cov=c=>c>=999?"999+":fmt(c);
@@ -1336,9 +1374,9 @@ function csv(){
 }
 function wire(){
  ROOT.addEventListener("click",e=>{const t=e.target.closest("[data-sk]");if(!t)return;const a=t.dataset.sk;
-  if(a==="fclr"){String(t.dataset.k||"").split(",").forEach(k=>{if(k==="st"||k==="vn"||k==="q"||k==="min"||k==="fr"||k==="tt"||k==="son")UI[k]=""});UI.lim=200;paint(false)}
+  if(a==="fclr"){String(t.dataset.k||"").split(",").forEach(k=>{if(k==="st"||k==="vn"||k==="q"||k==="min"||k==="fr"||k==="tt"||k==="son")UI[k]=""});UI.trx=null;UI.lim=200;paint(false)}
   else if(a==="iclr"){UI.code="";UI.cl="";UI.sz="";paint(false);const el=g("stk-code");if(el)try{el.focus()}catch(x){}}
-  else if(a==="tab"){if(UI.tab!==t.dataset.t){UI.q="";UI.fr="";UI.tt=""}/* فتح تبويب باليد = عرض جديد بلا بحث الكود ولا زوج الفروع السابق */UI.tab=t.dataset.t;UI.lim=200;paint(false);window.scrollTo(0,0)}
+  else if(a==="tab"){if(UI.tab!==t.dataset.t){UI.q="";UI.fr="";UI.tt="";UI.trx=null}/* فتح تبويب باليد = عرض جديد بلا بحث الكود ولا زوج الفروع السابق */UI.tab=t.dataset.t;UI.lim=200;paint(false);window.scrollTo(0,0)}
   else if(a==="more"){UI.lim+=400;paint()}
   else if(a==="xls")csv();
   else if(a==="code"){e.preventDefault();UI.code=t.dataset.c;UI.tab="item";UI.cl="";UI.sz="";paint(false);window.scrollTo(0,0)}
@@ -1350,7 +1388,7 @@ function wire(){
   // (v187) توزيع حاوية
   else if(a==="dadd"){dLoad().lines.push(dBlank());dSave();paint(false);const el=g("dl"+(DS.lines.length-1)+"c");if(el)try{el.focus()}catch(x){}}
   else if(a==="ddel"){const S=dLoad(),i=+t.dataset.i,nv={};if(!(i>=0&&i<S.lines.length))return;S.lines.splice(i,1);Object.keys(S.ov).forEach(k=>{const p=k.split("|"),j=+p[0];if(j<i)nv[k]=S.ov[k];else if(j>i)nv[(j-1)+"|"+p[1]]=S.ov[k]});S.ov=nv;while(S.lines.length<3)S.lines.push(dBlank());dSave();paint(false)}
-  else if(a==="dclr"){if(!confirm("مسح كل أصناف الحاوية وتعديلات اليد؟ (القواعد تبقى)"))return;const S=dLoad();S.lines=[dBlank(),dBlank(),dBlank()];S.ov={};dSave();paint(false)}
+  else if(a==="dclr"){if(!confirm("مسح كل أصناف الحاوية وتعديلات اليد؟ (القواعد تبقى)"))return;const S=dLoad();S.lines=[dBlank(),dBlank(),dBlank()];S.ov={};S.sent={};UI.dsn=false;dSave();paint(false)}
   else if(a==="dpaste"){UI.dp=!UI.dp;paint(false);const el=g("stk-dpt");if(el)try{el.focus()}catch(x){}}
   else if(a==="dpok"){const el=g("stk-dpt"),S=dLoad();if(!el)return;let n=0;S.lines=S.lines.filter(l=>String(l.c||"").trim()||N(l.ct)>0);
    String(el.value||"").split(/\r?\n/).forEach(row=>{const p=row.split(row.indexOf("\t")>=0?"\t":/[,;،]/).map(s=>String(s).trim());if(!p[0]||S.lines.length>=200)return;const ct=N(arDig(p[3]||"")),pk=N(arDig(p[4]||""));if(!(ct>0)&&!/\d/.test(p[0]))return;/* سطر عناوين */S.lines.push({c:p[0].slice(0,40),cl:(p[1]||"").slice(0,40),z:(p[2]||"").slice(0,20),ct:ct>0?ct:"",pk:pk>0?pk:"",md:"c",ref:""});n++});
@@ -1358,6 +1396,12 @@ function wire(){
   else if(a==="dro"){UI.dro=!UI.dro;paint(false)}
   else if(a==="ddef"){const S=dLoad();S.rules=Object.assign({},DDEF,{lv:{}});S.ov={};dSave();paint(false)}
   else if(a==="dovx"){dLoad().ov={};dSave();paint(false)}
+  // (v188) التوزيع ← طلبات، ومراجعة التحويل قبل إنشائه
+  else if(a==="dsn"){UI.dsn=!UI.dsn;UI.dsel={};paint(false)}
+  else if(a==="dsall"){const S=dLoad(),v=t.dataset.v==="1";UI.dsel={};DORD.forEach(o=>{const s=S.sent[o.c];if(!(s&&s.h===o.h))UI.dsel[o.c]=v});paint(false)}
+  else if(a==="dgo")dSend();
+  else if(a==="mkx"){UI.trx=null;UI.fr="";UI.tt="";paint(false)}
+  else if(a==="mkgo"&&UI.trx)mkTransfer(UI.trx.f,UI.trx.d,UI.trx.q||{});
   // (v186) اليوم / الشراء / التحويلات بالكود
   else if(a==="trv"){UI.trv=t.dataset.v==="code"?"code":"pair";UI.lim=200;paint(false)}
   else if(a==="trc"){UI.q=t.dataset.c||"";UI.fr="";UI.tt="";UI.trv="pair";UI.lim=200;paint(false);window.scrollTo(0,0)}
@@ -1383,8 +1427,8 @@ function wire(){
   else if(a==="recx"||a==="qx"){const X1=xOther(a==="recx"?"rec":t.dataset.k);if(X1){const keep=LASTX;LASTX=X1;csv();LASTX=keep}}
   else if(a==="ala"){const k=String(g("stk-an").value||"").trim().slice(0,40),s=g("stk-as").value;if(!k||!s){if(X.toast)X.toast("اكتب الاسم واختر المخزن");return}
    const rest=(CFG.ov||[]).filter(o=>!(o.t==="a"&&wkey(o.k)===wkey(k)));if(rest.length>=60){if(X.toast)X.toast("وصلت الحد الأقصى (60) للحدود الخاصة والأسماء");return}CFG.ov=rest.concat([{t:"a",k,s}]);ASKC=null;paint()}
-  else if(a==="mk")mkTransfer(t.dataset.f,t.dataset.d);
-  else if(a==="prv"){UI.fr=t.dataset.f;UI.tt=t.dataset.d;UI.lim=200;paint(false)}
+  else if(a==="mk"){UI.trx={f:t.dataset.f,d:t.dataset.d,q:{}};UI.fr=t.dataset.f;UI.tt=t.dataset.d;UI.lim=200;paint(false);window.scrollTo(0,0)}/* (v188) مراجعة وتعديل الكميات أولاً */
+  else if(a==="prv"){UI.trx=null;UI.fr=t.dataset.f;UI.tt=t.dataset.d;UI.lim=200;paint(false)}
   else if(a==="prsmore"){UI.prs=(UI.prs||8)+20;paint()}
   else if(a==="cfgsave")saveCfg();
   else if(a==="cfgdef"){CFG=Object.assign({},DEF,{ex:DEF.ex.slice(),ov:[]});paint()}
@@ -1393,6 +1437,8 @@ function wire(){
    CFG.ov=(CFG.ov||[]).filter(o=>!(o.t===ty&&o.k===k)).concat([{t:ty,k:k.slice(0,60),min:Math.min(9999,mn)}]);paint()}});
  const set=t=>{const af=t.dataset.af;
   // (v187) توزيع حاوية: خانة في الجدول (تعديل يد)، سطر صنف، قاعدة، مستوى فرع
+  if(t.dataset.dsb!==undefined){UI.dsel=UI.dsel||{};UI.dsel[String(t.dataset.dsb).slice(0,3)]=!!t.checked;return true}
+  if(t.dataset.tq!==undefined&&UI.trx){const mx=Math.max(0,N(t.max));UI.trx.q=UI.trx.q||{};UI.trx.q[t.dataset.tq]=t.value===""?0:Math.max(0,Math.min(mx||99999,Math.round(N(t.value))));return true}
   if(t.dataset.dx!==undefined){const S=dLoad(),k=t.dataset.dx;if(t.value==="")delete S.ov[k];else S.ov[k]=Math.max(0,N(t.value));dSave();return true}
   if(t.dataset.dl!==undefined){const S=dLoad(),p=t.dataset.dl.split("|"),i=+p[0],f=p[1];if(!(i>=0&&i<S.lines.length)||["c","cl","z","ct","pk","md","ref"].indexOf(f)<0)return false;const l=S.lines[i];
    l[f]=f==="ct"||f==="pk"?(t.value===""?"":Math.max(0,N(t.value))):f==="md"?(t.value==="p"?"p":"c"):String(t.value).trim().slice(0,40);Object.keys(S.ov).forEach(k=>{if(k.split("|")[0]===String(i))delete S.ov[k]});dSave();return true}
@@ -1416,7 +1462,7 @@ function wire(){
  // (v184) خانة الكود/البحث: الضغط عليها يحدّد ما فيها، فالكتابة تستبدله مباشرة (صنف آخر بلا مسح يدوي)
  let PF=0;ROOT.addEventListener("pointerdown",e=>{const t=e.target;PF=t&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")&&document.activeElement!==t?1:0});
  ROOT.addEventListener("focusin",e=>{const t=e.target;if(PF&&t&&t.select&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")){PF=0;setTimeout(()=>{try{if(document.activeElement===t)t.select()}catch(x){}},0)}});
- ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file")return;if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
+ ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file")return;if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.tq!==undefined||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
  ROOT.addEventListener("change",e=>{const t=e.target;if(t.id==="stk-file"){const f=[...t.files];t.value="";onFiles(f);return}if(set(t)){clearTimeout(PT);paint()}});
  ROOT.addEventListener("dragover",e=>{const d=e.target.closest&&e.target.closest("#stk-drop");if(d){e.preventDefault();d.classList.add("ov")}});
  ROOT.addEventListener("dragleave",e=>{const d=e.target.closest&&e.target.closest("#stk-drop");if(d)d.classList.remove("ov")});
