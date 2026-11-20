@@ -411,6 +411,32 @@ export function reorder(D,C,o){
  rows.sort((p,r)=>p.cover-r.cover||r.qty-p.qty||(p.code<r.code?-1:1));let qty=0;for(const c of rows)qty+=c.qty;
  return {rows,qty,H,AL,days};
 }
+/* ---- (v187) توزيع حاوية على الفروع ---- */
+// يوزّع كمية سطر واحد (total بوحدة السطر: كرتون أو حبة) على: الأونلاين (نسبة ثابتة) + المستودع (نسبة احتياطي) + الفروع بأوزانها.
+// الحساب بـ«خطوات» صحيحة (step = أصغر وحدة توزيع: كرتون، نصف كرتون، حبة، 5 حبات…) فلا كسور ضائعة والمجموع = الكمية بالضبط.
+// brs = [{id, w}] (w = وزن الفرع ≥ 0؛ صفر = لا يأخذ). r = {on %, wh %, min, max, hasOnline}. الأقل نصيباً يُعطى للأعلى وزناً أولاً لو الكمية لا تكفي الكل،
+// والباقي بالأوزان (أكبر باقٍ)، وما يزيد على الحد الأقصى يُعاد توزيعه، وما لا يجد مكاناً يبقى في المستودع.
+export function distribute(total,step,brs,r){
+ r=r||{};step=N(step)>0?N(step):1;const tot=Math.max(0,N(total)),Tt=Math.floor(tot/step+1e-9);
+ const on=r.hasOnline?Math.min(Tt,Math.round(Tt*Math.max(0,Math.min(100,N(r.on)))/100)):0,whT=Math.min(Tt-on,Math.round(Tt*Math.max(0,Math.min(100,N(r.wh)))/100));let R=Tt-on-whT;
+ const act=(brs||[]).map(b=>({id:b.id,w:Math.max(0,N(b.w)),t:0})).filter(b=>b.w>0).sort((p,q)=>q.w-p.w||(p.id<q.id?-1:1));
+ const mB=Math.max(0,Math.ceil(N(r.min)/step-1e-9)),cap=r.max!==""&&r.max!=null&&N(r.max)>0?Math.max(0,Math.floor(N(r.max)/step+1e-9)):Infinity;
+ if(mB>0){const g=Math.min(mB,cap);for(const b of act){if(R<g||g<=0)break;b.t=g;R-=g}}
+ let guard=0;while(R>0&&guard++<60){const pool=act.filter(b=>b.t<cap);if(!pool.length)break;let sw=0;for(const b of pool)sw+=b.w;if(sw<=0)break;let used=0;const fr=[];
+  for(const b of pool){const x=R*b.w/sw,f=Math.floor(x+1e-9),g=Math.min(f,cap-b.t);b.t+=g;used+=g;fr.push([x-f,b])}
+  let left=R-used;fr.sort((p,q)=>q[0]-p[0]||q[1].w-p[1].w||(p[1].id<q[1].id?-1:1));for(const e of fr){if(left<=0)break;if(e[1].t<cap){e[1].t++;left--}}
+  if(left===R)break;R=left}
+ const a={};let sum=0;for(const b of act){a[b.id]=b.t*step;sum+=b.t}
+ return {on:on*step,a,wh:Math.round((tot-on*step-sum*step)*1e6)/1e6};
+}
+// وزن كل فرع = مبيعاته. mode: smart = مبيعات «الكود المرجعي» لو كُتب، وإلا مبيعات الكود نفسه لو له سجل كافٍ (≥ 20 قطعة في الفروع)، وإلا مبيعات الفرع كلها · all = مبيعات الفرع كلها
+export function distWeights(D,C,o){
+ o=o||{};const P=o.period?soldMap(D,o.period.from,o.period.to):null,wh=D.sti.get(C.wh),m=new Map();
+ const run=ids=>{m.clear();let t=0;eachCell(D,P,ids,(ki,ti,vi,on,sold)=>{if(ti===wh)return;m.set(ti,(m.get(ti)||0)+sold);t+=sold});return t};
+ if(o.mode!=="all"){const ref=String(o.ref||"").trim(),code=String(o.code||"").trim(),ir=ref?D.code.get(ref)||D.code.get(ref.toUpperCase()):null,ic=code?D.code.get(code)||D.code.get(code.toUpperCase()):null;
+  if(ir&&ir.length&&run(ir)>0)return {m:new Map(m),src:"ref"};if(ic&&ic.length&&run(ic)>=20)return {m:new Map(m),src:"code"}}
+ run(null);return {m:new Map(m),src:"all"};
+}
 /* ---- (v181) «تحليل صنف» v2: جدول محوري لصنف واحد بدل جداول إكسل المحورية ---- */
 // خانات الصنف: (لون ومقاس، مخزن) ← {رصيد، مبيعات، ناقص؟، راكد؟}. ناقص = فرع يبيعه ورصيده أقل من الحد، راكد = فرع عنده ≥ حد الراكد ولم يبع (كجدول الصنف القديم)
 function itemAtoms(D,C,code,o){
@@ -755,6 +781,12 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 .stk-crv i.s,.stk-crvl i.s{background:var(--acc)}.stk-crv i.o,.stk-crvl i.o{background:var(--olive,#6f7d45)}:where([data-theme=dark]) .stk-crv i.o,:where([data-theme=dark]) .stk-crvl i.o{background:#a4b46e}
 .stk-piv{margin-top:12px}.stk-pvb{box-shadow:none;border:0;padding:8px 6px 4px;margin:0}.stk-mx td.t{font-weight:800;border-inline-start:2px solid var(--line)}.stk-mx tr.whr td.s{background:var(--soft)}
 .stk-lg{border-radius:6px;padding:1px 8px;font-weight:700}.stk-lg.need{background:#fdecea;color:#8a2218}.stk-lg.idle{background:#fff4e2;color:#6b4300}.stk-lg.wh{background:var(--soft);color:var(--ink)}:where([data-theme=dark]) .stk-lg.need{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .stk-lg.idle{background:#3a2a08;color:#f6c770}
+.stk-dl td{padding:4px 5px}.stk-dl input,.stk-dl select{height:38px;margin:0;width:118px;min-width:0}.stk-dl input.sm{width:78px;text-align:center}.stk-dl select{width:104px}
+.stk-dg th{font-size:11.5px;padding:6px 4px}.stk-dg th.rt{border-inline:2px solid var(--line);background:var(--soft);font-size:12.5px;color:var(--ink)}.stk-dg th.on,.stk-dg td.on{background:var(--soft)}.stk-dg th.off{opacity:.45;text-decoration:line-through}
+.stk-dg td{padding:3px 2px}.stk-dg td.s{padding:6px 10px;text-align:start;min-width:120px}.stk-dg td.s i,.stk-dg td.t i{white-space:nowrap}.stk-dg td.t,.stk-dg td.wh{padding:6px 10px}
+.stk-dg .dgi{width:44px;height:34px;margin:0;padding:0 2px;text-align:center;border:1px solid transparent;background:transparent;border-radius:8px;font:inherit;font-weight:700;font-variant-numeric:tabular-nums;color:inherit;-moz-appearance:textfield}.stk-dg .dgi::-webkit-outer-spin-button,.stk-dg .dgi::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.stk-dg .dgi:hover{border-color:var(--line)}.stk-dg .dgi:focus{border-color:var(--acc);background:var(--card);outline:0}.stk-dg td.ov .dgi{border-color:var(--acc);background:var(--card)}.stk-dg .dgi::placeholder{color:var(--line);font-weight:400}
+.stk-lvg{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.stk-lvg>b{flex:0 0 100%;font-size:13px;color:var(--mut)}.stk-lvg label{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;margin:0}.stk-lvg select{height:36px;margin:0;width:auto;min-width:0;padding-inline:8px}
 .stk-up>.stk-card{min-width:0;overflow-x:auto}.stk-seg{display:inline-flex;gap:4px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;margin:0 0 12px;max-width:100%;overflow-x:auto}.stk-seg button{border:0;background:none;color:var(--mut);border-radius:9px;padding:0 14px;min-height:38px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}.stk-seg button.on{background:var(--acc);color:#fff;font-weight:700}:where([data-theme=dark]) .stk-seg button.on{color:#141015}
 .stk-t tr.stk-dx>td{background:var(--soft);padding:8px 12px 12px;white-space:normal}.stk-t tr.stk-dx:hover>td{background:var(--soft)}.stk-dx .stk-t{background:var(--card);border-radius:10px}.stk-bar .stk-fx{height:42px;white-space:nowrap}.stk-bar input.cc{width:280px}.stk-cbar{display:block;height:8px;border-radius:4px;background:var(--acc);min-width:2px;margin-top:4px}.stk-t td.win{background:var(--olive-s,#e9ecd9);color:var(--olive-t,#3f4a22);font-weight:800}:where([data-theme=dark]) .stk-t td.win{background:#2c3318;color:#cbd89a}
 .stk-t td.rk{color:var(--mut);width:34px}.stk-t td.up{color:var(--olive,#6f7d45);font-weight:800}.stk-t td.dn{color:#c4362b;font-weight:800}.stk-cmp td.best{background:var(--olive-s,#e9ecd9);color:var(--olive-t,#3f4a22);font-weight:800;border-radius:8px}.stk-cmp th a{font-weight:700}.stk-cmp td:first-child{white-space:normal;min-width:96px;line-height:1.5}.stk-cmp th{white-space:normal}@media (max-width:560px){.stk-cmp td,.stk-cmp th{padding:7px 6px;font-size:13px}}.stk-und+.stk-und{margin-top:-4px}
@@ -764,7 +796,7 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 :where([data-theme=dark]) .stk-tabs button.on{color:#141015}:where([data-theme=dark]) .stk-rep.r,:where([data-theme=dark]) .stk-mx td.need{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .stk-rep.w,:where([data-theme=dark]) .stk-mx td.idle{background:#3a2a08;color:#f6c770}:where([data-theme=dark]) .stk-t .z{color:#f1a5a0}:where([data-theme=dark]) .stk-t .no{color:#f6c770}
 @media (max-width:760px){.stk-up{grid-template-columns:1fr}.stk-bar label{flex:1 1 calc(50% - 4px)}.stk-bar select,.stk-bar input,.stk-bar input[type=number],.stk-bar input[type=search],.stk-bar input[type=text]{width:100%}.stk-bar .sp{display:none}.stk-bar .bt{flex:1 1 calc(50% - 4px)}}
 @media print{.stk-tabs,.stk-bar,.stk-drop,.stk-more{display:none!important}}`;
-const TABS=[["home","🚨","اليوم"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["item","🔍","تحليل صنف"],["sales","📅","مبيعات بالتاريخ"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
+const TABS=[["home","🚨","اليوم"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["sales","📅","مبيعات بالتاريخ"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
 const fmt=n=>String(Math.round(N(n))).replace(/\B(?=(\d{3})+(?!\d))/g,",");
 const dts=t=>{if(!t)return "";const d=new Date(N(t));return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+" "+p2(d.getHours())+":"+p2(d.getMinutes())};
 // ‎ قبل النص: اسم المخزن «003-EL MALQA» يُعرض بترتيبه داخل قائمة عربية (كان يظهر «EL MALQA-003»)
@@ -852,6 +884,65 @@ async function mkTransfer(fName,dName){
  else{BUSY="";paint();if(X.toast)X.toast("تعذّر إنشاء الطلب: "+String(r&&r.err||"").slice(0,90))}
 }
 /* (v181) «تحليل صنف» v2: ملخّص + ملاحظات + منحنى المقاسات والألوان + جدول محوري (الصفوف/الأعمدة/القيمة يختارها المستخدم) */
+/* (v187) 🚚 توزيع حاوية على الفروع: الأصناف + القواعد (على هذا الجهاز localStorage.stk_dist) + جدول يُعدَّل باليد */
+const DDEF={on:25,wh:10,cs:1,cmin:1,cmax:"",ps:1,pmin:0,pmax:"",mode:"smart",lv:{}};
+const DLV=[[0,"مستبعد"],[0.5,"½"],[1,"عادي"],[1.5,"1½"],[2,"ضعف"],[3,"3 أضعاف"]];
+let DS=null;
+const dBlank=()=>({c:"",cl:"",z:"",ct:"",pk:"",md:"c",ref:""});
+function dLoad(){if(DS)return DS;let o=null;try{o=JSON.parse(localStorage.getItem("stk_dist")||"null")}catch(e){o=null}
+ DS={lines:o&&Array.isArray(o.lines)?o.lines.slice(0,200).map(l=>Object.assign(dBlank(),l&&typeof l==="object"?l:{})):[],ov:o&&o.ov&&typeof o.ov==="object"?o.ov:{},rules:Object.assign({},DDEF,o&&o.rules&&typeof o.rules==="object"?o.rules:{})};
+ if(!DS.rules.lv||typeof DS.rules.lv!=="object")DS.rules.lv={};while(DS.lines.length<3)DS.lines.push(dBlank());return DS}
+const dSave=()=>{try{localStorage.setItem("stk_dist",JSON.stringify(DS))}catch(e){}};
+const fq=n=>{const x=Math.round(N(n)*100)/100,p=String(x).split(".");return p[0].replace(/\B(?=(\d{3})+(?!\d))/g,",")+(p[1]?"."+p[1]:"")};
+// أعمدة التوزيع: الأونلاين أولاً، ثم فروع الرياض، ثم كل شركة شحن بفروعها (كشيت التوزيع اليدوي)
+function dCols(){
+ const R=dLoad().rules,ship=X&&X.ship?X.ship()||{}:{},whC=cd(CFG.wh),byC=new Map(),ex=new Set((CFG.ex||[]).map(cd));DATA.st.forEach((s,ti)=>{const m=/^(\d{3})-/.exec(s);if(m)byC.set(m[1],ti)});
+ let list=X&&X.branches?X.branches().slice():[];if(!list.length)list=[...byC.keys()];list=list.filter((c,i)=>c!==whC&&!ex.has(c)&&list.indexOf(c)===i);
+ let onC="";byC.forEach((ti,c)=>{if(!onC&&/online/i.test(DATA.st[ti]))onC=c});if(!onC)onC="015";
+ const cols=list.map(c=>({c,ti:byC.has(c)?byC.get(c):-1,nm:ALIAS[c]?ALIAS[c][0].replace(/ه$/,"ة"):(byC.has(c)?DATA.st[byC.get(c)].slice(4):c),route:String(ship[c]||"").slice(0,40),on:c===onC,lv:R.lv[c]===undefined?1:Math.max(0,N(R.lv[c]))}));
+ return cols.sort((p,r)=>(p.on?0:1)-(r.on?0:1)||(p.route?1:0)-(r.route?1:0)||(p.route<r.route?-1:p.route>r.route?1:0)||(p.c<r.c?-1:1));
+}
+// توزيع سطر: الكمية بوحدة السطر (كرتون، أو حبة = كراتين × حبات الكرتون)، ثم تعديلات اليد فوق المحسوب، والمستودع = الباقي
+function dLine(i,l,cols,P){
+ const R=DS.rules,md=l.md==="p"?"p":"c",ct=Math.max(0,N(l.ct)),pk=Math.max(0,N(l.pk)),total=md==="c"?ct:(pk>0?ct*pk:ct),step=md==="c"?(N(R.cs)>0?N(R.cs):1):(N(R.ps)>0?N(R.ps):1);
+ const W=R.mode==="eq"?{m:new Map(),src:"eq"}:distWeights(DATA,CFG,{code:l.c,ref:l.ref,period:P,mode:R.mode}),bc=cols.filter(c=>!c.on),on=cols.find(c=>c.on);
+ // فرع غير مستبعد بلا مبيعات (فرع جديد مثلاً): وزن ضئيل، فيأخذ «أقل نصيب» فقط ولا يُنسى
+ let brs=bc.map(c=>({id:c.c,w:(R.mode==="eq"?1:Math.max(0.0001,c.ti>=0?W.m.get(c.ti)||0:0))*c.lv})),src=W.src;if(!brs.some(b=>b.w>0)){brs=bc.map(c=>({id:c.c,w:c.lv}));src="eq"}
+ const A=distribute(total,step,brs,{on:R.on,wh:R.wh,min:md==="c"?R.cmin:R.pmin,max:md==="c"?R.cmax:R.pmax,hasOnline:!!on&&on.lv>0}),vals={};let sum=0,ovn=0;
+ for(const c of cols){let v=c.on?A.on:(A.a[c.c]||0);const k=i+"|"+c.c;if(DS.ov[k]!==undefined&&DS.ov[k]!==null&&DS.ov[k]!==""){v=Math.max(0,N(DS.ov[k]));ovn++}vals[c.c]=v;sum+=v}
+ return {total,step,md,pk,vals,wh:Math.round((total-sum)*1e6)/1e6,src,ovn,pc:md==="c"?(pk>0?pk:1):1};
+}
+function vDist(){
+ const S=dLoad(),R=S.rules,P=period(),cols=dCols(),on=cols.find(c=>c.on),br=cols.filter(c=>!c.on);
+ const li=(i,f,v,ex)=>`<input ${ex||'type="text"'} data-dl="${i}|${f}" id="dl${i}${f}" value="${E(v==null?"":v)}">`;
+ const inp=`<div class="stk-card" style="margin:0 0 12px"><h3>📦 أصناف الحاوية</h3><p>اكتب كل لون ومقاس في سطر: عدد الكراتين وعدد الحبات في الكرتون، واختر هل يُوزَّع بالكرتون أم بالحبة. «مثل كود» اختياري: كود قديم مشابه تُؤخذ مبيعاته وزناً للفروع (مفيد لصنف جديد لم يُبع بعد).</p>
+ <div class="tw"><table class="stk-t stk-dl"><thead><tr><th class="n">#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th class="n">الكراتين</th><th class="n">حبات الكرتون</th><th>يُوزَّع</th><th>مثل كود</th><th></th></tr></thead><tbody>${S.lines.map((l,i)=>`<tr><td class="n rk">${i+1}</td><td>${li(i,"c",l.c,'type="text" list="stk-codes" dir="ltr" autocomplete="off"')}</td><td>${li(i,"cl",l.cl,'type="text" dir="ltr"')}</td><td>${li(i,"z",l.z,'type="text" dir="ltr" class="sm"')}</td><td>${li(i,"ct",l.ct,'type="number" min="0" step="any" class="sm"')}</td><td>${li(i,"pk",l.pk,'type="number" min="0" step="1" class="sm"')}</td><td><select data-dl="${i}|md" id="dl${i}md"><option value="c"${l.md!=="p"?" selected":""}>بالكرتون</option><option value="p"${l.md==="p"?" selected":""}>بالحبة</option></select></td><td>${li(i,"ref",l.ref,'type="text" list="stk-codes" dir="ltr" autocomplete="off" placeholder="اختياري"')}</td><td><button class="bt s" type="button" data-sk="ddel" data-i="${i}" aria-label="حذف السطر" title="حذف السطر">✕</button></td></tr>`).join("")}</tbody></table></div>
+ <div class="stk-act" style="margin:10px 0 0"><button class="bt" type="button" data-sk="dadd">＋ سطر</button><button class="bt" type="button" data-sk="dpaste">📋 لصق من إكسل</button><button class="bt" type="button" data-sk="dro">⚙ قواعد التوزيع</button>${S.lines.some(l=>l.c||l.ct)?`<button class="bt" type="button" data-sk="dclr">🗑 مسح الكل</button>`:""}</div>
+ ${UI.dp?`<div style="margin-top:10px"><textarea id="stk-dpt" rows="5" dir="ltr" placeholder="الكود	اللون	المقاس	الكراتين	حبات الكرتون" style="width:100%"></textarea><p class="stk-src" style="margin:4px 0 8px">الصق الصفوف من إكسل: الكود، اللون، المقاس، الكراتين، حبات الكرتون (كل صف في سطر). تُضاف بعد الأسطر الحالية.</p><button class="bt p" type="button" data-sk="dpok">أضف الصفوف</button></div>`:""}</div><datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
+ const num=(k,lab,ph,ex)=>`<label>${lab}<input type="number" min="0" step="any" data-dr="${k}" id="dr-${k}" value="${E(R[k])}" placeholder="${ph||""}" ${ex||""}></label>`;
+ const routes=[];for(const c of br){const r=c.route||"";if(!routes.length||routes[routes.length-1].r!==r)routes.push({r,l:[]});routes[routes.length-1].l.push(c)}
+ const rules=UI.dro?`<div class="stk-card" style="margin:0 0 12px"><h3>⚙ قواعد التوزيع</h3><p>تُحفظ على هذا الجهاز. تغيير أي قاعدة يعيد الحساب ويلغي تعديلات اليد.</p>
+ <div class="stk-bar stk-pvb">${num("on","نصيب الأونلاين %")}${num("wh","يبقى في المستودع %")}<label>وزن الفروع حسب<select data-dr="mode" id="dr-mode">${[["smart","مبيعات الكود (ذكي)"],["all","مبيعات الفرع كلها"],["eq","بالتساوي (المستوى فقط)"]].map(x=>`<option value="${x[0]}"${R.mode===x[0]?" selected":""}>${x[1]}</option>`).join("")}</select></label>${perSel()}</div>
+ <div class="stk-bar stk-pvb"><b class="stk-undt">التوزيع بالكرتون</b><label>أصغر وحدة<select data-dr="cs" id="dr-cs">${[[1,"كرتون"],[0.5,"نصف كرتون"]].map(x=>`<option value="${x[0]}"${N(R.cs)===x[0]?" selected":""}>${x[1]}</option>`).join("")}</select></label>${num("cmin","أقل نصيب للفرع (كرتون)")}${num("cmax","أقصى نصيب للفرع (كرتون)","بلا حد")}</div>
+ <div class="stk-bar stk-pvb"><b class="stk-undt">التوزيع بالحبة</b>${num("ps","التقريب لأقرب (حبة)")}${num("pmin","أقل نصيب للفرع (حبة)")}${num("pmax","أقصى نصيب للفرع (حبة)","بلا حد")}</div>
+ <h3 style="margin:10px 0 4px;font-size:15px">مستوى كل فرع</h3><p>يضرب وزن الفرع: «ضعف» يأخذ ضعف نصيبه، و«مستبعد» لا يأخذ شيئاً.</p>
+ ${on?`<div class="stk-lvg"><b>الأونلاين</b><label><span data-notr>${E(on.nm)}</span><select data-dv="${E(on.c)}" id="dv-${E(on.c)}"><option value="1"${on.lv>0?" selected":""}>يأخذ نسبته</option><option value="0"${on.lv<=0?" selected":""}>مستبعد</option></select></label></div>`:""}
+ ${routes.map(g=>`<div class="stk-lvg"><b${g.r?" data-notr":""}>${g.r?E(g.r):"الرياض"}</b>${g.l.map(c=>`<label><span data-notr>${E(c.nm)}</span><select data-dv="${E(c.c)}" id="dv-${E(c.c)}">${DLV.map(x=>`<option value="${x[0]}"${c.lv===x[0]?" selected":""}>${x[1]}</option>`).join("")}</select></label>`).join("")}</div>`).join("")}
+ <div class="stk-act" style="margin:10px 0 0"><button class="bt" type="button" data-sk="ddef">↺ القواعد الافتراضية</button></div></div>`:"";
+ const live=[];S.lines.forEach((l,i)=>{if(String(l.c||"").trim()&&N(l.ct)>0)live.push({i,l,r:dLine(i,l,cols,P)})});
+ if(!live.length){LASTX=null;return inp+rules+em("اكتب أصناف الحاوية في الأعلى (الكود وعدد الكراتين على الأقل) ليظهر التوزيع.<br>الأونلاين يأخذ "+fq(R.on)+"% من كل كمية، و"+fq(R.wh)+"% تبقى في المستودع، والباقي على الفروع حسب مبيعاتها. غيّر ذلك من «⚙ قواعد التوزيع».")}
+ let tP=0,oP=0,bP=0,wP=0,ovn=0,neg=0;const colP={};for(const x of live){const r=x.r;tP+=r.total*r.pc;wP+=r.wh*r.pc;ovn+=r.ovn;if(r.wh<-1e-9)neg++;for(const c of cols){const p=r.vals[c.c]*r.pc;colP[c.c]=(colP[c.c]||0)+p;if(c.on)oP+=p;else bP+=p}}
+ const SRC={ref:"وزن الفروع: مبيعات الكود المشابه",code:"وزن الفروع: مبيعات الكود نفسه",all:"وزن الفروع: مبيعات الفرع كلها",eq:"وزن الفروع: بالتساوي"};
+ LASTX={name:"توزيع-حاوية",head:["الكود","اللون","المقاس","الكمية بالكرتون","الكمية بالحبة"].concat(cols.map(c=>c.nm+(c.route?" ("+c.route+")":""))).concat(["المستودع","ملاحظات"]),rows:()=>live.map(x=>{const l=x.l,r=x.r;return [l.c,l.cl,l.z,l.ct,r.total*r.pc].concat(cols.map(c=>r.vals[c.c])).concat([r.wh,r.md==="c"?"التوزيع بالكرتون":"التوزيع بالحبة"])}).concat([["الإجمالي بالحبة","","","",tP].concat(cols.map(c=>colP[c.c]||0)).concat([wP,""])])};
+ const T=[tile(fq(tP),"قطعة في الحاوية","k"),tile(fq(oP),"للأونلاين ("+pct(tP?oP/tP:0)+")"),tile(fq(bP),"للفروع ("+pct(tP?bP/tP:0)+")","k"),tile(fq(wP),"تبقى في المستودع ("+pct(tP?wP/tP:0)+")",wP<0?"bad":"")];
+ const cell=(x,c)=>{const k=x.i+"|"+c.c,ov=S.ov[k]!==undefined&&S.ov[k]!==null&&S.ov[k]!=="",v=x.r.vals[c.c];return `<td class="${c.on?"on":""}${ov?" ov":""}"><input type="number" min="0" step="any" class="dgi" data-dx="${k}" id="dx${x.i}_${c.c}" value="${v?fq(v).replace(/,/g,""):ov?"0":""}" placeholder="0" aria-label="${E(c.nm)}"></td>`};
+ const grid=`<div class="stk-pan stk-piv"><div class="tw"><table class="stk-t stk-mx stk-dg"><thead><tr><th class="s" rowspan="2">الصنف</th><th rowspan="2">الكمية</th>${on?`<th rowspan="2" class="on" data-notr>${E(on.nm)}</th>`:""}${routes.map(g=>`<th colspan="${g.l.length}" class="rt"${g.r?" data-notr":""}>${g.r?E(g.r):"الرياض"}</th>`).join("")}<th rowspan="2">المستودع</th></tr><tr>${br.map(c=>`<th data-notr${c.lv<=0?' class="off"':""}>${E(c.nm)}</th>`).join("")}</tr></thead><tbody>
+ ${live.map(x=>{const l=x.l,r=x.r;return `<tr><td class="s"><b data-notr dir="ltr">${E(l.c)}</b><i data-notr>${E([l.cl,l.z].filter(Boolean).join(" · ")||"—")}</i><i>${SRC[r.src]||""}${r.src==="ref"?` <span data-notr dir="ltr">${E(l.ref)}</span>`:""}</i></td><td class="t"><b>${fq(r.total)}</b><i>${r.md==="c"?"كرتون":"حبة"}${r.md==="c"&&r.pk?" · "+fq(r.total*r.pk)+" حبة":""}</i></td>${on?cell(x,on):""}${br.map(c=>cell(x,c)).join("")}<td class="wh${r.wh<-1e-9?" need":""}"><b>${fq(r.wh)}</b></td></tr>`}).join("")}
+ <tr class="tot"><td class="s">الإجمالي بالحبة</td><td>${fq(tP)}</td>${on?`<td>${fq(colP[on.c]||0)}</td>`:""}${br.map(c=>`<td>${fq(colP[c.c]||0)}</td>`).join("")}<td>${fq(wP)}</td></tr></tbody></table></div>
+ <p class="stk-src" style="margin:8px 4px 0">كل خانة تُعدَّل باليد (تظهر بحد بنفسجي)، والمستودع يأخذ الباقي تلقائياً. الأرقام بوحدة السطر (كرتون أو حبة)، وسطر الإجمالي بالحبة.</p></div>`;
+ return inp+rules+gapNote(P)+`<div class="stk-tiles">${T.join("")}</div>${neg?`<div class="stk-rep r">⚠️ ${fq(neg)} سطر وُزِّع فيه أكثر من كميته (المستودع بالسالب). راجِع الخانات المعدَّلة باليد.</div>`:""}
+ <div class="stk-act">${ovn?`<button class="bt" type="button" data-sk="dovx">↺ إلغاء تعديلات اليد (${fq(ovn)})</button>`:""}<button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${grid}`;
+}
 /* (v186) 🛒 الشراء المقترح */
 const cov=c=>c>=999?"999+":fmt(c);
 function vBuy(){
@@ -1224,7 +1315,7 @@ function body(){
  // ملف الكميات أقدم من اليوم: الأرصدة المعروضة ليست أرصدة اللحظة
  const old=q&&q.to&&q.to<today()?Math.round((new Date(today()+"T12:00:00")-new Date(q.to+"T12:00:00"))/864e5):0;
  const stl=has&&old>0&&t!=="up"?`<div class="stk-rep w">ملف الكميات المرفوع قديم (${old===1?"من أمس":"منذ "+old+" يوماً"}): الأرصدة هنا حتى نهاية يوم <b data-notr>${E(qEnd())}</b>. ارفع ملف اليوم من تبويب «الملفات» لتكون الأرقام محدَّثة.</div>`:"";
- let v="";try{v=t==="up"?vUp():!has?vUp():t==="home"?vHome():t==="buy"?vBuy():t==="ask"?vAsk():t==="need"?vNeed():t==="tr"?vTr():t==="item"?vItem():t==="sales"?vSales():t==="stale"?vStale():vCfg()}catch(e){v=`<div class="stk-rep r">تعذّر عرض هذا التبويب (${E(String(e&&e.message||e).slice(0,80))}).</div>`}
+ let v="";try{v=t==="up"?vUp():!has?vUp():t==="home"?vHome():t==="buy"?vBuy():t==="dist"?vDist():t==="ask"?vAsk():t==="need"?vNeed():t==="tr"?vTr():t==="item"?vItem():t==="sales"?vSales():t==="stale"?vStale():vCfg()}catch(e){v=`<div class="stk-rep r">تعذّر عرض هذا التبويب (${E(String(e&&e.message||e).slice(0,80))}).</div>`}
  return hd+tabs+busy+(t!=="cfg"?stl:"")+v;
 }
 let PT=0;
@@ -1256,6 +1347,17 @@ function wire(){
   else if(a==="pick"&&UI.a){e.preventDefault();const k=t.dataset.k;if(k==="store"||k==="code"||k==="cl"||k==="vendor"){UI.a[k]=t.dataset.v||"";UI.a.amb[k]=[];if(k==="code"){UI.a.cl="";UI.a.z="";UI.a.amb.cl=[]}paint(false)}}
   // (v180) اسم في جدول ترتيب أو مقارنة ← بطاقته (بلا ترتيب ولا مقارنة ولا «مين عنده»)
   else if(a==="rgo"&&UI.a){e.preventDefault();const q=UI.a,k=t.dataset.k,v=t.dataset.v||"";if(k!=="store"&&k!=="code"&&k!=="vendor")return;if(q.cmp&&q.cmp.st)q.store=k==="store"?v:"";q[k]=v;if(k==="code"){q.cl="";q.z=""}q.rank=null;q.where=false;q.cmp=null;UI.lim=200;paint(false);window.scrollTo(0,0)}
+  // (v187) توزيع حاوية
+  else if(a==="dadd"){dLoad().lines.push(dBlank());dSave();paint(false);const el=g("dl"+(DS.lines.length-1)+"c");if(el)try{el.focus()}catch(x){}}
+  else if(a==="ddel"){const S=dLoad(),i=+t.dataset.i,nv={};if(!(i>=0&&i<S.lines.length))return;S.lines.splice(i,1);Object.keys(S.ov).forEach(k=>{const p=k.split("|"),j=+p[0];if(j<i)nv[k]=S.ov[k];else if(j>i)nv[(j-1)+"|"+p[1]]=S.ov[k]});S.ov=nv;while(S.lines.length<3)S.lines.push(dBlank());dSave();paint(false)}
+  else if(a==="dclr"){if(!confirm("مسح كل أصناف الحاوية وتعديلات اليد؟ (القواعد تبقى)"))return;const S=dLoad();S.lines=[dBlank(),dBlank(),dBlank()];S.ov={};dSave();paint(false)}
+  else if(a==="dpaste"){UI.dp=!UI.dp;paint(false);const el=g("stk-dpt");if(el)try{el.focus()}catch(x){}}
+  else if(a==="dpok"){const el=g("stk-dpt"),S=dLoad();if(!el)return;let n=0;S.lines=S.lines.filter(l=>String(l.c||"").trim()||N(l.ct)>0);
+   String(el.value||"").split(/\r?\n/).forEach(row=>{const p=row.split(row.indexOf("\t")>=0?"\t":/[,;،]/).map(s=>String(s).trim());if(!p[0]||S.lines.length>=200)return;const ct=N(arDig(p[3]||"")),pk=N(arDig(p[4]||""));if(!(ct>0)&&!/\d/.test(p[0]))return;/* سطر عناوين */S.lines.push({c:p[0].slice(0,40),cl:(p[1]||"").slice(0,40),z:(p[2]||"").slice(0,20),ct:ct>0?ct:"",pk:pk>0?pk:"",md:"c",ref:""});n++});
+   while(S.lines.length<3)S.lines.push(dBlank());UI.dp=false;dSave();paint(false);if(X.toast)X.toast(n?"أُضيف "+n+" سطر":"لم أجد صفوفاً صالحة")}
+  else if(a==="dro"){UI.dro=!UI.dro;paint(false)}
+  else if(a==="ddef"){const S=dLoad();S.rules=Object.assign({},DDEF,{lv:{}});S.ov={};dSave();paint(false)}
+  else if(a==="dovx"){dLoad().ov={};dSave();paint(false)}
   // (v186) اليوم / الشراء / التحويلات بالكود
   else if(a==="trv"){UI.trv=t.dataset.v==="code"?"code":"pair";UI.lim=200;paint(false)}
   else if(a==="trc"){UI.q=t.dataset.c||"";UI.fr="";UI.tt="";UI.trv="pair";UI.lim=200;paint(false);window.scrollTo(0,0)}
@@ -1290,6 +1392,12 @@ function wire(){
   else if(a==="ova"){const ty=g("stk-ot").value,k=String(ty==="c"?g("stk-oc").value:g("stk-ov").value).trim(),mn=N(g("stk-om").value);if(!k||mn<1){if(X.toast)X.toast(ty==="c"?"اكتب الكود":"اختر المورد");return}
    CFG.ov=(CFG.ov||[]).filter(o=>!(o.t===ty&&o.k===k)).concat([{t:ty,k:k.slice(0,60),min:Math.min(9999,mn)}]);paint()}});
  const set=t=>{const af=t.dataset.af;
+  // (v187) توزيع حاوية: خانة في الجدول (تعديل يد)، سطر صنف، قاعدة، مستوى فرع
+  if(t.dataset.dx!==undefined){const S=dLoad(),k=t.dataset.dx;if(t.value==="")delete S.ov[k];else S.ov[k]=Math.max(0,N(t.value));dSave();return true}
+  if(t.dataset.dl!==undefined){const S=dLoad(),p=t.dataset.dl.split("|"),i=+p[0],f=p[1];if(!(i>=0&&i<S.lines.length)||["c","cl","z","ct","pk","md","ref"].indexOf(f)<0)return false;const l=S.lines[i];
+   l[f]=f==="ct"||f==="pk"?(t.value===""?"":Math.max(0,N(t.value))):f==="md"?(t.value==="p"?"p":"c"):String(t.value).trim().slice(0,40);Object.keys(S.ov).forEach(k=>{if(k.split("|")[0]===String(i))delete S.ov[k]});dSave();return true}
+  if(t.dataset.dr!==undefined){const S=dLoad(),k=t.dataset.dr;if(["on","wh","cs","cmin","cmax","ps","pmin","pmax","mode"].indexOf(k)<0)return false;S.rules[k]=k==="mode"?(t.value==="all"||t.value==="eq"?t.value:"smart"):(t.value===""?"":Math.max(0,N(t.value)));S.ov={};dSave();return true}
+  if(t.dataset.dv!==undefined){const S=dLoad();S.rules.lv[String(t.dataset.dv).slice(0,3)]=Math.max(0,N(t.value));S.ov={};dSave();return true}
   if(af==="ccodes"&&UI.a){const q=UI.a,low=new Map();DATA.code.forEach((v,c)=>low.set(String(c).toLowerCase().replace(/\s+/g,""),c));const got=[],bad=[];
    String(t.value).split(/[,،؛\n]+/).map(s=>s.trim()).filter(Boolean).forEach(s=>{const c=low.get(s.toLowerCase().replace(/\s+/g,""));if(c){if(got.indexOf(c)<0)got.push(c);return}s.split(/\s+/).forEach(w=>{const c2=low.get(w.toLowerCase());if(c2){if(got.indexOf(c2)<0)got.push(c2)}else if(w)bad.push(w)})});
    q.unk=bad.slice(0,10);UI.lim=200;if(got.length>1)q.cmp={codes:got.slice(0,15)};else{q.cmp=null;q.code=got[0]||""}return true}
@@ -1308,7 +1416,7 @@ function wire(){
  // (v184) خانة الكود/البحث: الضغط عليها يحدّد ما فيها، فالكتابة تستبدله مباشرة (صنف آخر بلا مسح يدوي)
  let PF=0;ROOT.addEventListener("pointerdown",e=>{const t=e.target;PF=t&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")&&document.activeElement!==t?1:0});
  ROOT.addEventListener("focusin",e=>{const t=e.target;if(PF&&t&&t.select&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")){PF=0;setTimeout(()=>{try{if(document.activeElement===t)t.select()}catch(x){}},0)}});
- ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file")return;if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes")return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
+ ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file")return;if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
  ROOT.addEventListener("change",e=>{const t=e.target;if(t.id==="stk-file"){const f=[...t.files];t.value="";onFiles(f);return}if(set(t)){clearTimeout(PT);paint()}});
  ROOT.addEventListener("dragover",e=>{const d=e.target.closest&&e.target.closest("#stk-drop");if(d){e.preventDefault();d.classList.add("ov")}});
  ROOT.addEventListener("dragleave",e=>{const d=e.target.closest&&e.target.closest("#stk-drop");if(d)d.classList.remove("ov")});
