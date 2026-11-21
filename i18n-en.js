@@ -3748,4 +3748,15 @@ export default {
 "↩️ أُعيد فتح الإقفال. عدّل الحركات ثم أقفل من جديد":"↩️ Closing reopened. Edit the entries, then close again",
 "أُعيد فتحه":"Reopened",
 "إعادة فتح الإقفال لمالك النظام فقط":"Reopening a closing is for the system owner only",
+/* v190 (21 نوفمبر 2026): المستلم لكل فرع في تحليل المخزون */
+"قطعة استلمها من أول السنة":"pcs received since start of year",
+"قطعة استلمها الفرع من أول السنة":"pcs the branch received since start of year",
+"قطعة استلمتها الفروع من أول السنة":"pcs the branches received since start of year",
+"استلمته الفروع":"Received by branches",
+"المستلم من أول السنة":"Received since start of year",
+"«المستلم» غير متاح: ملف الكميات المرفوع ليس فيه عمود استلام صالح لكل فرع. ارفع ملف كميات فيه عمود المستلم ليظهر هنا. المتاح الآن: الرصيد والمبيعات.":"“Received” is not available: the uploaded quantities file has no valid per-branch received column. Upload a quantities file that includes the received column to show it here. Available now: stock and sales.",
+"«المستلم» من ملف الكميات، وهو من أول السنة حتى يوم التقرير. يظهر في بطاقة الفرع وبطاقة الصنف.":"“Received” comes from the quantities file and covers the start of the year up to the report day. It appears in the branch card and the item card.",
+"«المستلم» من ملف الكميات، وهو من أول السنة حتى يوم التقرير (لا يتبع الفترة المختارة). يظهر في بطاقة الفرع وبطاقة الصنف.":"“Received” comes from the quantities file and covers the start of the year up to the report day (it does not follow the selected period). It appears in the branch card and the item card.",
+"عمود «المستلم» مقروء من ملف الكميات (من أول السنة حتى يوم التقرير) ويظهر في «اسأل» و«تحليل صنف». للعرض فقط: لا يدخل في حساب النواقص أو التحويلات أو الشراء.":"The “Received” column is read from the quantities file (start of year up to the report day) and appears in “Ask” and “Item analysis”. Display only: it is not used in shortages, transfers or purchasing calculations.",
+"ملف الكميات المرفوع ليس فيه عمود استلام صالح لكل فرع، فلا يُعرض «المستلم».":"The uploaded quantities file has no valid per-branch received column, so “Received” is not shown.",
 };
