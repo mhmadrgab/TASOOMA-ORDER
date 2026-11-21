@@ -142,13 +142,17 @@ function paintSig(){const b=document.getElementById("flsig");if(b)b.innerHTML=si
 function liveStop(){if(LVU){LVU();LVU=null}if(LVT){clearInterval(LVT);LVT=null}LV={}}
 function attachLive(){
  const slot=g("flmap-slot");if(!slot)return;liveListen();
- if(!LM.host){LM.host=document.createElement("div");LM.host.className="tz-map";LM.host.innerHTML=`<div class="tz-mapc"></div><div class="tz-bar"><button class="bt s" data-fl="mfit" type="button">⤢ أظهر الكل</button><span class="tz-fw"></span><span>🚚 سائق في رحلة</span><span>🏭 المستودع</span><span><b style="background:#b48aab;border-radius:8px;padding:0 6px;color:#2a1d2c">كود</b> الفرع المتجه إليه</span><span>يتحدّث المكان تلقائياً</span></div>`}
+ if(!LM.host){LM.host=document.createElement("div");LM.host.className="tz-map";LM.host.innerHTML=`<div class="tz-mapc"></div><div class="tz-bar"><button class="bt s" data-fl="mfit" type="button">⤢ أظهر الكل</button><button class="bt s" data-fl="mwh" type="button">🏭 المستودع</button><button class="bt s" data-fl="mbig" type="button">${mbig()?"تصغير الخريطة":"تكبير الخريطة"}</button><span class="tz-fw"></span><span class="tzm-sp"></span><span class="tzm-k"><i style="background:#6a56c9"></i>سائق</span><span class="tzm-k"><i style="background:#8a5a83;border-radius:3px"></i>المستودع</span><span class="tzm-k"><i style="background:#b48aab"></i>فرع متجه إليه</span><span class="tzm-k"><i style="background:#fff;border-color:#8a5a83"></i>فرع</span></div>`;
+  if(mbig())LM.host.classList.add("tz-big")}
  if(LM.host.parentNode!==slot)slot.appendChild(LM.host);
  if(LM.map){LM.map.invalidateSize();paintLive();return}
  if(LM.loading)return;LM.loading=true;
- leaflet().then(L=>{LM.loading=false;if(LM.map||!X)return;LM.L=L;LM.map=baseMap(L,LM.host.querySelector(".tz-mapc"));LM.map.on("dragstart",()=>{if(LM.follow){LM.follow=null;paintFollow()}});paintLive()})
+ leaflet().then(L=>{LM.loading=false;if(LM.map||!X)return;LM.L=L;LM.map=baseMap(L,LM.host.querySelector(".tz-mapc"),{coop:true});LM.map.on("dragstart",()=>{if(LM.follow){LM.follow=null;paintFollow()}});paintLive()})
   .catch(()=>{LM.loading=false;const c=LM.host&&LM.host.querySelector(".tz-mapc");if(c)c.innerHTML='<div class="off" style="padding:30px;text-align:center">تعذر تحميل الخريطة. تأكد من الإنترنت وحدّث الصفحة.</div>'});
 }
+// (21 نوفمبر 2026) حجم الخريطة (عادي/كبير) محفوظ على الجهاز، وعلامة المستودع أيقونة مرسومة (لا إيموجي) بلون واضح واسمه تحتها
+const mbig=()=>{try{return localStorage.getItem("tz_mapbig")==="1"}catch(e){return false}};
+const WH_ICON=`<div class="tz-w"><span class="tzw-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 2.4 7.4a.9.9 0 0 0-.5.8V20.2c0 .5.4.9.9.9H6V12.6c0-.5.4-.9.9-.9h10.2c.5 0 .9.4.9.9v8.5h3.2c.5 0 .9-.4.9-.9V8.2a.9.9 0 0 0-.5-.8L12 2.6Z"/><path d="M7.8 13.5h8.4v2H7.8zM7.8 16.8h8.4v2H7.8zM7.8 20.1h8.4v1H7.8z"/></svg></span><span class="tzw-l">المستودع</span></div>`;
 // علامة واحدة: لو موجودة نحرّكها ونحدّث شكلها، ولو جديدة نعملها
 function mark(key,pt,html,pop,tip,z,smooth){
  const L=LM.L;let m=LM.mk.get(key);
@@ -181,7 +185,7 @@ function paintLive(){
  if(!LM.map||!X)return;
  LM.mk.forEach(m=>{m._seen=0});
  const nm=brNames(),wh=geoPt("WH"),act=TR.filter(t=>t.st==="active"),br=(GEOD&&GEOD.br)||{},nxt=new Set(),fit=[];
- if(okPt(wh)){mark("wh",wh,`<div class="tz-w">🏭</div>`,"<b>🏭 المستودع</b>",null,500);fit.push(wh)}
+ if(okPt(wh)){mark("wh",wh,WH_ICON,"<b>المستودع</b>",null,900);fit.push(wh)}
  const cols=["#6a56c9","#c4362b","#1c4f86","#6f7d45","#8a5a83","#b0478f"];
  act.forEach((t,i)=>{
   const st=Array.isArray(t.stops)?t.stops:[],done=st.filter(s=>s.arr).length,rem=st.filter(s=>!s.arr);
@@ -212,7 +216,7 @@ function paintLive(){
    }
   }
  });
- Object.entries(br).forEach(([c,p])=>{if(!okPt(p))return;const n=nm[c]||c,on=nxt.has(c);mark("b_"+c,p,`<div class="tz-b${on?" nx":""}">${E(c)}</div>`,`<b><bdi dir="ltr">${E(n)}</bdi></b>${on?"<br>🚚 سائق متجه إليه حالياً":""}`,null,on?800:0);if(!act.length)fit.push(p)});
+ Object.entries(br).forEach(([c,p])=>{if(!okPt(p))return;const n=nm[c]||c,on=nxt.has(c);const sn=String(n).replace(/^\d{3}\s*-\s*/,"");mark("b_"+c,p,`<div class="tz-b${on?" nx":""}" dir="ltr"><b>${E(c)}</b>${sn&&sn!==c?`<span class="tzb-n">${E(sn)}</span>`:""}</div>`,`<b><bdi dir="ltr">${E(n)}</bdi></b>${on?"<br>🚚 سائق متجه إليه حالياً":""}`,`<bdi dir="ltr">${E(n)}</bdi>`,on?800:0);if(!act.length)fit.push(p)});
  // نشيل اللي لم يعد موجوداً (رحلة خلصت مثلاً)
  [...LM.mk.entries()].forEach(([k,m])=>{if(!m._seen){LM.map.removeLayer(m);LM.mk.delete(k)}});
  // نظبط الزوم: أول مرة، ولما رحلة تبدأ أو تخلص (مش مع كل تحديث، علشان مانبوّظش الزوم اللي انت عامله)
@@ -567,11 +571,13 @@ async function click(e){
  const t=e.target.closest("[data-fl]");if(!t)return;const a=t.dataset.fl,id=t.dataset.id;
  try{
   if(!X.admin&&["car","carsave","cardel","fx","trx","drv","dtg","dpw","dcp","spw","dedit","dsave","dwa","gps","gnew","gmsg","gcp"].includes(a)){X.toast("هذه الصلاحية للمدير فقط");return}
-  if(a==="tmap"||a==="pmap"||a==="mfit"||a==="mfollow")e.preventDefault();// لينكات الخريطة (#)
+  if(a==="tmap"||a==="pmap"||a==="mfit"||a==="mfollow"||a==="mwh"||a==="mbig")e.preventDefault();// لينكات الخريطة (#)
   if(a==="cancel")closeM();
   else if(a==="tmap")tripMapM(id);
   else if(a==="pmap")pointM(t.dataset.lat,t.dataset.lng,t.dataset.t||"",t.dataset.s||"",id);
   else if(a==="mfit"){LM.follow=null;paintFollow();fitLive()}
+  else if(a==="mwh"){const w=geoPt("WH");if(LM.map&&okPt(w)){LM.follow=null;paintFollow();LM.map.flyTo([+w.lat,+w.lng],15,{duration:.8});const m=LM.mk.get("wh");if(m)setTimeout(()=>m.openPopup(),850)}else X.toast("مكان المستودع غير محدد بعد","er")}
+  else if(a==="mbig"){const big=!mbig();try{localStorage.setItem("tz_mapbig",big?"1":"0")}catch(x){}if(LM.host){LM.host.classList.toggle("tz-big",big);t.textContent=big?"تصغير الخريطة":"تكبير الخريطة";setTimeout(()=>{if(LM.map){LM.map.invalidateSize();if(big)LM.host.scrollIntoView({block:"start",behavior:"smooth"})}},280)}}
   else if(a==="mfollow")followTrip(id);
   else if(a==="rplay")playRP();
   else if(a==="rspd")speedRP();

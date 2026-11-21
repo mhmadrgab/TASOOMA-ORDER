@@ -3886,4 +3886,10 @@ export default {
 "📡 لا يوجد اتصال بالإنترنت، التحديث يحتاج إنترنت":"📡 No internet connection: updating needs internet",
 "ستفتح المنصة تلقائياً فور عودة الاتصال":"The platform will open automatically once the connection returns",
 "عاد الاتصال، جاري الفتح…":"Connection restored, opening…",
+"تكبير الخريطة":"Enlarge map",
+"تصغير الخريطة":"Shrink map",
+"فرع متجه إليه":"Branch being visited",
+"المس الخريطة مرة لتحريكها، أو استخدم إصبعين":"Tap the map once to move it, or use two fingers",
+"اضغط على الخريطة ثم استخدم عجلة الفأرة للتكبير":"Click the map, then use the mouse wheel to zoom",
+"مكان المستودع غير محدد بعد":"The warehouse location is not set yet",
 };

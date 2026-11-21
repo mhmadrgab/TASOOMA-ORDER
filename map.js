@@ -27,8 +27,26 @@ const BASES=[];
 if(typeof window!=="undefined")window.addEventListener("tz-theme",()=>{for(let i=BASES.length-1;i>=0;i--){const b=BASES[i];if(!b.el.isConnected){BASES.splice(i,1);continue}try{if(b.osm)b.el.classList.toggle("tz-dark",dark());else b.base.setUrl(ttUrl())}catch(e){}}});
 const lsG=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsS=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 // خريطة جديدة جوه عنصر (المركز الافتراضي الرياض إلى ما نعرف الأماكن) + زرار 🚦 الزحمة (بيتفتكر)
-export function baseMap(L,el){
- const m=L.map(el,{zoomControl:true,attributionControl:true,scrollWheelZoom:true}).setView([24.71,46.68],11);
+export function baseMap(L,el,o={}){
+ // (21 نوفمبر 2026، محمد: «الخريطة مش عملية») تكبير العجلة أنعم (خطوة أصغر)، وتكبير/تصغير بنصف درجة
+ const m=L.map(el,{zoomControl:true,attributionControl:true,scrollWheelZoom:true,zoomSnap:0.5,zoomDelta:0.5,wheelPxPerZoomLevel:110,wheelDebounceTime:30}).setView([24.71,46.68],11);
+ // مستوى التكبير على العنصر: بعيد = الفروع نقاط صغيرة، قريب = كود الفرع واسمه
+ const zc=()=>{const z=m.getZoom();el.classList.toggle("tz-far",z<11.5);el.classList.toggle("tz-near",z>=13.5)};m.on("zoomend",zc);zc();
+ // 🖐 الخريطة داخل صفحة طويلة (o.coop): تمرير الصفحة لا يحرّك الخريطة بالخطأ. بالفأرة: العجلة تكبّر بعد الضغط على الخريطة،
+ // وباللمس: إصبع واحد يمرّر الصفحة، وإصبعان يكبّران، والسحب بعد لمسة على الخريطة. رسالة قصيرة توضّح ذلك عند الحاجة.
+ if(o.coop){
+  const touch=("ontouchstart" in window)||navigator.maxTouchPoints>0;let on=false,ht=null;
+  m.scrollWheelZoom.disable();if(touch)m.dragging.disable();
+  const hint=L.DomUtil.create("div","tz-coop",el);hint.textContent=touch?"المس الخريطة مرة لتحريكها، أو استخدم إصبعين":"اضغط على الخريطة ثم استخدم عجلة الفأرة للتكبير";
+  const show=()=>{el.classList.add("tz-hint");clearTimeout(ht);ht=setTimeout(()=>el.classList.remove("tz-hint"),1600)};
+  const act=()=>{if(on)return;on=true;m.scrollWheelZoom.enable();if(touch)m.dragging.enable();el.classList.add("tz-act");el.classList.remove("tz-hint")};
+  const off=()=>{if(!on)return;on=false;m.scrollWheelZoom.disable();if(touch)m.dragging.disable();el.classList.remove("tz-act")};
+  m.on("click popupopen",act);
+  el.addEventListener("wheel",()=>{if(!on)show()},{passive:true});
+  el.addEventListener("touchstart",e=>{if(!on&&e.touches&&e.touches.length===1)show()},{passive:true});
+  document.addEventListener("pointerdown",e=>{if(!el.contains(e.target))off()},true);
+  if(!touch)el.addEventListener("mouseleave",off);
+ }
  const base=L.tileLayer(ttUrl(),{maxZoom:20,attribution:TTA}).addTo(m),BK={base,el,osm:false};BASES.push(BK);
  // TomTom لم يتم (المفتاح اتقفل أو الحد خلص): نرجع لـ OpenStreetMap
  let bad=0;base.on("tileerror",()=>{if(++bad===6){m.removeLayer(base);BK.osm=true;if(dark())el.classList.add("tz-dark");L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'}).addTo(m)}});
@@ -173,9 +191,22 @@ export const MAP_CSS=`
 .tz-hd::before{content:"";position:absolute;left:-7px;top:-29px;border:7px solid transparent;border-top:0;border-bottom:10px solid #6a56c9;filter:drop-shadow(0 0 1.5px #fff)}
 .tz-d.old .tz-hd{display:none!important}
 .tz-d span,.tz-s span{background:rgba(27,27,27,.85);color:#fff;border-radius:8px;padding:2px 7px}
-.tz-w{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:#2a1d2c;border:2px solid #b48aab;font-size:17px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
-.tz-b{background:#fff;color:#2a1d2c;border:2px solid #8a5a83;border-radius:999px;padding:1px 7px;font-size:11.5px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
-.tz-b.nx{background:#b48aab;border-color:#2a1d2c;font-size:13px;padding:2px 9px}
+.tz-w{display:flex;flex-direction:column;align-items:center;gap:3px}
+.tz-w .tzw-i{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:#8a5a83;color:#fff;border:3px solid #fff;box-shadow:0 3px 12px rgba(42,29,44,.45)}
+.tz-w .tzw-i svg{width:24px;height:24px;fill:currentColor;display:block}
+.tz-w .tzw-l{background:#2a1d2c;color:#fff;border-radius:8px;padding:2px 9px;font-size:12px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.tz-b{display:flex;align-items:center;gap:5px;background:#fff;color:#2a1d2c;border:2px solid #8a5a83;border-radius:999px;padding:1px 7px;font-size:11.5px;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:padding .2s,font-size .2s}
+.tz-b .tzb-n{display:none;font-weight:500;color:#5b4b5d}
+.tz-near .tz-b .tzb-n{display:inline}
+.tz-b.nx{background:#b48aab;border-color:#2a1d2c;font-size:13px;padding:2px 9px}.tz-b.nx .tzb-n{color:#2a1d2c}
+.tz-far .tz-b:not(.nx){width:12px;height:12px;padding:0;font-size:0;border-width:2.5px;background:#8a5a83;border-color:#fff}
+.tz-far .tz-b:not(.nx) .tzb-n{display:none}
+.tz-map.tz-big .tz-mapc{height:min(78vh,820px)}
+.tz-mapc{transition:height .25s ease}
+.tz-coop{position:absolute;inset:0;z-index:900;display:grid;place-items:center;padding:20px;background:rgba(42,29,44,.42);color:#fff;font:600 15px/1.6 "IBM Plex Sans Arabic",Tahoma,sans-serif;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.tz-hint .tz-coop{opacity:1}
+.tz-bar .tzm-k{display:inline-flex;align-items:center;gap:5px}.tz-bar .tzm-k i{display:inline-block;width:11px;height:11px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+.tz-bar .tzm-sp{flex:1}
 .tz-s b{display:grid;place-items:center;min-width:26px;height:26px;padding:0 6px;border-radius:13px;background:#6f7d45;color:#fff;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35);font-size:13px}
 .tz-s.wait b{background:#8d8a85}.tz-s.pk b{background:#1c4f86}.tz-s.st b{background:#2a1d2c}.tz-s.end b{background:#c4362b}
 .leaflet-popup-content{direction:rtl;text-align:right;font:14px/1.6 "IBM Plex Sans Arabic",Tahoma,sans-serif;margin:10px 14px}
