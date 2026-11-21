@@ -4128,4 +4128,9 @@ export default {
 "جاري إنشاء طلب الفرع…":"Creating branch order…",
 "جاري إنشاء أوامر التحويل…":"Creating transfer orders…",
 "أُنشئت الأوامر، لكن تعذّر حفظ علامتها: لا تنشئها مرة أخرى":"Orders created, but their mark could not be saved: do not create them again",
+/* v209 (22 نوفمبر 2026): أيام التغطية */
+"أيام التغطية":"Coverage days",
+"الكمية المقترحة للفرع = ما يكفيه هذا العدد من الأيام بمعدل بيعه للصنف، ولا تقل عن حد النواقص، ولا تزيد على رصيد المستودع. صفر = إكمال الحد فقط (كما كان).":"Suggested quantity for a branch = what covers this many days at its sales rate for the item; never below the shortage limit and never above warehouse stock. Zero = top up to the limit only (as before).",
+"الكمية المقترحة تكفي الفرع":"The suggested quantity covers the branch for",
+"يوماً من بيعه للصنف (تتغيّر من «القواعد»)، والمستودع يكمل الحد لكل الفروع أولاً ثم يوزّع الباقي بنسبة الحاجة.":"days of its sales of the item (change it in “Rules”); the warehouse first tops every branch up to the limit, then splits the rest in proportion to need.",
 };

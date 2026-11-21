@@ -177,8 +177,22 @@ const vHit=(D,ki,ti,vi,fv)=>{if(vi===fv)return true;const sp=D.vx?D.vx.get(ki*10
 const exSet=(C,D)=>{const s=new Set();(C.ex||[]).forEach(n=>{const i=D.sti.get(n);if(i!==undefined)s.add(i)});return s};
 const soldOf=(P,ki,ti,snap)=>P?(P.get(ki*1000+ti)||0):snap;
 /* (v205) سياق التشغيل للنواقص والتحويلات: tr = ما في الطريق (Map صنف*1000+مخزن ← +وارد/−صادر، من طلبات أُنشئت بعد ملف الأرصدة)، nd = مخازن لا تستقبل تحويلاً (ليست فروعاً في المنصة) */
-let ENV={tr:null,nd:null};
-export function setEnv(e){ENV={tr:e&&e.tr?e.tr:null,nd:e&&e.nd?e.nd:null}}
+let ENV={tr:null,nd:null,days:0};
+export function setEnv(e){ENV={tr:e&&e.tr?e.tr:null,nd:e&&e.nd?e.nd:null,days:e&&e.days>0?e.days:0}}
+/* (v209) الكمية المطلوبة للفرع = ما يكفيه cov يوماً من بيعه (ولا تقل عن حد النواقص). cov من القواعد (عنصر {t:"cov",min} داخل ov، الافتراضي 14، صفر = إكمال الحد فقط).
+   تعمل فقط حين يُعرف عدد أيام المبيعات (days): من النداء، أو طول الفترة، أو setEnv({days}) لمبيعات «من أول السنة». بلا أيام = إكمال الحد كما كان. */
+export const covOf=C=>{for(const o of (C&&C.ov)||[])if(o&&o.t==="cov")return Math.max(0,Math.min(365,N(o.min)));return 14};
+const spanD=p=>p&&p.from&&p.to?Math.round((new Date(p.to+"T12:00:00")-new Date(p.from+"T12:00:00"))/864e5)+1:0;
+const daysOf=o=>o&&o.days>0?o.days:o&&o.period?spanD(o.period):ENV.days||0;
+const tgtOf=(mn,sold,days,cov)=>days>0&&cov>0&&sold>0?Math.max(mn,Math.ceil(sold/days*cov)):mn;
+// توزيع رصيد المستودع w على سطور مرتّبة (الأعلى مبيعاً أولاً): أولاً يكمل كل فرع حتى الحد (base)، ثم الباقي بنسبة ما ينقص كل فرع ليبلغ أيام التغطية
+function allocW(L,w){
+ let left=Math.max(0,w);for(const l of L){const g=Math.min(l.base,left);l.give=g;left-=g}
+ let ext=0;for(const l of L)ext+=l.need-l.base;if(left<=0||ext<=0)return;
+ if(left>=ext){for(const l of L)l.give=l.need;return}
+ const pool=left;for(const l of L){const g=Math.floor(pool*(l.need-l.base)/ext);l.give+=g;left-=g}
+ for(const l of L){if(left<=0)break;if(l.give<l.need){l.give++;left--}}
+}
 const way=(ki,ti)=>ENV.tr?ENV.tr.get(ki*1000+ti)||0:0;
 // طلبات المنصة التي أُنشئت بعد لحظة ملف الأرصدة (since) لم تدخل في أرصدته: تُضاف لرصيد الفرع المستلم وتُطرح من المصدر (المستودع، أو الفرع المُرسِل في التحويل).
 // reqs = [{br:"003", fr:"028"|"", ts, st, rows:[{k,c,z,q,na}]}]. الصنف غير الموجود في الملف والسطر «غير متوفر» يُتجاهلان (فلا يُخفى نقص حقيقي).
@@ -193,14 +207,14 @@ export function transitMap(D,reqs,since,whName){
 // نواقص الفروع: رصيد الفرع أقل من الحد والمستودع عنده. المقترح = ما يكمل الحد، ويُوزَّع رصيد المستودع على الأعلى مبيعاً أولاً
 export function shortages(D,C,o){
  o=o||{};const wh=D.sti.get(C.wh),ex=exSet(C,D),out=[],P=o.period?soldMap(D,o.period.from,o.period.to):null,fs=o.store?D.sti.get(o.store):undefined,fv=o.vendor?D.vn.indexOf(o.vendor):-2,q=String(o.q||"").trim().toLowerCase();
- const om=o.min!=null&&o.min!=="";
+ const om=o.min!=null&&o.min!=="",dys=daysOf(o),cov=covOf(C);
  for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(!a)continue;const x=D.k[ki];if(q&&x[0].toLowerCase().indexOf(q)<0)continue;
   let w=way(ki,wh);for(let j=0;j<a.length;j+=4)if(a[j]===wh)w+=a[j+1];if(w<=0)continue;
   const L=[];
-  for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti))continue;const on=a[j+1],wy=way(ki,ti),ef=on+wy,vi=a[j+3],mn=om?N(o.min):minOf(C,D,ki,vi);if(ef>=mn)continue;const ytd=a[j+2],sold=soldOf(P,ki,ti,ytd);
+  for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti))continue;const on=a[j+1],wy=way(ki,ti),ef=on+wy,vi=a[j+3],mn=om?N(o.min):minOf(C,D,ki,vi),ytd=a[j+2],sold=soldOf(P,ki,ti,ytd),tg=tgtOf(mn,sold,dys,cov);if(ef>=tg)continue;
    // (v205) فرع نفد عنده الصنف وكان يبيعه في السنة يبقى محتاجاً حتى لو مبيعاته في الفترة صفر (لا شيء عنده ليبيعه)
-   if(o.sold&&sold<=0&&!(P&&ytd>0&&ef<=0))continue;L.push({ki,ti,vi,on,way:wy,sold,ytd,wh:w,need:mn-Math.max(0,ef),give:0})}
-  if(!L.length)continue;L.sort((p,r)=>r.sold-p.sold||r.ytd-p.ytd);let left=w;for(const l of L){l.give=Math.max(0,Math.min(l.need,left));left-=l.give}
+   if(o.sold&&sold<=0&&!(P&&ytd>0&&ef<=0))continue;L.push({ki,ti,vi,on,way:wy,sold,ytd,wh:w,mn,tg,need:tg-Math.max(0,ef),base:Math.max(0,Math.min(tg,mn)-Math.max(0,ef)),give:0})}
+  if(!L.length)continue;L.sort((p,r)=>r.sold-p.sold||r.ytd-p.ytd);allocW(L,w);
   // فلترا الفرع والمورد بعد التوزيع (فلا يتغيّر «المقترح» بتغيّر الفلتر). المورد = مورد السطر في التقرير
   for(const l of L)if((fs===undefined||l.ti===fs)&&(fv===-2||vHit(D,l.ki,l.ti,l.vi,fv)))out.push(l)}
  return out;
@@ -208,7 +222,7 @@ export function shortages(D,C,o){
 // غير متاح بالمستودع ومتاح في فروع ← اقتراح تحويل: من فرع «لا يبيع» (مبيعاته ≤ slow) وعنده أكثر من keep، إلى فرع رصيده أقل من الحد ويبيع (الأعلى مبيعاً أولاً).
 // لا يُسحب من فرع كل كميته أبداً: يبقى عنده keep على الأقل.
 export function transfers(D,C,o){
- o=o||{};const wh=D.sti.get(C.wh),ex=exSet(C,D),out=[],P=o.period?soldMap(D,o.period.from,o.period.to):null,fv=o.vendor?D.vn.indexOf(o.vendor):-2,q=String(o.q||"").trim().toLowerCase(),keep=Math.max(0,N(C.keep)),slow=N(C.slow);
+ o=o||{};const wh=D.sti.get(C.wh),ex=exSet(C,D),out=[],P=o.period?soldMap(D,o.period.from,o.period.to):null,fv=o.vendor?D.vn.indexOf(o.vendor):-2,q=String(o.q||"").trim().toLowerCase(),keep=Math.max(0,N(C.keep)),slow=N(C.slow),dys=daysOf(o),cov=covOf(C);
  let skus=0,unmet=0;const BC=new Map(),PU=new Map(),part={skus:0,lines:0,pcs:0,unmetPcs:0};
  // BC: لكل كود خلا منه المستودع وهو في الفروع. part: (v205) أصناف المستودع عنده منها لكنه لا يكفي كل الفروع التي تبيعها: الباقي يُغطّى من فروع لا تبيع.
  for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(!a)continue;const x=D.k[ki];if(fv!==-2&&x[3]!==fv)continue;if(q&&x[0].toLowerCase().indexOf(q)<0)continue;
@@ -217,16 +231,16 @@ export function transfers(D,C,o){
   const mn=minOf(C,D,ki),give=[],take=[];
   for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti))continue;const on=a[j+1],wy=way(ki,ti),ef=on+wy,ytd=a[j+2],sold=soldOf(P,ki,ti,ytd);if(bc){bc.on+=on;bc.sold+=sold;if(sold>0)bc.st.add(ti)}
    // محتاج: رصيده (مع ما في الطريق) أقل من الحد ويبيع الصنف، أو نفد عنده وكان يبيعه في السنة. nd: مخزن ليس فرعاً في المنصة لا يُحوَّل إليه (لكنه يأخذ نصيبه من المستودع في الحساب).
-   if(ef<mn&&(sold>0||(P&&ytd>0&&ef<=0)))take.push({ti,on,way:wy,ef,sold,ytd,want:mn-Math.max(0,ef),nd:!!(ENV.nd&&ENV.nd.has(ti))});
+   const tg=tgtOf(mn,sold,dys,cov);if(ef<tg&&(sold>0||(P&&ytd>0&&ef<=0)))take.push({ti,on,way:wy,ef,sold,ytd,tg,want:tg-Math.max(0,ef),need:tg-Math.max(0,ef),base:Math.max(0,Math.min(tg,mn)-Math.max(0,ef)),give:0,nd:!!(ENV.nd&&ENV.nd.has(ti))});
    else if(ef>keep&&sold<=slow)give.push({ti,on,sold,ytd,free:ef-keep})}
   if(!take.length)continue;take.sort((p,r)=>r.sold-p.sold||r.ytd-p.ytd);
-  if(!empty){let left=w,short=0;for(const t of take){const g=Math.min(t.want,left);t.want-=g;left-=g;if(t.want>0&&!t.nd)short=1}if(!short)continue;part.skus++}
+  if(!empty){let short=0;allocW(take,w);for(const t of take){t.want-=t.give;if(t.want>0&&!t.nd)short=1}if(!short)continue;part.skus++}
   for(const t of take){if(t.want<=0||t.nd)continue;
    // الأقل مبيعاً أولاً، ثم فرع نحوّل منه لهذا الفرع أصلاً (طلبات أقل)، ثم الأكثر فائضاً
    const G=give.filter(d=>d.free>0).sort((p,r)=>p.sold-r.sold||(PU.get(r.ti*1000+t.ti)||0)-(PU.get(p.ti*1000+t.ti)||0)||r.free-p.free);
    for(const d of G){if(t.want<=0)break;const n=Math.min(d.free,t.want);d.free-=n;t.want-=n;const pk=d.ti*1000+t.ti;PU.set(pk,(PU.get(pk)||0)+1);if(bc){bc.lines++;bc.pcs+=n}else{part.lines++;part.pcs+=n}
     // sure «مؤكد»: المُرسِل لم يبع الصنف طول السنة، والمستلم رصيده صفر (مع ما في الطريق) ويبيعه
-    out.push({ki,src:d.ti,fon:d.on,fsold:d.sold,fytd:d.ytd,dst:t.ti,ton:t.on,tsold:t.sold,tytd:t.ytd,tway:t.way,n,part:!empty,sure:d.ytd<=0&&t.ef<=0})}
+    out.push({ki,src:d.ti,fon:d.on,fsold:d.sold,fytd:d.ytd,dst:t.ti,ton:t.on,tsold:t.sold,tytd:t.ytd,tway:t.way,ttg:t.tg,n,part:!empty,sure:d.ytd<=0&&t.ef<=0})}
    if(t.want>0){if(bc){unmet++;bc.unmet++;bc.unmetPcs+=t.want}else part.unmetPcs+=t.want}}}
  const fr=o.from?D.sti.get(o.from):undefined,tt=o.to?D.sti.get(o.to):undefined;
  const codes=[...BC.values()].map(c=>({code:c.code,vi:c.vi,skus:c.skus,on:c.on,sold:c.sold,sell:c.st.size,lines:c.lines,pcs:c.pcs,unmet:c.unmet,unmetPcs:c.unmetPcs})).sort((p,r)=>r.sold-p.sold||r.on-p.on||(p.code<r.code?-1:1));
@@ -237,8 +251,8 @@ export function transfers(D,C,o){
 export function dayPlan(D,C,o){
  o=o||{};const days=o.days>0?o.days:1,okB=o.isBranch||(()=>true),skip=o.skip||(()=>false),NB=new Map(),TB=new Map();
  const g=(M,ti)=>{let b=M.get(ti);if(!b){b={ti,lines:[],n:0,pcs:0,zero:0,lost:0,srcs:new Set(),sure:0,seen:new Set()};M.set(ti,b)}return b};
- for(const l of shortages(D,C,{sold:1,period:o.period})){if(!(l.give>0)||!okB(l.ti))continue;const b=g(NB,l.ti);b.lines.push(l);b.n++;b.pcs+=l.give;if(l.on+(l.way||0)<=0){b.zero++;b.lost+=Math.max(0,l.sold)/days}}
- for(const l of transfers(D,C,{period:o.period}).rows){if(!okB(l.src)||!okB(l.dst)||skip(l))continue;const b=g(TB,l.dst);b.lines.push(l);b.n++;b.pcs+=l.n;b.srcs.add(l.src);if(l.sure)b.sure+=l.n;
+ for(const l of shortages(D,C,{sold:1,period:o.period,days:o.days})){if(!(l.give>0)||!okB(l.ti))continue;const b=g(NB,l.ti);b.lines.push(l);b.n++;b.pcs+=l.give;if(l.on+(l.way||0)<=0){b.zero++;b.lost+=Math.max(0,l.sold)/days}}
+ for(const l of transfers(D,C,{period:o.period,days:o.days}).rows){if(!okB(l.src)||!okB(l.dst)||skip(l))continue;const b=g(TB,l.dst);b.lines.push(l);b.n++;b.pcs+=l.n;b.srcs.add(l.src);if(l.sure)b.sure+=l.n;
   if(!b.seen.has(l.ki)){b.seen.add(l.ki);if(l.ton+(l.tway||0)<=0){b.zero++;b.lost+=Math.max(0,l.tsold)/days}}}
  const ord=(p,r)=>r.lost-p.lost||r.zero-p.zero||r.pcs-p.pcs||(D.st[p.ti]<D.st[r.ti]?-1:1),fin=M=>[...M.values()].map(b=>({ti:b.ti,lines:b.lines,n:b.n,pcs:b.pcs,zero:b.zero,lost:b.lost,srcs:b.srcs.size,sure:b.sure})).sort(ord);
  const need=fin(NB),tr=fin(TB);
@@ -533,7 +547,7 @@ export function itemReport(D,C,code,o){
  o=o||{};const I=itemInfo(D,C,code,o);if(!I)return null;
  const wh=D.sti.get(C.wh),ex=exSet(C,D),ids=new Set(I.ids),days=o.days>0?o.days:0,stl=Math.max(1,N(C.stale));
  const K=codeCard(D,C,code,{cl:o.cl,z:o.z,period:o.period}),PV=itemPivot(D,C,code,{cl:o.cl,z:o.z,period:o.period,rows:"store",cols:""}),cells=new Map();PV.rows.forEach(r=>cells.set(r.k,r));
- const inC=l=>ids.has(l.ki),SH=shortages(D,C,{q:code,period:o.period}).filter(inC),TR=transfers(D,C,{q:code,period:o.period}).rows.filter(inC),ST=stale(D,C,{q:code,period:o.period}).filter(inC);
+ const inC=l=>ids.has(l.ki),SH=shortages(D,C,{q:code,period:o.period,days:o.days}).filter(inC),TR=transfers(D,C,{q:code,period:o.period,days:o.days}).rows.filter(inC),ST=stale(D,C,{q:code,period:o.period}).filter(inC);
  const add=(m,k,v)=>m.set(k,(m.get(k)||0)+v),give=new Map(),unmet=new Map(),tin=new Map(),tout=new Map(),idl=new Map();
  let sendPcs=0,sendLines=0,unmetPcs=0,trPcs=0,pullPcs=0;
  SH.forEach(l=>{if(l.give>0){add(give,l.ti,l.give);sendPcs+=l.give;sendLines++}const u=Math.max(0,l.need-l.give);if(u>0&&l.sold>0){add(unmet,l.ti,u);unmetPcs+=u}});
@@ -1044,10 +1058,11 @@ let TRL=[];// آخر تحويلات معروضة (غير المُنشأ لها �
 let ENVK="",WAY=null,OUTR=new Map();
 function envSync(){
  const since=META&&META.q?N(META.q.at):0,R=X&&X.reqs?X.reqs():null;let mx=0,cn=0;if(R)for(const r of R){if(r&&N(r.ts)>since){cn++;if(N(r.ts)>mx)mx=N(r.ts)}}
- const k=since+"|"+cn+"|"+mx+"|"+(R?R.length:-1)+"|"+DATA.st.length+"|"+CFG.wh;if(k===ENVK)return;ENVK=k;
+ const dy=pDays(null),k=since+"|"+cn+"|"+mx+"|"+(R?R.length:-1)+"|"+DATA.st.length+"|"+CFG.wh+"|"+dy;if(k===ENVK)return;ENVK=k;
  const nd=new Set();if(X&&X.branches)DATA.st.forEach((nm,ti)=>{if(!isBr(nm))nd.add(ti)});
- const T=R&&since&&cn?transitMap(DATA,R,since,CFG.wh):null;setEnv({tr:T&&T.pcs?T.m:null,nd});WAY=T&&T.pcs?{n:T.n,pcs:T.pcs}:null;HOMEC=null;
+ const T=R&&since&&cn?transitMap(DATA,R,since,CFG.wh):null;setEnv({tr:T&&T.pcs?T.m:null,nd,days:dy});WAY=T&&T.pcs?{n:T.n,pcs:T.pcs}:null;HOMEC=null;
 }
+const covNote=()=>{const c=covOf(CFG);return c>0?' <span data-notr dir="rtl">الكمية المقترحة تكفي الفرع '+fmt(c)+" يوماً من بيعه للصنف (تتغيّر من «القواعد»)، والمستودع يكمل الحد لكل الفروع أولاً ثم يوزّع الباقي بنسبة الحاجة.</span>":""};
 const wayNote=()=>WAY?'<div class="stk-rep">🚚 محسوب معك: <b data-notr>'+fmt(WAY.n)+'</b> طلباً أُنشئ في المنصة بعد رفع ملف الأرصدة (<b data-notr>'+fmt(WAY.pcs)+"</b> قطعة في الطريق). أُضيفت لرصيد الفرع المستلم وطُرحت من المصدر، فلا يُقترح الشيء نفسه مرتين.</div>":"";
 const cfB=l=>(l.sure?'<span class="stk-vd s good" title="المُرسِل لم يبع الصنف طول السنة، والمستلم رصيده صفر ويبيعه">مؤكد</span>':'<span class="stk-vd s warn" title="'+(l.fytd>0?"المُرسِل باع الصنف خلال السنة":"المستلم ما زال عنده رصيد")+'">راجعه</span>')+(l.part?' <small class="off">المستودع لا يكفي</small>':"");
 /* 📦 (v205) «نفد من المستودع»: لكل كود خلا منه المستودع — أين هو ولا يُباع، ومن يحتاجه، وأمر التحويل بضغطة */
@@ -1098,7 +1113,7 @@ function vPlan(){
  return '<div class="stk-seg stk-pls" role="tablist"><button type="button" data-sk="ps" data-v="n" class="'+(st==="n"?"on":"")+'"><b>1</b> نواقص يغطيها المستودع <small data-notr>'+fmt(PLN.need.length)+' فرع</small></button><button type="button" data-sk="ps" data-v="t" class="'+(st==="t"?"on":"")+'"><b>2</b> ليس في المستودع: تحويل بين الفروع <small data-notr>'+fmt(PLN.tr.length)+" فرع</small></button></div>"
   +'<div class="stk-bar">'+perSel()+'<span class="sp"></span><button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>'+gapNote(P)+wayNote()
   +'<div class="stk-sum"><span><b>'+fmt(L.length)+"</b>فرع</span><span><b style=\"color:#c4362b\">"+fmt(zr)+"</b>صنف نفد عند فرع وهو يبيعه</span><span><b>"+fmt(tot)+"</b>"+(st==="t"?"قطعة تُحوَّل بين الفروع":"قطعة تُرسل من المستودع")+"</span></div>"
-  +'<p class="off" style="margin:0 4px 10px;font-size:13px">'+(st==="n"?"ابدأ من أول سطر: الفرع الذي يخسر مبيعات أكثر أولاً (أصناف رصيده منها صفر وهي تُباع عنده). اضغط الفرع لترى أصنافه ثم أنشئ طلبه. بعد أن تنتهي انتقل للخطوة 2.":"أصناف خلا منها المستودع أو لا يكفي: لكل فرع محتاج، من أي فروع يأخذها (فروع عندها الصنف ولا تبيعه). اضغط الفرع لترى التفاصيل ثم أنشئ أوامر تحويله.")+"</p>"
+  +'<p class="off" style="margin:0 4px 10px;font-size:13px">'+(st==="n"?"ابدأ من أول سطر: الفرع الذي يخسر مبيعات أكثر أولاً (أصناف رصيده منها صفر وهي تُباع عنده). اضغط الفرع لترى أصنافه ثم أنشئ طلبه. بعد أن تنتهي انتقل للخطوة 2."+covNote():"أصناف خلا منها المستودع أو لا يكفي: لكل فرع محتاج، من أي فروع يأخذها (فروع عندها الصنف ولا تبيعه). اضغط الفرع لترى التفاصيل ثم أنشئ أوامر تحويله.")+"</p>"
   +(L.length?'<div class="stk-pan"><div class="tw"><table class="stk-t stk-ox"><thead><tr><th></th><th class="n">#</th><th>الفرع</th><th class="n">نفد عنده ويبيعه</th><th class="n">يخسر يومياً (قطعة تقريباً)</th><th class="n">أصناف</th><th class="n">'+(st==="t"?"قطع تُحوَّل له":"قطع من المستودع")+"</th>"+(st==="t"?'<th class="n">من كم فرع</th><th class="n">مؤكد</th>':"")+"</tr></thead><tbody>"+L.map(row).join("")+"</tbody></table></div></div>":em(st==="n"?"لا نواقص يغطيها المستودع الآن 👌":"لا تحويلات ممكنة الآن 👌"))
   +(dn.length?'<p class="stk-src" style="margin:10px 4px 0">✅ أُنشئت طلباتها بعد ملف الأرصدة: '+dn.join("، ")+".</p>":"");
 }
@@ -1524,10 +1539,11 @@ function vCfg(){
  ${row("keep","أقل كمية تبقى عند الفرع المسحوب منه","عند اقتراح التحويل لا يُسحب من الفرع ما ينزل رصيده عن هذا الرقم.",0)}
  ${row("slow","الفرع «لا يبيع» لو مبيعاته لا تزيد على","يُسحب فقط من فرع مبيعاته من الصنف في الفترة لا تزيد على هذا الرقم (صفر = لم يبع شيئاً).",0)}
  ${row("stale","حد الراكد","الصنف راكد في الفرع لو رصيده هذا الرقم أو أكثر ولم يبع.",1)}
+ <div class="f"><div><b>أيام التغطية</b><small>الكمية المقترحة للفرع = ما يكفيه هذا العدد من الأيام بمعدل بيعه للصنف، ولا تقل عن حد النواقص، ولا تزيد على رصيد المستودع. صفر = إكمال الحد فقط (كما كان).</small></div><input type="number" min="0" max="365" data-cv="1" id="stk-c-cov" value="${covOf(CFG)}"></div>
  <div class="f"><div><b>مخزن المستودع</b><small>المخزن الذي تُحسب منه النواقص.</small></div><select data-cf="wh" id="stk-c-wh" style="height:42px;max-width:220px">${DATA.st.slice().sort().map(s=>`<option data-notr${s===CFG.wh?" selected":""}>${E(s)}</option>`).join("")}</select></div>
  <div class="f"><div><b>مخازن خارج التحليل</b><small>لا تظهر في النواقص ولا يُسحب منها ولا يُرسل إليها.</small><div class="stk-chk" style="margin-top:8px">${DATA.st.filter(s=>s!==CFG.wh).sort().map(s=>`<label data-notr><input type="checkbox" data-cx="${E(s)}"${(CFG.ex||[]).indexOf(s)>=0?" checked":""}>${E(s)}</label>`).join("")}</div></div></div>
  <div class="f"><div><b>حدود خاصة</b><small>حد نواقص مختلف لمورد أو لكود بعينه (مثلاً 20 لمورد معيّن). الكود يغلب المورد.</small>
- <div style="margin-top:8px">${(CFG.ov||[]).map((o,i)=>o.t==="a"?"":`<div class="stk-day"><span style="width:auto" data-notr>${o.t==="c"?"كود":"مورد"}: ${E(o.k)}</span><b>أقل من ${N(o.min)}</b><button class="bt s" type="button" data-sk="ovx" data-i="${i}">حذف</button></div>`).join("")||`<small>لا حدود خاصة.</small>`}</div>
+ <div style="margin-top:8px">${(CFG.ov||[]).map((o,i)=>o.t==="a"||o.t==="cov"?"":`<div class="stk-day"><span style="width:auto" data-notr>${o.t==="c"?"كود":"مورد"}: ${E(o.k)}</span><b>أقل من ${N(o.min)}</b><button class="bt s" type="button" data-sk="ovx" data-i="${i}">حذف</button></div>`).join("")||`<small>لا حدود خاصة.</small>`}</div>
  <div class="stk-bar" style="margin-top:10px;border:0;padding:0;background:none"><label>النوع<select id="stk-ot"><option value="v">مورد</option><option value="c">كود</option></select></label><label>المورد<select id="stk-ov">${opt(vendors(),"","اختر المورد")}</select></label><label>أو الكود<input type="text" id="stk-oc" list="stk-codes2" dir="ltr" autocomplete="off"></label><label>الحد<input type="number" id="stk-om" min="1" max="9999" value="20"></label><button class="bt" type="button" data-sk="ova">إضافة</button></div><datalist id="stk-codes2">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist></div></div>
  <div class="f"><div><b>أسماء الفروع في «اسأل»</b><small>الاسم الذي تكتبه في السؤال ليُفهم أنه هذا المخزن (مثلاً «النخيل»). رقم الفرع واسمه الإنجليزي وأشهر الأسماء العربية مفهومة من غير إضافة. الاسم الذي تضيفه يغلب المعروف.</small>
  <div style="margin-top:8px">${(CFG.ov||[]).map((o,i)=>o.t!=="a"?"":`<div class="stk-day"><span style="width:auto;direction:rtl" data-notr>${E(o.k)}</span><b data-notr dir="ltr">${E(o.s)}</b><button class="bt s" type="button" data-sk="ovx" data-i="${i}">حذف</button></div>`).join("")||`<small>لم تُضف أسماء.</small>`}</div>
@@ -1960,6 +1976,7 @@ function wire(){
   if(af&&UI.a){const q=UI.a;q[af]=t.value;UI.lim=200;if(af==="code"){q.code=String(t.value).trim();q.cl="";q.z="";q.amb.code=[];q.amb.cl=[]}if(af==="cl")q.z="";if(af==="store")q.amb.store=[];
    if(af==="per"&&t.value==="c"&&!(q.from&&q.to)){q.to=qEnd();q.from=addDays(q.to,-29)}return true}
   const k=t.dataset.sf;if(k){UI[k]=t.type==="checkbox"?(t.checked?1:0):t.value;UI.lim=200;if(k==="code"){UI.cl="";UI.sz=""}if(k==="cl")UI.sz="";return true}
+  if(t.dataset.cv){const v=Math.max(0,Math.min(365,Math.round(N(t.value))));CFG.ov=(CFG.ov||[]).filter(o=>!(o&&o.t==="cov")).concat([{t:"cov",k:"cov",min:v}]);HOMEC=null;return false}
   if(t.dataset.cf){const c=t.dataset.cf;CFG[c]=c==="wh"?t.value:Math.max(0,Math.min(9999,N(t.value)));return false}
   if(t.dataset.cx!==undefined){const s=new Set(CFG.ex||[]);if(t.checked)s.add(t.dataset.cx);else s.delete(t.dataset.cx);CFG.ex=[...s];return false}return false};
  ROOT.addEventListener("keydown",e=>{const t=e.target;if((e.key==="Enter"||e.key===" ")&&t&&t.dataset&&(t.dataset.sk==="oexp"||t.dataset.sk==="pexp")){e.preventDefault();t.click();return}if(e.key==="Enter"&&t&&t.id==="stk-ask"){e.preventDefault();doAsk(t.value)}
