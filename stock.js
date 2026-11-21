@@ -22,7 +22,7 @@ export const num=v=>{if(typeof v==="number")return isFinite(v)?v:NaN;let s=Strin
  if(/^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s))s=s.split(",").join("");if(!/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(s))return NaN;const n=+s;return neg?-n:n};
 const SEP="\u0001";
 export const DEF={min:2,keep:2,slow:0,days:60,stale:5,ex:["000-SERVER"],wh:"001-WEARHOUSE",ov:[]};
-let X=null,ROOT=null,DATA=null,CFG=Object.assign({},DEF),META=null,LOADED=false,LOADING=false,BUSY="",REP=[],SOLDC={},SENT=[],un=[];
+let X=null,ROOT=null,DATA=null,CFG=Object.assign({},DEF),META=null,LOADED=false,LOADING=false,BUSY="",REP=[],SOLDC={},SENT=[],un=[],MFAIL={};// MFAIL: شهور تاريخ فشل تحميلها
 const SENT_DAYS=14;// طلب التحويل المُنشأ يبقى معلَّماً على اقتراحه 14 يوماً (حتى يظهر أثره في تقرير السيستم)
 let UI={tab:"home",bh:60,ba:30,bs:"cover",bx:"",trv:"pair",st:"",vn:"",q:"",sold:1,min:"",per:"ytd",from:"",to:"",fr:"",tt:"",code:"",cl:"",sz:"",show:"b",son:"",lim:200,aq:"",a:null,rec:null};
 
@@ -681,9 +681,11 @@ async function load(){
 }
 // تحميل شهور ملفات التاريخ عند الحاجة فقط
 async function needMonths(from,to){
- if(!META||!META.d||!DATA)return;const want=months(from,to).filter(ym=>META.d[ym]&&!DATA.d[ym]);if(!want.length)return;
- BUSY="جاري تحميل مبيعات الفترة…";paint();
- try{const fb=await FB();for(const ym of want){const z=await getParts(fb,"d"+ym,Math.max(1,N(META.d[ym].parts)));if(z)loadMonth(DATA,ym,JSON.parse(await gun(z)));else DATA.d[ym]=[]}SOLDC={}}catch(e){want.forEach(ym=>{if(!DATA.d[ym])DATA.d[ym]=[]});if(X.toast)X.toast("تعذّر تحميل مبيعات الفترة")}
+ if(!META||!META.d||!DATA)return;const want=months(from,to).filter(ym=>META.d[ym]&&!DATA.d[ym]&&!MFAIL[ym]);if(!want.length)return;
+ BUSY="جاري تحميل مبيعات الفترة…";paint();const D0=DATA;
+ // (v192) كل شهر وحده: شهر فشل تحميله يُعلَّم (MFAIL) ويظهر تنبيه أحمر بزر «أعد المحاولة»، ولا يُحسب صفراً بصمت كما كان
+ try{const fb=await FB();let i=0;for(const ym of want){BUSY="جاري تحميل مبيعات الفترة… ("+(++i)+" من "+want.length+")";const e=g("stk-pg");if(e)e.textContent="("+i+" / "+want.length+")";
+   try{const z=await getParts(fb,"d"+ym,Math.max(1,N(META.d[ym].parts)));if(DATA!==D0)break;if(z)loadMonth(DATA,ym,JSON.parse(await gun(z)));else MFAIL[ym]=1}catch(x){MFAIL[ym]=1}}SOLDC={}}catch(e){want.forEach(ym=>{if(!DATA.d[ym])MFAIL[ym]=1})}
  BUSY="";paint();
 }
 const by=()=>({e:String(X.me&&X.me.e||"").slice(0,120),n:String(X.me&&X.me.n||"").slice(0,60)});
@@ -732,7 +734,7 @@ async function publish(quiet){
  finally{PUBBUSY=false;if(!quiet){BUSY="";paint()}}
 }
 async function onFiles(files){
- if(BUSY||!files||!files.length)return;REP=[];UI.rec=null;
+ if(BUSY||!files||!files.length)return;REP=[];UI.rec=null;MFAIL={};
  if(typeof CompressionStream==="undefined"||typeof DecompressionStream==="undefined"){REP=[{kind:"r",t:"هذا المتصفح قديم ولا يستطيع قراءة ملفات الإكسل هنا. استخدم Chrome أو Edge حديثاً."}];paint();return}
  for(const f of [...files]){const nm=String(f.name||"ملف");
   try{BUSY="جاري قراءة "+nm+"…";paint();let last=0;const R=await readFile(f,p=>{const pc=Math.round(p*100);if(pc-last>=4){last=pc;const e=g("stk-pg");if(e)e.textContent=pc+"%"}});
@@ -1225,7 +1227,8 @@ function vAsk(){
  if(a.where&&!a.code&&K!=="r"&&K!=="x")nt.push(`<div class="stk-rep">«مين عنده» تحتاج كود الصنف: اكتبه في السؤال أو في خانة الكود.</div>`);
  if(K==="x"&&cs&&a.cmp.b)nt.push(`<div class="stk-rep">قارنتُ الفروع في الفترة الأولى فقط. لمقارنة فترتين اترك فرعاً واحداً.</div>`);
  if(a.unk.length)nt.push(`<div class="stk-rep">لم أفهم من سؤالك: <b data-notr>${E(a.unk.join(" · "))}</b> — لم يدخل في الحساب.</div>`);
- if(a.rc&&!DATA.hasRc)nt.push(`<div class="stk-rep w">«المستلم» غير متاح: ملف الكميات المرفوع ليس فيه عمود استلام صالح لكل فرع. ارفع ملف كميات فيه عمود المستلم ليظهر هنا. المتاح الآن: الرصيد والمبيعات.</div>`);
+ const rcOld=!(META&&META.q&&META.q.rc!==undefined),upB=`<button class="bt s" type="button" data-sk="tab" data-t="up">افتح «الملفات»</button>`;// rcOld: ملف الكميات المحفوظ رُفع قبل تحديث المستلم
+ if(a.rc&&!DATA.hasRc)nt.push(rcOld?`<div class="stk-rep w">«المستلم» لم يُحفظ بعد: ملف الكميات الموجود على المنصة رُفع قبل تحديث «المستلم». ارفع ملف الكميات مرة أخرى من تبويب «الملفات» ليظهر المستلم هنا. ${upB}</div>`:`<div class="stk-rep w">«المستلم» غير متاح: ملف الكميات المرفوع ليس فيه عمود استلام صالح لكل فرع. ارفع ملف كميات فيه عمود المستلم ليظهر هنا. المتاح الآن: الرصيد والمبيعات. ${upB}</div>`);
  if(a.rc&&DATA.hasRc)nt.push(`<div class="stk-rep">«المستلم» من ملف الكميات، وهو من أول السنة حتى يوم التقرير${a.per==="c"?" (لا يتبع الفترة المختارة)":""}. يظهر في بطاقة الفرع وبطاقة الصنف.</div>`);
  if(a.per==="c"&&!dHas())nt.push(`<div class="stk-rep w">المبيعات بين يومين تحتاج ملف التاريخ، ولم يُرفع بعد. ارفعه من تبويب «الملفات».</div>`);
  else if(a.per==="c"&&!P)nt.push(`<div class="stk-rep w">تاريخ البداية بعد تاريخ النهاية.</div>`);
@@ -1373,7 +1376,8 @@ function body(){
  const old=q&&q.to&&q.to<today()?Math.round((new Date(today()+"T12:00:00")-new Date(q.to+"T12:00:00"))/864e5):0;
  const stl=has&&old>0&&t!=="up"?`<div class="stk-rep w">ملف الكميات المرفوع قديم (${old===1?"من أمس":"منذ "+old+" يوماً"}): الأرصدة هنا حتى نهاية يوم <b data-notr>${E(qEnd())}</b>. ارفع ملف اليوم من تبويب «الملفات» لتكون الأرقام محدَّثة.</div>`:"";
  let v="";try{v=t==="up"?vUp():!has?vUp():t==="home"?vHome():t==="buy"?vBuy():t==="dist"?vDist():t==="ask"?vAsk():t==="need"?vNeed():t==="tr"?vTr():t==="item"?vItem():t==="sales"?vSales():t==="stale"?vStale():vCfg()}catch(e){v=`<div class="stk-rep r">تعذّر عرض هذا التبويب (${E(String(e&&e.message||e).slice(0,80))}).</div>`}
- return hd+tabs+busy+(t!=="cfg"?stl:"")+v;
+ const mf=Object.keys(MFAIL).sort(),mfl=mf.join(" · "),fail=mf.length&&t!=="up"&&t!=="cfg"?`<div class="stk-rep r">تعذّر تحميل مبيعات هذه الشهور من ملفات التاريخ: <b data-notr>${E(mfl)}</b>، فالمبيعات المعروضة للفترة ناقصة بقدرها. تأكد من الإنترنت ثم <button class="bt s" type="button" data-sk="mretry">أعد المحاولة</button></div>`:"";
+ return hd+tabs+busy+(t!=="cfg"?stl:"")+fail+v;
 }
 let PT=0;
 function paint(keepFocus){
@@ -1383,7 +1387,7 @@ function paint(keepFocus){
  // فترة تحتاج شهوراً لم تُحمَّل بعد
  const homeNeed=()=>{const p=period(),e=qEnd(),b=dHas()?{from:addDays(e,-59),to:e}:null;return p&&b?{from:p.from<b.from?p.from:b.from,to:p.to>b.to?p.to:b.to}:p||b};
  const P=UI.tab==="home"?homeNeed():UI.tab==="ask"?askNeed():UI.tab==="sales"?(UI.from&&UI.to&&UI.from<=UI.to&&UI.code?{from:UI.from,to:UI.to}:null):(UI.tab==="up"||UI.tab==="cfg"?null:period());
- if(P&&!BUSY&&META&&META.d&&DATA&&months(P.from,P.to).some(ym=>META.d[ym]&&!DATA.d[ym]))needMonths(P.from,P.to);
+ if(P&&!BUSY&&META&&META.d&&DATA&&months(P.from,P.to).some(ym=>META.d[ym]&&!DATA.d[ym]&&!MFAIL[ym]))needMonths(P.from,P.to);
 }
 const later=()=>{clearTimeout(PT);PT=setTimeout(()=>paint(),260)};
 function csv(){
@@ -1433,6 +1437,7 @@ function wire(){
   else if(a==="ivn"){e.preventDefault();const v=t.dataset.v||"";UI.tab="ask";UI.aq="المورد "+v;UI.a=parseAsk(UI.aq,askCtx());UI.a.vendor=v;UI.a.amb.vendor=[];UI.lim=200;paint(false);window.scrollTo(0,0)}
   else if(a==="pswap"){const r=UI.pr||"store",c=UI.pc===undefined?"size":UI.pc;if(c){UI.pr=c;UI.pc=r;paint()}}
   else if(a==="norank"&&UI.a){UI.a.rank=null;paint(false)}
+  else if(a==="mretry"){MFAIL={};paint(false)}
   else if(a==="nowhere"&&UI.a){UI.a.where=false;paint(false)}
   else if(a==="nocmp"&&UI.a){const q=UI.a;if(q.cmp&&q.cmp.st)q.store=q.cmp.st[0]||"";if(q.cmp&&q.cmp.codes){q.code=q.cmp.codes[0]||"";q.cl="";q.z=""}q.cmp=null;paint(false)}
   else if(a==="acode"&&UI.a){e.preventDefault();UI.a.code=t.dataset.c;UI.a.cl="";UI.a.z="";UI.a.amb.code=[];paint(false);window.scrollTo(0,0)}
@@ -1482,7 +1487,11 @@ function wire(){
  let PF=0;ROOT.addEventListener("pointerdown",e=>{const t=e.target;PF=t&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")&&document.activeElement!==t?1:0});
  ROOT.addEventListener("focusin",e=>{const t=e.target;if(PF&&t&&t.select&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")){PF=0;setTimeout(()=>{try{if(document.activeElement===t)t.select()}catch(x){}},0)}});
  ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file")return;if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.tq!==undefined||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
- ROOT.addEventListener("change",e=>{const t=e.target;if(t.id==="stk-file"){const f=[...t.files];t.value="";onFiles(f);return}if(set(t)){clearTimeout(PT);paint()}});
+ // (v192) خانة التاريخ: أثناء كتابة السنة يمرّ المتصفح بتواريخ ناقصة (سنة 0002…) ويطلق change مع كل رقم، وإعادة الرسم كانت تقطع الكتابة («بيعلّق»).
+ // فالتاريخ غير المعقول يُتجاهل، والمعقول يُطبَّق بعد توقف قصير عن الكتابة
+ ROOT.addEventListener("change",e=>{const t=e.target;if(t.id==="stk-file"){const f=[...t.files];t.value="";onFiles(f);return}
+  if(t.type==="date"){const v=String(t.value||"");if(v&&(v<"2000-01-01"||v>"2100-12-31"))return;if(set(t)){clearTimeout(PT);PT=setTimeout(()=>paint(),900)}return}
+  if(set(t)){clearTimeout(PT);paint()}});
  ROOT.addEventListener("dragover",e=>{const d=e.target.closest&&e.target.closest("#stk-drop");if(d){e.preventDefault();d.classList.add("ov")}});
  ROOT.addEventListener("dragleave",e=>{const d=e.target.closest&&e.target.closest("#stk-drop");if(d)d.classList.remove("ov")});
  ROOT.addEventListener("drop",e=>{const d=e.target.closest&&e.target.closest("#stk-drop");if(!d)return;e.preventDefault();d.classList.remove("ov");onFiles(e.dataTransfer&&e.dataTransfer.files)});
@@ -1494,5 +1503,5 @@ export function stockMount(host){
  if(ROOT.parentNode!==host)host.appendChild(ROOT);
  if(!LOADED&&!LOADING)load();
 }
-export function stopStock(){un.forEach(f=>f());un=[];X=null;DATA=null;META=null;SENT=[];TRL=[];LOADED=false;LOADING=false;BUSY="";REP=[];SOLDC={};CFG=Object.assign({},DEF);if(ROOT){ROOT.remove();ROOT=null}}
+export function stopStock(){un.forEach(f=>f());un=[];X=null;DATA=null;META=null;SENT=[];TRL=[];LOADED=false;LOADING=false;BUSY="";REP=[];SOLDC={};MFAIL={};CFG=Object.assign({},DEF);if(ROOT){ROOT.remove();ROOT=null}}
 export const stockState=()=>({loaded:LOADED,has:!!(DATA&&DATA.has),meta:META,cfg:CFG,ui:UI,rep:REP,busy:BUSY});

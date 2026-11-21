@@ -3766,4 +3766,9 @@ export default {
 "الترتيب بالمستلم غير متاح: ملف الكميات المرفوع ليس فيه عمود استلام صالح. رُتِّب بالمبيعات.":"Ranking by received is not available: the uploaded quantities file has no valid received column. Ranked by sales instead.",
 "المستلم من أول السنة حتى يوم التقرير، للفروع فقط بلا مخزن المستودع.":"Received covers the start of the year up to the report day, branches only (warehouse store excluded).",
 "المستلم من أول السنة حتى يوم التقرير (لا يتبع الفترة المختارة)، للفروع فقط بلا مخزن المستودع.":"Received covers the start of the year up to the report day (it does not follow the selected period), branches only (warehouse store excluded).",
+/* v192 (21 نوفمبر 2026): خانة التاريخ، فشل تحميل الشهور، رسالة المستلم */
+"تعذّر تحميل مبيعات هذه الشهور من ملفات التاريخ:":"Could not load sales for these months from the dated files:",
+"، فالمبيعات المعروضة للفترة ناقصة بقدرها. تأكد من الإنترنت ثم":", so the period sales shown are short by that much. Check the internet connection, then",
+"افتح «الملفات»":"Open “Files”",
+"«المستلم» لم يُحفظ بعد: ملف الكميات الموجود على المنصة رُفع قبل تحديث «المستلم». ارفع ملف الكميات مرة أخرى من تبويب «الملفات» ليظهر المستلم هنا.":"“Received” is not saved yet: the quantities file on the platform was uploaded before the “Received” update. Upload the quantities file again from the “Files” tab to show it here.",
 };
