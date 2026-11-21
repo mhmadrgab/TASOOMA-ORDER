@@ -1,9 +1,9 @@
 // لوحة المستودع: السيارات والسائقين والرحلات والبنزين
-import {makeFb,emailOf,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,getDocs,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut,PUSH_URL,adminSetPw,tmpPw} from "./fb.js";
+import {makeFb,emailOf,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,getDocs,createUserWithEmailAndPassword,signInWithEmailAndPassword,updatePassword,signOut,PUSH_URL,adminSetPw,tmpPw} from "./fb.js";
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep,pushOn} from "./notify.js";
 import {ledger,ledgerOn} from "./ad-extra.js";
-import {leaflet,baseMap,pin,okPt,MAP_CSS,roadRoute,glide,prepPath,pointAt,pathFrom,glideAlong,setHd,driveTo} from "./map.js";
+import {leaflet,baseMap,pin,okPt,MAP_CSS,roadRoute,glide,prepPath,pointAt,pathFrom,glideAlong,setHd,driveTo,bearing} from "./map.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
 const dk=t=>new Date(N(t)).toLocaleDateString("en-CA"),hm=t=>new Date(N(t)).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
@@ -197,6 +197,9 @@ function paintLive(){
   const old=sigOff(t),nx=rem[0],rr=RT[t.id]&&RT[t.id].r,nxs=rr&&rr.legs&&rr.legs[0];
   const pop=`<b>🚚 ${E(t.drvn)}</b><br>${E(t.carn)}<br>سلّم ${done} من ${st.length}${nx?`<br>متجه إلى <b><bdi dir="ltr">${E(nx.fr&&!nx.pk?(nx.frn||nx.fr)+" (استلام)":nx.brn)}</bdi></b>${eta(nx)?` · متوقع ~${hm(eta(nx))}`:""}`:"<br>أنهى التوصيلات"}${nx&&nxs?`<br>🚦 مع الزحام حالياً: يصل خلال ~${Math.max(1,Math.round(nxs/60))} د${rr.delay>60?` (منهم ${Math.round(rr.delay/60)} د زحام)`:""}`:""}${lv&&lv.trip===t.id&&N(lv.spd)>0?`<br>🏎 ${N(lv.spd)} كم/س`:""}<br><span style="color:#74687a">آخر مكان: ${ago(loc.ts)} (${hm(loc.ts)})${loc.src==="bg"?" · من التطبيق":""}</span>${old?`<br><b style="color:#c0392b">📵 انقطع الاتصال: غالباً النت فصل عند السائق</b>`:""}`;
   const car=moveCar(t,loc,`<div class="tz-d${old?" old":""}"><b>🚚<i class="tz-hd"></i></b><span>${old?"📵 ":""}${E(t.drvn)}</span></div>`,pop,old);fit.push(loc);
+  // 🛰 الطريق اللي مشي فيه من أول الرحلة (خط خفيف ورا العربية)، يتحدّث كل دقيقتين
+  {const tc=TRAILC[t.id];if(!tc||Date.now()-tc.at>12e4){TRAILC[t.id]={at:Date.now(),pts:tc&&tc.pts||null};loadTrail(t.id).then(p=>{TRAILC[t.id]={at:Date.now(),pts:p};if(p&&LM.map)paintLive()})}
+   if(tc&&tc.pts&&tc.pts.length>1)line("tr_"+t.id,tc.pts.concat([loc]),{color:"#8a5a83",weight:3,opacity:.45,dashArray:null})}
   // الطريق اللي فاضل: من مكانه حالياً على الفروع اللي لا يزال ماسلّمهاش بالترتيب. خط متقطّع إلى ما المسار الحقيقي على الطريق يوصل (TomTom)
   const path=[loc,...rem.flatMap(s=>[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))])].filter(okPt);
   if(path.length>1){
@@ -247,14 +250,23 @@ function dropLive(){try{if(LM.map)LM.map.remove()}catch(e){}LM.host=null;LM.map=
 // المسار على الطريق لكل رحلة جارية (cache)، والمكان اللايف لكل سائق
 let RT={},LV={};
 const km2r=(a,b)=>{if(!okPt(a)||!okPt(b))return 99;const R=6371,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lng-a.lng),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
+// ---------- 🛰 أثر الرحلة الحقيقي (v203): نقطة كل دقيقة يكتبها السيرفر في trail/{رقم الرحلة} ----------
+// p = [[خط×1e5, عرض×1e5, ثواني من t0, سرعة؟]] ← [{lat,lng,t,spd}]. قراءة واحدة عند فتح خريطة الرحلة، وكل دقيقتين للرحلات الجارية.
+async function loadTrail(id){
+ try{const s=await getDoc(doc(X.db,"trail",id));if(!s.exists())return null;const d=s.data(),t0=N(d.t0);
+  const pts=(Array.isArray(d.p)?d.p:[]).filter(x=>Array.isArray(x)&&x.length>=3).map(x=>({lat:N(x[0])/1e5,lng:N(x[1])/1e5,t:t0+N(x[2])*1000,spd:x.length>3?N(x[3]):null})).filter(okPt);
+  return pts.length?pts:null}catch(e){return null}
+}
+const trailKm=pts=>{let k=0;for(let i=1;i<pts.length;i++){const d=km2r(pts[i-1],pts[i]);if(d<5)k+=d}return k};
+const TRAILC={};// رحلة جارية ← {at, pts} (الخريطة اللايف)
 // ---------- خريطة في نافذة: مسار رحلة، أو نقطة واحدة ----------
 let MM=null;
 const dropM=()=>{stopRP();try{if(MM)MM.remove()}catch(e){}MM=null};
 function mapModal(title,sub,back,build){
- openM(`<h3>${title}</h3>${sub?`<div class="off" style="margin-bottom:8px">${sub}</div>`:""}<div class="tz-mapc" id="tzm" style="height:min(62vh,520px)"></div><div id="tzrp"></div>
- <div class="off" style="font-size:12.5px;margin-top:6px">الخطوط تصل الأماكن بالترتيب (مستقيمة وليست الطريق بالضبط).</div>
+ openM(`<h3>${title}</h3>${sub?`<div class="off" style="margin-bottom:8px">${sub}</div>`:""}<div class="tz-mapc" id="tzmm" style="height:min(62vh,520px)"></div><div id="tzrp"></div>
+ <div class="off" id="tzmn" style="font-size:12.5px;margin-top:6px">الخطوط تصل الأماكن بالترتيب (مستقيمة وليست الطريق بالضبط).</div>
  <div class="fl2" style="margin-top:12px">${back?`<button class="bt" data-fl="trd" data-id="${E(back)}" type="button">↩ التفاصيل</button>`:""}<button class="bt" data-fl="cancel" type="button">إغلاق</button></div>`);
- const el=g("tzm");
+ const el=g("tzmm");// (v203) كان "tzm" = نفس اسم منطقة المحتوى في اللوحة منذ v172، فالخريطة كانت تُركَّب على الصفحة كلها
  leaflet().then(L=>{if(!el.isConnected)return;MM=baseMap(L,el);const pts=build(L,MM)||[];
   const ll=pts.filter(okPt).map(p=>[+p.lat,+p.lng]);if(ll.length===1)MM.setView(ll[0],15);else if(ll.length)MM.fitBounds(ll,{padding:[36,36],maxZoom:16});
   setTimeout(()=>{if(MM)MM.invalidateSize()},60)})
@@ -277,14 +289,23 @@ function tripMapM(id){
    // المسار على الطريق الحقيقي (TomTom) بدل الخطوط المستقيمة، لو اتحسب
    // رحلة خلصت: المسار بيكمل لحد مكان الإنهاء، ومعاه ▶️ إعادة الرحلة (replayUI)
    const fin=t.st==="done"&&okPt(e),rp=fin?[...route,e]:route,tl2=fin?[...tl,{t:N(t.end),n:"نهاية الرحلة"}]:tl;
-   roadRoute(rp,1440).then(r=>{if(r&&r.path&&MM===M){pl.setLatLngs(r.path);pl.setStyle({dashArray:null,opacity:.85,weight:5});if(fin&&endLine){M.removeLayer(endLine);endLine=null}replayUI(L,M,r,tl2)}})}
+   roadRoute(rp,1440).then(r=>{if(r&&r.path&&MM===M){pl.setLatLngs(r.path);if(M._trail){pl.setStyle({dashArray:"6 8",opacity:.35,weight:3});return}pl.setStyle({dashArray:null,opacity:.85,weight:5});if(fin&&endLine){M.removeLayer(endLine);endLine=null}replayUI(L,M,r,tl2)}})}
+  // 🛰 الأثر الحقيقي (لو اتسجّل): خط متصل بالطريق اللي مشي فيه فعلاً، والمسار المحسوب يبقى خفيفاً للمقارنة، وإعادة الرحلة تمشي عليه بأوقاته
+  const named=route.map((p,i)=>({lat:+p.lat,lng:+p.lng,n:tl[i]?tl[i].n:""}));
+  loadTrail(t.id).then(tr=>{if(!tr||tr.length<2||MM!==M)return;M._trail=true;
+   L.polyline(tr.map(p=>[p.lat,p.lng]),{color:"#8a5a83",weight:5,opacity:.9,lineJoin:"round"}).addTo(M);
+   M.eachLayer(l=>{if(l instanceof L.Polyline&&l.options.color==="#6a56c9")l.setStyle({dashArray:"6 8",opacity:.35,weight:3})});
+   if(endLine){M.removeLayer(endLine);endLine=null}
+   const nt=g("tzmn");if(nt)nt.innerHTML=`<b style="color:#8a5a83">━ الطريق الفعلي</b> كما سجّله جوال السائق (${tr.length} نقطة · ${trailKm(tr).toFixed(1)} كم)${tr.length&&N(t.start)?` · من ${hm(tr[0].t)} إلى ${hm(tr[tr.length-1].t)}`:""}. الخط المتقطّع الخفيف = المسار المحسوب.`;
+   try{M.fitBounds(tr.map(p=>[p.lat,p.lng]).concat(pts.filter(okPt).map(p=>[+p.lat,+p.lng])),{padding:[36,36],maxZoom:16})}catch(e){}
+   trailUI(L,M,tr,named)})
   // اللي لا يزال ما اتسلّمش: خط متقطّع من آخر نقطة
   const rest=[];wt.forEach(s=>{const [pk,dl]=[s.fr&&!s.pk?geoPt(String(s.fr)):null,geoPt(bc(s.brn))];
    if(okPt(pk)){add(pk,`<div class="tz-s wait"><b>📦</b></div>`,`<b>📦 سيستلم من</b> <bdi dir="ltr">${E(s.frn||s.fr)}</bdi>`,200);rest.push(pk)}
    add(dl,`<div class="tz-s wait"><b>⏳</b><span><bdi dir="ltr">${E(bc(s.brn))}</bdi></span></div>`,`<b>⏳ <bdi dir="ltr">${E(s.brn)}</bdi></b><br>${t.st==="active"?"لم يصل بعد":"لم يُسلَّم في هذه الرحلة"}`,200);if(okPt(dl))rest.push(dl)});
   if(rest.length&&route.length&&t.st==="active")L.polyline([route[route.length-1],...rest].map(p=>[+p.lat,+p.lng]),{color:"#6a56c9",weight:3,opacity:.6,dashArray:"8 8"}).addTo(M);
   if(t.st==="done"&&okPt(e)){add(e,`<div class="tz-s end"><b>🏁</b><span>${hm(t.end)}</span></div>`,`<b>🏁 إنهاء الرحلة</b><br>${hm(t.end)}`,700);if(route.length)endLine=L.polyline([route[route.length-1],e].map(p=>[+p.lat,+p.lng]),{color:"#c4362b",weight:3,opacity:.7,dashArray:"4 6"}).addTo(M)}
-  if(!pts.length){const el=g("tzm");if(el)el.insertAdjacentHTML("beforeend",'<div class="off" style="position:absolute;inset:auto 0 10px;text-align:center;z-index:999">لا توجد أماكن مسجّلة لهذه الرحلة</div>')}
+  if(!pts.length){const el=g("tzmm");if(el)el.insertAdjacentHTML("beforeend",'<div class="off" style="position:absolute;inset:auto 0 10px;text-align:center;z-index:999">لا توجد أماكن مسجّلة لهذه الرحلة</div>')}
   return pts;
  });
 }
@@ -307,8 +328,31 @@ function replayUI(L,M,r,tl){
  RP={M,P,D,T,dep,tl,mk,tm:T[0],play:false,sp:1,raf:0,last:0,on:false};
  g("rps").oninput=e=>{if(!RP)return;RP.play=false;RP.tm=T[0]+(N(e.target.value)/1000)*(T[n-1]-T[0]);paintRP()};
 }
+// 🛰 إعادة الرحلة على الأثر الحقيقي: العربية بتمشي نقطة نقطة بأوقاتها الفعلية (والوقفات وقفات حقيقية)
+function trailUI(L,M,tr,stops){
+ stopRP();const box=g("tzrp");if(!box||tr.length<2)return;
+ const T=tr.map(p=>p.t),n=T.length;if(!(T[n-1]>T[0]))return;
+ box.innerHTML=`<div class="fl2" style="margin-top:10px"><button class="bt p" data-fl="rplay" id="rpb" type="button">▶️ إعادة الرحلة</button><button class="bt" data-fl="rspd" id="rpx" type="button">السرعة ×1</button></div><input type="range" id="rps" min="0" max="1000" value="0" aria-label="وقت الرحلة" style="width:100%;margin-top:10px"><div class="off" id="rpl" style="font-size:13px;margin-top:4px">اضغط ▶️ لمشاهدة الرحلة على الطريق الفعلي وبأوقاتها الحقيقية.</div>`;
+ const mk=L.marker([tr[0].lat,tr[0].lng],{icon:pin(L,`<div class="tz-d"><b>🚚<i class="tz-hd"></i></b><span class="rpc">${hm(T[0])}</span></div>`),zIndexOffset:2000,keyboard:false,interactive:false});
+ RP={kind:"tr",M,tr,T,stops,mk,tm:T[0],play:false,sp:1,raf:0,last:0,on:false};
+ g("rps").oninput=e=>{if(!RP)return;RP.play=false;RP.tm=T[0]+(N(e.target.value)/1000)*(T[n-1]-T[0]);paintRP()};
+}
+function paintTR(){
+ const R=RP,{tr,T,stops}=R,n=T.length,tm=Math.max(T[0],Math.min(T[n-1],R.tm));
+ if(!R.on){R.mk.addTo(R.M);R.on=true}
+ let i=0;while(i<n-2&&tm>T[i+1])i++;
+ const a=tr[i],b=tr[i+1],k=T[i+1]>T[i]?Math.min(1,Math.max(0,(tm-T[i])/(T[i+1]-T[i]))):0,pt={lat:a.lat+(b.lat-a.lat)*k,lng:a.lng+(b.lng-a.lng)*k};
+ const kmh=T[i+1]>T[i]?km2r(a,b)/((T[i+1]-T[i])/36e5):0;
+ R.mk.setLatLng([pt.lat,pt.lng]);if(km2r(a,b)>.01)setHd(R.mk,bearing(a,b));
+ const el=R.mk.getElement(),c=el&&el.querySelector(".rpc");if(c)c.textContent=hm(tm);
+ if(!R.M.getBounds().pad(-.1).contains([pt.lat,pt.lng]))R.M.panTo([pt.lat,pt.lng],{animate:false});
+ const s=g("rps");if(s&&document.activeElement!==s)s.value=String(Math.round((tm-T[0])/(T[n-1]-T[0])*1000));
+ const at=(stops||[]).find(x=>okPt(x)&&km2r(x,pt)<.25);
+ const l=g("rpl");if(l)l.innerHTML=tm>=T[n-1]?`🏁 آخر نقطة مسجّلة ${hm(T[n-1])}`:kmh<3?`⏸ ${hm(tm)} · متوقف${at&&at.n?` عند <bdi dir="ltr">${E(at.n)}</bdi>`:""}`:`🚚 ${hm(tm)} · ~${Math.round(kmh)} كم/س${at&&at.n?` · عند <bdi dir="ltr">${E(at.n)}</bdi>`:""}`;
+ const bt=g("rpb");if(bt)bt.textContent=R.play?"⏸ إيقاف مؤقت":tm>=T[n-1]?"🔁 من الأول":"▶️ إعادة الرحلة";
+}
 function paintRP(){
- const R=RP;if(!R)return;const {P,D,T,dep,tl}=R,n=T.length,tm=Math.max(T[0],Math.min(T[n-1],R.tm));
+ const R=RP;if(!R)return;if(R.kind==="tr")return paintTR();const {P,D,T,dep,tl}=R,n=T.length,tm=Math.max(T[0],Math.min(T[n-1],R.tm));
  if(!R.on){R.mk.addTo(R.M);R.on=true}
  let i=0;while(i<n-2&&tm>T[i+1])i++;
  const moving=tm>dep[i]&&T[i+1]>dep[i],d=moving?D[i]+(D[i+1]-D[i])*Math.min(1,(tm-dep[i])/(T[i+1]-dep[i])):D[i],pt=pointAt(P,d);
