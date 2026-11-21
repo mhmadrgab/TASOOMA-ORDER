@@ -176,15 +176,31 @@ const minOf=(C,D,ki,vi)=>{const x=D.k[ki],v=vi===undefined?x[3]:vi;for(const o o
 const vHit=(D,ki,ti,vi,fv)=>{if(vi===fv)return true;const sp=D.vx?D.vx.get(ki*1000+ti):null;if(sp)for(let i=0;i<sp.length;i+=3)if(sp[i]===fv)return true;return false};
 const exSet=(C,D)=>{const s=new Set();(C.ex||[]).forEach(n=>{const i=D.sti.get(n);if(i!==undefined)s.add(i)});return s};
 const soldOf=(P,ki,ti,snap)=>P?(P.get(ki*1000+ti)||0):snap;
+/* (v205) سياق التشغيل للنواقص والتحويلات: tr = ما في الطريق (Map صنف*1000+مخزن ← +وارد/−صادر، من طلبات أُنشئت بعد ملف الأرصدة)، nd = مخازن لا تستقبل تحويلاً (ليست فروعاً في المنصة) */
+let ENV={tr:null,nd:null};
+export function setEnv(e){ENV={tr:e&&e.tr?e.tr:null,nd:e&&e.nd?e.nd:null}}
+const way=(ki,ti)=>ENV.tr?ENV.tr.get(ki*1000+ti)||0:0;
+// طلبات المنصة التي أُنشئت بعد لحظة ملف الأرصدة (since) لم تدخل في أرصدته: تُضاف لرصيد الفرع المستلم وتُطرح من المصدر (المستودع، أو الفرع المُرسِل في التحويل).
+// reqs = [{br:"003", fr:"028"|"", ts, st, rows:[{k,c,z,q,na}]}]. الصنف غير الموجود في الملف والسطر «غير متوفر» يُتجاهلان (فلا يُخفى نقص حقيقي).
+export function transitMap(D,reqs,since,whName){
+ const m=new Map(),bc=new Map();D.st.forEach((nm,ti)=>{const x=/^(\d{3})-/.exec(nm||"");if(x&&!bc.has(x[1]))bc.set(x[1],ti)});
+ const wh=D.sti.get(whName);let n=0,pcs=0;const add=(ki,ti,q)=>{if(ti===undefined)return;const k=ki*1000+ti;m.set(k,(m.get(k)||0)+q)};
+ for(const r of reqs||[]){if(!r||!(N(r.ts)>N(since))||r.st==="x")continue;const dst=bc.get(String(r.br||""));if(dst===undefined)continue;const src=r.fr?bc.get(String(r.fr)):wh;let hit=0;
+  for(const w of r.rows||[]){if(!w||w.na)continue;const q=Math.round(N(w.q));if(!(q>0))continue;const ki=D.ki.get(String(w.k||"").trim()+SEP+String(w.c||"").trim()+SEP+String(w.z||"").trim());if(ki===undefined)continue;add(ki,dst,q);add(ki,src,-q);pcs+=q;hit=1}
+  n+=hit}
+ return {m,n,pcs};
+}
 // نواقص الفروع: رصيد الفرع أقل من الحد والمستودع عنده. المقترح = ما يكمل الحد، ويُوزَّع رصيد المستودع على الأعلى مبيعاً أولاً
 export function shortages(D,C,o){
  o=o||{};const wh=D.sti.get(C.wh),ex=exSet(C,D),out=[],P=o.period?soldMap(D,o.period.from,o.period.to):null,fs=o.store?D.sti.get(o.store):undefined,fv=o.vendor?D.vn.indexOf(o.vendor):-2,q=String(o.q||"").trim().toLowerCase();
  const om=o.min!=null&&o.min!=="";
  for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(!a)continue;const x=D.k[ki];if(q&&x[0].toLowerCase().indexOf(q)<0)continue;
-  let w=0;for(let j=0;j<a.length;j+=4)if(a[j]===wh)w+=a[j+1];if(w<=0)continue;
+  let w=way(ki,wh);for(let j=0;j<a.length;j+=4)if(a[j]===wh)w+=a[j+1];if(w<=0)continue;
   const L=[];
-  for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti))continue;const on=a[j+1],vi=a[j+3],mn=om?N(o.min):minOf(C,D,ki,vi);if(on>=mn)continue;const sold=soldOf(P,ki,ti,a[j+2]);if(o.sold&&sold<=0)continue;L.push({ki,ti,vi,on,sold,wh:w,need:mn-Math.max(0,on),give:0})}
-  if(!L.length)continue;L.sort((p,r)=>r.sold-p.sold);let left=w;for(const l of L){l.give=Math.max(0,Math.min(l.need,left));left-=l.give}
+  for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti))continue;const on=a[j+1],wy=way(ki,ti),ef=on+wy,vi=a[j+3],mn=om?N(o.min):minOf(C,D,ki,vi);if(ef>=mn)continue;const ytd=a[j+2],sold=soldOf(P,ki,ti,ytd);
+   // (v205) فرع نفد عنده الصنف وكان يبيعه في السنة يبقى محتاجاً حتى لو مبيعاته في الفترة صفر (لا شيء عنده ليبيعه)
+   if(o.sold&&sold<=0&&!(P&&ytd>0&&ef<=0))continue;L.push({ki,ti,vi,on,way:wy,sold,ytd,wh:w,need:mn-Math.max(0,ef),give:0})}
+  if(!L.length)continue;L.sort((p,r)=>r.sold-p.sold||r.ytd-p.ytd);let left=w;for(const l of L){l.give=Math.max(0,Math.min(l.need,left));left-=l.give}
   // فلترا الفرع والمورد بعد التوزيع (فلا يتغيّر «المقترح» بتغيّر الفلتر). المورد = مورد السطر في التقرير
   for(const l of L)if((fs===undefined||l.ti===fs)&&(fv===-2||vHit(D,l.ki,l.ti,l.vi,fv)))out.push(l)}
  return out;
@@ -193,18 +209,28 @@ export function shortages(D,C,o){
 // لا يُسحب من فرع كل كميته أبداً: يبقى عنده keep على الأقل.
 export function transfers(D,C,o){
  o=o||{};const wh=D.sti.get(C.wh),ex=exSet(C,D),out=[],P=o.period?soldMap(D,o.period.from,o.period.to):null,fv=o.vendor?D.vn.indexOf(o.vendor):-2,q=String(o.q||"").trim().toLowerCase(),keep=Math.max(0,N(C.keep)),slow=N(C.slow);
- let skus=0,unmet=0;const BC=new Map();// (v186) لكل كود: ما خلا منه المستودع وهو في الفروع، وكم تحويلاً ممكناً، وكم نقصاً بلا فرع يُسحب منه (يحتاج شراء)
+ let skus=0,unmet=0;const BC=new Map(),PU=new Map(),part={skus:0,lines:0,pcs:0,unmetPcs:0};
+ // BC: لكل كود خلا منه المستودع وهو في الفروع. part: (v205) أصناف المستودع عنده منها لكنه لا يكفي كل الفروع التي تبيعها: الباقي يُغطّى من فروع لا تبيع.
  for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(!a)continue;const x=D.k[ki];if(fv!==-2&&x[3]!==fv)continue;if(q&&x[0].toLowerCase().indexOf(q)<0)continue;
-  let w=0,any=false;for(let j=0;j<a.length;j+=4){if(a[j]===wh)w+=a[j+1];else if(a[j+1]>0&&!ex.has(a[j]))any=true}if(w>0||!any)continue;skus++;
-  let bc=BC.get(x[0]);if(!bc){bc={code:x[0],vi:x[3],skus:0,on:0,sold:0,st:new Set(),lines:0,pcs:0,unmet:0,unmetPcs:0};BC.set(x[0],bc)}bc.skus++;
+  let w=way(ki,wh),any=false;for(let j=0;j<a.length;j+=4){if(a[j]===wh)w+=a[j+1];else if(a[j+1]>0&&!ex.has(a[j]))any=true}const empty=w<=0;if(!any&&empty)continue;let bc=null;
+  if(empty){skus++;bc=BC.get(x[0]);if(!bc){bc={code:x[0],vi:x[3],skus:0,on:0,sold:0,st:new Set(),lines:0,pcs:0,unmet:0,unmetPcs:0};BC.set(x[0],bc)}bc.skus++}
   const mn=minOf(C,D,ki),give=[],take=[];
-  for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti))continue;const on=a[j+1],sold=soldOf(P,ki,ti,a[j+2]);bc.on+=on;bc.sold+=sold;if(sold>0)bc.st.add(ti);
-   if(on>keep&&sold<=slow)give.push({ti,on,sold,free:on-keep});else if(on<mn&&sold>0)take.push({ti,on,sold,want:mn-Math.max(0,on)})}
-  if(!take.length)continue;give.sort((p,r)=>p.sold-r.sold||r.free-p.free);take.sort((p,r)=>r.sold-p.sold);
-  for(const t of take){for(const d of give){if(t.want<=0)break;if(d.free<=0)continue;const n=Math.min(d.free,t.want);d.free-=n;t.want-=n;bc.lines++;bc.pcs+=n;out.push({ki,src:d.ti,fon:d.on,fsold:d.sold,dst:t.ti,ton:t.on,tsold:t.sold,n})}if(t.want>0){unmet++;bc.unmet++;bc.unmetPcs+=t.want}}}
+  for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti))continue;const on=a[j+1],wy=way(ki,ti),ef=on+wy,ytd=a[j+2],sold=soldOf(P,ki,ti,ytd);if(bc){bc.on+=on;bc.sold+=sold;if(sold>0)bc.st.add(ti)}
+   // محتاج: رصيده (مع ما في الطريق) أقل من الحد ويبيع الصنف، أو نفد عنده وكان يبيعه في السنة. nd: مخزن ليس فرعاً في المنصة لا يُحوَّل إليه (لكنه يأخذ نصيبه من المستودع في الحساب).
+   if(ef<mn&&(sold>0||(P&&ytd>0&&ef<=0)))take.push({ti,on,way:wy,ef,sold,ytd,want:mn-Math.max(0,ef),nd:!!(ENV.nd&&ENV.nd.has(ti))});
+   else if(ef>keep&&sold<=slow)give.push({ti,on,sold,ytd,free:ef-keep})}
+  if(!take.length)continue;take.sort((p,r)=>r.sold-p.sold||r.ytd-p.ytd);
+  if(!empty){let left=w,short=0;for(const t of take){const g=Math.min(t.want,left);t.want-=g;left-=g;if(t.want>0&&!t.nd)short=1}if(!short)continue;part.skus++}
+  for(const t of take){if(t.want<=0||t.nd)continue;
+   // الأقل مبيعاً أولاً، ثم فرع نحوّل منه لهذا الفرع أصلاً (طلبات أقل)، ثم الأكثر فائضاً
+   const G=give.filter(d=>d.free>0).sort((p,r)=>p.sold-r.sold||(PU.get(r.ti*1000+t.ti)||0)-(PU.get(p.ti*1000+t.ti)||0)||r.free-p.free);
+   for(const d of G){if(t.want<=0)break;const n=Math.min(d.free,t.want);d.free-=n;t.want-=n;const pk=d.ti*1000+t.ti;PU.set(pk,(PU.get(pk)||0)+1);if(bc){bc.lines++;bc.pcs+=n}else{part.lines++;part.pcs+=n}
+    // sure «مؤكد»: المُرسِل لم يبع الصنف طول السنة، والمستلم رصيده صفر (مع ما في الطريق) ويبيعه
+    out.push({ki,src:d.ti,fon:d.on,fsold:d.sold,fytd:d.ytd,dst:t.ti,ton:t.on,tsold:t.sold,tytd:t.ytd,tway:t.way,n,part:!empty,sure:d.ytd<=0&&t.ef<=0})}
+   if(t.want>0){if(bc){unmet++;bc.unmet++;bc.unmetPcs+=t.want}else part.unmetPcs+=t.want}}}
  const fr=o.from?D.sti.get(o.from):undefined,tt=o.to?D.sti.get(o.to):undefined;
  const codes=[...BC.values()].map(c=>({code:c.code,vi:c.vi,skus:c.skus,on:c.on,sold:c.sold,sell:c.st.size,lines:c.lines,pcs:c.pcs,unmet:c.unmet,unmetPcs:c.unmetPcs})).sort((p,r)=>r.sold-p.sold||r.on-p.on||(p.code<r.code?-1:1));
- return {rows:out.filter(l=>(fr===undefined||l.src===fr)&&(tt===undefined||l.dst===tt)),skus,unmet,codes};
+ return {rows:out.filter(l=>(fr===undefined||l.src===fr)&&(tt===undefined||l.dst===tt)),skus,unmet,codes,part};
 }
 // 📦 (v179) ما يُنشر للفروع: (1) المتوفر في المستودع لكل صنف بمستوى فقط بلا أرقام: 2 متوفر، 1 كمية قليلة (≤ LOWQ)، 0 غير متوفر
 // (2) الطلب المقترح لكل فرع = نواقصه (رصيده أقل من الحد والمستودع عنده) بالكمية الموزّعة، الأعلى مبيعاً أولاً، 200 بالكثير.
@@ -866,9 +892,12 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 .stk-hm td,.stk-hm th{text-align:center;padding:6px 8px}.stk-hm td:first-child,.stk-hm th:first-child{text-align:start}.stk-hm td.dk{color:#fff}.stk-hm td.out{box-shadow:inset 0 0 0 2px #c4362b}.stk-hm tr.tot td,.stk-hm td.t{background:var(--soft);font-weight:700}
 [data-theme=dark] .stk-vd.bad{background:#4a211d;color:#f3b6ae;border-color:#6a2e28}[data-theme=dark] .stk-vd.warn{background:#463514;color:#f0d08e;border-color:#5f4a1f}[data-theme=dark] .stk-vd.good{background:#2f3a1c;color:#cbd9a3;border-color:#44542a}
 @media (max-width:640px){.stk-iht h3{font-size:20px}.stk-ia b.n{font-size:19px;min-width:44px}.stk-wk{height:96px}}
+.stk-ocs{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}.stk-oc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}.stk-oc.fo{border-inline-start:4px solid var(--olive,#6f7d45)}.stk-och{display:flex;gap:6px 10px;align-items:baseline;flex-wrap:wrap}.stk-och a{font-size:19px;font-weight:800;color:inherit}.stk-och small,.stk-oc p.off{color:var(--mut);font-size:12.5px}.stk-och .sp,.stk-ocf .sp{flex:1}
+.stk-oc p{margin:0;font-size:13.5px;line-height:1.8}.stk-oc p.z{color:#c4362b}.stk-oc p i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:6px;background:var(--mut)}.stk-oc p i.g{background:var(--olive,#6f7d45)}.stk-oc p i.r{background:#c4362b}.stk-ocf{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:auto;padding-top:6px}
+@media (max-width:640px){.stk-ocs{grid-template-columns:1fr}}
 .stk-selb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:8px 12px;margin:0 0 12px;font-size:13.5px}.stk-selb .sp{flex:1}.stk-selb small{flex-basis:100%}.stk-t th.ck,.stk-t td.ck{width:38px;text-align:center;padding-inline:6px}.stk-t td.ck input,.stk-t th.ck input{width:19px;height:19px;margin:0;cursor:pointer;accent-color:var(--acc)}.stk-rvh{margin:14px 0 6px;font-size:15px}.stk-rvh small{color:var(--mut);font-weight:400;margin-inline-start:8px}
 @media print{.stk-tabs,.stk-bar,.stk-drop,.stk-more{display:none!important}#pa.stkp{font-size:10pt}#pa.stkp .ph h2{font-size:17pt}#pa.stkp .ps{font-size:14pt;font-weight:700;margin:0 0 2mm;unicode-bidi:plaintext}#pa.stkp .pi{font-size:9pt;color:#444;margin:0 0 3mm}#pa.stkp .pt{width:100%;border-collapse:collapse}#pa.stkp .pt th,#pa.stkp .pt td{border:1px solid #777;padding:1.3mm 1.6mm;text-align:center;font-size:9.5pt;unicode-bidi:plaintext}#pa.stkp .pt th{background:#eee;font-size:9pt}#pa.stkp .pt td.bl{min-width:26mm}}`;
-const TABS=[["home","🚨","اليوم"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["sales","📅","مبيعات بالتاريخ"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
+const TABS=[["home","🚨","اليوم"],["out","📦","نفد من المستودع"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["sales","📅","مبيعات بالتاريخ"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
 const fmt=n=>String(Math.round(N(n))).replace(/\B(?=(\d{3})+(?!\d))/g,",");
 const dts=t=>{if(!t)return "";const d=new Date(N(t));return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+" "+p2(d.getHours())+":"+p2(d.getMinutes())};
 // ‎ قبل النص: اسم المخزن «003-EL MALQA» يُعرض بترتيبه داخل قائمة عربية (كان يظهر «EL MALQA-003»)
@@ -993,6 +1022,46 @@ const sentMap=()=>{const m=new Map(),lim=Date.now()-SENT_DAYS*864e5;for(const e 
 const sentKey=l=>{const x=DATA.k[l.ki];return [x[0],x[1],x[2],cd(DATA.st[l.src]),cd(DATA.st[l.dst])].join(SEP)};
 const isBr=name=>{const b=X&&X.branches?X.branches():null;return !b||b.indexOf(cd(name))>=0};
 let TRL=[];// آخر تحويلات معروضة (غير المُنشأ لها طلب)
+/* (v205) ما في الطريق + المخازن التي لا تستقبل تحويلاً: تُحسب مرة لكل تغيّر في طلبات المنصة أو ملف الأرصدة */
+let ENVK="",WAY=null,OUTR=new Map();
+function envSync(){
+ const since=META&&META.q?N(META.q.at):0,R=X&&X.reqs?X.reqs():null;let mx=0,cn=0;if(R)for(const r of R){if(r&&N(r.ts)>since){cn++;if(N(r.ts)>mx)mx=N(r.ts)}}
+ const k=since+"|"+cn+"|"+mx+"|"+(R?R.length:-1)+"|"+DATA.st.length+"|"+CFG.wh;if(k===ENVK)return;ENVK=k;
+ const nd=new Set();if(X&&X.branches)DATA.st.forEach((nm,ti)=>{if(!isBr(nm))nd.add(ti)});
+ const T=R&&since&&cn?transitMap(DATA,R,since,CFG.wh):null;setEnv({tr:T&&T.pcs?T.m:null,nd});WAY=T&&T.pcs?{n:T.n,pcs:T.pcs}:null;HOMEC=null;
+}
+const wayNote=()=>WAY?'<div class="stk-rep">🚚 محسوب معك: <b data-notr>'+fmt(WAY.n)+'</b> طلباً أُنشئ في المنصة بعد رفع ملف الأرصدة (<b data-notr>'+fmt(WAY.pcs)+"</b> قطعة في الطريق). أُضيفت لرصيد الفرع المستلم وطُرحت من المصدر، فلا يُقترح الشيء نفسه مرتين.</div>":"";
+const cfB=l=>(l.sure?'<span class="stk-vd s good" title="المُرسِل لم يبع الصنف طول السنة، والمستلم رصيده صفر ويبيعه">مؤكد</span>':'<span class="stk-vd s warn" title="'+(l.fytd>0?"المُرسِل باع الصنف خلال السنة":"المستلم ما زال عنده رصيد")+'">راجعه</span>')+(l.part?' <small class="off">المستودع لا يكفي</small>':"");
+/* 📦 (v205) «نفد من المستودع»: لكل كود خلا منه المستودع — أين هو ولا يُباع، ومن يحتاجه، وأمر التحويل بضغطة */
+function vOut(){
+ const P=period(),T=transfers(DATA,CFG,{vendor:UI.vn,q:UI.q,period:P}),SM=sentMap(),can=!!(X&&X.transfer)&&!X.ro,BY=new Map();
+ T.rows.forEach(l=>{if(l.part)return;l.sent=SM.get(sentKey(l))||null;const c=DATA.k[l.ki][0];let a=BY.get(c);if(!a){a=[];BY.set(c,a)}a.push(l)});OUTR=BY;
+ const of=UI.of||"",L0=focL(T.codes.slice().sort((p,r)=>(r.lines>0?1:0)-(p.lines>0?1:0)),c=>c.code,c=>vnOf(c.vi)).filter(c=>c.sold>0||c.lines)/* ما له تحويل ممكن أولاً، ثم الأعلى مبيعاً */,L=L0.filter(c=>of==="t"?c.lines>0:of==="b"?c.unmetPcs>0:true);
+ const pcs=L.reduce((a,c)=>a+c.pcs,0),up=L.reduce((a,c)=>a+c.unmetPcs,0);let sure=0;BY.forEach(a=>a.forEach(l=>{if(l.sure&&!l.sent)sure+=l.n}));
+ LASTX={name:"نفد-من-المستودع",head:["الكود","المورد","ألوان ومقاسات نفدت","رصيد الفروع","المبيعات","فروع تبيعه","قطع تُحوَّل بين الفروع","نقص بلا مصدر (شراء)"],rows:()=>L.map(c=>[c.code,vnOf(c.vi),c.skus,c.on,c.sold,c.sell,c.pcs,c.unmetPcs]),prn:{ttl:"أصناف نفدت من المستودع",sub:"ما يُحوَّل بين الفروع وما يحتاج شراء"}};
+ const agg=(R,k)=>{const m=new Map();R.forEach(l=>m.set(l[k],(m.get(l[k])||0)+l.n));return [...m.entries()].sort((p,r)=>r[1]-p[1])},lst=A=>A.slice(0,8).map(e=>sn(e[0])+' <b data-notr>('+fmt(e[1])+")</b>").join("، ")+(A.length>8?" و"+fmt(A.length-8)+" فروع أخرى":"");
+ const card=c=>{const R=BY.get(c.code)||[],open=R.filter(l=>!l.sent),okR=open.filter(l=>isBr(DATA.st[l.src])&&isBr(DATA.st[l.dst])),src=agg(open,"src"),dst=agg(open,"dst"),sp=open.reduce((a,l)=>a+(l.sure?l.n:0),0),rp=open.reduce((a,l)=>a+(l.sure?0:l.n),0),prs=new Set(okR.map(l=>l.src+"|"+l.dst)).size,op=okR.reduce((a,l)=>a+l.n,0),snt=R.length-open.length;
+  return '<div class="stk-oc'+(c.fo?" fo":"")+'"><div class="stk-och"><a href="#" data-sk="code" data-c="'+E(c.code)+'" data-notr dir="ltr">'+E(c.code)+"</a>"+(vnOf(c.vi)?'<small data-notr>'+E(vnOf(c.vi))+"</small>":"")+'<span class="sp"></span><small>باع <b data-notr>'+fmt(c.sold)+"</b> · في الفروع <b data-notr>"+fmt(c.on)+"</b> · نفد منه <b data-notr>"+fmt(c.skus)+"</b> لوناً ومقاساً</small></div>"
+   +(open.length?'<p><i class="g"></i><b>موجود ولا يُباع في:</b> '+lst(src)+'</p><p><i class="r"></i><b>تحتاجه:</b> '+lst(dst)+"</p>":snt?'<p class="off">أُنشئت له طلبات تحويل ('+fmt(snt)+" سطراً) وتبقى معلَّمة "+SENT_DAYS+" يوماً.</p>":'<p class="off">لا تحويل ممكناً الآن: لا فرع عنده فائض منه لا يبيعه، أو أُنشئ طلبه وهو في الطريق.</p>')
+   +(c.unmetPcs?'<p class="z"><i class="r"></i>ينقص <b data-notr>'+fmt(c.unmetPcs)+"</b> قطعة لا يغطيها أي فرع: تحتاج شراء.</p>":"")
+   +'<div class="stk-ocf">'+(sp?'<span class="stk-vd s good">مؤكد '+fmt(sp)+" قطعة</span>":"")+(rp?'<span class="stk-vd s warn">راجعه '+fmt(rp)+" قطعة</span>":"")+'<span class="sp"></span>'+(open.length?'<button class="bt s" type="button" data-sk="trc" data-c="'+E(c.code)+'">التفاصيل</button>':"")+(c.unmetPcs?'<button class="bt s" type="button" data-sk="obuy" data-c="'+E(c.code)+'">🛒 الشراء</button>':"")+(can&&prs?'<button class="bt g s" type="button" data-sk="mkc" data-c="'+E(c.code)+'">📤 أنشئ '+(prs===1?"أمر التحويل":fmt(prs)+" أوامر تحويل")+" ("+fmt(op)+" قطعة)</button>":"")+"</div></div>"};
+ return focBar()+'<div class="stk-bar"><label>المورد<select data-sf="vn" id="stk-vn">'+opt(vendors(),UI.vn,"كل الموردين")+'</select></label><label>بحث بالكود<input type="search" data-sf="q" id="stk-q" value="'+E(UI.q)+'" placeholder="مثلاً 13016" dir="ltr"></label><label>اعرض<select data-sf="of" id="stk-of"><option value=""'+(of?"":" selected")+'>كل ما نفد</option><option value="t"'+(of==="t"?" selected":"")+'>ما له تحويل ممكن</option><option value="b"'+(of==="b"?" selected":"")+">ما يحتاج شراء</option></select></label>"+perSel()+'<span class="sp"></span>'+fclr("vn,q,of")+'<button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>'+gapNote(P)+wayNote()
+  +'<div class="stk-sum"><span><b>'+fmt(L.length)+"</b>كود نفد من المستودع (كله أو ألوان ومقاسات منه) وهو يُباع أو في الفروع</span><span><b>"+fmt(pcs)+'</b>قطعة تُحوَّل بين الفروع</span><span><b style="color:var(--olive,#6f7d45)">'+fmt(sure)+'</b>منها مؤكدة</span><span><b style="color:#c4362b">'+fmt(up)+"</b>قطعة تحتاج شراء</span></div>"
+  +'<p class="off" style="margin:0 4px 10px;font-size:13px">ما له تحويل ممكن أولاً، ثم الأعلى مبيعاً. «مؤكد» = الفرع المُرسِل لم يبع الصنف طول السنة والمستلم رصيده صفر ويبيعه: يُنشأ بلا مراجعة. «راجعه» = المُرسِل باع منه خلال السنة أو المستلم ما زال عنده رصيد. الزر ينشئ طلب تحويل لكل فرعين ويصلهما إشعار. ولجمع كل أكواد فرعين في طلب واحد افتح «تحويلات مقترحة».</p>'
+  +(L.length?'<div class="stk-ocs">'+L.slice(0,UI.olim||30).map(card).join("")+"</div>"+(L.length>(UI.olim||30)?'<button class="bt stk-more" type="button" data-sk="omore">عرض المزيد ('+fmt(L.length-(UI.olim||30))+" كود آخر)</button>":""):em("لا شيء بهذه الشروط 👌"));
+}
+// ينشئ طلبات التحويل لكود واحد (طلب لكل فرعين) ثم يعلّم سطوره حتى لا تتكرر
+async function mkCode(code){
+ if(BUSY||!X||!X.transfer||X.ro)return;const R=(OUTR.get(code)||[]).filter(l=>!l.sent&&isBr(DATA.st[l.src])&&isBr(DATA.st[l.dst]));if(!R.length)return;
+ const pm=new Map();R.forEach(l=>{const k=l.src+"|"+l.dst;let a=pm.get(k);if(!a){a=[];pm.set(k,a)}a.push(l)});const pairs=[...pm.values()],pcs=R.reduce((a,l)=>a+l.n,0),rv=R.reduce((a,l)=>a+(l.sure?0:l.n),0);
+ if(!confirm("إنشاء "+pairs.length+" طلب تحويل للكود "+code+"؟\n\n"+pcs+" قطعة"+(rv?"\nمنها "+rv+" قطعة بعلامة «راجعه»":"\nكلها بعلامة «مؤكد»")+"\n\nطلب لكل فرعين، ويصلهما إشعار ويظهر في «الطلبات»."))return;
+ BUSY="جاري إنشاء طلبات التحويل…";paint();let ok=0,fail="",add=[];const at=Date.now(),lim=at-SENT_DAYS*864e5;
+ for(const L of pairs){const fN=DATA.st[L[0].src],dN=DATA.st[L[0].dst];let r=null;
+  try{r=await X.transfer({fr:cd(fN),to:cd(dN),rows:L.map(l=>{const x=DATA.k[l.ki];return {k:x[0],c:x[1],z:x[2],q:l.n}}),gn:"تحويل من تحليل المخزون: الصنف نفد من المستودع، والفرع المُرسِل لا يبيعه."})}catch(e){r={ok:false,err:String(e&&(e.code||e.message)||e)}}
+  if(r&&r.ok){ok++;add=add.concat(L.map(l=>{const x=DATA.k[l.ki];return {c:x[0],cl:x[1],z:x[2],f:cd(fN),t:cd(dN),n:l.n,at,no:String(r.no||"").slice(0,40)}}))}else{fail=String(r&&r.err||"تعذّر الإنشاء");break}}
+ if(add.length){SENT=SENT.filter(e=>e&&N(e.at)>lim).concat(add).slice(-3000);try{const fb=await FB();await fb.setDoc(fb.doc(X.db,"stk","sent"),{l:SENT,at,by:by().e})}catch(e){if(X.toast)X.toast("أُنشئت الطلبات، لكن تعذّر حفظ علامتها: لا تنشئها مرة أخرى")}}
+ BUSY="";ENVK="";paint();if(X.toast)X.toast(fail?(ok?"أُنشئ "+ok+" من "+pairs.length+"، ثم توقّف: "+fail:"تعذّر إنشاء طلب التحويل: "+fail):"✅ أُنشئ "+ok+" طلب تحويل للكود "+code+" ووصل الفروع إشعار");
+}
 /* (v186) التحويلات: عرضان — «حسب الفروع» (كما كان) و«حسب الكود» (سطر لكل كود خلا منه المستودع وهو في الفروع) */
 const pDays=P=>{const x=P||spanR();return x?Math.round((new Date(x.to+"T12:00:00")-new Date(x.from+"T12:00:00"))/864e5)+1:0};
 const vnOf=vi=>vi>=0&&DATA.vn[vi]?DATA.vn[vi]:"";
@@ -1009,7 +1078,7 @@ function vTrCodes(){
  ${L.length?`<div class="stk-pan"><div class="tw"><table class="stk-t"><thead><tr><th>الكود</th><th>المورد</th><th class="n">ألوان ومقاسات</th><th class="n">رصيد الفروع</th><th class="n">المبيعات</th><th class="n">فروع تبيعه</th><th class="n">تحويلات ممكنة</th><th class="n">نقص بلا مصدر</th><th></th></tr></thead><tbody>${L.slice(0,UI.lim).map(c=>`<tr${foCls(c)}><td class="c" data-notr><a href="#" data-sk="code" data-c="${E(c.code)}" style="color:inherit">${E(c.code)}</a></td><td data-notr style="white-space:normal">${E(vnOf(c.vi)||"—")}</td><td class="n">${fmt(c.skus)}</td><td class="n">${fmt(c.on)}</td><td class="n"><b>${fmt(c.sold)}</b></td><td class="n">${fmt(c.sell)}</td><td class="n">${c.lines?`<span class="gv" style="padding:2px 10px">${fmt(c.pcs)}</span>`:"0"}</td><td class="n${c.unmetPcs?" z":""}">${fmt(c.unmetPcs)}</td><td>${c.lines?`<button class="bt s" type="button" data-sk="trc" data-c="${E(c.code)}">التحويلات</button>`:""}</td></tr>`).join("")}</tbody></table></div>${more(L.length)}</div>`:em("لا شيء بهذه الشروط 👌")}`;
 }
 function vTrPairs(){
- const P=period(),T=transfers(DATA,CFG,{from:UI.fr,to:UI.tt,vendor:UI.vn,q:UI.q,period:P}),SM=sentMap(),L1=T.rows;
+ const P=period(),T=transfers(DATA,CFG,{from:UI.fr,to:UI.tt,vendor:UI.vn,q:UI.q,period:P}),SM=sentMap(),L1=T.rows.filter(l=>!UI.cf||(UI.cf==="s"?l.sure:!l.sure));
  L1.forEach(l=>{l.sent=SM.get(sentKey(l))||null});
  L1.sort((a,b)=>a.src!==b.src?(DATA.st[a.src]<DATA.st[b.src]?-1:1):a.dst!==b.dst?(DATA.st[a.dst]<DATA.st[b.dst]?-1:1):cmpK(DATA.k[a.ki],DATA.k[b.ki]));
  const L=focL(L1,l=>DATA.k[l.ki][0],l=>vnOf(DATA.k[l.ki][3]));// «هذه فقط» تقصر الأزواج وطلبات التحويل على أصناف القائمة
@@ -1017,7 +1086,7 @@ function vTrPairs(){
  // الأزواج (من ← إلى) الأكبر أولاً: لكل زوج طلب تحويل واحد
  const pm=new Map();for(const l of TRL){const k=l.src+"|"+l.dst;let e=pm.get(k);if(!e){e={src:l.src,dst:l.dst,n:0,pcs:0};pm.set(k,e)}e.n++;e.pcs+=l.n}
  const pairs=[...pm.values()].sort((a,b)=>b.pcs-a.pcs),can=!!(X&&X.transfer);
- LASTX={name:"تحويلات-مقترحة",head:["من فرع","إلى فرع","الكود","اللون","المقاس","المورد","الكمية","رصيد المُرسِل","مبيعات المُرسِل","رصيد المستلم","مبيعات المستلم","طلب التحويل"],rows:()=>{const S=tSel();return (S.length?S:L).map(l=>{const x=DATA.k[l.ki];return [DATA.st[l.src],DATA.st[l.dst],x[0],x[1],x[2],x[3]>=0?DATA.vn[x[3]]:"",l.n,l.fon,l.fsold,l.ton,l.tsold,l.sent?l.sent.no:""]})},prn:{ttl:"تحويلات مقترحة بين الفروع",sub:[UI.fr?"من: "+UI.fr:"",UI.tt?"إلى: "+UI.tt:""].filter(Boolean).join("  ←  "),ask:1}};
+ LASTX={name:"تحويلات-مقترحة",head:["من فرع","إلى فرع","الكود","اللون","المقاس","المورد","الكمية","رصيد المُرسِل","مبيعات المُرسِل","رصيد المستلم","مبيعات المستلم","طلب التحويل","الثقة"],rows:()=>{const S=tSel();return (S.length?S:L).map(l=>{const x=DATA.k[l.ki];return [DATA.st[l.src],DATA.st[l.dst],x[0],x[1],x[2],x[3]>=0?DATA.vn[x[3]]:"",l.n,l.fon,l.fsold,l.ton,l.tsold,l.sent?l.sent.no:"",l.sure?"مؤكد":"راجعه"]})},prn:{ttl:"تحويلات مقترحة بين الفروع",sub:[UI.fr?"من: "+UI.fr:"",UI.tt?"إلى: "+UI.tt:""].filter(Boolean).join("  ←  "),ask:1}};
  TLIST=L;const TSEL=selOf("tsel");
  const mkBtn=p=>{const ok=isBr(DATA.st[p.src])&&isBr(DATA.st[p.dst]);return ok?`<button class="bt g s" type="button" data-sk="mk" data-f="${E(DATA.st[p.src])}" data-d="${E(DATA.st[p.dst])}">📤 أنشئ طلب التحويل</button>`:`<small class="off">أحدهما ليس فرعاً في المنصة</small>`};
  // (v188) مراجعة طلب التحويل قبل إنشائه: كل سطر كميته تُعدَّل (صفر = لا يُرسل)، ولا تزيد على رصيد المُرسِل
@@ -1026,11 +1095,11 @@ function vTrPairs(){
    rev=`<div class="stk-card" style="margin:0 0 12px;border:1.5px solid var(--acc)"><h3>📤 مراجعة طلب التحويل: ${sn(fi)} <span aria-hidden="true">←</span> ${sn(di)}</h3><p>عدّل كمية أي سطر قبل الإنشاء (صفر = لا يُرسل). الكمية لا تزيد على رصيد الفرع المُرسِل.${RL.length>400?" أول 400 سطر فقط، والباقي بطلب آخر.":""}</p>
    <div class="tw"><table class="stk-t"><thead><tr><th>الكود</th><th>اللون</th><th class="n">المقاس</th><th class="n">رصيد المُرسِل</th><th class="n">مبيعاته</th><th class="n">رصيد المستلم</th><th class="n">مبيعاته</th><th class="n">المقترح</th><th class="n">الكمية</th></tr></thead><tbody>${R4.map(l=>{const q=qv(l);return `<tr${q>0?"":' class="snt"'}>${kCells(l.ki)}<td class="n">${l.fon}</td><td class="n">${l.fsold}</td><td class="n${l.ton<=0?" z":""}">${l.ton}</td><td class="n">${l.tsold}</td><td class="n">${N(l.n)}</td><td class="n"><input type="number" class="stk-tq" min="0" max="${Math.max(0,N(l.fon))}" step="1" data-tq="${l.ki}" id="tq${l.ki}" value="${q}" aria-label="الكمية"></td></tr>`}).join("")}</tbody></table></div>
    <div class="stk-act" style="margin:12px 0 0"><button class="bt p" type="button" data-sk="mkgo"${n?"":" disabled"}>📤 أنشئ طلب التحويل (${fmt(n)} صنف · ${fmt(pcs)} قطعة)</button><button class="bt" type="button" data-sk="mkx">إلغاء</button></div></div>`}}
- return focBar()+`<div class="stk-bar"><label>من فرع<select data-sf="fr" id="stk-fr">${opt(stores(1),UI.fr,"الكل")}</select></label><label>إلى فرع<select data-sf="tt" id="stk-tt">${opt(stores(1),UI.tt,"الكل")}</select></label><label>المورد<select data-sf="vn" id="stk-vn">${opt(vendors(),UI.vn,"كل الموردين")}</select></label><label>بحث بالكود<input type="search" data-sf="q" id="stk-q" value="${E(UI.q)}" dir="ltr"></label>${perSel()}<span class="sp"></span>${fclr("fr,tt,vn,q")}<button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${gapNote(P)}
+ return focBar()+`<div class="stk-bar"><label>من فرع<select data-sf="fr" id="stk-fr">${opt(stores(1),UI.fr,"الكل")}</select></label><label>إلى فرع<select data-sf="tt" id="stk-tt">${opt(stores(1),UI.tt,"الكل")}</select></label><label>المورد<select data-sf="vn" id="stk-vn">${opt(vendors(),UI.vn,"كل الموردين")}</select></label><label>بحث بالكود<input type="search" data-sf="q" id="stk-q" value="${E(UI.q)}" dir="ltr"></label><label>الثقة<select data-sf="cf" id="stk-cf"><option value="">الكل</option><option value="s"${UI.cf==="s"?" selected":""}>المؤكد فقط</option><option value="r"${UI.cf==="r"?" selected":""}>ما يحتاج مراجعة</option></select></label>${perSel()}<span class="sp"></span>${fclr("fr,tt,vn,q,cf")}<button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${gapNote(P)}
  <div class="stk-sum"><span><b>${fmt(T.skus)}</b>صنف غير متاح بالمستودع ومتاح في فروع</span><span><b>${fmt(TRL.length)}</b>تحويل مقترح</span><span><b>${fmt(TRL.reduce((s,l)=>s+l.n,0))}</b>قطعة</span><span><b>${fmt(T.unmet)}</b>طلب بلا فرع يُسحب منه</span>${nSent?`<span><b>${fmt(nSent)}</b>أُنشئ لها طلب تحويل</span>`:""}</div>
- <p class="off" style="margin:0 4px 10px;font-size:13px">القاعدة: نسحب من فرع مبيعاته من الصنف ${N(CFG.slow)?"لا تزيد على "+N(CFG.slow):"صفر"} في الفترة ويبقى عنده ${N(CFG.keep)} على الأقل، ونرسل لفرع رصيده أقل من الحد ويبيع الصنف (الأعلى مبيعاً أولاً). تتغيّر من تبويب «القواعد».</p>
+ <p class="off" style="margin:0 4px 10px;font-size:13px">القاعدة: نسحب من فرع مبيعاته من الصنف ${N(CFG.slow)?"لا تزيد على "+N(CFG.slow):"صفر"} في الفترة ويبقى عنده ${N(CFG.keep)} على الأقل، ونرسل لفرع رصيده أقل من الحد ويبيع الصنف (الأعلى مبيعاً أولاً). تتغيّر من تبويب «القواعد». ويشمل ما عند المستودع منه ولا يكفي كل الفروع (${fmt(T.part.pcs)} قطعة). «مؤكد» = المُرسِل لم يبع الصنف طول السنة والمستلم رصيده صفر. المخازن التي ليست فروعاً في المنصة لا يُحوَّل إليها.</p>${wayNote()}
  ${rev?rev:can&&pairs.length?`<div class="stk-pan stk-prs"><h3>📤 حوّلها إلى طلبات تحويل</h3><p class="off">كل زر ينشئ طلب «تحويل بين الفروع» واحداً بأصناف هذا الزوج (حتى 400 سطر)، ويصل الفرعين إشعار ويظهر في «الطلبات». ما أُنشئ له طلب يبقى معلَّماً ${SENT_DAYS} يوماً فلا يتكرر.</p>${pairs.slice(0,UI.prs||8).map(p=>`<div class="stk-pr"><span>${sn(p.src)} <i aria-hidden="true">←</i> ${sn(p.dst)}</span><b>${fmt(p.n)} صنف · ${fmt(p.pcs)} قطعة</b><button class="bt s" type="button" data-sk="prv" data-f="${E(DATA.st[p.src])}" data-d="${E(DATA.st[p.dst])}">عرض الأصناف</button>${mkBtn(p)}</div>`).join("")}${pairs.length>(UI.prs||8)?`<button class="bt s stk-more" type="button" data-sk="prsmore">عرض المزيد (${fmt(pairs.length-(UI.prs||8))} زوج آخر)</button>`:""}</div>`:""}
- ${rev?"":tSelBar()}${rev?"":L.length?`<div class="stk-pan" style="margin-top:12px"><div class="tw"><table class="stk-t"><thead><tr><th class="ck"><input type="checkbox" id="stk-tsall" aria-label="تحديد كل المعروض" title="تحديد كل المعروض"></th><th>من فرع</th><th>إلى فرع</th><th>الكود</th><th>اللون</th><th class="n">المقاس</th><th class="n">الكمية</th><th class="n">رصيد المُرسِل</th><th class="n">مبيعاته</th><th class="n">رصيد المستلم</th><th class="n">مبيعاته</th></tr></thead><tbody>${L.slice(0,UI.lim).map(l=>`<tr${l.sent?' class="snt"':""}><td class="ck">${l.sent?"":'<input type="checkbox" data-tsk="'+tkOf(l)+'" id="ts'+l.ki+"_"+l.src+"_"+l.dst+'"'+(TSEL[tkOf(l)]?" checked":"")+' aria-label="تحديد السطر">'}</td><td>${sn(l.src)}</td><td>${sn(l.dst)}</td>${kCells(l.ki)}<td class="n">${l.sent?`<span class="no" title="أُنشئ طلب التحويل" data-notr dir="ltr">${E(l.sent.no)}</span>`:`<span class="gv" style="padding:2px 10px">${N(l.n)}</span>`}</td><td class="n">${l.fon}</td><td class="n">${l.fsold}</td><td class="n${l.ton<=0?" z":""}">${l.ton}</td><td class="n">${l.tsold}</td></tr>`).join("")}</tbody></table></div>${more(L.length)}</div>`:`<div class="stk-pan"><div class="stk-em">لا تحويلات مقترحة بهذه الشروط.</div></div>`}`;
+ ${rev?"":tSelBar()}${rev?"":L.length?`<div class="stk-pan" style="margin-top:12px"><div class="tw"><table class="stk-t"><thead><tr><th class="ck"><input type="checkbox" id="stk-tsall" aria-label="تحديد كل المعروض" title="تحديد كل المعروض"></th><th>من فرع</th><th>إلى فرع</th><th>الكود</th><th>اللون</th><th class="n">المقاس</th><th class="n">الكمية</th><th>الثقة</th><th class="n">رصيد المُرسِل</th><th class="n">مبيعاته</th><th class="n">رصيد المستلم</th><th class="n">مبيعاته</th></tr></thead><tbody>${L.slice(0,UI.lim).map(l=>`<tr${l.sent?' class="snt"':""}><td class="ck">${l.sent?"":'<input type="checkbox" data-tsk="'+tkOf(l)+'" id="ts'+l.ki+"_"+l.src+"_"+l.dst+'"'+(TSEL[tkOf(l)]?" checked":"")+' aria-label="تحديد السطر">'}</td><td>${sn(l.src)}</td><td>${sn(l.dst)}</td>${kCells(l.ki)}<td class="n">${l.sent?`<span class="no" title="أُنشئ طلب التحويل" data-notr dir="ltr">${E(l.sent.no)}</span>`:`<span class="gv" style="padding:2px 10px">${N(l.n)}</span>`}</td><td>${cfB(l)}</td><td class="n">${l.fon}</td><td class="n">${l.fsold}</td><td class="n${l.ton<=0?" z":""}">${l.ton}</td><td class="n">${l.tsold}</td></tr>`).join("")}</tbody></table></div>${more(L.length)}</div>`:`<div class="stk-pan"><div class="stk-em">لا تحويلات مقترحة بهذه الشروط.</div></div>`}`;
 }
 // ينشئ طلب تحويل حقيقي بأصناف زوج (من ← إلى) المعروضة، ثم يعلّمها حتى لا تتكرر
 async function mkTransfer(fName,dName,Q){
@@ -1664,18 +1733,18 @@ function ansCode(a,P){
 function body(){
  if(LOADING&&!DATA)return `<div class="stk-busy">جاري تحميل بيانات المخزون…</div>`;
  if(X.ro&&UI.tab==="cfg")UI.tab="home";// (v194) صلاحية المشاهدة: بلا تبويب القواعد
- const has=DATA&&DATA.has,t=has?UI.tab:"up",q=META&&META.q;
+ const has=DATA&&DATA.has,t=has?UI.tab:"up",q=META&&META.q;if(has)envSync();
  const hd=`<div class="stk-hd"><div><small>${q?`آخر ملف كميات: <span data-notr dir="ltr">${dts(q.at)}</span> · ${fmt(q.skus)} صنف${q.to?` · المبيعات حتى <span data-notr dir="ltr">${E(addDays(q.to,-1))}</span>`:""}`:"ارفع ملف الكميات لتبدأ"}</small></div></div>`;
  const tabs=`<nav class="stk-tabs" aria-label="أقسام تحليل المخزون">${TABS.filter(a=>(has||a[0]==="up")&&!(X.ro&&a[0]==="cfg")).map(a=>`<button type="button" class="${t===a[0]?"on":""}" data-sk="tab" data-t="${a[0]}">${a[1]} ${a[2]}</button>`).join("")}</nav>`;
  const busy=BUSY?`<div class="stk-busy">${E(BUSY)} <span id="stk-pg" data-notr></span></div>`:"";
  // ملف الكميات أقدم من اليوم: الأرصدة المعروضة ليست أرصدة اللحظة
  const old=q&&q.to&&q.to<today()?Math.round((new Date(today()+"T12:00:00")-new Date(q.to+"T12:00:00"))/864e5):0;
  const stl=has&&old>0&&t!=="up"?`<div class="stk-rep w">ملف الكميات المرفوع قديم (${old===1?"من أمس":"منذ "+old+" يوماً"}): الأرصدة هنا حتى نهاية يوم <b data-notr>${E(qEnd())}</b>. ارفع ملف اليوم من تبويب «الملفات» لتكون الأرقام محدَّثة.</div>`:"";
- let v="";try{v=t==="up"?vUp():!has?vUp():t==="home"?vHome():t==="buy"?vBuy():t==="dist"?vDist():t==="ask"?vAsk():t==="need"?vNeed():t==="tr"?vTr():t==="item"?vItem():t==="sales"?vSales():t==="stale"?vStale():vCfg()}catch(e){v=`<div class="stk-rep r">تعذّر عرض هذا التبويب (${E(String(e&&e.message||e).slice(0,80))}).</div>`}
+ let v="";try{v=t==="up"?vUp():!has?vUp():t==="home"?vHome():t==="buy"?vBuy():t==="dist"?vDist():t==="ask"?vAsk():t==="need"?vNeed():t==="tr"?vTr():t==="out"?vOut():t==="item"?vItem():t==="sales"?vSales():t==="stale"?vStale():vCfg()}catch(e){v=`<div class="stk-rep r">تعذّر عرض هذا التبويب (${E(String(e&&e.message||e).slice(0,80))}).</div>`}
  const mf=Object.keys(MFAIL).sort(),mfl=mf.join(" · "),fail=mf.length&&t!=="up"&&t!=="cfg"?`<div class="stk-rep r">تعذّر تحميل مبيعات هذه الشهور من ملفات التاريخ: <b data-notr>${E(mfl)}</b>، فالمبيعات المعروضة للفترة ناقصة بقدرها. تأكد من الإنترنت ثم <button class="bt s" type="button" data-sk="mretry">أعد المحاولة</button></div>`:"";
  return hd+tabs+busy+(t!=="cfg"?stl:"")+fail+v;
 }
-const RO_ACT=["cfgsave","cfgdef","pub","mk","mkgo","dgo","nmk","nmkgo"];// ما لا يفعله صاحب صلاحية المشاهدة (والقواعد ترفضه أصلاً)
+const RO_ACT=["cfgsave","cfgdef","pub","mk","mkgo","dgo","nmk","nmkgo","mkc"];// ما لا يفعله صاحب صلاحية المشاهدة (والقواعد ترفضه أصلاً)
 let PT=0;
 function paint(keepFocus){
  if(!ROOT)return;const a=document.activeElement,id=a&&ROOT.contains(a)?a.id:"",s0=a&&id?[a.selectionStart,a.selectionEnd]:null;
@@ -1701,6 +1770,9 @@ function wire(){
   else if(a==="more"){UI.lim+=400;paint()}
   else if(a==="xls")csv();
   else if(a==="prn")printX();
+  else if(a==="mkc")mkCode(t.dataset.c||"");
+  else if(a==="omore"){UI.olim=(UI.olim||30)+30;paint(false)}
+  else if(a==="obuy"){UI.q=t.dataset.c||"";UI.vn="";UI.tab="buy";UI.bx=UI.q;UI.lim=200;paint(false);window.scrollTo(0,0)}
   else if(a==="ibuy"){UI.q=UI.code;UI.vn="";UI.tab="buy";UI.bx=UI.code;UI.lim=200;paint(false);window.scrollTo(0,0)}
   else if(a==="iall"){UI.iall=true;paint(false)}
   else if(a==="ipvt"){UI.ipv=!UI.ipv;paint(false)}
