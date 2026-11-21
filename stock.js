@@ -481,6 +481,44 @@ export function itemInfo(D,C,code,o){
  return {ids:T.ids,rc:D.hasRc?rcBr:null,wh:whOn,br:brOn,on,sold,thru:sold+Math.max(0,on)>0&&sold>=0?sold/(sold+Math.max(0,on)):null,rate,cover,sell:sell.size,hold:hold.size,need,needWh,needSt:needSt.size,idle,idlePcs,sizes,colors,vendor:D.k[T.ids[0]][3]};
 }
 
+/* ---- (v204) تقرير الصنف: الخلاصة، أداء كل فرع، والقرارات المقترحة. كله جمع من دوال المحرك المختبَرة (لا تقدير جديد) ---- */
+// حالة الصنف من أرقامه: hot يُباع بسرعة والمستودع خالٍ · fast سينفد قريباً · nowh المستودع خالٍ · sold نفد · ok متوازن · slow بطيء · over مخزون زائد · dead راكد · none بلا حركة
+export function itemVerdict(I,alert){
+ const AL=Math.max(1,N(alert)||30),c=I.cover;
+ if(I.sold<=0)return I.on>0?"dead":"none";if(I.on<=0)return "sold";
+ const noWh=I.wh<=Math.max(0,(I.rate||0)*7);// المستودع خالٍ أو لا يكفي أسبوعاً من البيع
+ if(c!=null&&c<AL)return noWh?"hot":"fast";if(noWh)return "nowh";if(c!=null&&c>365)return "over";if(c!=null&&c>150)return "slow";return "ok";
+}
+export function itemReport(D,C,code,o){
+ o=o||{};const I=itemInfo(D,C,code,o);if(!I)return null;
+ const wh=D.sti.get(C.wh),ex=exSet(C,D),ids=new Set(I.ids),days=o.days>0?o.days:0,stl=Math.max(1,N(C.stale));
+ const K=codeCard(D,C,code,{cl:o.cl,z:o.z,period:o.period}),PV=itemPivot(D,C,code,{cl:o.cl,z:o.z,period:o.period,rows:"store",cols:""}),cells=new Map();PV.rows.forEach(r=>cells.set(r.k,r));
+ const inC=l=>ids.has(l.ki),SH=shortages(D,C,{q:code,period:o.period}).filter(inC),TR=transfers(D,C,{q:code,period:o.period}).rows.filter(inC),ST=stale(D,C,{q:code,period:o.period}).filter(inC);
+ const add=(m,k,v)=>m.set(k,(m.get(k)||0)+v),give=new Map(),unmet=new Map(),tin=new Map(),tout=new Map(),idl=new Map();
+ let sendPcs=0,sendLines=0,unmetPcs=0,trPcs=0,pullPcs=0;
+ SH.forEach(l=>{if(l.give>0){add(give,l.ti,l.give);sendPcs+=l.give;sendLines++}const u=Math.max(0,l.need-l.give);if(u>0&&l.sold>0){add(unmet,l.ti,u);unmetPcs+=u}});
+ TR.forEach(l=>{add(tin,l.dst,l.n);add(tout,l.src,l.n);trPcs+=l.n});ST.forEach(l=>{add(idl,l.ti,l.on);pullPcs+=l.on});
+ // فرع لا رصيد عنده ولا مبيعات من الصنف لكنه في النواقص أو التحويلات: يُضاف بأصفار حتى يطابق مجموع الفروع الإجمالي
+ const KS=K.stores.slice(),hasS=new Set(KS.map(s=>s.ti));[give,tin,tout,idl,unmet].forEach(m=>m.forEach((v,ti)=>{if(!hasS.has(ti)){hasS.add(ti);KS.push({ti,on:0,sold:0,rc:D.hasRc?I.ids.reduce((a,ki)=>a+rcOf(D,ki,ti),0):0})}}));
+ const stores=KS.filter(s=>!ex.has(s.ti)).map(s=>{const c=cells.get(s.ti)||{need:0,idle:0},isWh=s.ti===wh,rate=days?s.sold/days:0,cover=rate>0?Math.max(0,s.on)/rate:null,
+   thru=s.sold+Math.max(0,s.on)>0&&s.sold>=0?s.sold/(s.sold+Math.max(0,s.on)):null,ip=idl.get(s.ti)||0;
+  const st=isWh?"wh":s.on<=0&&s.sold>0?"out":c.need>0||give.get(s.ti)>0?"low":ip>0&&s.sold<=0?"idle":cover!=null&&cover>365&&s.on>=stl?"over":s.on<=0&&s.sold<=0?"none":"ok";
+  return {ti:s.ti,isWh,on:s.on,sold:s.sold,rc:s.rc||0,thru,cover,need:c.need,idle:c.idle,give:give.get(s.ti)||0,unmet:unmet.get(s.ti)||0,tin:tin.get(s.ti)||0,tout:tout.get(s.ti)||0,idlePcs:ip,st}});
+ // الشراء: من reorder لنفس الكود (وبفلتر اللون والمقاس لو حُدّدا)
+ const RO=reorder(D,C,{period:o.period,days:days||1,horizon:o.horizon,alert:o.alert,q:code}),B=RO?RO.rows.find(r=>r.code===code):null;let buy=0;if(B)B.vars.forEach(v=>{if(ids.has(v.ki))buy+=v.qty});
+ const cnt=k=>stores.filter(s=>s.st===k).length;
+ return {I,stores,verdict:itemVerdict(I,o.alert),send:{pcs:sendPcs,lines:sendLines,br:give.size},unmet:{pcs:unmetPcs,br:unmet.size},tr:{pcs:trPcs,lines:TR.length},pull:{pcs:pullPcs,lines:ST.length,br:idl.size},buy:{qty:buy,H:RO?RO.H:60,AL:RO?RO.AL:30},
+  n:{out:cnt("out"),low:cnt("low"),idle:cnt("idle"),over:cnt("over"),ok:cnt("ok")}};
+}
+// مبيعات الصنف أسبوعاً بأسبوع (من ملفات التاريخ)، الأقدم أولاً، وآخر أسبوع ينتهي عند to
+export function weekSeries(D,code,o){
+ o=o||{};const R=salesQuery(D,{code,cl:o.cl,z:o.z,store:o.store,from:o.from,to:o.to});if(!R)return null;const dn=x=>Math.round(new Date(x+"T12:00:00").getTime()/864e5),a=dn(o.from),b=dn(o.to),nw=Math.max(1,Math.min(53,Math.ceil((b-a+1)/7))),W=[];
+ const iso=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()+"-"+p2(t.getUTCMonth()+1)+"-"+p2(t.getUTCDate())};
+ for(let i=0;i<nw;i++){const e=b-(nw-1-i)*7;W.push({from:iso(Math.max(a,e-6)),to:iso(e),sold:0})}
+ for(const d in R.byDay){const i=nw-1-Math.floor((b-dn(d))/7);if(i>=0&&i<nw)W[i].sold+=R.byDay[d]}
+ return W;
+}
+
 /* ---- (v174) فهم السؤال: قواعد ثابتة، لا تخمين. ما لم يُفهم يُعاد في unk، وما يحتمل أكثر من معنى في amb ---- */
 const arDig=s=>s.replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632)).replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776));
 export const normAr=s=>arDig(String(s==null?"":s)).toLowerCase().replace(/[ً-ْـ]/g,"").replace(/[أإآٱ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/ؤ/g,"و").replace(/ئ/g,"ي");
@@ -820,6 +858,14 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 @media (max-width:760px){.stk-up{grid-template-columns:1fr}.stk-bar label{flex:1 1 calc(50% - 4px)}.stk-bar select,.stk-bar input,.stk-bar input[type=number],.stk-bar input[type=search],.stk-bar input[type=text]{width:100%}.stk-bar .sp{display:none}.stk-bar .bt{flex:1 1 calc(50% - 4px)}}
 .stk-lxf{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1.5px solid var(--acc);border-radius:12px;background:var(--soft)}.stk-lxf label{display:block;font-size:12.5px;color:var(--mut)}.stk-lxf input,.stk-lxf select{display:block;margin-top:3px;min-width:150px}.stk-lxf small{flex-basis:100%}.stk-lxl{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}.stk-chips button.stk-lxu{padding:4px 8px;min-width:0;margin-inline-start:-4px;color:var(--mut)}
 .stk-dw th,.stk-dw td{text-align:center;padding:5px 6px}.stk-dw td.c,.stk-dw th:first-child{text-align:start}.stk-dw input.sm{width:62px;text-align:center;padding:4px 2px}.stk-dw tr.tot td{font-weight:700;background:var(--soft)}.stk-dw td.t{background:var(--soft)}
+.stk-ih{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:0 0 12px}.stk-iht{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap}.stk-iht h3{margin:0;font-size:24px}.stk-iht h3 small{font-size:14px;color:var(--mut);font-weight:600}.stk-iht>small{color:var(--mut);font-size:13px}.stk-ihv{margin:8px 0 0;font-size:15px;line-height:1.9;color:var(--ink)}
+.stk-vd{display:inline-block;border-radius:999px;padding:3px 12px;font-size:13px;font-weight:700;background:var(--soft);color:var(--ink);border:1px solid var(--line);white-space:nowrap}.stk-vd.s{padding:1px 9px;font-size:12px}.stk-vd.bad{background:#fbe9e7;color:#9a2a20;border-color:#efc4be}.stk-vd.warn{background:#fdf1dc;color:#8a5a12;border-color:#ecd5a6}.stk-vd.good{background:#eef2e2;color:#4c5a2b;border-color:#d3dcb6}
+.stk-iac h3{margin:0 0 10px}.stk-iac{margin:0 0 12px}.stk-ial{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}.stk-ia{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-inline-start:5px solid var(--mut);border-radius:12px;padding:10px 12px;background:var(--soft)}.stk-ia.bad{border-inline-start-color:#c4362b}.stk-ia.warn{border-inline-start-color:#c98a1b}.stk-ia.good{border-inline-start-color:var(--olive,#6f7d45)}.stk-ia b.n{font-size:22px;font-weight:800;min-width:54px;text-align:center}.stk-ia div{flex:1;min-width:0}.stk-ia strong{display:block;font-size:14.5px}.stk-ia span{display:block;font-size:12.5px;color:var(--mut);line-height:1.6}.stk-iok{margin:0;color:var(--mut)}
+.stk-itr{margin:0 0 8px;font-size:13.5px;line-height:1.8}.stk-itr .up{color:var(--olive,#6f7d45);font-weight:700}.stk-itr .dn{color:#c4362b;font-weight:700}.stk-wk{direction:ltr;display:flex;align-items:flex-end;gap:3px;height:120px;border-bottom:1px solid var(--line);padding-top:16px}.stk-wb{flex:1;min-width:4px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative}.stk-wb i{display:block;width:100%;max-width:26px;background:var(--acc);opacity:.55;border-radius:4px 4px 0 0}.stk-wb i.l{opacity:1}.stk-wb:hover i{opacity:1}.stk-wb em{position:absolute;bottom:calc(100% - 16px);font-style:normal;font-size:11px;color:var(--mut);white-space:nowrap}.stk-wkx{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:3px}
+.stk-ist{display:flex;gap:6px 16px;flex-wrap:wrap;margin:0 0 10px;font-size:13px;color:var(--mut)}.stk-it td.stk-ibr{width:22%;min-width:70px;padding-inline:4px}.stk-it td.stk-ibr i{display:block;height:8px;border-radius:0 4px 4px 0;background:var(--acc);opacity:.75;min-width:1px}html.tz-en .stk-it td.stk-ibr i{border-radius:4px 0 0 4px}.stk-it td.stk-isg{font-size:12.5px;color:var(--mut);white-space:normal;min-width:130px}.stk-it tr.whr td{background:var(--soft)}
+.stk-hm td,.stk-hm th{text-align:center;padding:6px 8px}.stk-hm td:first-child,.stk-hm th:first-child{text-align:start}.stk-hm td.dk{color:#fff}.stk-hm td.out{box-shadow:inset 0 0 0 2px #c4362b}.stk-hm tr.tot td,.stk-hm td.t{background:var(--soft);font-weight:700}
+[data-theme=dark] .stk-vd.bad{background:#4a211d;color:#f3b6ae;border-color:#6a2e28}[data-theme=dark] .stk-vd.warn{background:#463514;color:#f0d08e;border-color:#5f4a1f}[data-theme=dark] .stk-vd.good{background:#2f3a1c;color:#cbd9a3;border-color:#44542a}
+@media (max-width:640px){.stk-iht h3{font-size:20px}.stk-ia b.n{font-size:19px;min-width:44px}.stk-wk{height:96px}}
 .stk-selb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:8px 12px;margin:0 0 12px;font-size:13.5px}.stk-selb .sp{flex:1}.stk-selb small{flex-basis:100%}.stk-t th.ck,.stk-t td.ck{width:38px;text-align:center;padding-inline:6px}.stk-t td.ck input,.stk-t th.ck input{width:19px;height:19px;margin:0;cursor:pointer;accent-color:var(--acc)}.stk-rvh{margin:14px 0 6px;font-size:15px}.stk-rvh small{color:var(--mut);font-weight:400;margin-inline-start:8px}
 @media print{.stk-tabs,.stk-bar,.stk-drop,.stk-more{display:none!important}#pa.stkp{font-size:10pt}#pa.stkp .ph h2{font-size:17pt}#pa.stkp .ps{font-size:14pt;font-weight:700;margin:0 0 2mm;unicode-bidi:plaintext}#pa.stkp .pi{font-size:9pt;color:#444;margin:0 0 3mm}#pa.stkp .pt{width:100%;border-collapse:collapse}#pa.stkp .pt th,#pa.stkp .pt td{border:1px solid #777;padding:1.3mm 1.6mm;text-align:center;font-size:9.5pt;unicode-bidi:plaintext}#pa.stkp .pt th{background:#eee;font-size:9pt}#pa.stkp .pt td.bl{min-width:26mm}}`;
 const TABS=[["home","🚨","اليوم"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["sales","📅","مبيعات بالتاريخ"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
@@ -1186,39 +1232,66 @@ function vHome(){
 }
 const PDIM=[["store","الفرع"],["color","اللون"],["size","المقاس"],["var","اللون والمقاس"]];
 const pdName=d=>(PDIM.find(x=>x[0]===d)||["","—"])[1];
+/* (v204) 🔍 «تحليل صنف» v3: تقرير يُقرأ من أعلى لأسفل — الحكم على الصنف، ماذا أفعل الآن، اتجاه البيع، أداء كل فرع، المقاسات والألوان، ثم الجدول الحر */
+const IVD={hot:["عاجل","bad","يُباع بسرعة والمستودع خالٍ منه أو يكاد"],fast:["سينفد قريباً","warn","يُباع بسرعة، ورصيده كله يكفي أياماً قليلة"],nowh:["المستودع يكاد يخلو","warn","يُباع، وما في المستودع لا يكفي أسبوعاً من بيعه، والباقي في الفروع"],sold:["نفد","bad","بيع كله ولا رصيد منه الآن"],
+ ok:["متوازن","good","بيعه ورصيده متناسبان"],slow:["بطيء","warn","رصيده يكفي أكثر من خمسة أشهر بمعدل بيعه"],over:["مخزون زائد","warn","رصيده يكفي أكثر من سنة بمعدل بيعه"],dead:["راكد","bad","له رصيد ولم يُبع منه شيء"],none:["بلا حركة","","لا رصيد ولا مبيعات"]};
+const IST={out:["نفد","bad"],low:["ناقص","bad"],idle:["راكد","warn"],over:["زائد","warn"],ok:["متوازن","good"],none:["—",""],wh:["المستودع",""]};
+let IRK=null;// ترتيب الأكواد بالمبيعات (كاش لكل بيانات وفترة)
+const itemRank=(code,P)=>{const k=(P?P.from+"~"+P.to:"ytd");if(!IRK||IRK.D!==DATA||IRK.k!==k){const R=rankBy(DATA,CFG,{by:"code",period:P}),m=new Map();let n=0;if(R)R.rows.forEach((g,i)=>{if(g.sold>0){m.set(g.k,i+1);n++}});IRK={D:DATA,k,m,n}}return {pos:IRK.m.get(code)||0,of:IRK.n}};
+const itemNeed=()=>{const p=period();if(!dHas()||!String(UI.code||"").trim())return p;const e=qEnd(),b={from:addDays(e,-83),to:e};return p?{from:p.from<b.from?p.from:b.from,to:p.to>b.to?p.to:b.to}:b};
+const iCov=c=>c==null?"—":c>=999?"999+":fmt(c);
 function vItem(){
  const P=period(),code=String(UI.code||"").trim(),ids=code?DATA.code.get(code)||[]:[];
  const cols=[...new Set(ids.map(k=>DATA.k[k][1]))].sort(),szs=[...new Set(ids.filter(k=>!UI.cl||DATA.k[k][1]===UI.cl).map(k=>DATA.k[k][2]))].sort((a,b)=>zk(a)-zk(b));
- const bar=`<div class="stk-bar"><label>الكود<input type="text" data-sf="code" id="stk-code" list="stk-codes" value="${E(UI.code)}" placeholder="اكتب الكود" dir="ltr" autocomplete="off"></label>${cBtn()}${ids.length?`<label>اللون<select data-sf="cl" id="stk-cl">${opt(cols,UI.cl,"كل الألوان")}</select></label><label>المقاس<select data-sf="sz" id="stk-sz">${opt(szs,UI.sz,"كل المقاسات")}</select></label>`:""}${perSel()}<span class="sp"></span>${ids.length?`<button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button>`:""}</div><datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
+ const bar='<div class="stk-bar"><label>الكود<input type="text" data-sf="code" id="stk-code" list="stk-codes" value="'+E(UI.code)+'" placeholder="اكتب الكود" dir="ltr" autocomplete="off"></label>'+cBtn()+(ids.length?'<label>اللون<select data-sf="cl" id="stk-cl">'+opt(cols,UI.cl,"كل الألوان")+'</select></label><label>المقاس<select data-sf="sz" id="stk-sz">'+opt(szs,UI.sz,"كل المقاسات")+"</select></label>":"")+perSel()+'<span class="sp"></span>'+(ids.length?'<button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button>':"")+'</div><datalist id="stk-codes">'+[...DATA.code.keys()].sort().slice(0,3000).map(c=>'<option value="'+E(c)+'">').join("")+"</datalist>";
  if(!code){LASTX=null;const RK=rankBy(DATA,CFG,{by:"code",period:P}),top=RK?RK.rows.slice(0,12):[];
-  return bar+`<div class="stk-pan"><div class="stk-em">اكتب كود الصنف لترى تحليله كاملاً: أين رصيده، وأين يُباع، وأي المقاسات والألوان تنقص أو تزيد، وجدولاً محورياً تختار صفوفه وأعمدته بنفسك.${top.length?`<div class="stk-chips" style="justify-content:center;margin-top:14px"><i>الأعلى مبيعاً</i>${top.map(g=>`<button type="button" data-sk="icode" data-c="${E(g.k)}" data-notr dir="ltr">${E(g.k)}</button>`).join("")}</div>`:""}</div></div>`}
- if(!ids.length){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">الكود <b data-notr dir="ltr">${E(code)}</b> غير موجود في ملف الكميات.</div></div>`}
+  return bar+'<div class="stk-pan"><div class="stk-em">اكتب كود الصنف ليظهر تقريره: الحكم عليه، وما يُفعل الآن، واتجاه بيعه، وأداء كل فرع، ومقاساته وألوانه.'+(top.length?'<div class="stk-chips" style="justify-content:center;margin-top:14px"><i>الأعلى مبيعاً</i>'+top.map(g=>'<button type="button" data-sk="icode" data-c="'+E(g.k)+'" data-notr dir="ltr">'+E(g.k)+"</button>").join("")+"</div>":"")+"</div></div>"}
+ if(!ids.length){LASTX=null;return bar+'<div class="stk-pan"><div class="stk-em">الكود <b data-notr dir="ltr">'+E(code)+"</b> غير موجود في ملف الكميات.</div></div>"}
  const R0=spanR(),dd=x=>x?Math.round((new Date(x.to+"T12:00:00")-new Date(x.from+"T12:00:00"))/864e5)+1:0,days=P?dd(P):dd(R0);
- const I=itemInfo(DATA,CFG,code,{cl:UI.cl,z:UI.sz,period:P,days});if(!I){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">لا يوجد هذا اللون أو المقاس لهذا الكود.</div></div>`}
- const pr=UI.pr||"store",pc0=UI.pc===undefined?"size":UI.pc,pc=pc0===pr||(pr==="var"&&(pc0==="color"||pc0==="size"))?"":pc0,pv=UI.pv==="rc"&&!DATA.hasRc?"on":UI.pv||"on",V=pivotView(code,P,pr,pc,pv);
- const sub=[UI.cl,UI.sz].filter(Boolean).join(" · "),go=(sk,lab)=>` data-sk="${sk}" role="button" tabindex="0"`;
- const T=[tile(fmt(I.wh),"قطعة في المستودع","k"),tile(fmt(I.br),"قطعة في الفروع"),tile(fmt(I.sold),P?"قطعة مباعة في الفترة (الصافي)":"قطعة مباعة من أول السنة (الصافي)","k"),tile(pct(I.thru),"نسبة ما بيع منه"),
-  tile(fmt(I.sell),"فرع باع منه"),tile(I.cover==null?"—":I.cover>=999?"999+":fmt(I.cover),"يوماً يكفي الرصيد بمعدل البيع (تقريبي)"),
-  tile(fmt(I.need),"خانة يبيعها فرع ورصيده أقل من الحد",I.need?"go bad":"go",go("ineed")),tile(fmt(I.idlePcs),"قطعة راكدة في الفروع",I.idlePcs?"go":"",I.idlePcs?go("istale"):"")];
- if(I.rc!=null)T.splice(2,0,tile(fmt(I.rc),"قطعة استلمتها الفروع من أول السنة"));
- // ملاحظات تُستنتج من الأرقام نفسها (لا تخمين)
- const NT=[],szL=I.sizes.filter(s=>s.k!==""),clL=I.colors.filter(c=>c.k!==""),pp=x=>pct(x),zv=k=>`<b data-notr dir="ltr">${E(k)}</b>`;
- if(I.sold<=0)NT.push(`لم يُبع منه شيء ${P?"في هذه الفترة":"من أول السنة"}.`);
- if(I.need)NT.push(`${fmt(I.needSt)} فرع يبيع ألواناً أو مقاسات منه ورصيده فيها أقل من الحد (${fmt(I.need)} خانة)${I.needWh?`، والمستودع عنده ${fmt(I.needWh)} منها`:"، والمستودع ليس عنده منها"}. <button class="bt s" type="button" data-sk="ineed">📋 النواقص</button>${I.need>I.needWh?` <button class="bt s" type="button" data-sk="itr">🔄 التحويلات المقترحة</button>`:""}`);
- if(I.wh<=0&&I.sold>0)NT.push(`المستودع ليس عنده رصيد منه وهو يُباع في ${fmt(I.sell)} فرع.`);
- const top=szL.length>1?szL.slice().sort((p,r)=>r.sold-p.sold)[0]:null;if(top&&top.sold>0)NT.push(`المقاس الأكثر مبيعاً ${zv(top.k)}: ${pp(top.ss)} من المبيعات مقابل ${pp(top.os)} من الرصيد${top.gap>=0.05?" — قد ينقص قريباً":""}.`);
- const sh=(L,w)=>{if(L.length<2||I.sold<=0)return;const lo=L.slice().sort((p,r)=>r.gap-p.gap)[0],hi=L.slice().sort((p,r)=>p.gap-r.gap)[0];
-  if(lo.gap>=0.05&&!(w==="المقاس"&&top&&lo.k===top.k))NT.push(`${w} ${zv(lo.k)} يُباع أكثر من رصيده: ${pp(lo.ss)} من المبيعات مقابل ${pp(lo.os)} من الرصيد — قد ينقص قريباً.`);
-  if(hi.gap<=-0.05)NT.push(`${w} ${zv(hi.k)} رصيده أكبر من مبيعاته: ${pp(hi.os)} من الرصيد مقابل ${pp(hi.ss)} من المبيعات.`)};
- if(!UI.sz)sh(szL,"المقاس");if(!UI.cl)sh(clL,"اللون");
- if(I.idle)NT.push(`${fmt(I.idlePcs)} قطعة راكدة في ${fmt(I.idle)} خانة (عند الفرع ${fmt(N(CFG.stale))} أو أكثر ولم يبع).`);
- const crv=(L,t)=>{if(L.length<2)return "";const mx=Math.max(0.0001,...L.map(x=>Math.max(x.ss,x.os)));return `<div class="stk-card"><h3>${t}</h3><div class="stk-crvl"><span><i class="s"></i>نصيب المبيعات</span><span><i class="o"></i>نصيب الرصيد</span></div><div class="stk-crv">${L.slice(0,24).map(x=>`<b data-notr dir="ltr">${E(x.k||"—")}</b><div class="bars"><i class="s" style="width:${Math.round(x.ss/mx*100)}%"></i><i class="o" style="width:${Math.round(x.os/mx*100)}%"></i></div><span class="n">${pp(x.ss)} · ${pp(x.os)}</span>`).join("")}</div>${L.length>24?`<p class="stk-src">معروض 24 من ${fmt(L.length)}.</p>`:""}</div>`};
- const C1=crv(szL,"منحنى المقاسات"),C2=crv(clL,"منحنى الألوان");
- const vnm=I.vendor>=0?DATA.vn[I.vendor]:"";
- return bar+gapNote(P)+`<div class="stk-ttl"><h3 data-notr><bdi dir="ltr">${E(code)}</bdi>${sub?` <small>${E(sub)}</small>`:""}</h3>${vnm?`<small>المورد: <a href="#" data-sk="ivn" data-v="${E(vnm)}" style="color:inherit" data-notr>${E(vnm)}</a></small>`:""}${P?`<small>الفترة: <span data-notr dir="ltr">${E(P.from)} ← ${E(P.to)}</span></small>`:""}</div>
- <div class="stk-tiles">${T.join("")}</div>
- ${NT.length?`<div class="stk-card" style="margin:0 0 12px"><h3>💡 ملاحظات على الصنف</h3><ul class="stk-ins">${NT.map(x=>`<li>${x}</li>`).join("")}</ul></div>`:""}
- ${C1||C2?`<div class="stk-up">${C1}${C2}</div>`:""}${V}`;
+ const R=itemReport(DATA,CFG,code,{cl:UI.cl,z:UI.sz,period:P,days,horizon:UI.bh,alert:UI.ba});if(!R){LASTX=null;return bar+'<div class="stk-pan"><div class="stk-em">لا يوجد هذا اللون أو المقاس لهذا الكود.</div></div>'}
+ const I=R.I,V=IVD[R.verdict]||IVD.ok,sub=[UI.cl,UI.sz].filter(Boolean).join(" · "),vnm=I.vendor>=0?DATA.vn[I.vendor]:"",RK=sub?{pos:0,of:0}:itemRank(code,P),per=P?"في الفترة":"من أول السنة";
+ const b1=x=>'<b data-notr dir="ltr">'+E(x)+"</b>";
+ /* ---- 1) الحكم والخلاصة ---- */
+ const top10=RK.pos&&RK.of?RK.pos/RK.of:1,rankTxt=RK.pos?"ترتيبه "+b1(fmt(RK.pos))+" من "+b1(fmt(RK.of))+" كوداً في المبيعات"+(top10<=0.1?" (ضمن أعلى 10%)":top10<=0.25?" (ضمن أعلى الربع)":top10>=0.75?" (ضمن الربع الأضعف)":""):"";
+ const sumTxt=I.sold>0?"بيع منه "+b1(fmt(I.sold))+" قطعة "+per+" في "+b1(fmt(I.sell))+" فرعاً"+(I.thru!=null?"، أي "+b1(pct(I.thru))+" مما توفّر":"")+". الباقي "+b1(fmt(I.on))+" قطعة: "+b1(fmt(I.wh))+" في المستودع و"+b1(fmt(I.br))+" في الفروع"+(I.cover!=null?"، تكفي "+b1(iCov(I.cover))+" يوماً بمعدل "+b1(I.rate>=10?fmt(I.rate):String(Math.round(I.rate*10)/10))+" قطعة يومياً":"")+".":"لم يُبع منه شيء "+per+"، ورصيده "+b1(fmt(I.on))+" قطعة: "+b1(fmt(I.wh))+" في المستودع و"+b1(fmt(I.br))+" في الفروع.";
+ const hero='<div class="stk-ih"><div class="stk-iht"><h3 data-notr><bdi dir="ltr">'+E(code)+"</bdi>"+(sub?" <small>"+E(sub)+"</small>":"")+'</h3><span class="stk-vd '+V[1]+'">'+V[0]+"</span>"+(vnm?'<small>المورد: <a href="#" data-sk="ivn" data-v="'+E(vnm)+'" style="color:inherit" data-notr>'+E(vnm)+"</a></small>":"")+(P?'<small>الفترة: <span data-notr dir="ltr">'+E(P.from)+" ← "+E(P.to)+"</span></small>":"")+'</div><p class="stk-ihv"><b>'+V[2]+".</b> "+sumTxt+(rankTxt?" "+rankTxt+".":"")+"</p></div>";
+ const T=[tile(fmt(I.sold),P?"قطعة مباعة في الفترة":"قطعة مباعة من أول السنة","k"),tile(fmt(I.wh),"في المستودع",I.wh<=0&&I.sold>0?"bad":""),tile(fmt(I.br),"في الفروع"),tile(pct(I.thru),"نسبة ما بيع مما توفّر"),tile(iCov(I.cover),"يوماً يكفي الرصيد (تقريبي)",I.cover!=null&&I.cover<R.buy.AL?"bad":""),tile(fmt(I.sell)+" / "+fmt(R.stores.filter(s=>!s.isWh&&(s.on>0||s.sold>0)).length),"فرع باعه / فرع عنده أو باعه")];
+ if(I.rc!=null)T.splice(1,0,tile(fmt(I.rc),"استلمتها الفروع من أول السنة"));
+ /* ---- 2) ماذا أفعل الآن ---- */
+ const A=[],ac=(cls,num,ttl,txt,btn)=>'<div class="stk-ia '+cls+'"><b class="n" data-notr dir="ltr">'+E(num)+'</b><div><strong>'+ttl+"</strong><span>"+txt+"</span></div>"+btn+"</div>",bt=(sk,t)=>'<button class="bt s" type="button" data-sk="'+sk+'">'+t+"</button>";
+ if(R.buy.qty>0)A.push(ac("bad",fmt(R.buy.qty),"اطلب من المورد","قطعة تكفي "+fmt(R.buy.H)+" يوماً بمعدل بيعه"+(I.wh<=0?"، فالمستودع خالٍ منه":"، فرصيده كله يكفي أقل من "+fmt(R.buy.AL)+" يوماً")+(R.unmet.pcs?"، و"+fmt(R.unmet.pcs)+" قطعة ينقصها "+fmt(R.unmet.br)+" فرع بلا مصدر":"")+".",bt("ibuy","🛒 تفاصيل الشراء")));
+ if(R.send.pcs>0)A.push(ac("good",fmt(R.send.pcs),"أرسل من المستودع","قطعة إلى "+fmt(R.send.br)+" فرع رصيدها أقل من الحد والمستودع عنده ("+fmt(R.send.lines)+" خانة).",bt("ineed","📋 افتح النواقص")));
+ if(R.tr.pcs>0)A.push(ac("good",fmt(R.tr.pcs),"حوّل بين الفروع","قطعة من فروع لا تبيعه إلى فروع نفد عندها ("+fmt(R.tr.lines)+" تحويلاً).",bt("itr","🔄 التحويلات")));
+ if(R.pull.pcs>0)A.push(ac("warn",fmt(R.pull.pcs),"راجع الراكد","قطعة في "+fmt(R.pull.br)+" فرع لم تُبع "+per+": تُسحب للمستودع أو تُحوَّل لفرع يبيعها.",bt("istale","💤 الراكد")));
+ if(!A.length&&R.unmet.pcs>0)A.push(ac("warn",fmt(R.unmet.pcs),"نقص بلا مصدر","قطعة ينقصها "+fmt(R.unmet.br)+" فرع، والمستودع والفروع الأخرى لا يغطونها بقواعد التحويل الحالية.",bt("ibuy","🛒 الشراء المقترح")));
+ const acts='<div class="stk-card stk-iac"><h3>ما يُفعل الآن</h3>'+(A.length?'<div class="stk-ial">'+A.join("")+"</div>":'<p class="stk-iok">لا إجراء مطلوب الآن: لا نقص يغطيه المستودع، ولا تحويل، ولا راكد، ورصيده يكفي.</p>')+"</div>";
+ /* ---- 3) اتجاه البيع (أسبوعي) ---- */
+ let trend="";if(dHas()){const e=P?P.to:qEnd(),f0=P?P.from:addDays(e,-83),rg={from:f0,to:e},cv=coverage(META,rg),loaded=months(f0,e).every(ym=>!(META.d&&META.d[ym])||DATA.d[ym]);
+  if(!loaded)trend='<div class="stk-card"><h3>اتجاه البيع</h3><p class="stk-src">جاري تحميل مبيعات الأيام…</p></div>';
+  else{const W=weekSeries(DATA,code,{cl:UI.cl,z:UI.sz,from:f0,to:e})||[],mx=Math.max(1,...W.map(w=>w.sold)),tot=W.reduce((a,w)=>a+w.sold,0),h=Math.floor(W.length/2),l4=W.slice(-Math.min(4,h)).reduce((a,w)=>a+w.sold,0),p4=W.slice(-2*Math.min(4,h),-Math.min(4,h)).reduce((a,w)=>a+w.sold,0),dl=l4-p4,k4=Math.min(4,h);
+   const bars=W.map((w,i)=>{const v=Math.max(0,w.sold),hp=Math.max(v>0?3:0,Math.round(v/mx*100)),lab=i===W.length-1||w.sold===mx;return '<div class="stk-wb" title="'+E(w.from)+" ← "+E(w.to)+": "+fmt(w.sold)+' قطعة"><i style="height:'+hp+'%"'+(i===W.length-1?' class="l"':"")+"></i>"+(lab?'<em data-notr>'+fmt(w.sold)+"</em>":"")+"</div>"}).join("");
+   trend='<div class="stk-card"><h3>اتجاه البيع أسبوعياً</h3>'+(W.length>1?'<p class="stk-itr">'+(k4>0&&p4+l4>0?"آخر "+fmt(k4)+" أسابيع: "+b1(fmt(l4))+" قطعة مقابل "+b1(fmt(p4))+" في الـ"+fmt(k4)+" قبلها — "+(dl>0?'<span class="up">صاعد '+(p4>0?pct(dl/p4):"")+"</span>":dl<0?'<span class="dn">هابط '+(p4>0?pct(-dl/p4):"")+"</span>":"ثابت")+".":"لا مبيعات في هذه الأسابيع.")+'</p><div class="stk-wk">'+bars+'</div><div class="stk-wkx" data-notr dir="ltr"><span>'+E(W[0].from)+"</span><span>"+E(W[W.length-1].to)+'</span></div><p class="stk-src">'+fmt(W.length)+" أسبوعاً · "+fmt(tot)+" قطعة. كل عمود أسبوع، والأخير هو الأحدث. مرّر على العمود لتاريخه.</p>":'<p class="stk-src">الفترة أقصر من أسبوعين.</p>')+(cv.ok?"":'<p class="stk-src" style="color:#b7791f">ملفات التاريخ لا تغطي هذه الأسابيع كلها، فبعض الأعمدة أقل من الحقيقة.</p>')+"</div>"}}
+ /* ---- 4) أداء كل فرع ---- */
+ const so=UI.isort||"sold",ordS={out:0,low:1,idle:2,over:3,ok:4,none:5},S=R.stores.slice().sort((p,r)=>(p.isWh?-1:r.isWh?1:0)||(so==="st"?ordS[p.st]-ordS[r.st]:so==="on"?r.on-p.on:0)||r.sold-p.sold||r.on-p.on||(DATA.st[p.ti]<DATA.st[r.ti]?-1:1));
+ const mxS=Math.max(1,...S.filter(s=>!s.isWh).map(s=>Math.max(0,s.sold))),sugT=s=>{const a=[];if(s.give>0)a.push("أرسل "+fmt(s.give));if(s.tin>0)a.push("يستقبل "+fmt(s.tin)+" تحويلاً");if(s.tout>0)a.push("يُسحب منه "+fmt(s.tout));else if(s.idlePcs>0)a.push("راكد "+fmt(s.idlePcs));if(s.unmet>0)a.push("ينقصه "+fmt(s.unmet)+" بلا مصدر");return a.join(" · ")};
+ const rcOn=I.rc!=null,lim=UI.iall?S.length:13,rowS=s=>{const t=IST[s.st]||IST.ok;return "<tr"+(s.isWh?' class="whr"':"")+"><td>"+(s.isWh?sn(s.ti):'<a href="#" data-sk="hst" data-s="'+E(DATA.st[s.ti])+'" style="color:inherit" title="نواقص هذا الفرع">'+sn(s.ti)+"</a>")+'</td><td><span class="stk-vd s '+t[1]+'">'+t[0]+"</span></td>"+(rcOn?'<td class="n">'+fmt(s.rc)+"</td>":"")+'<td class="n"><b>'+fmt(s.sold)+'</b></td><td class="stk-ibr">'+(s.isWh?"":'<i style="width:'+Math.round(Math.max(0,s.sold)/mxS*100)+'%"></i>')+'</td><td class="n'+(s.on<=0&&s.sold>0?" z":"")+'">'+fmt(s.on)+'</td><td class="n">'+(s.isWh?"—":pct(s.thru))+'</td><td class="n">'+(s.isWh?"—":iCov(s.cover))+'</td><td class="stk-isg">'+E(sugT(s))+"</td></tr>"};
+ const seg=(k,v,t)=>'<button type="button" data-sk="'+k+'" data-v="'+v[0]+'" class="'+(v[1]?"on":"")+'">'+t+"</button>";
+ const stSum=[["out","نفد عندها وتبيعه"],["low","رصيدها ناقص"],["idle","راكد عندها"],["over","مخزونها زائد"],["ok","متوازنة"]].filter(x=>R.n[x[0]]).map(x=>'<span><b class="stk-vd s '+IST[x[0]][1]+'">'+fmt(R.n[x[0]])+"</b> "+x[1]+"</span>").join("");
+ LASTX={name:"تحليل-صنف-"+code,head:["المخزن","الحالة"].concat(rcOn?["استلم من أول السنة"]:[],["المبيعات","الرصيد","نسبة ما بيع","يكفي (يوماً)","أرسل من المستودع","يستقبل تحويلاً","يُسحب منه","راكد","ينقصه بلا مصدر"]),rows:()=>S.map(s=>[DATA.st[s.ti],(IST[s.st]||IST.ok)[0]].concat(rcOn?[s.rc]:[],[s.sold,s.on,s.thru==null?"":Math.round(s.thru*1000)/10+"%",s.cover==null?"":Math.round(s.cover),s.give||"",s.tin||"",s.tout||"",s.idlePcs||"",s.unmet||""])),prn:{ttl:"تحليل صنف "+code+(sub?" ("+sub+")":""),sub:V[0]+" — "+V[2]+(vnm?" · المورد: "+vnm:""),note:P?"الفترة "+P.from+" ← "+P.to:"المبيعات من أول السنة"}};
+ const brT='<div class="stk-pan"><h3 class="stk-ph">أداء كل فرع</h3><div class="stk-ist">'+stSum+'</div><div class="stk-bar stk-pvb" style="margin:0 0 8px"><span class="stk-seg" role="tablist" style="margin:0">'+seg("isort",["sold",so==="sold"],"الأعلى مبيعاً")+seg("isort",["st",so==="st"],"الأحوج أولاً")+seg("isort",["on",so==="on"],"الأكثر رصيداً")+'</span></div><div class="tw"><table class="stk-t stk-it"><thead><tr><th>الفرع</th><th>الحالة</th>'+(rcOn?'<th class="n">استلم</th>':"")+'<th class="n">باع</th><th></th><th class="n">الرصيد</th><th class="n">نسبة ما بيع</th><th class="n">يكفي (يوماً)</th><th>المقترح</th></tr></thead><tbody>'+S.slice(0,lim).map(rowS).join("")+"</tbody></table></div>"+(S.length>lim?'<button class="bt s stk-more" type="button" data-sk="iall">عرض كل الفروع ('+fmt(S.length-lim)+" أخرى)</button>":"")+'<p class="stk-src" style="margin:8px 4px 0">«نسبة ما بيع» = المبيعات ÷ (المبيعات + الرصيد). «يكفي» = رصيد الفرع ÷ معدل بيعه اليومي. «المقترح» من قواعد النواقص والتحويلات والراكد نفسها. اضغط اسم الفرع لنواقصه.</p></div>';
+ /* ---- 5) المقاسات والألوان ---- */
+ const szL=I.sizes.filter(x=>x.k!==""),clL=I.colors.filter(x=>x.k!==""),crv=(L,t,w)=>{if(L.length<2)return "";const mx=Math.max(0.0001,...L.map(x=>Math.max(x.ss,x.os)));
+  const hot=I.sold>0?L.filter(x=>x.gap>=0.05).sort((p,r)=>r.gap-p.gap)[0]:null,cold=I.sold>0?L.filter(x=>x.gap<=-0.05).sort((p,r)=>p.gap-r.gap)[0]:null;
+  return '<div class="stk-card"><h3>'+t+'</h3><p class="stk-itr">'+(hot?w+" "+b1(hot.k)+" يُباع أكثر من رصيده ("+pct(hot.ss)+" من البيع مقابل "+pct(hot.os)+" من الرصيد): قد ينقص. ":"")+(cold?w+" "+b1(cold.k)+" رصيده أكبر من بيعه ("+pct(cold.os)+" من الرصيد مقابل "+pct(cold.ss)+" من البيع).":"")+(!hot&&!cold?"الرصيد موزّع قريباً من البيع.":"")+'</p><div class="stk-crvl"><span><i class="s"></i>نصيبه من البيع</span><span><i class="o"></i>نصيبه من الرصيد</span></div><div class="stk-crv">'+L.slice(0,24).map(x=>'<b data-notr dir="ltr">'+E(x.k||"—")+'</b><div class="bars" title="باع '+fmt(x.sold)+" · رصيده "+fmt(x.on)+'"><i class="s" style="width:'+Math.round(x.ss/mx*100)+'%"></i><i class="o" style="width:'+Math.round(x.os/mx*100)+'%"></i></div><span class="n">'+pct(x.ss)+" · "+pct(x.os)+"</span>").join("")+"</div>"+(L.length>24?'<p class="stk-src">معروض 24 من '+fmt(L.length)+".</p>":"")+"</div>"};
+ const C1=UI.sz?"":crv(szL,"المقاسات","المقاس"),C2=UI.cl?"":crv(clL,"الألوان","اللون");
+ // خريطة اللون × المقاس
+ let heat="";if(!UI.cl&&!UI.sz&&clL.length>1&&szL.length>1&&clL.length<=40){const M=itemPivot(DATA,CFG,code,{period:P,rows:"color",cols:"size"}),hv=UI.ihm==="sold"?"sold":"on",mxh=Math.max(1,...M.rows.map(r=>Math.max(...M.cols.map(c=>{const x=M.cell(r.k,c.k);return x?Math.max(0,x[hv]):0}))));
+  heat='<div class="stk-pan"><h3 class="stk-ph">خريطة اللون × المقاس</h3><div class="stk-bar stk-pvb" style="margin:0 0 8px"><span class="stk-seg" role="tablist" style="margin:0">'+seg("ihm",["on",hv==="on"],"الرصيد")+seg("ihm",["sold",hv==="sold"],"المبيعات")+'</span><span class="stk-src" style="margin:0">كلما اغمقّت الخانة زاد الرقم. الإطار الأحمر: بيع منه ورصيده صفر.</span></div><div class="tw"><table class="stk-t stk-hm"><thead><tr><th>اللون</th>'+M.cols.map(c=>'<th class="n" data-notr dir="ltr">'+E(c.k||"—")+"</th>").join("")+'<th class="n">الإجمالي</th></tr></thead><tbody>'+M.rows.map(r=>'<tr><td data-notr dir="ltr">'+E(r.k||"—")+"</td>"+M.cols.map(c=>{const x=M.cell(r.k,c.k),v=x?x[hv]:0,al=v>0?Math.round((0.1+0.7*v/mxh)*100)/100:0,out=x&&x.sold>0&&x.on<=0;return '<td class="n'+(out?" out":"")+(al>0.5?" dk":"")+'" style="background:rgba(138,90,131,'+al+')" title="'+(x?"الرصيد "+fmt(x.on)+" · المبيعات "+fmt(x.sold):"لا شيء")+'">'+(x&&(x.on||x.sold)?fmt(v):"·")+"</td>"}).join("")+'<td class="n t"><b>'+fmt(r[hv])+"</b></td></tr>").join("")+'<tr class="tot"><td>الإجمالي</td>'+M.cols.map(c=>'<td class="n">'+fmt(c[hv])+"</td>").join("")+'<td class="n"><b>'+fmt(M.tot[hv])+"</b></td></tr></tbody></table></div></div>"}
+ /* ---- 6) الجدول الحر ---- */
+ const pr=UI.pr||"store",pc0=UI.pc===undefined?"size":UI.pc,pc=pc0===pr||(pr==="var"&&(pc0==="color"||pc0==="size"))?"":pc0,pv=UI.pv==="rc"&&!DATA.hasRc?"on":UI.pv||"on";let PVH="";
+ if(UI.ipv){const keep=LASTX;PVH=pivotView(code,P,pr,pc,pv);LASTX=keep}
+ const adv='<div class="stk-act" style="margin:12px 0"><button class="bt" type="button" data-sk="ipvt">'+(UI.ipv?"إخفاء الجدول الحر":"📊 جدول حر: اختر الصفوف والأعمدة بنفسك")+"</button></div>"+PVH;
+ return bar+gapNote(P)+hero+'<div class="stk-tiles">'+T.join("")+"</div>"+acts+(trend||C1||C2?'<div class="stk-up">'+trend+C1+C2+"</div>":"")+brT+heat+adv;
 }
 // الجدول المحوري للصنف
 function pivotView(code,P,pr,pc,pv){
@@ -1610,7 +1683,7 @@ function paint(keepFocus){
  if(id&&keepFocus!==false){const el=g(id);if(el&&el.focus){try{el.focus({preventScroll:true});if(s0&&s0[0]!=null&&el.setSelectionRange)el.setSelectionRange(s0[0],s0[1])}catch(e){}}}
  // فترة تحتاج شهوراً لم تُحمَّل بعد
  const homeNeed=()=>{const p=period(),e=qEnd(),b=dHas()?{from:addDays(e,-59),to:e}:null;return p&&b?{from:p.from<b.from?p.from:b.from,to:p.to>b.to?p.to:b.to}:p||b};
- const P=UI.tab==="home"?homeNeed():UI.tab==="ask"?askNeed():UI.tab==="sales"?(UI.from&&UI.to&&UI.from<=UI.to&&UI.code?{from:UI.from,to:UI.to}:null):(UI.tab==="up"||UI.tab==="cfg"?null:period());
+ const P=UI.tab==="home"?homeNeed():UI.tab==="item"?itemNeed():UI.tab==="ask"?askNeed():UI.tab==="sales"?(UI.from&&UI.to&&UI.from<=UI.to&&UI.code?{from:UI.from,to:UI.to}:null):(UI.tab==="up"||UI.tab==="cfg"?null:period());
  if(P&&!BUSY&&META&&META.d&&DATA&&months(P.from,P.to).some(ym=>META.d[ym]&&!DATA.d[ym]&&!MFAIL[ym]))needMonths(P.from,P.to);
 }
 const later=()=>{clearTimeout(PT);PT=setTimeout(()=>paint(),260)};
@@ -1628,6 +1701,11 @@ function wire(){
   else if(a==="more"){UI.lim+=400;paint()}
   else if(a==="xls")csv();
   else if(a==="prn")printX();
+  else if(a==="ibuy"){UI.q=UI.code;UI.vn="";UI.tab="buy";UI.bx=UI.code;UI.lim=200;paint(false);window.scrollTo(0,0)}
+  else if(a==="iall"){UI.iall=true;paint(false)}
+  else if(a==="ipvt"){UI.ipv=!UI.ipv;paint(false)}
+  else if(a==="isort"){UI.isort=t.dataset.v==="st"?"st":t.dataset.v==="on"?"on":"sold";paint(false)}
+  else if(a==="ihm"){UI.ihm=t.dataset.v==="sold"?"sold":"on";paint(false)}
   else if(a==="lxt"){UI.lx={w:t.dataset.w||"",t:"store",v:""};paint(false);const el=g("stk-lxw");if(el){try{el.scrollIntoView({block:"center"})}catch(x){}}}
   else if(a==="lxx"){UI.lx=null;paint(false)}
   else if(a==="lxs")lexSaveForm();
