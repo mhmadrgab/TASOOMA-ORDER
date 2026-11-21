@@ -734,6 +734,7 @@ async function publish(quiet){
  finally{PUBBUSY=false;if(!quiet){BUSY="";paint()}}
 }
 async function onFiles(files){
+ if(X.ro){if(X.toast)X.toast("رفع الملفات للأدمن ومالك النظام فقط");return}
  if(BUSY||!files||!files.length)return;REP=[];UI.rec=null;MFAIL={};
  if(typeof CompressionStream==="undefined"||typeof DecompressionStream==="undefined"){REP=[{kind:"r",t:"هذا المتصفح قديم ولا يستطيع قراءة ملفات الإكسل هنا. استخدم Chrome أو Edge حديثاً."}];paint();return}
  for(const f of [...files]){const nm=String(f.name||"ملف");
@@ -1182,7 +1183,8 @@ function vUp(){
  const pub=has?`<div class="stk-card"><h3>📤 النشر للفروع</h3><p>تشاهد الفروع وهي تكتب ورقة النواقص هل الصنف «متوفر» أو «كمية قليلة» أو «غير متوفر» في المستودع (بلا أرقام)، ولكل فرع «طلب مقترح» بالأصناف التي رصيده منها أقل من الحد وكانت تُباع عنده. يُنشر تلقائياً مع كل ملف كميات ومع حفظ القواعد.</p>
  <div class="stk-day"><span style="width:auto;flex:1;direction:rtl">آخر نشر</span><b data-notr>${PUB&&PUB.at?E(new Date(N(PUB.at)).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})):"لم يُنشر بعد"}</b></div>
  <button class="bt p" type="button" data-sk="pub" style="margin-top:8px">📤 انشر للفروع الآن</button></div>`:"";
- return `${pub}<label class="stk-drop" id="stk-drop"><input type="file" id="stk-file" accept=".xlsx,.csv" multiple><b>⬆️ ارفع ملفات اليوم</b><small>اختر ملف الكميات وملف التاريخ معاً (أو اسحبهما هنا). المنصة تتعرّف على كل ملف من أعمدته وتربط بينهما.</small></label>
+ const drop=X.ro?`<div class="stk-rep">صلاحيتك في هذا القسم للمشاهدة والتحليل. رفع الملفات والنشر للفروع وتعديل القواعد للأدمن ومالك النظام.</div>`:pub+`<label class="stk-drop" id="stk-drop"><input type="file" id="stk-file" accept=".xlsx,.csv" multiple><b>⬆️ ارفع ملفات اليوم</b><small>اختر ملف الكميات وملف التاريخ معاً (أو اسحبهما هنا). المنصة تتعرّف على كل ملف من أعمدته وتربط بينهما.</small></label>`;
+ return `${drop}
  ${REP.map(r=>`<div class="stk-rep ${r.kind==="g"?"g":r.kind==="w"?"w":"r"}">${r.f?`<b data-notr>${E(r.f)}</b> — `:""}${E(r.t)}</div>`).join("")}
  <div class="stk-up"><div class="stk-card"><h3>📦 ملف الكميات</h3>${q?`<p>آخر رفع: <b data-notr dir="ltr">${dts(q.at)}</b>${q.src?` · <span data-notr>${E(q.src)}</span>`:""}</p><p>${fmt(q.rows)} سطر · ${fmt(q.skus)} صنف (كود ولون ومقاس)</p><p>الرصيد ${fmt(q.on)} قطعة · المبيعات ${fmt(q.sold)} قطعة${q.from?` · من <span data-notr dir="ltr">${E(q.from)}</span> إلى <span data-notr dir="ltr">${E(addDays(q.to,-1))}</span>`:""}</p>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه <b data-notr>OH_QTY</b> (الكمية) بلا تاريخ.</p>`}</div>
  <div class="stk-card"><h3>📅 ملف التاريخ</h3>${yms.length?`<p>${yms.length} شهر محفوظ · ${fmt(dsold)} قطعة مباعة${q?` · يغطي <b>${cov}%</b> من مبيعات ملف الكميات`:""}</p>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه السنة والشهر واليوم بلا كمية.</p>`}
@@ -1400,9 +1402,10 @@ function ansCode(a,P){
 }
 function body(){
  if(LOADING&&!DATA)return `<div class="stk-busy">جاري تحميل بيانات المخزون…</div>`;
+ if(X.ro&&UI.tab==="cfg")UI.tab="home";// (v194) صلاحية المشاهدة: بلا تبويب القواعد
  const has=DATA&&DATA.has,t=has?UI.tab:"up",q=META&&META.q;
  const hd=`<div class="stk-hd"><div><small>${q?`آخر ملف كميات: <span data-notr dir="ltr">${dts(q.at)}</span> · ${fmt(q.skus)} صنف${q.to?` · المبيعات حتى <span data-notr dir="ltr">${E(addDays(q.to,-1))}</span>`:""}`:"ارفع ملف الكميات لتبدأ"}</small></div></div>`;
- const tabs=`<nav class="stk-tabs" aria-label="أقسام تحليل المخزون">${TABS.filter(a=>has||a[0]==="up").map(a=>`<button type="button" class="${t===a[0]?"on":""}" data-sk="tab" data-t="${a[0]}">${a[1]} ${a[2]}</button>`).join("")}</nav>`;
+ const tabs=`<nav class="stk-tabs" aria-label="أقسام تحليل المخزون">${TABS.filter(a=>(has||a[0]==="up")&&!(X.ro&&a[0]==="cfg")).map(a=>`<button type="button" class="${t===a[0]?"on":""}" data-sk="tab" data-t="${a[0]}">${a[1]} ${a[2]}</button>`).join("")}</nav>`;
  const busy=BUSY?`<div class="stk-busy">${E(BUSY)} <span id="stk-pg" data-notr></span></div>`:"";
  // ملف الكميات أقدم من اليوم: الأرصدة المعروضة ليست أرصدة اللحظة
  const old=q&&q.to&&q.to<today()?Math.round((new Date(today()+"T12:00:00")-new Date(q.to+"T12:00:00"))/864e5):0;
@@ -1411,6 +1414,7 @@ function body(){
  const mf=Object.keys(MFAIL).sort(),mfl=mf.join(" · "),fail=mf.length&&t!=="up"&&t!=="cfg"?`<div class="stk-rep r">تعذّر تحميل مبيعات هذه الشهور من ملفات التاريخ: <b data-notr>${E(mfl)}</b>، فالمبيعات المعروضة للفترة ناقصة بقدرها. تأكد من الإنترنت ثم <button class="bt s" type="button" data-sk="mretry">أعد المحاولة</button></div>`:"";
  return hd+tabs+busy+(t!=="cfg"?stl:"")+fail+v;
 }
+const RO_ACT=["cfgsave","cfgdef","pub","mk","mkgo","dgo"];// ما لا يفعله صاحب صلاحية المشاهدة (والقواعد ترفضه أصلاً)
 let PT=0;
 function paint(keepFocus){
  if(!ROOT)return;const a=document.activeElement,id=a&&ROOT.contains(a)?a.id:"",s0=a&&id?[a.selectionStart,a.selectionEnd]:null;
@@ -1429,6 +1433,7 @@ function csv(){
 }
 function wire(){
  ROOT.addEventListener("click",e=>{const t=e.target.closest("[data-sk]");if(!t)return;const a=t.dataset.sk;
+  if(X.ro&&RO_ACT.indexOf(a)>=0){e.preventDefault();if(X.toast)X.toast("هذا الإجراء للأدمن ومالك النظام فقط");return}// (v194) صلاحية المشاهدة
   if(a==="fclr"){String(t.dataset.k||"").split(",").forEach(k=>{if(k==="st"||k==="vn"||k==="q"||k==="min"||k==="fr"||k==="tt"||k==="son")UI[k]=""});UI.trx=null;UI.lim=200;paint(false)}
   else if(a==="iclr"){UI.code="";UI.cl="";UI.sz="";paint(false);const el=g("stk-code");if(el)try{el.focus()}catch(x){}}
   else if(a==="tab"){if(UI.tab!==t.dataset.t){UI.q="";UI.fr="";UI.tt="";UI.trx=null}/* فتح تبويب باليد = عرض جديد بلا بحث الكود ولا زوج الفروع السابق */UI.tab=t.dataset.t;UI.lim=200;paint(false);window.scrollTo(0,0)}

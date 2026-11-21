@@ -3793,4 +3793,9 @@ export default {
 "مسح قائمة التركيز كلها؟":"Clear the whole focus list?",
 "إزالة":"Remove",
 "مورد ·":"vendors ·",
+/* v194 (21 نوفمبر 2026): صلاحية تحليل المخزون */
+"«تحليل المخزون»: يفتح القسم للمشاهدة والتحليل والإكسل فقط (رفع الملفات والقواعد وإنشاء الطلبات للأدمن ومالك النظام)، ويمنحه الأدمن أو مالك النظام حتى للمدير. «مراسلة الفروع»: يرى الفروع في الدردشة ويراسلها، ويظهر لها في قسم المستودع. «الدردشة مفتوحة»: إزالتها تقفل الدردشة كلها عن الموظف.":"“Stock analysis”: opens the section for viewing, analysis and Excel only (uploading files, rules and creating orders stay with the admin and system owner); granted by the admin or system owner, even to a manager. “Message branches”: sees the branches in chat and messages them, and appears to them under Warehouse. “Chat open”: removing it closes all chat for the employee.",
+"صلاحيتك في هذا القسم للمشاهدة والتحليل. رفع الملفات والنشر للفروع وتعديل القواعد للأدمن ومالك النظام.":"Your access to this section is for viewing and analysis. Uploading files, publishing to branches and editing the rules are for the admin and system owner.",
+"رفع الملفات للأدمن ومالك النظام فقط":"Uploading files is for the admin and system owner only",
+"هذا الإجراء للأدمن ومالك النظام فقط":"This action is for the admin and system owner only",
 };

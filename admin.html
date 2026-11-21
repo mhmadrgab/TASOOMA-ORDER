@@ -223,7 +223,7 @@ const TABS=[
  ["cus","💵","العهدة",()=>see("cus")&&secOk("cus"),null,"fin"],
  ["gift","🎁","الهدايا",()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift"),()=>giftPend(),"fin"],
  // 📊 (v173) تحليل المخزون من تقارير السيستم: للأدمن ومالك النظام فقط (والقواعد كذلك)
- ["stk","📊","تحليل المخزون",()=>ROLE.owner===true,null,"fin"],
+ ["stk","📊","تحليل المخزون",()=>ROLE.owner===true||(ROLE.p.stk===true&&ROLE.v!==true),null,"fin"],
  ["chat","💬","الدردشة",()=>ROLE.owner===true||ROLE.p.nc!==true,()=>bcUnread(),"com"],
  ["set","⚙","الإعدادات",()=>ROLE.admin,null,"sys"],
  ["log","📜","السجل",()=>(ROLE.owner===true||ROLE.v===true)&&secOk("log"),null,"sys"]];
@@ -384,7 +384,8 @@ function start(){
  if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
  if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm"||sub==="lk")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,co:ROLE.co===true,lock:()=>LOCK,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
- if(ROLE.owner===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH});// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
+ if(ROLE.owner===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH});
+ else if(ROLE.p.stk===true&&ROLE.v!==true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,ro:true,me:{e:me,get n(){return ROLE.name||me}},branches:()=>BR.map(code),ship:()=>SH});/* (v194) صلاحية «تحليل المخزون»: مشاهدة وتحليل فقط */// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
  // النسخة الاحتياطية: لمالك النظام بس
  initBackup({db,toast,owner:ROLE.owner===true,redraw:draw});
