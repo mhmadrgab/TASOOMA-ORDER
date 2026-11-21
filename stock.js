@@ -517,6 +517,8 @@ function askTable(ctx){
 }
 const STW=new Set(["فرع","الفرع","بفرع","لفرع","محل","المحل","مخزن","المخزن","معرض","branch","store","shop"]),CDW=new Set(["كود","الكود","صنف","الصنف","موديل","الموديل","code","item","model","sku"]),SZW=new Set(["مقاس","المقاس","مقاسات","قياس","نمره","size"]);
 const UNITS={"يوم":1,"ايام":1,"يوما":1,"day":1,"days":1,"اسبوع":7,"اسابيع":7,"week":7,"weeks":7,"شهر":30,"شهور":30,"اشهر":30,"month":30,"months":30},DUAL={"يومين":2,"اسبوعين":14,"شهرين":60};
+// حشو الأسئلة بالعربية (بعد توحيد الحروف): لا يُسأل المستخدم عن معناه
+const ARFILL=new Set("كام كم وكام وكم باع باعت بيع بيعت اتباع اتباعت مباع مبيعات مبيعاته مبيعاتها مبيعا عنده عندها عندنا عندهم وعنده رصيد رصيده رصيدها رصيدا موجود متوفر متاح من في الي علي عن مع هل ايه ايش وش ما ماذا هو هي ده دي دا هذا هذه اللي الذي التي عايز عاوز اريد ابغي ابي اعرف اشوف شوف شوفلي وريني هات هاتلي قولي قلي كل منه منها فيه فيها بتاع بتاعه بتاعت سمحت ممكن طيب قطعه قطع حبه حبات عدد كميه كميات اجمالي مجموع لون الوان خلال فتره يوم ايام اسبوع شهر سنه بين حتي لحد الان دلوقتي حاليا كمان وكمان بس فقط ايضا تم قد كان كانت يكون نفس واحد منهم لنا لها عليه عليها اللى هناك هنا جدا اوي قوي حاجه شي شيء بقي يعني مثلا اذا لما عند الفتره المده وصل وصلت نزل نزلت دخل دخلت خرج طلع طلعت اجيب جيب جبلي عرفني اعطني اعطيني وريني خليني ابغا تبع حق حقه مال ماله استلم استلمت استلموا استلام مستلم وارد حلل حللي تحليل اعلي اقل اكثر اكتر ترتيب رتب رتبلي قارن مقارنه مقابل مين فين وين اين".split(" "));
 const ENSTOP=new Set(["the","in","of","at","for","from","to","and","how","many","much","sold","sales","sale","stock","has","have","did","does","on","hand","qty","quantity","last","this","year","since","until","till","show","me","what","is","was","by","with","between","received","receive"]);
 /* (v180) نوع السؤال: ترتيب «أكثر/أقل»، «مين عنده»، المقارنة، والمورد */
 const RK_D=new Set(["اكتر","اكثر","الاكتر","الاكثر","اعلي","الاعلي","افضل","الافضل","اكبر","الاكبر","ترتيب","رتب","رتبلي","top","most","best","highest","rank","ranking"]),RK_A=new Set(["اقل","الاقل","اضعف","الاضعف","اسوا","الاسوا","اصغر","least","lowest","worst","bottom"]);
@@ -642,6 +644,8 @@ export function parseAsk(text,ctx){
   for(let i=0;i<W.length&&!out.z;i++){if(U[i])continue;const z=sz.get(W[i])||(W[i+1]&&!U[i+1]?sz.get(W[i]+W[i+1]):undefined);if(!z)continue;if(/^[a-z]+$/.test(W[i])&&!SZW.has(W[i-1]||""))continue;out.z=z;U[i]=true;if(!sz.get(W[i]))U[i+1]=true}}
  /* 5) ما لم يُفهم: الكلمات التي فيها أرقام أو حروف لاتينية فقط (الكلمات العربية الباقية حشو السؤال) */
  for(let i=0;i<W.length;i++){if(U[i])continue;const w=W[i];if(/[a-z0-9]/.test(w)&&!ENSTOP.has(w)&&!STW.has(w)&&!CDW.has(w)&&!SZW.has(w)&&!UNITS[w]&&out.unk.indexOf(w)<0)out.unk.push(w)}
+ // (v196) كلمات عربية بقيت بلا استعمال وليست من حشو الأسئلة المعروف: تُعرض بهدوء ليعلّم المستخدم المنصةَ معناها (لا تُعدّ خطأ)
+ out.left=[];for(let i=0;i<W.length;i++){if(U[i])continue;const w=W[i],b0=bare(w);if(/^[\u0621-\u064A]{3,}$/.test(w)&&!ARFILL.has(w)&&!ARFILL.has(b0)&&!ENT_P[w]&&!ENT_S[w]&&!ENT_P[b0]&&!ENT_S[b0]&&!STW.has(w)&&!CDW.has(w)&&!SZW.has(w)&&out.left.indexOf(w)<0&&out.unk.indexOf(w)<0)out.left.push(w)}
  if(out.cmp&&out.cmp.codes){out.rank=null;out.where=false}// «13016 و15002 مين الأعلى» = مقارنة أكواد، لا ترتيب ولا «مين عنده»
  if(cmpW&&!out.cmp)out.cmp={need:1};// «قارن» بلا فرعين ولا فترة: يُطلب منه ما يقارنه
  if(out.rc&&out.where&&!out.rank&&out.code&&!(out.cmp&&!out.cmp.need)){out.where=false;out.rank={dir:-1,n:40,by:"store",m:"rc"}}// (v191) «مين استلم الكود» = الفروع مرتّبة بالمستلم
@@ -672,6 +676,7 @@ async function load(){
  try{const fb=await FB();const m=await fb.getDoc(fb.doc(X.db,"stk","meta"));META=m.exists()?m.data():null;
   try{const c=await fb.getDoc(fb.doc(X.db,"stk","cfg"));if(c.exists())CFG=Object.assign({},DEF,c.data())}catch(e){}
   try{const c=await fb.getDoc(fb.doc(X.db,"stk","sent"));SENT=c.exists()&&Array.isArray(c.data().l)?c.data().l:[]}catch(e){SENT=[]}
+  try{const c=await fb.getDoc(fb.doc(X.db,"stk","lex"));lexFromDb(c.exists()?c.data():null)}catch(e){}// (v197) القاموس المشترك
   await loadPub();
   DATA=newData();SOLDC={};
   if(META&&META.q&&N(META.q.parts)>0){const z=await getParts(fb,"q",N(META.q.parts));if(z)loadQ(DATA,JSON.parse(await gun(z)))}
@@ -813,6 +818,7 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 .stk-busy{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--acc);border-radius:12px;padding:10px 14px;margin:0 0 12px;font-weight:700}.stk-busy::before{content:"";width:16px;height:16px;border:2.5px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:ui-spin .7s linear infinite}
 :where([data-theme=dark]) .stk-tabs button.on{color:#141015}:where([data-theme=dark]) .stk-rep.r,:where([data-theme=dark]) .stk-mx td.need{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .stk-rep.w,:where([data-theme=dark]) .stk-mx td.idle{background:#3a2a08;color:#f6c770}:where([data-theme=dark]) .stk-t .z{color:#f1a5a0}:where([data-theme=dark]) .stk-t .no{color:#f6c770}
 @media (max-width:760px){.stk-up{grid-template-columns:1fr}.stk-bar label{flex:1 1 calc(50% - 4px)}.stk-bar select,.stk-bar input,.stk-bar input[type=number],.stk-bar input[type=search],.stk-bar input[type=text]{width:100%}.stk-bar .sp{display:none}.stk-bar .bt{flex:1 1 calc(50% - 4px)}}
+.stk-lxf{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1.5px solid var(--acc);border-radius:12px;background:var(--soft)}.stk-lxf label{display:block;font-size:12.5px;color:var(--mut)}.stk-lxf input,.stk-lxf select{display:block;margin-top:3px;min-width:150px}.stk-lxf small{flex-basis:100%}.stk-lxl{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}.stk-chips button.stk-lxu{padding:4px 8px;min-width:0;margin-inline-start:-4px;color:var(--mut)}
 .stk-selb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:8px 12px;margin:0 0 12px;font-size:13.5px}.stk-selb .sp{flex:1}.stk-selb small{flex-basis:100%}.stk-t th.ck,.stk-t td.ck{width:38px;text-align:center;padding-inline:6px}.stk-t td.ck input,.stk-t th.ck input{width:19px;height:19px;margin:0;cursor:pointer;accent-color:var(--acc)}.stk-rvh{margin:14px 0 6px;font-size:15px}.stk-rvh small{color:var(--mut);font-weight:400;margin-inline-start:8px}
 @media print{.stk-tabs,.stk-bar,.stk-drop,.stk-more{display:none!important}#pa.stkp{font-size:10pt}#pa.stkp .ph h2{font-size:17pt}#pa.stkp .ps{font-size:14pt;font-weight:700;margin:0 0 2mm;unicode-bidi:plaintext}#pa.stkp .pi{font-size:9pt;color:#444;margin:0 0 3mm}#pa.stkp .pt{width:100%;border-collapse:collapse}#pa.stkp .pt th,#pa.stkp .pt td{border:1px solid #777;padding:1.3mm 1.6mm;text-align:center;font-size:9.5pt;unicode-bidi:plaintext}#pa.stkp .pt th{background:#eee;font-size:9pt}#pa.stkp .pt td.bl{min-width:26mm}}`;
 const TABS=[["home","🚨","اليوم"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["sales","📅","مبيعات بالتاريخ"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
@@ -1278,8 +1284,83 @@ const askNeed=()=>{const a=UI.a;if(!a||!DATA||!DATA.has)return null;const P=askP
 function kindA(a){if(!a)return "";const c=a.cmp;if(c&&((c.st&&c.st.length>1)||(c.a&&c.b)||(c.codes&&c.codes.length>1)))return "x";if(a.rank)return "r";if(a.where&&a.code&&!a.store)return "w";if(a.vendor&&!a.code)return "v";return a.code?"c":a.store?"s":""}
 const hGet=()=>{try{const a=JSON.parse(localStorage.getItem("stk_ask")||"[]");return Array.isArray(a)?a.filter(x=>typeof x==="string"&&x).slice(0,8):[]}catch(e){return []}};
 const hAdd=q=>{try{localStorage.setItem("stk_ask",JSON.stringify([q].concat(hGet().filter(x=>x!==q)).slice(0,8)))}catch(e){}};
-function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||!DATA||!DATA.has){UI.a=null;paint(false);return}UI.a=parseAsk(q,askCtx());hAdd(q);paint(false)}
+function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||!DATA||!DATA.has){UI.a=null;paint(false);return}
+ const L=lexLoad(),q2=lexApply(q,L.d);UI.a=parseAsk(q2,askCtx());UI.a.q2=q2!==q.split(/\s+/).join(" ")?q2:"";hAdd(q);
+ // (v196) عدّاد التكرار + سجل ما لم يُفهم (على الجهاز)
+ const e=L.f[q]||(L.f[q]={n:0,at:0});e.n=N(e.n)+1;e.at=Date.now();lexSave();lexLogUnk((UI.a.unk||[]).concat(UI.a.left||[]),q);paint(false)}
 let EXC=null;// أمثلة من بيانات الملف نفسه (أعلى كود وأعلى فرع مبيعاً)
+/* (v196) 📖 «اسأل» تتعلّم من المستخدم: قاموسه الخاص (كلمة أو عبارة ← معناها)، أسئلته المثبّتة والمتكررة، وسجل ما لم يُفهم.
+   كله على الجهاز (localStorage.stk_lex). القاموس يستبدل العبارة بنص تفهمه القواعد الثابتة قبل الفهم، فالحساب نفسه لا يتغيّر */
+// معانٍ جاهزة: [المفتاح، ما يظهر للمستخدم، النص الذي تفهمه القواعد]
+export const LEX_MEAN=[["top","الأكثر (ترتيب من الأعلى)","اكثر"],["low","الأقل (ترتيب من الأقل)","اقل"],["sold","المبيعات / مبيعاً","مبيعا"],["on","الرصيد / رصيداً","رصيدا"],["rc","المستلم / استلم","استلم"],["who","مين عنده الصنف","مين عنده"],["cmp","قارن","قارن"],
+ ["d7","آخر 7 أيام","اخر 7 يوم"],["d30","آخر 30 يوماً","اخر 30 يوم"],["d60","آخر 60 يوماً","اخر 60 يوم"],["m0","الشهر الحالي","الشهر ده"],["m1","الشهر الماضي","الشهر اللي فات"],["td","اليوم","اليوم"],["yd","أمس","امس"],["codes","أكواد","اكواد"],["stores","فروع","فروع"],["vendors","موردين","موردين"]];
+// يستبدل عبارات القاموس (مطابقة كلمات كاملة بعد توحيد الحروف، الأطول أولاً) ويبقي باقي السؤال كما هو
+export function lexApply(q,dict){
+ const W=String(q||"").split(/\s+/).filter(Boolean);if(!W.length||!dict||!dict.length)return W.join(" ");const NW=W.map(normAr);
+ const D=dict.map(e=>({k:normAr(e.w).split(/\s+/).filter(Boolean),r:String(e.r||"")})).filter(e=>e.k.length).sort((a,b)=>b.k.length-a.k.length),out=[];
+ for(let i=0;i<W.length;){let hit=null;for(const e of D){if(i+e.k.length>W.length)continue;let ok=true;for(let j=0;j<e.k.length;j++)if(NW[i+j]!==e.k[j]){ok=false;break}if(ok){hit=e;break}}
+  if(hit){if(hit.r)out.push(hit.r);i+=hit.k.length}else{out.push(W[i]);i++}}
+ return out.join(" ");
+}
+let LEX=null;
+// (v197) القاموس والسجل والمثبّتة صارت مشتركة في القاعدة (stk/lex) لكل من يفتح له القسم؛ النسخة على الجهاز كاش واحتياط. عدّاد التكرار (f) يبقى شخصياً على الجهاز
+const lexLoad=()=>{if(LEX)return LEX;let o=null;try{o=JSON.parse(localStorage.getItem("stk_lex")||"null")}catch(e){}o=o&&typeof o==="object"?o:{};
+ const f=o.f&&typeof o.f==="object"?o.f:{};
+ LEX={d:Array.isArray(o.d)?o.d.filter(e=>e&&typeof e.w==="string"&&typeof e.r==="string"):[],f,u:Array.isArray(o.u)?o.u.filter(e=>e&&typeof e.w==="string"):[],p:Array.isArray(o.p)?o.p.filter(x=>typeof x==="string"):Object.keys(f).filter(k=>f[k]&&f[k].pin),open:false};lexTrim(LEX);return LEX};
+const lexTrim=T=>{const S=(v,n)=>String(v==null?"":v).slice(0,n);
+ T.d=(Array.isArray(T.d)?T.d:[]).filter(e=>e&&typeof e.w==="string"&&e.w.trim()).slice(0,300).map(e=>({w:S(e.w,40),r:S(e.r,80),l:S(e.l,90),t:S(e.t,8)}));
+ T.u=(Array.isArray(T.u)?T.u:[]).filter(e=>e&&typeof e.w==="string"&&e.w).slice(0,100).map(e=>({w:S(e.w,40),q:S(e.q,120),at:N(e.at)}));
+ T.p=(Array.isArray(T.p)?T.p:[]).filter(x=>typeof x==="string"&&x).slice(0,60).map(x=>S(x,200));return T};
+// تعديل مشترك: يُطبَّق على الجهاز فوراً، ثم يُقرأ ما في القاعدة ويُطبَّق عليه نفس التعديل ويُحفظ (فلا يمسح أحد ما علّمه غيره)
+let LEXQ=Promise.resolve(),LEXW=true;
+function lexDb(mut){
+ const L=lexLoad();mut(L);lexTrim(L);lexSave();if(!X||!X.db)return LEXQ;
+ LEXQ=LEXQ.then(async()=>{try{const fb=await FB(),ref=fb.doc(X.db,"stk","lex"),s=await fb.getDoc(ref),R=s.exists()?s.data():{},T=lexTrim({d:R.d,u:R.u,p:R.p});mut(T);lexTrim(T);
+   await fb.setDoc(ref,{d:T.d,u:T.u,p:T.p,at:Date.now(),by:by().e});L.d=T.d;L.u=T.u;L.p=T.p;lexSave();try{localStorage.setItem("stk_lex_sync","1")}catch(e){}LEXW=true;paint()}
+  catch(e){if(LEXW&&X&&X.toast)X.toast("تعذّر حفظ القاموس للجميع، فبقي على هذا الجهاز فقط. تأكد من لصق القواعد الجديدة.");LEXW=false}});
+ return LEXQ}
+// عند فتح القسم: ما في القاعدة هو المرجع. أول مرة فقط يُرفع ما كان محفوظاً على هذا الجهاز قبل التحديث
+function lexFromDb(R){
+ const L=lexLoad();let first=false;try{first=localStorage.getItem("stk_lex_sync")!=="1"}catch(e){}
+ const T=lexTrim({d:R&&R.d,u:R&&R.u,p:R&&R.p}),mine={d:L.d.slice(),p:L.p.slice()};
+ const missD=mine.d.filter(e=>!T.d.some(x=>normAr(x.w)===normAr(e.w))),missP=mine.p.filter(q=>T.p.indexOf(q)<0);
+ L.d=T.d;L.u=T.u;L.p=T.p;lexSave();
+ if(first&&(missD.length||missP.length))lexDb(Z=>{missD.forEach(e=>{if(!Z.d.some(x=>normAr(x.w)===normAr(e.w)))Z.d.push(e)});missP.forEach(q=>{if(Z.p.indexOf(q)<0)Z.p.push(q)})});
+ else{try{localStorage.setItem("stk_lex_sync","1")}catch(e){}}}
+// كلمات لم تُفهم: تُجمع ثم تُكتب في القاعدة دفعة واحدة بعد ثوانٍ (لا كتابة مع كل سؤال)
+let LEXP=[],LEXPT=0;
+const lexLogUnk=(words,q)=>{const L=lexLoad();let add=0;words.forEach(w=>{const k=normAr(w);if(k.length<2||lexKnown(w)||L.u.some(x=>normAr(x.w)===k)||LEXP.some(x=>normAr(x.w)===k))return;LEXP.push({w:String(w).slice(0,40),q:String(q).slice(0,120),at:Date.now()});add++});
+ if(!add)return;clearTimeout(LEXPT);LEXPT=setTimeout(()=>{const P=LEXP;LEXP=[];if(P.length)lexDb(T=>{P.forEach(e=>{const k=normAr(e.w);if(!T.u.some(x=>normAr(x.w)===k)&&!T.d.some(x=>normAr(x.w)===k))T.u.unshift(e)})})},4000)};
+const lexSave=()=>{try{const ks=Object.keys(LEX.f);if(ks.length>80)ks.sort((a,b)=>(LEX.f[b].pin?1e15:0)+N(LEX.f[b].at)-((LEX.f[a].pin?1e15:0)+N(LEX.f[a].at))).slice(80).forEach(k=>{delete LEX.f[k]});localStorage.setItem("stk_lex",JSON.stringify({d:LEX.d,f:LEX.f,u:LEX.u,p:LEX.p}))}catch(e){}};
+const lexKnown=w=>{const k=normAr(w);return lexLoad().d.some(e=>{const n=normAr(e.w);return n===k||n.split(/\s+/).indexOf(k)>=0})};// كلمة عُلِّمت وحدها أو ضمن عبارة
+const lexTypes=[["store","فرع"],["vendor","مورد"],["code","كود"],["mean","معنى جاهز"],["skip","تجاهلها (كلمة زائدة)"]];
+function lexForm(){
+ const x=UI.lx;if(!x)return "";const t=x.t||"store";let val="";
+ if(t==="store")val='<label>الفرع<select data-lx="v" id="stk-lxv">'+opt(stores(0),x.v,"اختر الفرع…")+"</select></label>";
+ else if(t==="vendor")val='<label>المورد<select data-lx="v" id="stk-lxv">'+opt(vendors(),x.v,"اختر المورد…")+"</select></label>";
+ else if(t==="code")val='<label>الكود<input type="text" data-lx="v" id="stk-lxv" dir="ltr" autocomplete="off" value="'+E(x.v||"")+'" placeholder="13016"></label>';
+ else if(t==="mean")val='<label>المعنى<select data-lx="v" id="stk-lxv"><option value="">اختر المعنى…</option>'+LEX_MEAN.map(m=>'<option value="'+m[0]+'"'+(x.v===m[0]?" selected":"")+">"+m[1]+"</option>").join("")+"</select></label>";
+ return '<div class="stk-lxf"><b>📖 علّمني</b><label>ما تكتبه أنت (كلمة أو عبارة)<input type="text" data-lx="w" id="stk-lxw" value="'+E(x.w||"")+'" maxlength="40" autocomplete="off"></label><label>تعني<select data-lx="t" id="stk-lxt">'+lexTypes.map(a=>'<option value="'+a[0]+'"'+(t===a[0]?" selected":"")+">"+a[1]+"</option>").join("")+"</select></label>"+val+'<button class="bt p s" type="button" data-sk="lxs">حفظ</button><button class="bt s" type="button" data-sk="lxx">إلغاء</button><small class="off">بعد الحفظ أفهمها في كل سؤال، بأي طريقة يُكتب بها باقي السؤال، ولكل من يفتح «تحليل المخزون».</small></div>'}
+function lexBox(){
+ const L=lexLoad(),q=String(UI.aq||"").trim(),F=L.f,pins=L.p.slice(0,14),freq=Object.keys(F).filter(k=>F[k]&&L.p.indexOf(k)<0&&N(F[k].n)>=3).sort((a,b)=>N(F[b].n)-N(F[a].n)).slice(0,6);
+ const ch=x=>'<button type="button" data-sk="ex" data-x="'+E(x)+'" data-notr>'+E(x)+"</button>",un=L.u.filter(e=>!lexKnown(e.w));
+ let h="";if(pins.length)h+='<div class="stk-chips"><i>⭐ المثبّتة</i>'+pins.map(x=>ch(x)+'<button type="button" class="stk-lxu" data-sk="lxup" data-x="'+E(x)+'" title="إلغاء التثبيت" aria-label="إلغاء التثبيت">✕</button>').join("")+"</div>";
+ if(freq.length)h+='<div class="stk-chips"><i>تسألها كثيراً</i>'+freq.map(ch).join("")+"</div>";
+ h+='<div class="stk-act" style="margin:10px 0 0">'+(q?'<button class="bt s" type="button" data-sk="lxp">'+(L.p.indexOf(q)>=0?"إلغاء تثبيت هذا السؤال":"⭐ ثبّت هذا السؤال")+"</button>":"")+'<button class="bt s" type="button" data-sk="lxo">📖 قاموسي ('+fmt(L.d.length)+")"+(un.length?" · "+fmt(un.length)+" كلمة لم تُفهم":"")+"</button></div>"+lexForm();
+ if(L.open){h+='<div class="stk-lxl"><p class="stk-src">الكلمات التي تعلّمتُها منكم. مشتركة لكل من يفتح «تحليل المخزون»، وتُستبدل بمعناها قبل فهم السؤال.</p>'+(L.d.length?'<div class="stk-chips">'+L.d.map((e,i)=>'<button type="button" data-sk="lxd" data-i="'+i+'" title="حذف" data-notr>«'+E(e.w)+"» ← "+E(e.l||e.r||"تُتجاهل")+" ✕</button>").join("")+"</div>":'<p class="stk-src">لم تعلّمني شيئاً بعد. عندما لا أفهم كلمة في سؤالك سيظهر زر «علّمني» بجوارها.</p>')
+  +(un.length?'<p class="stk-src" style="margin-top:10px">كلمات لم أفهمها في أسئلتك (اضغط الكلمة لتعلّمني معناها):</p><div class="stk-chips">'+un.slice(0,30).map(e=>'<button type="button" data-sk="lxt" data-w="'+E(e.w)+'" title="'+E(e.q||"")+'" data-notr>'+E(e.w)+"</button>").join("")+'<button type="button" data-sk="lxuc">🗑 مسح السجل</button></div>':"")+"</div>"}
+ return h;
+}
+function lexSaveForm(){
+ const x=UI.lx,L=lexLoad();if(!x)return;const w=String(x.w||"").trim().replace(/\s+/g," ").slice(0,40),t=x.t||"store";let r="",l="";
+ if(!w){if(X.toast)X.toast("اكتب الكلمة أو العبارة");return}
+ if(t==="store"){if(!x.v||!DATA.sti.has(x.v)){if(X.toast)X.toast("اختر الفرع");return}r=x.v;l=x.v}
+ else if(t==="vendor"){if(!x.v||DATA.vn.indexOf(x.v)<0){if(X.toast)X.toast("اختر المورد");return}r=x.v;l="المورد "+x.v}
+ else if(t==="code"){const c=String(x.v||"").trim(),cc=DATA.code.has(c)?c:DATA.code.has(c.toUpperCase())?c.toUpperCase():"";if(!cc){if(X.toast)X.toast("الكود غير موجود في ملف الكميات");return}r=cc;l="الكود "+cc}
+ else if(t==="mean"){const m=LEX_MEAN.find(a=>a[0]===x.v);if(!m){if(X.toast)X.toast("اختر المعنى");return}r=m[2];l=m[1]}
+ else{r="";l=""}
+ const k=normAr(w);lexDb(T=>{T.d=T.d.filter(e=>normAr(e.w)!==k);T.d.unshift({w,r,l,t});T.u=T.u.filter(e=>normAr(e.w)!==k)});UI.lx=null;
+ if(X.toast)X.toast("✅ تعلّمتُ «"+w+"»");if(UI.aq)doAsk(UI.aq);else paint(false)}
 function askEx(en){
  if(!EXC||EXC.D!==DATA){const bc=new Map(),bs={},wh=DATA.sti.get(CFG.wh);DATA.q.forEach((a,ki)=>{if(!a)return;const c=DATA.k[ki][0];for(let j=0;j<a.length;j+=4){bc.set(c,(bc.get(c)||0)+a[j+2]);if(a[j]!==wh)bs[a[j]]=(bs[a[j]]||0)+a[j+2]}});
   let c="",cm=-1;bc.forEach((v,k)=>{if(v>cm&&/^[0-9A-Za-z]+$/.test(k)){cm=v;c=k}});const so=Object.keys(bs).filter(t=>/^\d{3}-/.test(DATA.st[t])&&ALIAS[DATA.st[t].slice(0,3)]).sort((x,y)=>bs[y]-bs[x]);
@@ -1297,7 +1378,7 @@ function vAsk(){
  const en=document.documentElement.classList.contains("tz-en"),a=UI.a,H=hGet(),X0=askEx(en);
  const box=`<div class="stk-card stk-ask"><h3>💬 اسأل عن أي صنف أو فرع أو مورد</h3><p>اكتب الكود أو الفرع أو المورد، ومعها الفترة إن أردت. وتستطيع أن تسأل: «أكثر 10 أكواد مبيعاً»، «مين عنده الكود»، «قارن فرعين» أو «قارن عدة أكواد»، أو «الشهر ده مقابل اللي فات». كل رقم يُحسب مباشرة من الملفين المرفوعين.</p>
  <div class="stk-askb"><input type="search" id="stk-ask" value="${E(UI.aq)}" placeholder="الكود، الفرع، المورد، الفترة" autocomplete="off" enterkeyhint="search" maxlength="200"><button class="bt p" type="button" data-sk="ask">اسأل</button></div>
- ${X0.length?`<div class="stk-chips"><i>أمثلة</i>${X0.map(chip).join("")}</div>`:""}${H.length?`<div class="stk-chips"><i>آخر أسئلتك</i>${H.map(chip).join("")}</div>`:""}</div>`;
+ ${X0.length?`<div class="stk-chips"><i>أمثلة</i>${X0.map(chip).join("")}</div>`:""}${H.length?`<div class="stk-chips"><i>آخر أسئلتك</i>${H.map(chip).join("")}</div>`:""}${lexBox()}</div>`;
  if(!a){LASTX=null;return box}
  const P=askP(),ids=a.code?DATA.code.get(a.code)||[]:[],cols=[...new Set(ids.map(k=>DATA.k[k][1]))].sort(),szs=[...new Set(ids.filter(k=>!a.cl||DATA.k[k][1]===a.cl).map(k=>DATA.k[k][2]))].sort((x,y)=>zk(x)-zk(y));
  const curZ=a.z,pEnd=P?P.to:"",K=kindA(a),B=askB(),cs=a.cmp&&a.cmp.st&&a.cmp.st.length>1?a.cmp.st:null,r=a.rank;
@@ -1314,7 +1395,9 @@ function vAsk(){
  if(a.cmp&&a.cmp.b&&!B)nt.push(`<div class="stk-rep w">فترة المقارنة: تاريخ البداية بعد تاريخ النهاية.</div>`);
  if(a.where&&!a.code&&K!=="r"&&K!=="x")nt.push(`<div class="stk-rep">«مين عنده» تحتاج كود الصنف: اكتبه في السؤال أو في خانة الكود.</div>`);
  if(K==="x"&&cs&&a.cmp.b)nt.push(`<div class="stk-rep">قارنتُ الفروع في الفترة الأولى فقط. لمقارنة فترتين اترك فرعاً واحداً.</div>`);
- if(a.unk.length)nt.push(`<div class="stk-rep">لم أفهم من سؤالك: <b data-notr>${E(a.unk.join(" · "))}</b> — لم يدخل في الحساب.</div>`);
+ if(a.left&&a.left.length)nt.push('<div class="stk-rep">كلمات في سؤالك لم أستعملها (اضغط الكلمة لتعلّمني معناها، أو تجاهلها): '+a.left.slice(0,6).map(w=>'<button class="bt s" type="button" data-sk="lxt" data-w="'+E(w)+'" data-notr>«'+E(w)+"»</button>").join(" ")+"</div>");
+ if(a.q2)nt.push('<div class="stk-rep">من قاموسك، قرأتُ السؤال هكذا: <b data-notr>'+E(a.q2)+"</b></div>");
+ if(a.unk.length)nt.push('<div class="stk-rep">لم أفهم من سؤالك: <b data-notr>'+E(a.unk.join(" · "))+"</b> — لم يدخل في الحساب. علّمني معناها: "+a.unk.slice(0,6).map(w=>'<button class="bt s" type="button" data-sk="lxt" data-w="'+E(w)+'" data-notr>«'+E(w)+"»</button>").join(" ")+"</div>");
  const rcOld=!(META&&META.q&&META.q.rc!==undefined),upB=`<button class="bt s" type="button" data-sk="tab" data-t="up">افتح «الملفات»</button>`;// rcOld: ملف الكميات المحفوظ رُفع قبل تحديث المستلم
  if(a.rc&&!DATA.hasRc)nt.push(rcOld?`<div class="stk-rep w">«المستلم» لم يُحفظ بعد: ملف الكميات الموجود على المنصة رُفع قبل تحديث «المستلم». ارفع ملف الكميات مرة أخرى من تبويب «الملفات» ليظهر المستلم هنا. ${upB}</div>`:`<div class="stk-rep w">«المستلم» غير متاح: ملف الكميات المرفوع ليس فيه عمود استلام صالح لكل فرع. ارفع ملف كميات فيه عمود المستلم ليظهر هنا. المتاح الآن: الرصيد والمبيعات. ${upB}</div>`);
  if(a.rc&&DATA.hasRc)nt.push(`<div class="stk-rep">«المستلم» من ملف الكميات، وهو من أول السنة حتى يوم التقرير${a.per==="c"?" (لا يتبع الفترة المختارة)":""}. يظهر في بطاقة الفرع وبطاقة الصنف.</div>`);
@@ -1494,6 +1577,14 @@ function wire(){
   else if(a==="more"){UI.lim+=400;paint()}
   else if(a==="xls")csv();
   else if(a==="prn")printX();
+  else if(a==="lxt"){UI.lx={w:t.dataset.w||"",t:"store",v:""};paint(false);const el=g("stk-lxw");if(el){try{el.scrollIntoView({block:"center"})}catch(x){}}}
+  else if(a==="lxx"){UI.lx=null;paint(false)}
+  else if(a==="lxs")lexSaveForm();
+  else if(a==="lxo"){const L=lexLoad();L.open=!L.open;paint(false)}
+  else if(a==="lxd"){const L=lexLoad(),e=L.d[N(t.dataset.i)];if(e){const k=normAr(e.w);lexDb(T=>{T.d=T.d.filter(x=>normAr(x.w)!==k)})}if(UI.aq&&UI.a)doAsk(UI.aq);else paint(false)}
+  else if(a==="lxuc"){lexDb(T=>{T.u=[]});paint(false)}
+  else if(a==="lxp"){const L=lexLoad(),q=String(UI.aq||"").trim().slice(0,200);if(q){const on=L.p.indexOf(q)<0;lexDb(T=>{T.p=T.p.filter(x=>x!==q);if(on)T.p.unshift(q)});paint(false)}}
+  else if(a==="lxup"){const q=t.dataset.x;lexDb(T=>{T.p=T.p.filter(x=>x!==q)});paint(false)}
   else if(a==="nmk"){if(!nSel().length){if(X.toast)X.toast("حدِّد السطور أولاً بالمربع في أول كل سطر");return}UI.nrx={q:{}};paint(false);try{ROOT.scrollIntoView({block:"start"})}catch(x){}}
   else if(a==="nmkx"){UI.nrx=null;paint(false)}
   else if(a==="nmkgo")nSend();
@@ -1589,10 +1680,11 @@ function wire(){
  // (v184) خانة الكود/البحث: الضغط عليها يحدّد ما فيها، فالكتابة تستبدله مباشرة (صنف آخر بلا مسح يدوي)
  let PF=0;ROOT.addEventListener("pointerdown",e=>{const t=e.target;PF=t&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")&&document.activeElement!==t?1:0});
  ROOT.addEventListener("focusin",e=>{const t=e.target;if(PF&&t&&t.select&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")){PF=0;setTimeout(()=>{try{if(document.activeElement===t)t.select()}catch(x){}},0)}});
- ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file"||t.dataset.fo)return;if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.tq!==undefined||t.dataset.nq!==undefined||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
+ ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file"||t.dataset.fo)return;if(t.dataset.lx){if(UI.lx&&t.dataset.lx!=="t")UI.lx[t.dataset.lx]=t.value;return}if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.tq!==undefined||t.dataset.nq!==undefined||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
  // (v192) خانة التاريخ: أثناء كتابة السنة يمرّ المتصفح بتواريخ ناقصة (سنة 0002…) ويطلق change مع كل رقم، وإعادة الرسم كانت تقطع الكتابة («بيعلّق»).
  // فالتاريخ غير المعقول يُتجاهل، والمعقول يُطبَّق بعد توقف قصير عن الكتابة
  ROOT.addEventListener("change",e=>{const t=e.target;if(t.id==="stk-file"){const f=[...t.files];t.value="";onFiles(f);return}
+  if(t.dataset.lx){if(UI.lx){if(t.dataset.lx==="t"){UI.lx.t=t.value;UI.lx.v="";paint()}else UI.lx[t.dataset.lx]=t.value}return}
   if(t.dataset.fo){focChange(t);return}
   // (v195) خانات التحديد: لا تعيد رسم الصفحة مع كل علامة (يُحدَّث العدّاد فقط)، و«تحديد كل المعروض» يعيد الرسم مرة
   if(t.dataset.nsk!==undefined){const S=selOf("nsel");if(t.checked)S[t.dataset.nsk]=1;else delete S[t.dataset.nsk];const e1=g("stk-nselb");if(e1)e1.outerHTML=nSelBar();return}
