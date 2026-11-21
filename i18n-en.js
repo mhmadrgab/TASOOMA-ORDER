@@ -4089,4 +4089,9 @@ export default {
 "التحويل":"Transfer",
 "قطع التحويل":"Transfer pieces",
 "يحتاج شراء":"Needs purchase",
+/* v207: أزرار ترتيب أوضح في تحليل صنف */
+"الأكثر بيعاً فوق":"Best sellers on top",
+"من نفد عنده فوق":"Sold-out branches on top",
+"الأكثر رصيداً فوق":"Most stock on top",
+"ترتيب السطور فقط، لا يغيّر أي رقم.":"Sorting only reorders the rows; it changes no number.",
 };
