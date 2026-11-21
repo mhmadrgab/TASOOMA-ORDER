@@ -1,5 +1,5 @@
 // لوحة المستودع: عهدة المستودع (تسجيل العهدة + الفواتير + كشف الحساب + الإقفال)
-import {collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,writeBatch} from "./fb.js";
+import {collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,writeBatch,deleteField} from "./fb.js";
 import {calc,CATS,E,N,fmt,today,shrink,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {regSW,badge} from "./notify.js";
 import {zoomOpen,zoomGallery} from "./zoom.js";
@@ -39,7 +39,7 @@ export function view(){
  return `<div class="bal ${k.bal<0?"neg":""}"><div><small>رصيد العهدة الحالي</small><b>${fmt(k.bal)}</b></div><div><small>الافتتاحي${k.last&&k.last.adj?" (مُصحَّح)":""}</small><b style="font-size:22px">${fmt(k.opening)}</b>${X.owner&&k.last?`<button class="bt s" data-cx="adj" type="button" style="margin-top:6px">✏️ تصحيح الافتتاحي</button>`:""}</div><div><small>عهدة مستلمة</small><b style="font-size:22px">${fmt(k.ins)}</b></div><div><small>مصروفات</small><b style="font-size:22px">${fmt(k.exps)}</b></div></div>
  <div class="fl"><button class="bt p" data-cx="in" type="button">💵 استلمت عهدة</button><button class="bt g" data-cx="exp" type="button">🧾 تسجيل فاتورة / مصروف</button><button class="bt" data-cx="stmt" type="button">🖨 كشف الحساب</button>${X.admin?`<button class="bt" data-cx="close" type="button" ${k.open.length?"":"disabled"}>🔒 إقفال العهدة وترحيل الرصيد</button>`:""}</div>
  <div class="row2"><div class="pan"><h3>المصروفات حسب البند</h3>${cats.length?cats.map(([n,v])=>`<div class="bar"><span style="direction:rtl">${E(n)}</span><i style="width:${Math.max(4,v/mx*55)}%"></i><em>${fmt(v)}</em></div>`).join(""):'<div class="off">لا توجد مصروفات في الفترة</div>'}</div>
- <div class="pan"><h3>الفترات المغلقة</h3>${pr.length?pr.map(s=>`<div class="bar" style="justify-content:space-between"><span style="direction:ltr;width:auto">${E(s.no)}</span><span style="width:auto;direction:rtl;color:var(--mut)">${E(s.from)} ← ${E(s.to)} · ${fmt(s.bal)}${s.adj?" · مُصحَّح":""}</span><button class="bt s" data-cx="ps" data-id="${E(s.id)}" type="button">🖨</button></div>`).join(""):'<div class="off">لا توجد فترة مغلقة بعد</div>'}</div></div>
+ <div class="pan"><h3>الفترات المغلقة</h3>${pr.length?pr.map(s=>`<div class="bar" style="justify-content:space-between"><span style="direction:ltr;width:auto">${E(s.no)}</span><span style="width:auto;direction:rtl;color:var(--mut)">${E(s.from)} ← ${E(s.to)} · ${fmt(s.bal)}${s.adj?" · مُصحَّح":""}</span><span style="width:auto;display:inline-flex;gap:6px">${X.owner&&k.last&&s.id===k.last.id?`<button class="bt s" data-cx="ro" type="button" title="إعادة فتح هذا الإقفال لتعديل حركاته">↩️ إعادة فتح</button>`:""}<button class="bt s" data-cx="ps" data-id="${E(s.id)}" type="button">🖨</button></span></div>`).join(""):'<div class="off">لا توجد فترة مغلقة بعد</div>'}${SA.filter(s=>s.st==="reopened").sort((a,b)=>N(b.ts)-N(a.ts)).slice(0,5).map(s=>`<div class="bar" style="justify-content:space-between;opacity:.6"><span style="direction:ltr;width:auto;text-decoration:line-through">${E(s.no)}</span><span style="width:auto;direction:rtl;color:var(--mut);white-space:normal">أُعيد فتحه${s.ro&&s.ro.note?": "+E(s.ro.note):""}</span></div>`).join("")}</div></div>
  <div class="pan"><div class="fl" style="margin:0 0 10px"><h3 style="margin:0">حركات الفترة الحالية</h3><select id="cfc" style="margin-inline-start:auto"><option value="">كل البنود</option>${allCats().concat(["عهدة"]).concat([...new Set(k.open.map(e=>e.cat).filter(c=>c&&!allCats().includes(c)&&c!=="عهدة"))]).map(c=>`<option ${fc===c?"selected":""}>${E(c)}</option>`).join("")}</select></div>
  <div class="tw"><table><thead><tr><th>التاريخ</th><th>البند</th><th>البيان / الفاتورة</th><th>عهدة</th><th>مصروف</th><th>الرصيد</th><th></th></tr></thead><tbody>${rows.length?rows.map(({e,run})=>`<tr><td>${E(e.dt)}</td><td><b>${E(e.cat)}</b></td><td>${E([e.note,e.inv?"فاتورة "+e.inv:"",e.carn].filter(Boolean).join(" — "))}</td><td class="am in">${e.type==="in"?fmt(e.amt):""}</td><td class="am ex">${e.type==="exp"?fmt(e.amt):""}</td><td class="am">${fc?"":fmt(run)}</td><td style="white-space:nowrap">${e.img||e.att?`<button class="bt s" data-cx="img" data-id="${E(e.id)}" type="button">📎</button> `:""}<button class="bt s" data-cx="edit" data-id="${E(e.id)}" type="button">تعديل</button>${X.admin?` <button class="bt s" data-cx="del" data-id="${E(e.id)}" type="button">حذف</button>`:""}</td></tr>`).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:26px">لا توجد حركات بعد. ابدأ بـ "استلمت عهدة".</td></tr>'}</tbody></table></div></div>`;
 }
@@ -126,12 +126,38 @@ async function adjSave(){
  await updateDoc(doc(X.db,"settlements",s.id),{bal:nv,adj});
  closeM();X.toast("✅ اتصحّح الرصيد الافتتاحي إلى "+fmt(nv));
 }
+// ↩️ (v189، 21 نوفمبر 2026، محمد: «عملت إقفال واكتشفت أخطاء، ينفع نرجع نعدّلها؟») إعادة فتح آخر إقفال فقط:
+// حركاته ترجع للفترة المفتوحة (تتعدّل وتُحذف ويُضاف عليها)، والإقفال نفسه لا يُمسح بل يُعلَّم st:"reopened" مع السبب ومن فتحه (يبقى في السجل).
+// الافتتاحي يرجع لرصيد الإقفال الذي قبله. الأقدم لا يُفتح إلا بعد فتح الأحدث (كل رصيد مبني على ما قبله). لمالك النظام والأدمن فقط.
+function roForm(){
+ const k=cur(),s=k.last;if(!s)return;mode="ro";const n=LA.filter(e=>e.sid===s.id).length;
+ const m=box();m.className="cm on";
+ m.innerHTML=`<div class="ck2"><h3>↩️ إعادة فتح آخر إقفال</h3>
+ <p class="off" style="margin:0 0 6px">الإقفال <bdi dir="ltr">${E(s.no||"")}</bdi> · من <bdi dir="ltr">${E(s.from||"")}</bdi> إلى <bdi dir="ltr">${E(s.to||"")}</bdi> · ${fmt(n)} حركة · الرصيد المرحّل <b dir="ltr">${fmt(s.bal)}</b></p>
+ <p style="margin:8px 0;font-size:14px;line-height:1.8">ترجع حركات هذا الإقفال إلى الفترة المفتوحة فتستطيع تعديلها أو حذفها أو الإضافة عليها، ثم تُقفل من جديد. يبقى الإقفال القديم مسجَّلاً «أُعيد فتحه» مع السبب.${s.adj?" <b>تصحيح الرصيد الافتتاحي المسجَّل على هذا الإقفال يُلغى</b> (الرصيد سيُحسب من الحركات عند الإقفال الجديد).":""}${k.open.length?` في الفترة المفتوحة الآن ${fmt(k.open.length)} حركة ستُضم إليها.`:""}</p>
+ <label>سبب إعادة الفتح *</label><input id="rot" type="text" maxlength="200" placeholder="مثلاً: فاتورة مسجَّلة بمبلغ خطأ">
+ <div class="fl" style="margin-top:16px"><button class="bt p" data-cx="rosave" type="button">إعادة الفتح</button><button class="bt" data-cx="cancel" type="button">رجوع</button></div></div>`;
+ g("rot").focus();
+}
+async function roSave(){
+ const k=cur(),s=k.last;if(!s)return;const note=String(g("rot").value||"").trim().slice(0,200);
+ if(!note){X.toast("اكتب سبب إعادة الفتح");g("rot").focus();return}
+ const L=LA.filter(e=>e.sid===s.id);
+ if(!confirm("إعادة فتح الإقفال "+(s.no||"")+"؟\n"+fmt(L.length)+" حركة ترجع قابلة للتعديل، والرصيد الافتتاحي يرجع لما قبل هذا الإقفال."))return;
+ // الحركات أولاً ثم علامة الإقفال في آخر دفعة: لو انقطع النت في المنتصف يبقى الإقفال كما هو والزر يكمل ما بقي
+ const ro={at:Date.now(),note,bal:Math.round(N(s.bal)*100)/100,cnt:L.length};
+ for(let i=0;i<L.length||i===0;i+=399){const bt=writeBatch(X.db),part=L.slice(i,i+399);part.forEach(e=>bt.update(doc(X.db,"ledger",e.id),{sid:deleteField()}));if(i+399>=L.length)bt.update(doc(X.db,"settlements",s.id),{st:"reopened",ro});await bt.commit();if(i+399>=L.length)break}
+ closeM();X.toast("↩️ أُعيد فتح الإقفال. عدّل الحركات ثم أقفل من جديد");
+}
 async function click(e){
  const t=e.target.closest("[data-cx]");if(!t)return;
  const a=t.dataset.cx,id=t.dataset.id;
  try{
   if(!X.admin&&(a==="del"||a==="close")){X.toast("هذه الصلاحية للمدير فقط");return}
   if((a==="adj"||a==="adjsave")&&!X.owner){X.toast("تصحيح الرصيد الافتتاحي لمالك النظام فقط");return}
+  if((a==="ro"||a==="rosave")&&!X.owner){X.toast("إعادة فتح الإقفال لمالك النظام فقط");return}
+  if(a==="ro"){roForm();return}
+  if(a==="rosave"){await roSave();return}
   if(a==="in"||a==="exp")form(a);
   else if(a==="adj")adjForm();
   else if(a==="adjsave")await adjSave();
