@@ -3884,4 +3884,6 @@ export default {
 "لا بيان للطباعة":"No statement to print",
 "لا يوجد اتصال بالإنترنت الآن. التحديث الكامل يحتاج إنترنت، فلم نغيّر شيئاً.":"No internet connection right now. A full refresh needs internet, so nothing was changed.",
 "📡 لا يوجد اتصال بالإنترنت، التحديث يحتاج إنترنت":"📡 No internet connection: updating needs internet",
+"ستفتح المنصة تلقائياً فور عودة الاتصال":"The platform will open automatically once the connection returns",
+"عاد الاتصال، جاري الفتح…":"Connection restored, opening…",
 };

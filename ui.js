@@ -88,8 +88,41 @@
  const FASTC=/[?&]call=/.test(location.search);
  const LITE=H.classList.contains("lite"),MIN=FASTC?0:H.classList.contains("app")?1700:LITE?350:1150,HOLD=FASTC?0:LITE?250:1000;
  let ready=false,minDone=false;
+ // 📡 (21 نوفمبر 2026، محمد: «والنت فاصل عايزها تقف على اللوجو بتاعها فقط ومتدخلش») بوابة الاتصال:
+ // مع بداية الصفحة نسأل Supabase (وسيرفرنا لو Supabase محجوب) بطلب صغير. لو مفيش وصول، شاشة البداية تفضل باللوجو وتحته
+ // «لا يوجد اتصال بالإنترنت»، ومحتوى الصفحة لا يظهر أبداً. نعيد السؤال كل 5 ثوانٍ ومع حدث online، وأول ما يرجع: إعادة تحميل نظيفة.
+ // الشبكة العادية: الرد ~300ms وشاشة البداية أطول منه (1.15 ثانية) فلا تأخير. صفحة الرد على مكالمة (?call=) مستثناة.
+ const GATE=!!boot&&!FASTC&&/(admin|index|driver)\.html$|\/$/.test(location.pathname);
+ const NSB="https://kycuhijnrzoqggonrsbx.supabase.co/auth/v1/health",NPX="https://tasooma-push.tasooma.workers.dev/";
+ const probe1=(u,ms)=>new Promise(ok=>{let d=false;const c=window.AbortController?new AbortController():null;
+  const t=setTimeout(()=>{if(d)return;d=true;try{if(c)c.abort()}catch(e){}ok(false)},ms);
+  try{fetch(u,{method:"HEAD",mode:"no-cors",cache:"no-store",signal:c?c.signal:undefined}).then(()=>{if(!d){d=true;clearTimeout(t);ok(true)}},()=>{if(!d){d=true;clearTimeout(t);ok(false)}})}catch(e){if(!d){d=true;clearTimeout(t);ok(false)}}});
+ const probe=()=>navigator.onLine===false?Promise.resolve(false):probe1(NSB,3000).then(r=>r||probe1(NPX,2500));
+ let netOk=GATE?null:true,gated=false;
+ const gate=()=>{
+  if(gated||!boot||!boot.isConnected)return;gated=true;window.__tzOff=1;
+  const old=document.getElementById("tz-slow");if(old)old.remove();
+  if(!document.getElementById("tz-off-css")){const s=document.createElement("style");s.id="tz-off-css";s.textContent=
+   "#tz-off{position:absolute;inset:auto 0 calc(11% + env(safe-area-inset-bottom,0px)) 0;margin:auto;width:max-content;max-width:calc(100% - 40px);display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 22px;border-radius:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#f3edf1;font:500 14px/1.6 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;text-align:center;opacity:0;transform:translateY(6px);transition:opacity .5s ease,transform .5s ease}"+
+   "#tz-off,#tz-off *{letter-spacing:0!important;text-transform:none}#tz-off .tzo-d{display:inline-block;flex:none}"+
+   "#tz-off.on{opacity:1;transform:none}#tz-off b{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14.5px}#tz-off small{color:rgba(243,237,241,.62);font-size:12.5px}"+
+   "#tz-off .tzo-d{width:8px;height:8px;border-radius:50%;background:#e0a84f;box-shadow:0 0 0 0 rgba(224,168,79,.55);animation:tzoff 1.8s ease-out infinite}#tz-off.ok .tzo-d{background:#a4b46e;animation:none}"+
+   "@keyframes tzoff{0%{box-shadow:0 0 0 0 rgba(224,168,79,.55)}70%{box-shadow:0 0 0 9px rgba(224,168,79,0)}100%{box-shadow:0 0 0 0 rgba(224,168,79,0)}}"+
+   "html.lite #tz-off .tzo-d{animation:none}@media (prefers-reduced-motion:reduce){#tz-off{transition:none}#tz-off .tzo-d{animation:none}}";
+   document.head.appendChild(s)}
+  const p=document.createElement("div");p.id="tz-off";p.setAttribute("role","status");p.setAttribute("aria-live","polite");
+  p.innerHTML='<b><span class="tzo-d"></span><span class="tzo-t">لا يوجد اتصال بالإنترنت</span></b><small>ستفتح المنصة تلقائياً فور عودة الاتصال</small>';
+  boot.appendChild(p);setTimeout(()=>p.classList.add("on"),30);
+  let busy=false,t=null;
+  const back=()=>{if(busy)return;busy=true;clearTimeout(t);probe().then(r=>{busy=false;
+   if(r){p.classList.add("ok");p.querySelector(".tzo-t").textContent="عاد الاتصال، جاري الفتح…";const sm=p.querySelector("small");if(sm)sm.remove();setTimeout(()=>location.reload(),400)}
+   else t=setTimeout(back,5000)})};
+  t=setTimeout(back,5000);addEventListener("online",back);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)back()});
+ };
+ if(GATE)probe().then(r=>{netOk=r;if(r)hide();else gate()});
  // المحتوى بيفضل مستخبي (aw) لحد ما الديب يخلص، وبعدين شاشة البداية بتختفي بالتدريج فوق الصفحة (#boot.out بيفضل ظاهر وهو بيختفي)
- const hide=()=>{if(!ready||!minDone)return;H.classList.remove("aw");if(!boot||!boot.isConnected||boot.classList.contains("out"))return;boot.classList.add("out");setTimeout(()=>boot.remove(),600)};
+ const hide=()=>{if(!ready||!minDone||netOk!==true)return;H.classList.remove("aw");if(!boot||!boot.isConnected||boot.classList.contains("out"))return;boot.classList.add("out");setTimeout(()=>boot.remove(),600)};
  setTimeout(()=>{minDone=true;hide()},Math.max(0,MIN-performance.now()));
  // 🐺 وهو بيرسم نفسه، الصفحة (اللي لسه مستخبية ورا شاشة البداية) مابتترسمش: الرسم التقيل بيستنى لحد ما الديب يخلص (ثانية واحدة)،
  // وكل طلبات الرسم في الوقت ده بتبقى رسمة واحدة. ده اللي بيخلّي حركة الديب ناعمة.
@@ -102,7 +135,7 @@
  };
  window.uiReady=()=>{if(ready)return;ready=true;window.__uiOk=1;hide()};
  // (15 نوفمبر 2026) النت بطيء والدخول لسه بيتأكد: سطر صغير تحت الديب بدل ما الشاشة تبان واقفة (من غير ريفرش ولا شاشة دخول)
- setTimeout(()=>{if(ready||!boot||!boot.isConnected||document.getElementById("tz-slow"))return;const p=document.createElement("div");p.id="tz-slow";p.setAttribute("role","status");
+ setTimeout(()=>{if(ready||gated||!boot||!boot.isConnected||document.getElementById("tz-slow"))return;const p=document.createElement("div");p.id="tz-slow";p.setAttribute("role","status");
   p.style.cssText="position:absolute;inset:auto 0 calc(12% + env(safe-area-inset-bottom,0px)) 0;text-align:center;color:rgba(255,255,255,.78);font:500 14px/1.6 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;padding:0 20px;opacity:0;transition:opacity .4s";
   p.textContent=navigator.onLine?"جاري الاتصال… الإنترنت بطيء قليلاً":"لا يوجد اتصال بالإنترنت… سنحاول تلقائياً";boot.appendChild(p);setTimeout(()=>{p.style.opacity="1"},30)},4500);
  if(!H.classList.contains("aw"))window.uiReady();// صفحات من غير تسجيل دخول
@@ -184,7 +217,7 @@
   if(px&&!ss("tz_via_r")){put("tz_via","p");ss("tz_via_r","1");if(!window.__uiOk)location.reload()}
  },via?10000:800);
  setTimeout(async()=>{
-  if(window.__uiOk||document.getElementById("tz-stuck"))return;
+  if(window.__uiOk||window.__tzOff||document.getElementById("tz-stuck"))return;
   // 🛟 (15 نوفمبر 2026) شبكة أمان: المنصة بتفتح من النسخة المحفوظة على الجهاز (sw.js). لو النسخة دي باظت لأي سبب والصفحة ماعرفتش تفتح،
   // بنمسحها ونحمّل من جديد لوحدنا مرة واحدة (والنت شغّال). لو لسه واقفة بعدها، بتظهر الرسالة اللي تحت عادي.
   // ⚠️ (15 نوفمبر 2026، فيديو محمد: "الصفحة بيضا وبتعمل ريفرش لوحدها") ده بس لو كود الصفحة نفسه ما اشتغلش (__tzMod)،

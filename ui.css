@@ -102,9 +102,12 @@ button:not(:disabled):active{transform:scale(.97)}
 .ui-offline .live{font-size:0;color:#ff9c8f}
 .ui-offline .live::after{content:"غير متصل";font-size:13px}
 .ui-offline .live i{background:#ef4444;animation:none;box-shadow:none}
-html.ui-offline::after{content:"⚠ النت فاصل — أول ما يرجع، الجديد هيظهر لوحده من غير ريفرش";position:fixed;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:0;right:0;margin-inline:auto;z-index:95;
+html.ui-offline::after{content:"⚠ انقطع الإنترنت. ستظهر التحديثات تلقائياً فور عودته";position:fixed;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:0;right:0;margin-inline:auto;z-index:95;
  background:#3a1512;color:#fff;border:1px solid #c4362b;padding:10px 18px;border-radius:14px;font:500 14px/1.5 "IBM Plex Sans Arabic",Tahoma,sans-serif;box-shadow:0 12px 30px rgba(0,0,0,.35);width:max-content;max-width:92vw;text-align:center;animation:ui-up .35s ease both}
 @media print{html.ui-offline::after{display:none}}
+/* (21 نوفمبر 2026) على شاشة البداية (المنصة واقفة على اللوجو بلا إنترنت) لا شريط: الحالة مكتوبة تحت اللوجو */
+html.aw.ui-offline::after{display:none}
+html.tz-en.ui-offline::after{content:"⚠ Internet connection lost. Updates will appear automatically once it returns"}
 
 /* الحد اليومي المجاني لـ Firebase خلص: النقطة البرتقالي + "متوقف مؤقتاً" بس (طلب محمد، نوفمبر 2026: من غير الشريط اللي فوق) */
 .ui-quota .live{font-size:0;color:#f6c770}
