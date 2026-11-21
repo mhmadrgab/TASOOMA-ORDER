@@ -64,6 +64,30 @@ export function mapErr(e) {
   return err("internal", m);
 }
 
+// ---------- 📡 هل الشبكة مقطوعة؟ (21 نوفمبر 2026) ----------
+// من غير نت، كل قراءة كانت تنتظر مكتبة الدخول وهي تحاول تجديد الدخول (حتى 10 ثوانٍ وأكثر) قبل أن تفشل، فالصفحة تبقى واقفة.
+// netDown() = الجهاز يقول لا يوجد نت، أو آخر فحص للسيرفر فشل. والقراءة والكتابة ترجعان «غير متاح» فوراً ما دامت كذلك.
+// الفحص يتكرر كل 8 ثوانٍ، وعند نجاحه نطلق حدث online فتعيد الصفحات والقراءات المحاولة وحدها.
+// ⚠️ «الجهاز يقول لا يوجد نت» وحدها لا تمنع شيئاً أكثر من 3 ثوانٍ (بعض الأجهزة تقولها خطأ): الحكم لفحص السيرفر نفسه.
+let DOWN = 0, probing = null, BASE = "";
+try { if (navigator.onLine === false) DOWN = Date.now() + 3000 } catch (e) {}
+try { addEventListener("offline", () => { DOWN = Math.max(DOWN, Date.now() + 3000); if (BASE) netProbe(BASE) }); addEventListener("online", e => { if (e && e.isTrusted) DOWN = 0 }) } catch (e) {}
+export const netDown = () => { try { if (navigator.onLine === false && BASE && !probing && Date.now() >= DOWN) netProbe(BASE) } catch (e) {} return Date.now() < DOWN };
+export function netProbe(base) {
+  if (base) BASE = base;
+  if (probing || !base) return probing || Promise.resolve(true);
+  probing = (async () => {
+    let ok = false;
+    try { const a = new AbortController(), t = setTimeout(() => a.abort(), 2500); await fetch(String(base).replace(/\/+$/, "") + "/auth/v1/health", {method: "HEAD", mode: "no-cors", cache: "no-store", signal: a.signal}); clearTimeout(t); ok = true } catch (e) { ok = false }
+    probing = null;
+    if (ok) { if (DOWN) { DOWN = 0; try { window.dispatchEvent(new Event("online")) } catch (e) {} } }
+    else { DOWN = Date.now() + 12000; setTimeout(() => netProbe(base), 8000) }
+    return ok;
+  })();
+  return probing;
+}
+const offErr = () => err("unavailable", "offline");
+
 // ---------- القراءة ----------
 // 🛟 (18 نوفمبر 2026، محمد: "المنصة بتفقد الوصول كتير وكل حاجة بتيجي صفر وتظهر تعذر القراءة")
 // السبب: أي خطأ مؤقت في أول قراءة (النت قطع لحظة، السيرفر مشغول، لحظة تجديد الدخول، أو وقت لصق القواعد في Supabase)
@@ -75,18 +99,20 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const transient = e => { const c = mapErr(e).code; return c !== "permission-denied" && c !== "not-found" };
 const rowSnap = (db, row) => new DocSnap(docRef(db, row.path), row.data);
 async function runQ1(q) {
+  if (netDown()) throw offErr();
   const {data, error} = await q.db.c.rpc("q", {p_col: q.path, p_where: q.w || [], p_order: q.order || null, p_desc: !!q.desc, p_limit: q.lim == null ? null : q.lim});
   if (error) throw mapErr(error);
   return (data || []).map(r => rowSnap(q.db, r));
 }
 async function getDoc1(ref) {
+  if (netDown()) throw offErr();
   const {data, error} = await ref.db.c.from("docs").select("path,data").eq("path", ref.path).maybeSingle();
   if (error) throw mapErr(error);
   return new DocSnap(ref, data ? data.data : null);
 }
 // قراءة لمرة واحدة: لو الخطأ مؤقت نجرّب مرتين كمان (بعد 0.6 ثم 1.5 ثانية) قبل ما نرجّع الخطأ للصفحة
 async function twice(fn) {
-  for (let i = 0; ; i++) { try { return await fn() } catch (e) { if (i >= 2 || !transient(e)) throw e; await sleep(i ? 1500 : 600) } }
+  for (let i = 0; ; i++) { try { return await fn() } catch (e) { if (i >= 2 || !transient(e) || netDown()) throw e; await sleep(i ? 1500 : 600) } }
 }
 const runQ = q => twice(() => runQ1(q));
 export const getDoc = ref => twice(() => getDoc1(ref));
@@ -101,6 +127,7 @@ const plain = d => clone(d || {});
 async function W(db, ops) {
   // السند بعد الهدية (القاعدة بتتأكد من الهدية اللي اتكتبت في نفس المرة، زي getAfter في Firestore)
   ops = ops.map((o, i) => ({o, i})).sort((a, b) => (/^giftimg\//.test(a.o.path) - /^giftimg\//.test(b.o.path)) || a.i - b.i).map(x => x.o);
+  if (netDown()) throw offErr();
   const {error} = await db.c.rpc("w", {ops});
   if (error) throw mapErr(error);
 }
@@ -378,6 +405,19 @@ export class Auth {
       clearTimeout(nullT); nullT = null; this.currentUser = null; if (!this._fired || before) fire(null) };
     c.auth.onAuthStateChange((ev, s) => set(s));
     c.auth.getSession().then(({data}) => set(data && data.session)).catch(() => set(null));
+    // 📡 (21 نوفمبر 2026، محمد: "لو النت فاصل المنصة بتقف") الدخول المحفوظ مدته ساعة، وبعدها مكتبة الدخول بتحاول تجدّده من النت
+    // قبل ما ترد علينا. من غير نت الرد مابيجيش، فالصفحة كانت بتفضل على شاشة البداية 12 ثانية ثم «المنصة تأخرت».
+    // دلوقتي: لو فيه دخول محفوظ ولسه مفيش رد (فوراً لو الجهاز بيقول مفيش نت، وبعد ثانية ونص غير كده) بندخل بهوية الدخول المحفوظ،
+    // فالصفحة ترسم نفسها وتقول «لا يوجد اتصال». البيانات نفسها محمية من السيرفر، فالهوية المحفوظة لا تفتح شيئاً وحدها.
+    // لما الرد الحقيقي يوصل: نفس الشخص = لا شيء يتغيّر، والدخول الملغي = شاشة الدخول.
+    const peek = () => { try { const k = c.auth.storageKey, s = JSON.parse((k && localStorage.getItem(k)) || "null"); return s && s.user && s.user.id && s.user.email ? s : null } catch (e) { return null } };
+    let off = false; try { off = navigator.onLine === false } catch (e) {}
+    const early = () => { if (this._fired || this.currentUser) return; const s = peek(); if (s) set(s) };
+    setTimeout(early, off ? 0 : 1500);
+    // الجهاز يقول «متصل» لكن الدخول المحفوظ منتهٍ: نفحص السيرفر بسرعة (2.5 ثانية)، ولو غير واصل ندخل بالهوية المحفوظة فوراً
+    const s0 = peek();
+    if (s0 && !off && (+s0.expires_at || 0) * 1000 < Date.now() + 30000) netProbe(c.supabaseUrl).then(ok => { if (!ok) early() });
+    else if (s0 && off) netProbe(c.supabaseUrl);
   }
 }
 export function onAuthStateChanged(auth, cb) {

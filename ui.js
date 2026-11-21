@@ -195,12 +195,19 @@
    location.replace(location.pathname+"?r="+Date.now()+location.hash);return}
   const d=document.createElement("div");d.id="tz-stuck";d.setAttribute("role","alert");
   d.style.cssText="position:fixed;inset:auto 12px 18px 12px;margin:auto;max-width:460px;z-index:100000;visibility:visible!important;background:#fff;color:#2a1d2c;border-radius:18px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.45);font:400 14.5px/1.7 'IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl;text-align:right";
-  const off=!navigator.onLine;
-  d.innerHTML=`<b style="font-size:16px">${off?"📡 لا يوجد اتصال بالإنترنت":"⏳ المنصة تأخرت في الفتح"}</b><div style="margin:6px 0 12px;color:#555">${off?"تأكد من الإنترنت ثم اضغط إعادة المحاولة.":"جرّب إعادة المحاولة. وإذا تكرر ذلك اضغط «تحديث كامل» (لن يُسجَّل خروجك)."}</div>`+
-   `<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-r style="flex:1;min-height:44px;border:0;border-radius:12px;background:#2a1d2c;color:#fff;font-weight:700;font-size:14.5px;font-family:inherit;cursor:pointer">إعادة المحاولة</button><button type="button" data-f style="flex:1;min-height:44px;border:1px solid #ccc;border-radius:12px;background:#fff;color:#2a1d2c;font-weight:700;font-size:14.5px;font-family:inherit;cursor:pointer">تحديث كامل</button></div>`+
-   (firstErr?`<div data-notr style="margin-top:10px;font-size:11.5px;color:#888;direction:ltr;text-align:left;word-break:break-all">${firstErr.replace(/[<>&]/g,"")}</div>`:"");
+  // 📡 (21 نوفمبر 2026) «تحديث كامل» يمسح نسخة المنصة المحفوظة على الجهاز، فمن غير نت كانت تبقى شاشة بيضاء حتى يرجع النت.
+  // نتأكد أولاً أن الموقع نفسه واصل (طلب HEAD لا يمر من النسخة المحفوظة)، وإلا لا نمسح شيئاً.
+  const reach=async()=>{try{const c=new AbortController(),t=setTimeout(()=>c.abort(),6000);const r=await fetch("./sw.js?x="+Date.now(),{method:"HEAD",cache:"no-store",signal:c.signal});clearTimeout(t);return !!(r&&r.ok)}catch(e){return false}};
+  const off=!navigator.onLine||!(await reach());
+  d.innerHTML=`<b style="font-size:16px">${off?"📡 لا يوجد اتصال بالإنترنت":"⏳ المنصة تأخرت في الفتح"}</b><div data-m style="margin:6px 0 12px;color:#555">${off?"تأكد من الإنترنت ثم اضغط إعادة المحاولة.":"جرّب إعادة المحاولة. وإذا تكرر ذلك اضغط «تحديث كامل» (لن يُسجَّل خروجك)."}</div>`+
+   `<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-r style="flex:1;min-height:44px;border:0;border-radius:12px;background:#2a1d2c;color:#fff;font-weight:700;font-size:14.5px;font-family:inherit;cursor:pointer">إعادة المحاولة</button>${off?"":`<button type="button" data-f style="flex:1;min-height:44px;border:1px solid #ccc;border-radius:12px;background:#fff;color:#2a1d2c;font-weight:700;font-size:14.5px;font-family:inherit;cursor:pointer">تحديث كامل</button>`}</div>`+
+   (firstErr&&!off?`<div data-notr style="margin-top:10px;font-size:11.5px;color:#888;direction:ltr;text-align:left;word-break:break-all">${firstErr.replace(/[<>&]/g,"")}</div>`:"");
   d.querySelector("[data-r]").onclick=()=>location.reload();
-  d.querySelector("[data-f]").onclick=async()=>{put("tz_via",null);ss("tz_via_r","");
+  if(off)addEventListener("online",()=>{if(!window.__uiOk)location.reload()},{once:true});
+  const fb=d.querySelector("[data-f]");
+  if(fb)fb.onclick=async()=>{
+   if(!(await reach())){const m=d.querySelector("[data-m]");if(m)m.textContent="لا يوجد اتصال بالإنترنت الآن. التحديث الكامل يحتاج إنترنت، فلم نغيّر شيئاً.";return}
+   put("tz_via",null);ss("tz_via_r","");
    try{const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()))}catch(e){}
    try{const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}catch(e){}
    location.replace(location.pathname+"?r="+Date.now()+location.hash)};
@@ -283,7 +290,7 @@
  try{localStorage.getItem("tz_news")}catch(e){return}// مفيش تخزين = مانعرضش (علشان ماتطلعش كل مرة)
  
  const vis=el=>!!(el&&el.offsetParent!==null);
- const loggedIn=()=>window.__uiOk&&!document.getElementById("boot")&&![...document.querySelectorAll('input[type="password"]')].some(vis)&&!document.getElementById("tz-stuck");
+ const loggedIn=()=>window.__uiOk&&!document.getElementById("boot")&&![...document.querySelectorAll('input[type="password"]')].some(vis)&&!document.getElementById("tz-stuck")&&!document.getElementById("nr")&&navigator.onLine!==false;
  const t0=Date.now(),iv=setInterval(()=>{if(Date.now()-t0>15*6e4){clearInterval(iv);return}if(loggedIn()){clearInterval(iv);setTimeout(()=>{if(loggedIn())show()},700)}},800);
  addEventListener("tz-news-check",()=>{setTimeout(()=>{if(loggedIn())show()},900)});// لو الحساب اترقّى وهو فاتح المنصة: admin.html بيبعت الحدث ده فنعيد المحاولة من غير ريفرش
  function show(){

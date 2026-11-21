@@ -5,7 +5,7 @@
 import {doc,getDoc,setDoc,getDocs,collection,query,where} from "./fb.js";
 import {E} from "./cust.js";
 const MB=1048576,KEY="tz_health",TTL=6*36e5;
-let X=null,H=null,PLAN=500,busy=false,err="",ER=null;// ER = أخطاء الصفحات آخر 7 أيام (للأدمن فقط)
+let X=null,H=null,PLAN=8192,busy=false,err="",ER=null;// ER = أخطاء الصفحات آخر 7 أيام (للأدمن فقط)
 const NAMES={pods:"صور التسليم",dm:"الدردشة (رسائل وصور وصوت)",grp:"مجموعات الدردشة",mntimg:"صور الصيانة",giftimg:"سندات الهدايا",requests:"الطلبات",log:"سجل العمليات",cat:"كتالوج الأصناف",stk:"تحليل المخزون",stkpub:"المتوفر والمقترح للفروع",pushlog:"سجل الإشعارات",trips:"الرحلات",ann:"التعميمات",ledger:"العهدة والفواتير",poatt:"مرفقات أوامر الشراء",gifts:"الهدايا والعينات",ava:"الصور الشخصية",push:"أجهزة الإشعارات",mnt:"طلبات الصيانة",po:"أوامر الشراء",fuel:"الوقود",call:"المكالمات",staff:"الموظفون",secrets:"كلمات المرور",branches:"الفروع",whdir:"دليل الدردشة",seen:"آخر ظهور",live:"مواقع السائقين",geo:"مواقع الفروع",clean:"جدول النظافة",settlements:"إقفال العهدة",workers:"العمال",chats:"دردشة قديمة"};
 const sz=b=>{b=+b||0;return b>=MB*1024?(b/MB/1024).toFixed(1)+" جيجا":b>=MB?(b/MB).toFixed(b>=10*MB?0:1)+" ميجا":Math.max(1,Math.round(b/1024))+" كيلو"};
 const pctOf=()=>H?Math.min(100,(+H.db||0)/(PLAN*MB)*100):0;
@@ -33,7 +33,7 @@ const CSS=`
 :where([data-theme=dark]) .tzh-top em{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .tzh-card.w .tzh-top em{background:#3a2a08;color:#f6c770}:where([data-theme=dark]) .tzh-card.r .tzh-top em{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .tzh-card.r .tzh-msg,:where([data-theme=dark]) .tzh-err{color:#f1a5a0}
 `;
 export function initHealth(ctx){
- X=ctx;H=null;err="";busy=false;PLAN=500;
+ X=ctx;H=null;err="";busy=false;PLAN=8192;/* (21 نوفمبر 2026) الاشتراك صار Pro: الافتراضي 8 جيجا ما لم يُحفظ غيره في cfg/plan */
  if(!document.getElementById("tzh-css")){const s=document.createElement("style");s.id="tzh-css";s.textContent=CSS;document.head.appendChild(s)}
  try{const c=JSON.parse(localStorage.getItem(KEY)||"null");if(c&&c.h&&c.e===ctx.me)H=c.h}catch(e){}
  const next=()=>{if(!X)return;if(!H||Date.now()-(+H.at||0)>TTL)load(false);else{paint();warn();loadErrs()}};

@@ -53,7 +53,11 @@ function close(){const m=g("tzset");if(!m||m.className!=="on")return;m.className
  setTimeout(()=>{if(m.className!=="on")m.innerHTML=""},260);
  if(LAST&&LAST.isConnected&&LAST.focus)try{LAST.focus({preventScroll:true})}catch(e){}LAST=null}
 async function fresh(b){
- if(busy)return;busy=true;const t=b&&b.querySelector(".tzst-t b");if(t)t.textContent="⏳ جاري التحديث…";
+ if(busy)return;busy=true;const t=b&&b.querySelector(".tzst-t b"),t0=t?t.textContent:"";if(t)t.textContent="⏳ جاري التحديث…";
+ // 📡 (21 نوفمبر 2026) التحديث يمسح نسخة المنصة المحفوظة على الجهاز: من غير نت كانت تبقى شاشة بيضاء. نتأكد أن الموقع واصل أولاً
+ // (طلب HEAD لا يمر من النسخة المحفوظة)، وإلا لا نمسح شيئاً.
+ let net=false;try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),6000);const r=await fetch("./sw.js?x="+Date.now(),{method:"HEAD",cache:"no-store",signal:c.signal});clearTimeout(tm);net=!!(r&&r.ok)}catch(e){net=false}
+ if(!net){busy=false;if(t){t.textContent="📡 لا يوجد اتصال بالإنترنت، التحديث يحتاج إنترنت";setTimeout(()=>{if(t.isConnected)t.textContent=t0},4000)}return}
  try{if(navigator.serviceWorker){const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()))}}catch(e){}
  try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}}catch(e){}
  try{location.replace(location.pathname+"?r="+Date.now()+location.hash)}catch(e){location.reload()}

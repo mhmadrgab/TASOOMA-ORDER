@@ -1,9 +1,11 @@
 // Ø®Ø¯Ù…Ø© Ø¨Ø³ÙŠØ·Ø©: Ø´Ø¨ÙƒØ© Ø£ÙˆÙ„Ø§Ù‹ØŒ ÙˆÙ„Ùˆ Ø§Ù„Ù†Øª Ù‚Ø·Ø¹ ØªÙØªØ­ Ø¢Ø®Ø± Ù†Ø³Ø®Ø© Ù…Ù† Ø§Ù„ØµÙØ­Ø©. Ù…ÙÙŠØ´ ØªØ®Ø²ÙŠÙ† Ù„Ø¨ÙŠØ§Ù†Ø§Øª Firebase.
-const V="tasooma-v198";
+const V="tasooma-v199";
 const SHELL=["./index.html","./admin.html","./ui.css","./ui.js","./icons.js","./mnt.js","./i18n.js","./i18n-en.js","./workers.js","./clean.js","./bchat.js","./prof.js","./audit.js","./backup.js","./dash.js","./fb.js","./sb-lib.js","./sbcore.js","./sb-config.js","./cust.js","./notify.js","./br-extra.js","./ad-extra.js","./fleet.js","./map.js","./zoom.js","./att.js","./gifts.js","./brsheet.js","./po.js","./porcv.js","./privacy.html","./terms.html","./legal.css","./cat.js","./health.js","./pwself.js","./tzset.js","./stock.js","./call.js","./staff.js","./ann.js","./short.js","./pres.js","./track.js","./notes.js","./brstock.js","./driver.html","./ext.html","./manifest-driver.json","./icon-192.png"];
 // (15 Ù†ÙˆÙÙ…Ø¨Ø± 2026) Ù„Ùˆ Ø§Ù„ØªÙ†Ø²ÙŠÙ„ ÙØ´Ù„ (Ù†Øª Ø¶Ø¹ÙŠÙ) Ø§Ù„ØªØ«Ø¨ÙŠØª Ø¨ÙŠÙØ´Ù„ ÙˆØ§Ù„Ù†Ø³Ø®Ø© Ø§Ù„Ù‚Ø¯ÙŠÙ…Ø© Ø§Ù„ÙƒØ§Ù…Ù„Ø© Ø¨ØªÙØ¶Ù„ Ø´ØºÙ‘Ø§Ù„Ø©ØŒ ÙˆØ§Ù„Ù…ØªØµÙØ­ Ø¨ÙŠØ­Ø§ÙˆÙ„ ØªØ§Ù†ÙŠ Ø¨Ø¹Ø¯ÙŠÙ†.
 // (ÙƒØ§Ù† Ø§Ù„ÙØ´Ù„ Ø¨ÙŠØªØ¨Ù„Ø¹ ÙØ§Ù„Ù†Ø³Ø®Ø© Ø§Ù„Ø¬Ø¯ÙŠØ¯Ø© ØªØ´ØªØºÙ„ Ø¨ÙƒØ§Ø´ Ù†Ø§Ù‚Øµ ÙˆØªÙ…Ø³Ø­ Ø§Ù„Ù‚Ø¯ÙŠÙ… â† ÙƒÙ„ Ù…Ù„Ù Ù…Ù† Ø§Ù„Ù†Øª â† Ø´Ø§Ø´Ø© Ø¨ÙŠØ¶Ø§ Ø·ÙˆÙŠÙ„Ø©)
-self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL.map(u=>new Request(u,{cache:"reload"})))).then(()=>self.skipWaiting()))});
+self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL.map(u=>new Request(u,{cache:"reload"}))).then(()=>Promise.all(EXTRA.map(u=>c.add(new Request(u,{cache:"reload"})).catch(()=>{}))))).then(()=>self.skipWaiting()))});
+// ملفات مفيدة بلا نت (أيقونات التطبيق المثبّت وبياناته): لو واحد منها غير موجود لا يفشل التثبيت
+const EXTRA=["./manifest.json","./manifest-admin.json","./icon-512.png"];
 // (16 Ù†ÙˆÙÙ…Ø¨Ø± 2026) Ø§Ù„ØµÙØ­Ø© Ø¨ØªØ³Ø£Ù„ "Ø¥Ù†Øª Ø£Ù†Ù‡ÙŠ Ù†Ø³Ø®Ø©ØŸ" Ø¹Ù„Ø´Ø§Ù† ØªØ¹Ø±Ø¶ Ø±Ù‚Ù… Ø§Ù„Ù†Ø³Ø®Ø© Ø¨Ø¹Ø¯ Ø§Ù„ØªØ­Ø¯ÙŠØ«
 let PENDC=null;// {id,act,ts}: ضغطة "رد/رفض" على إشعار مكالمة والمنصة مقفولة (17 نوفمبر 2026)
 self.addEventListener("message",e=>{const d=e.data;if(d&&d.t==="ver"&&e.source)e.source.postMessage({t:"ver",v:V});
@@ -18,8 +20,16 @@ self.addEventListener("fetch",e=>{
  // âš ï¸ Ù„Ø§Ø²Ù… V ÙŠØªØºÙŠÙ‘Ø± Ù…Ø¹ ÙƒÙ„ Ø±ÙØ¹ (ÙˆØ¥Ù„Ø§ Ø§Ù„Ø£Ø¬Ù‡Ø²Ø© Ù‡ØªÙØ¶Ù„ Ø¨Ø§Ù„Ù†Ø³Ø®Ø© Ø§Ù„Ù‚Ø¯ÙŠÙ…Ø©).
  const nav=r.mode==="navigate",key=nav?(/\/$/.test(u.pathname)?new URL("./index.html",self.registration.scope).href:u.origin+u.pathname):r;
  e.respondWith(caches.open(V).then(c=>c.match(key,{ignoreSearch:true}).then(hit=>hit||fetch(r).then(res=>{if(res.ok&&res.type==="basic"&&!res.redirected)c.put(key,res.clone());return res})))
-  .catch(()=>caches.match(key,{ignoreSearch:true}).then(h=>h||fetch(r))));
+  .catch(()=>caches.match(key,{ignoreSearch:true}).then(h=>h||(nav?offPage():fetch(r)))));
 });
+// 📡 (21 نوفمبر 2026) صفحة غير محفوظة والنت مقطوع: بدل صفحة المتصفح البيضاء نعرض صفحة بهوية المنصة تعيد المحاولة وحدها
+function offPage(){
+ const h='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#2a1d2c"><title>تاسومة</title>'+
+  '<style>body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#2a1d2c;color:#f3edf1;font:17px/1.8 Tahoma,sans-serif;text-align:center;padding:24px}b{font-size:13px;letter-spacing:.5em;color:#b48aab}p{margin:0;color:#b9a9ba;font-size:14.5px}a{background:#b48aab;color:#2a1d2c;text-decoration:none;font-weight:700;padding:12px 28px;border-radius:14px}</style></head>'+
+  '<body><b>TASOOMA</b><div>لا يوجد اتصال بالإنترنت</div><p>ستفتح المنصة تلقائياً فور عودة الاتصال</p><a href="">إعادة المحاولة</a>'+
+  '<script>addEventListener("online",function(){location.reload()});setInterval(function(){if(navigator.onLine)location.reload()},15000)</script></body></html>';
+ return new Response(h,{status:200,headers:{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store"}});
+}
 // Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª Ø§Ù„Ù„ÙŠ Ø§Ù„ØµÙØ­Ø© Ù†ÙØ³Ù‡Ø§ Ø¨ØªØ¹Ø±Ø¶Ù‡Ø§ (Ù„Ù…Ø§ ØªÙƒÙˆÙ† Ù…ÙØªÙˆØ­Ø© ÙˆÙ…Ø´ Ù‚Ø¯Ø§Ù…Ù‡): Ø§Ù„Ø¶ØºØ· Ø¹Ù„ÙŠÙ‡Ø§ Ø¨ÙŠÙØªØ­ Ø§Ù„Ø±Ø§Ø¨Ø·
 // 📞 (17 نوفمبر 2026) إشعار المكالمة: "رد" بيفتح المنصة ويرد على طول، "رفض" بيرفض (لو المنصة مفتوحة من غير ما تظهر قدامه)
 // إشعارات Firebase نفسها شايلة الرابط جوه FCM_MSG، فبنقراه من هناك ونوقف معالج Firebase علشان مايفتحش مرتين

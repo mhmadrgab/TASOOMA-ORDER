@@ -3882,4 +3882,6 @@ export default {
 "الحاوية كلها":"Whole container",
 "لا نصيب لهذا الفرع في التوزيع الحالي.":"This branch has no share in the current distribution.",
 "لا بيان للطباعة":"No statement to print",
+"لا يوجد اتصال بالإنترنت الآن. التحديث الكامل يحتاج إنترنت، فلم نغيّر شيئاً.":"No internet connection right now. A full refresh needs internet, so nothing was changed.",
+"📡 لا يوجد اتصال بالإنترنت، التحديث يحتاج إنترنت":"📡 No internet connection: updating needs internet",
 };
