@@ -3759,4 +3759,11 @@ export default {
 "«المستلم» من ملف الكميات، وهو من أول السنة حتى يوم التقرير (لا يتبع الفترة المختارة). يظهر في بطاقة الفرع وبطاقة الصنف.":"“Received” comes from the quantities file and covers the start of the year up to the report day (it does not follow the selected period). It appears in the branch card and the item card.",
 "عمود «المستلم» مقروء من ملف الكميات (من أول السنة حتى يوم التقرير) ويظهر في «اسأل» و«تحليل صنف». للعرض فقط: لا يدخل في حساب النواقص أو التحويلات أو الشراء.":"The “Received” column is read from the quantities file (start of year up to the report day) and appears in “Ask” and “Item analysis”. Display only: it is not used in shortages, transfers or purchasing calculations.",
 "ملف الكميات المرفوع ليس فيه عمود استلام صالح لكل فرع، فلا يُعرض «المستلم».":"The uploaded quantities file has no valid per-branch received column, so “Received” is not shown.",
+/* v191 (21 نوفمبر 2026): الترتيب بالمستلم */
+"استلاماً":"received",
+"الأعلى استلاماً:":"Most received:",
+"الأقل استلاماً:":"Least received:",
+"الترتيب بالمستلم غير متاح: ملف الكميات المرفوع ليس فيه عمود استلام صالح. رُتِّب بالمبيعات.":"Ranking by received is not available: the uploaded quantities file has no valid received column. Ranked by sales instead.",
+"المستلم من أول السنة حتى يوم التقرير، للفروع فقط بلا مخزن المستودع.":"Received covers the start of the year up to the report day, branches only (warehouse store excluded).",
+"المستلم من أول السنة حتى يوم التقرير (لا يتبع الفترة المختارة)، للفروع فقط بلا مخزن المستودع.":"Received covers the start of the year up to the report day (it does not follow the selected period), branches only (warehouse store excluded).",
 };
