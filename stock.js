@@ -819,6 +819,7 @@ const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-co
 :where([data-theme=dark]) .stk-tabs button.on{color:#141015}:where([data-theme=dark]) .stk-rep.r,:where([data-theme=dark]) .stk-mx td.need{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .stk-rep.w,:where([data-theme=dark]) .stk-mx td.idle{background:#3a2a08;color:#f6c770}:where([data-theme=dark]) .stk-t .z{color:#f1a5a0}:where([data-theme=dark]) .stk-t .no{color:#f6c770}
 @media (max-width:760px){.stk-up{grid-template-columns:1fr}.stk-bar label{flex:1 1 calc(50% - 4px)}.stk-bar select,.stk-bar input,.stk-bar input[type=number],.stk-bar input[type=search],.stk-bar input[type=text]{width:100%}.stk-bar .sp{display:none}.stk-bar .bt{flex:1 1 calc(50% - 4px)}}
 .stk-lxf{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1.5px solid var(--acc);border-radius:12px;background:var(--soft)}.stk-lxf label{display:block;font-size:12.5px;color:var(--mut)}.stk-lxf input,.stk-lxf select{display:block;margin-top:3px;min-width:150px}.stk-lxf small{flex-basis:100%}.stk-lxl{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}.stk-chips button.stk-lxu{padding:4px 8px;min-width:0;margin-inline-start:-4px;color:var(--mut)}
+.stk-dw th,.stk-dw td{text-align:center;padding:5px 6px}.stk-dw td.c,.stk-dw th:first-child{text-align:start}.stk-dw input.sm{width:62px;text-align:center;padding:4px 2px}.stk-dw tr.tot td{font-weight:700;background:var(--soft)}.stk-dw td.t{background:var(--soft)}
 .stk-selb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:8px 12px;margin:0 0 12px;font-size:13.5px}.stk-selb .sp{flex:1}.stk-selb small{flex-basis:100%}.stk-t th.ck,.stk-t td.ck{width:38px;text-align:center;padding-inline:6px}.stk-t td.ck input,.stk-t th.ck input{width:19px;height:19px;margin:0;cursor:pointer;accent-color:var(--acc)}.stk-rvh{margin:14px 0 6px;font-size:15px}.stk-rvh small{color:var(--mut);font-weight:400;margin-inline-start:8px}
 @media print{.stk-tabs,.stk-bar,.stk-drop,.stk-more{display:none!important}#pa.stkp{font-size:10pt}#pa.stkp .ph h2{font-size:17pt}#pa.stkp .ps{font-size:14pt;font-weight:700;margin:0 0 2mm;unicode-bidi:plaintext}#pa.stkp .pi{font-size:9pt;color:#444;margin:0 0 3mm}#pa.stkp .pt{width:100%;border-collapse:collapse}#pa.stkp .pt th,#pa.stkp .pt td{border:1px solid #777;padding:1.3mm 1.6mm;text-align:center;font-size:9.5pt;unicode-bidi:plaintext}#pa.stkp .pt th{background:#eee;font-size:9pt}#pa.stkp .pt td.bl{min-width:26mm}}`;
 const TABS=[["home","🚨","اليوم"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["sales","📅","مبيعات بالتاريخ"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
@@ -1002,11 +1003,11 @@ async function mkTransfer(fName,dName,Q){
 /* (v187) 🚚 توزيع حاوية على الفروع: الأصناف + القواعد (على هذا الجهاز localStorage.stk_dist) + جدول يُعدَّل باليد */
 const DDEF={on:25,wh:10,cs:1,cmin:1,cmax:"",ps:1,pmin:0,pmax:"",mode:"smart",lv:{}};
 const DLV=[[0,"مستبعد"],[0.5,"½"],[1,"عادي"],[1.5,"1½"],[2,"ضعف"],[3,"3 أضعاف"]];
-let DS=null;
+let DS=null;const DMAX=600;// (v198) بيان بالعرض = خانة لكل مقاس، فالحد 600 سطر بدل 200
 const dBlank=()=>({c:"",cl:"",z:"",ct:"",pk:"",md:"c",ref:""});
 function dLoad(){if(DS)return DS;let o=null;try{o=JSON.parse(localStorage.getItem("stk_dist")||"null")}catch(e){o=null}
- DS={lines:o&&Array.isArray(o.lines)?o.lines.slice(0,200).map(l=>Object.assign(dBlank(),l&&typeof l==="object"?l:{})):[],ov:o&&o.ov&&typeof o.ov==="object"?o.ov:{},rules:Object.assign({},DDEF,o&&o.rules&&typeof o.rules==="object"?o.rules:{})};
- DS.sent=o&&o.sent&&typeof o.sent==="object"?o.sent:{};
+ DS={lines:o&&Array.isArray(o.lines)?o.lines.slice(0,DMAX).map(l=>Object.assign(dBlank(),l&&typeof l==="object"?l:{})):[],ov:o&&o.ov&&typeof o.ov==="object"?o.ov:{},rules:Object.assign({},DDEF,o&&o.rules&&typeof o.rules==="object"?o.rules:{})};
+ DS.sent=o&&o.sent&&typeof o.sent==="object"?o.sent:{};DS.ctn=o&&o.ctn&&typeof o.ctn==="object"?o.ctn:{};
  if(!DS.rules.lv||typeof DS.rules.lv!=="object")DS.rules.lv={};while(DS.lines.length<3)DS.lines.push(dBlank());return DS}
 // (v188) التوزيع ← طلبات حقيقية للفروع. طلب كل فرع = أصنافه بالحبة (سطر الكرتون: كراتينه × حبات الكرتون، وملاحظته «كم كرتوناً»).
 const rid20=()=>{const A="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789",u=crypto.getRandomValues(new Uint8Array(20));let s="";for(let i=0;i<20;i++)s+=A[u[i]%A.length];return s};
@@ -1031,6 +1032,53 @@ async function dSend(){
 const dSave=()=>{try{localStorage.setItem("stk_dist",JSON.stringify(DS))}catch(e){}};
 const fq=n=>{const x=Math.round(N(n)*100)/100,p=String(x).split(".");return p[0].replace(/\B(?=(\d{3})+(?!\d))/g,",")+(p[1]?"."+p[1]:"")};
 // أعمدة التوزيع: الأونلاين أولاً، ثم فروع الرياض، ثم كل شركة شحن بفروعها (كشيت التوزيع اليدوي)
+/* (v198) 📋 بيان الحاوية بالعرض: صف لكل (كود، لون) وعمود لكل مقاس، والقيمة بالحبة (كما يُكتب البيان في إكسل).
+   يُلصق كما هو، ويُعرض بنفس الشكل، ولكل فرع «بيان» بنفس الشكل بعد التوزيع. داخلياً كل خانة = سطر (كود، لون، مقاس) يُوزَّع بالحبة */
+const stSize=x=>/^(\d{1,3}([.,]5)?|xxs|xs|s|m|l|xl|xxl|[2-6]xl|free|f)$/i.test(String(x||"").trim());
+export function parseStatement(text){
+ const rows=String(text||"").split(/\r?\n/).map(r=>r.split("\t").map(x=>arDig(String(x)).trim())).filter(r=>r.some(Boolean)),out={ok:false,lines:[],sizes:[],colors:0,ctn:{}};
+ const kw=(x,re)=>re.test(normAr(x)),isCodeH=x=>kw(x,/^(الكود|كود|code|الموديل|موديل|model|item|الصنف)$/i),isColH=x=>kw(x,/^(اللون|لون|color|colour|الالوان)$/i),isTot=x=>kw(x,/حب|كا?رتون|اجمال|مجموع|total|كميه|qty|carton|pcs/i);
+ let hi=-1;for(let i=0;i<rows.length&&i<12;i++){const r=rows[i],sz=r.filter(stSize);if(sz.length<2)continue;if(r.some(isCodeH)||r.some(isColH)){hi=i;break}
+  // بلا عناوين نصية: صف مقاساته أرقام متصاعدة (40، 41، 42…) هو صف العناوين
+  const nums=sz.map(x=>parseFloat(String(x).replace(",","."))).filter(x=>x===x);if(nums.length>=3&&nums.every((v,j)=>!j||v>nums[j-1])&&nums[nums.length-1]-nums[0]<=40){hi=i;break}}
+ if(hi<0)return out;const H=rows[hi];let ci=H.findIndex(isCodeH),li=H.findIndex(isColH);const zc=[];let cti=-1;
+ H.forEach((h,j)=>{if(j===ci||j===li)return;if(stSize(h)&&!isTot(h))zc.push(j);else if(kw(h,/كا?رتون|carton/i))cti=j});
+ if(zc.length<2)return out;
+ // بلا عنوان للكود أو اللون: أول عمودين ليسا مقاساً ولا إجمالياً
+ const free=[];H.forEach((h,j)=>{if(zc.indexOf(j)<0&&j!==cti&&!isTot(h))free.push(j)});if(ci<0)ci=free.find(j=>j!==li);if(ci===undefined||ci<0)return out;if(li<0){const c2=free.find(j=>j!==ci);li=c2===undefined?-1:c2}
+ let last="";const seen=new Set();
+ for(let i=hi+1;i<rows.length;i++){const r=rows[i];let code=String(r[ci]||"").trim();const cl=li>=0?String(r[li]||"").trim():"";
+  if(r.some(x=>kw(x,/^(الاجمالي|الاجمالى|اجمالي|المجموع|total|grand total)$/i)))continue;
+  if(!code){if(!last||!zc.some(j=>num(r[j])>0))continue;code=last}// خانة كود مدموجة: تأخذ الكود الذي فوقها
+  if(!/[0-9A-Za-z]/.test(code))continue;last=code;let any=false;
+  for(const j of zc){const q=num(r[j]);if(!(q>0))continue;const z=String(H[j]).trim(),k=code+"\u0001"+cl+"\u0001"+z;if(seen.has(k))continue;seen.add(k);out.lines.push({c:code.slice(0,40),cl:cl.slice(0,40),z:z.slice(0,20),q:Math.round(q*100)/100});any=true}
+  if(any){out.colors++;if(cti>=0){const c=num(r[cti]);if(c>0)out.ctn[code+"|"+cl]=c}}}
+ out.sizes=zc.map(j=>String(H[j]).trim());out.ok=out.lines.length>0;return out;
+}
+let DWK={rows:[],cols:[]},DWC=new Map(),BRX=null;// خريطة خانات البيان، كاش أوزان الفروع، وتصدير «بيان الفرع»
+const dPcs=l=>{const ct=Math.max(0,N(l.ct)),pk=Math.max(0,N(l.pk));return pk>0?ct*pk:ct};
+// صفوف (كود، لون) وأعمدة المقاسات من سطور «بالحبة»
+function dWideMap(S){const RK=[],RM=new Map(),ZS=[];S.lines.forEach((l,i)=>{if(l.md!=="p"||!String(l.c||"").trim())return;const k=String(l.c).trim()+"\u0001"+String(l.cl||"").trim();let r=RM.get(k);if(!r){r={c:String(l.c).trim(),cl:String(l.cl||"").trim(),m:{}};RM.set(k,r);RK.push(r)}const z=String(l.z||"").trim();if(ZS.indexOf(z)<0)ZS.push(z);if(!r.m[z])r.m[z]={i,l}});
+ ZS.sort((a,b)=>zk(a)-zk(b)||(a<b?-1:a>b?1:0));return {rows:RK,cols:ZS}}
+function dWideTable(S){
+ const M=dWideMap(S);DWK=M;const ctn=S.ctn||{},hasC=M.rows.some(r=>N(ctn[r.c+"|"+r.cl])>0),colT=M.cols.map(()=>0);let gt=0,gc=0;
+ const body=M.rows.map((r,ri)=>{let t=0;const tds=M.cols.map((z,zi)=>{const x=r.m[z];if(x){const v=dPcs(x.l);t+=v;colT[zi]+=v;return '<td><input type="number" min="0" step="1" class="sm" data-dl="'+x.i+'|ct" id="dl'+x.i+'ct" value="'+E(x.l.ct==null?"":x.l.ct)+'" aria-label="'+E(z)+'"></td>'}
+   return '<td><input type="number" min="0" step="1" class="sm" data-dw="'+ri+"|"+zi+'" id="dw'+ri+"_"+zi+'" value="" placeholder="·" aria-label="'+E(z)+'"></td>'}).join("");gt+=t;const c=N(ctn[r.c+"|"+r.cl]);gc+=c;
+  return '<tr><td class="c" data-notr dir="ltr"><b>'+E(r.c)+'</b></td><td data-notr dir="ltr">'+E(r.cl||"—")+"</td>"+tds+'<td class="n t"><b>'+fq(t)+"</b></td>"+(hasC?'<td class="n">'+(c?fq(c):"")+"</td>":"")+"</tr>"}).join("");
+ return '<div class="tw"><table class="stk-t stk-dw"><thead><tr><th>الكود</th><th>اللون</th>'+M.cols.map(z=>'<th class="n" data-notr dir="ltr">'+E(z||"—")+"</th>").join("")+'<th class="n">الكمية بالحبة</th>'+(hasC?'<th class="n">الكمية بالكرتون</th>':"")+"</tr></thead><tbody>"+body+'<tr class="tot"><td colspan="2">الإجمالي</td>'+colT.map(v=>'<td class="n">'+fq(v)+"</td>").join("")+'<td class="n"><b>'+fq(gt)+"</b></td>"+(hasC?'<td class="n"><b>'+fq(gc)+"</b></td>":"")+"</tr></tbody></table></div>";
+}
+// «بيان الفرع»: ما يأخذه فرع واحد (أو المستودع، أو الحاوية كلها) بنفس شكل البيان، بالحبة
+function dBranchCard(live,cols){
+ const pl=live.filter(x=>x.l.md==="p"&&String(x.l.z||"").trim()!=="");if(!pl.length){BRX=null;return ""}
+ const opts=cols.map(c=>[c.c,c.nm+(c.route?" ("+c.route+")":"")]).concat([["__wh","المستودع (الباقي)"],["__all","الحاوية كلها"]]);let cur=UI.dbr||"";if(!opts.some(o=>o[0]===cur))cur=opts[0][0];
+ const val=x=>cur==="__all"?x.r.total*x.r.pc:cur==="__wh"?x.r.wh*x.r.pc:N(x.r.vals[cur])*x.r.pc,RK=[],RM=new Map(),ZS=[];
+ pl.forEach(x=>{const k=x.l.c+"\u0001"+(x.l.cl||"");let r=RM.get(k);if(!r){r={c:String(x.l.c),cl:String(x.l.cl||""),m:{}};RM.set(k,r);RK.push(r)}const z=String(x.l.z).trim();if(ZS.indexOf(z)<0)ZS.push(z);r.m[z]=(r.m[z]||0)+val(x)});ZS.sort((a,b)=>zk(a)-zk(b)||(a<b?-1:1));
+ const rows=RK.filter(r=>cur==="__all"||ZS.some(z=>N(r.m[z])!==0)),colT=ZS.map(()=>0);let gt=0;const name=(opts.find(o=>o[0]===cur)||["",""])[1];
+ const body=rows.map(r=>{let t=0;const tds=ZS.map((z,zi)=>{const v=N(r.m[z]);t+=v;colT[zi]+=v;return '<td class="n'+(v<0?" z":"")+'">'+(v?fq(v):"·")+"</td>"}).join("");gt+=t;return '<tr><td class="c" data-notr dir="ltr"><b>'+E(r.c)+'</b></td><td data-notr dir="ltr">'+E(r.cl||"—")+"</td>"+tds+'<td class="n t"><b>'+fq(t)+"</b></td></tr>"}).join("");
+ BRX={name:"بيان-"+name,head:["الكود","اللون"].concat(ZS).concat(["الكمية بالحبة"]),rows:()=>rows.map(r=>[r.c,r.cl].concat(ZS.map(z=>N(r.m[z])||"")).concat([ZS.reduce((a,z)=>a+N(r.m[z]),0)])).concat([["الإجمالي",""].concat(colT).concat([gt])]),prn:{ttl:"بيان توزيع الحاوية",sub:name}};
+ return '<div class="stk-card" style="margin:12px 0 0"><h3>📄 بيان كل فرع (بنفس شكل بيان الحاوية)</h3><div class="stk-bar stk-pvb"><label>الفرع<select data-dbr="1" id="stk-dbr">'+opts.map(o=>'<option value="'+E(o[0])+'"'+(o[0]===cur?" selected":"")+' data-notr>'+E(o[1])+"</option>").join("")+'</select></label><span class="sp"></span><button class="bt" type="button" data-sk="prnb">🖨 اطبع بيان الفرع</button><button class="bt" type="button" data-sk="xlsb">⬇️ إكسل</button></div>'
+  +(rows.length?'<div class="tw"><table class="stk-t stk-dw"><thead><tr><th>الكود</th><th>اللون</th>'+ZS.map(z=>'<th class="n" data-notr dir="ltr">'+E(z)+"</th>").join("")+'<th class="n">الكمية بالحبة</th></tr></thead><tbody>'+body+'<tr class="tot"><td colspan="2">الإجمالي</td>'+colT.map(v=>'<td class="n">'+fq(v)+"</td>").join("")+'<td class="n"><b>'+fq(gt)+"</b></td></tr></tbody></table></div>":'<p class="stk-src">لا نصيب لهذا الفرع في التوزيع الحالي.</p>')+"</div>";
+}
 function dCols(){
  const R=dLoad().rules,ship=X&&X.ship?X.ship()||{}:{},whC=cd(CFG.wh),byC=new Map(),ex=new Set((CFG.ex||[]).map(cd));DATA.st.forEach((s,ti)=>{const m=/^(\d{3})-/.exec(s);if(m)byC.set(m[1],ti)});
  let list=X&&X.branches?X.branches().slice():[];if(!list.length)list=[...byC.keys()];list=list.filter((c,i)=>c!==whC&&!ex.has(c)&&list.indexOf(c)===i);
@@ -1041,7 +1089,7 @@ function dCols(){
 // توزيع سطر: الكمية بوحدة السطر (كرتون، أو حبة = كراتين × حبات الكرتون)، ثم تعديلات اليد فوق المحسوب، والمستودع = الباقي
 function dLine(i,l,cols,P){
  const R=DS.rules,md=l.md==="p"?"p":"c",ct=Math.max(0,N(l.ct)),pk=Math.max(0,N(l.pk)),total=md==="c"?ct:(pk>0?ct*pk:ct),step=md==="c"?(N(R.cs)>0?N(R.cs):1):(N(R.ps)>0?N(R.ps):1);
- const W=R.mode==="eq"?{m:new Map(),src:"eq"}:distWeights(DATA,CFG,{code:l.c,ref:l.ref,period:P,mode:R.mode}),bc=cols.filter(c=>!c.on),on=cols.find(c=>c.on);
+ const wk=[l.c,l.ref,R.mode,P?P.from+"~"+P.to:""].join("|");let W=R.mode==="eq"?{m:new Map(),src:"eq"}:DWC.get(wk);if(!W){W=distWeights(DATA,CFG,{code:l.c,ref:l.ref,period:P,mode:R.mode});DWC.set(wk,W)}const bc=cols.filter(c=>!c.on),on=cols.find(c=>c.on);
  // فرع غير مستبعد بلا مبيعات (فرع جديد مثلاً): وزن ضئيل، فيأخذ «أقل نصيب» فقط ولا يُنسى
  let brs=bc.map(c=>({id:c.c,w:(R.mode==="eq"?1:Math.max(0.0001,c.ti>=0?W.m.get(c.ti)||0:0))*c.lv})),src=W.src;if(!brs.some(b=>b.w>0)){brs=bc.map(c=>({id:c.c,w:c.lv}));src="eq"}
  const A=distribute(total,step,brs,{on:R.on,wh:R.wh,min:md==="c"?R.cmin:R.pmin,max:md==="c"?R.cmax:R.pmax,hasOnline:!!on&&on.lv>0}),vals={};let sum=0,ovn=0;
@@ -1049,12 +1097,15 @@ function dLine(i,l,cols,P){
  return {total,step,md,pk,vals,wh:Math.round((total-sum)*1e6)/1e6,src,ovn,pc:md==="c"?(pk>0?pk:1):1};
 }
 function vDist(){
- const S=dLoad(),R=S.rules,P=period(),cols=dCols(),on=cols.find(c=>c.on),br=cols.filter(c=>!c.on);
+ const S=dLoad(),R=S.rules,P=period(),cols=dCols(),on=cols.find(c=>c.on),br=cols.filter(c=>!c.on);DWC=new Map();
+ const nP=S.lines.filter(l=>l.md==="p"&&String(l.c||"").trim()).length,wide=UI.dvw!=="l"&&nP>0,nC=S.lines.filter(l=>l.md!=="p"&&String(l.c||"").trim()).length;
+ const seg=nP?'<div class="stk-seg" role="tablist" style="margin:0 0 10px"><button type="button" data-sk="dvw" data-v="w" class="'+(wide?"on":"")+'">بيان (المقاسات أعمدة)</button><button type="button" data-sk="dvw" data-v="l" class="'+(wide?"":"on")+'">سطور (سطر لكل مقاس)</button></div>':"";
+ const wideT=wide?dWideTable(S)+(nC?'<p class="stk-src" style="margin:8px 0 0">'+fq(nC)+" سطر يُوزَّع بالكرتون لا يظهر في البيان: افتح «سطور» لتراه.</p>":""):"";
  const li=(i,f,v,ex)=>`<input ${ex||'type="text"'} data-dl="${i}|${f}" id="dl${i}${f}" value="${E(v==null?"":v)}">`;
- const inp=`<div class="stk-card" style="margin:0 0 12px"><h3>📦 أصناف الحاوية</h3><p>اكتب كل لون ومقاس في سطر: عدد الكراتين وعدد الحبات في الكرتون، واختر هل يُوزَّع بالكرتون أم بالحبة. «مثل كود» اختياري: كود قديم مشابه تُؤخذ مبيعاته وزناً للفروع (مفيد لصنف جديد لم يُبع بعد).</p>
- <div class="tw"><table class="stk-t stk-dl"><thead><tr><th class="n">#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th class="n">الكراتين</th><th class="n">حبات الكرتون</th><th>يُوزَّع</th><th>مثل كود</th><th></th></tr></thead><tbody>${S.lines.map((l,i)=>`<tr><td class="n rk">${i+1}</td><td>${li(i,"c",l.c,'type="text" list="stk-codes" dir="ltr" autocomplete="off"')}</td><td>${li(i,"cl",l.cl,'type="text" dir="ltr"')}</td><td>${li(i,"z",l.z,'type="text" dir="ltr" class="sm"')}</td><td>${li(i,"ct",l.ct,'type="number" min="0" step="any" class="sm"')}</td><td>${li(i,"pk",l.pk,'type="number" min="0" step="1" class="sm"')}</td><td><select data-dl="${i}|md" id="dl${i}md"><option value="c"${l.md!=="p"?" selected":""}>بالكرتون</option><option value="p"${l.md==="p"?" selected":""}>بالحبة</option></select></td><td>${li(i,"ref",l.ref,'type="text" list="stk-codes" dir="ltr" autocomplete="off" placeholder="اختياري"')}</td><td><button class="bt s" type="button" data-sk="ddel" data-i="${i}" aria-label="حذف السطر" title="حذف السطر">✕</button></td></tr>`).join("")}</tbody></table></div>
+ const inp=`<div class="stk-card" style="margin:0 0 12px"><h3>📦 أصناف الحاوية</h3><p>الصق بيان الحاوية من إكسل كما هو (صف لكل كود ولون، وعمود لكل مقاس، بالحبة) من زر «📋 لصق من إكسل»، أو اكتب الخانات هنا. وللتوزيع بالكرتون افتح «سطور». «مثل كود» اختياري: كود قديم مشابه تُؤخذ مبيعاته وزناً للفروع (مفيد لصنف جديد لم يُبع بعد).</p>${seg}${wideT}
+ <div class="tw"${wide?' style="display:none"':""}><table class="stk-t stk-dl"><thead><tr><th class="n">#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th class="n">الكراتين</th><th class="n">حبات الكرتون</th><th>يُوزَّع</th><th>مثل كود</th><th></th></tr></thead><tbody>${S.lines.map((l,i)=>`<tr><td class="n rk">${i+1}</td><td>${li(i,"c",l.c,'type="text" list="stk-codes" dir="ltr" autocomplete="off"')}</td><td>${li(i,"cl",l.cl,'type="text" dir="ltr"')}</td><td>${li(i,"z",l.z,'type="text" dir="ltr" class="sm"')}</td><td>${li(i,"ct",l.ct,'type="number" min="0" step="any" class="sm"')}</td><td>${li(i,"pk",l.pk,'type="number" min="0" step="1" class="sm"')}</td><td><select data-dl="${i}|md" id="dl${i}md"><option value="c"${l.md!=="p"?" selected":""}>بالكرتون</option><option value="p"${l.md==="p"?" selected":""}>بالحبة</option></select></td><td>${li(i,"ref",l.ref,'type="text" list="stk-codes" dir="ltr" autocomplete="off" placeholder="اختياري"')}</td><td><button class="bt s" type="button" data-sk="ddel" data-i="${i}" aria-label="حذف السطر" title="حذف السطر">✕</button></td></tr>`).join("")}</tbody></table></div>
  <div class="stk-act" style="margin:10px 0 0"><button class="bt" type="button" data-sk="dadd">＋ سطر</button><button class="bt" type="button" data-sk="dpaste">📋 لصق من إكسل</button><button class="bt" type="button" data-sk="dro">⚙ قواعد التوزيع</button>${S.lines.some(l=>l.c||l.ct)?`<button class="bt" type="button" data-sk="dclr">🗑 مسح الكل</button>`:""}</div>
- ${UI.dp?`<div style="margin-top:10px"><textarea id="stk-dpt" rows="5" dir="ltr" placeholder="الكود	اللون	المقاس	الكراتين	حبات الكرتون" style="width:100%"></textarea><p class="stk-src" style="margin:4px 0 8px">الصق الصفوف من إكسل: الكود، اللون، المقاس، الكراتين، حبات الكرتون (كل صف في سطر). تُضاف بعد الأسطر الحالية.</p><button class="bt p" type="button" data-sk="dpok">أضف الصفوف</button></div>`:""}</div><datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
+ ${UI.dp?`<div style="margin-top:10px"><textarea id="stk-dpt" rows="7" dir="ltr" placeholder="الكود	اللون	40	41	42	43	44	45	46	الكمية بالحبة	الكمية بالكرتون" style="width:100%"></textarea><p class="stk-src" style="margin:4px 0 8px">حدِّد البيان في إكسل <b>مع صف العناوين</b> (الكود، اللون، المقاسات) وانسخه والصقه هنا: تُقرأ كل خانة مقاس كميةً بالحبة، وعمودا الإجمالي يُتجاهلان. والشكل القديم (كل صف: الكود، اللون، المقاس، الكراتين، حبات الكرتون) ما زال مقبولاً. تُضاف بعد الأصناف الحالية.</p><button class="bt p" type="button" data-sk="dpok">أضف الصفوف</button></div>`:""}</div><datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
  const num=(k,lab,ph,ex)=>`<label>${lab}<input type="number" min="0" step="any" data-dr="${k}" id="dr-${k}" value="${E(R[k])}" placeholder="${ph||""}" ${ex||""}></label>`;
  const routes=[];for(const c of br){const r=c.route||"";if(!routes.length||routes[routes.length-1].r!==r)routes.push({r,l:[]});routes[routes.length-1].l.push(c)}
  const rules=UI.dro?`<div class="stk-card" style="margin:0 0 12px"><h3>⚙ قواعد التوزيع</h3><p>تُحفظ على هذا الجهاز. تغيير أي قاعدة يعيد الحساب ويلغي تعديلات اليد.</p>
@@ -1077,7 +1128,7 @@ function vDist(){
  <tr class="tot"><td class="s">الإجمالي بالحبة</td><td>${fq(tP)}</td>${on?`<td>${fq(colP[on.c]||0)}</td>`:""}${br.map(c=>`<td>${fq(colP[c.c]||0)}</td>`).join("")}<td>${fq(wP)}</td></tr></tbody></table></div>
  <p class="stk-src" style="margin:8px 4px 0">كل خانة تُعدَّل باليد (تظهر بحد بنفسجي)، والمستودع يأخذ الباقي تلقائياً. الأرقام بوحدة السطر (كرتون أو حبة)، وسطر الإجمالي بالحبة.</p></div>`;
  return inp+rules+gapNote(P)+`<div class="stk-tiles">${T.join("")}</div>${neg?`<div class="stk-rep r">⚠️ ${fq(neg)} سطر وُزِّع فيه أكثر من كميته (المستودع بالسالب). راجِع الخانات المعدَّلة باليد.</div>`:""}
- <div class="stk-act">${ovn?`<button class="bt" type="button" data-sk="dovx">↺ إلغاء تعديلات اليد (${fq(ovn)})</button>`:""}<button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button>${X&&X.dispatch?`<button class="bt p" type="button" data-sk="dsn"${neg?" disabled":""}>📤 حوّل التوزيع إلى طلبات للفروع</button>`:""}</div>${X&&X.dispatch&&UI.dsn&&!neg?dSendCard(live,cols):""}${grid}`;
+ <div class="stk-act">${ovn?`<button class="bt" type="button" data-sk="dovx">↺ إلغاء تعديلات اليد (${fq(ovn)})</button>`:""}<button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button>${X&&X.dispatch?`<button class="bt p" type="button" data-sk="dsn"${neg?" disabled":""}>📤 حوّل التوزيع إلى طلبات للفروع</button>`:""}</div>${X&&X.dispatch&&UI.dsn&&!neg?dSendCard(live,cols):""}${grid}`+dBranchCard(live,cols);
 }
 // بطاقة المراجعة قبل إنشاء الطلبات: فرعاً فرعاً، وما أُنشئ من قبل بنفس الكميات لا يُنشأ مرة أخرى
 function dSendCard(live,cols){
@@ -1599,12 +1650,18 @@ function wire(){
   // (v187) توزيع حاوية
   else if(a==="dadd"){dLoad().lines.push(dBlank());dSave();paint(false);const el=g("dl"+(DS.lines.length-1)+"c");if(el)try{el.focus()}catch(x){}}
   else if(a==="ddel"){const S=dLoad(),i=+t.dataset.i,nv={};if(!(i>=0&&i<S.lines.length))return;S.lines.splice(i,1);Object.keys(S.ov).forEach(k=>{const p=k.split("|"),j=+p[0];if(j<i)nv[k]=S.ov[k];else if(j>i)nv[(j-1)+"|"+p[1]]=S.ov[k]});S.ov=nv;while(S.lines.length<3)S.lines.push(dBlank());dSave();paint(false)}
-  else if(a==="dclr"){if(!confirm("مسح كل أصناف الحاوية وتعديلات اليد؟ (القواعد تبقى)"))return;const S=dLoad();S.lines=[dBlank(),dBlank(),dBlank()];S.ov={};S.sent={};UI.dsn=false;dSave();paint(false)}
+  else if(a==="dclr"){if(!confirm("مسح كل أصناف الحاوية وتعديلات اليد؟ (القواعد تبقى)"))return;const S=dLoad();S.lines=[dBlank(),dBlank(),dBlank()];S.ov={};S.sent={};S.ctn={};UI.dsn=false;dSave();paint(false)}
   else if(a==="dpaste"){UI.dp=!UI.dp;paint(false);const el=g("stk-dpt");if(el)try{el.focus()}catch(x){}}
-  else if(a==="dpok"){const el=g("stk-dpt"),S=dLoad();if(!el)return;let n=0;S.lines=S.lines.filter(l=>String(l.c||"").trim()||N(l.ct)>0);
-   String(el.value||"").split(/\r?\n/).forEach(row=>{const p=row.split(row.indexOf("\t")>=0?"\t":/[,;،]/).map(s=>String(s).trim());if(!p[0]||S.lines.length>=200)return;const ct=N(arDig(p[3]||"")),pk=N(arDig(p[4]||""));if(!(ct>0)&&!/\d/.test(p[0]))return;/* سطر عناوين */S.lines.push({c:p[0].slice(0,40),cl:(p[1]||"").slice(0,40),z:(p[2]||"").slice(0,20),ct:ct>0?ct:"",pk:pk>0?pk:"",md:"c",ref:""});n++});
+  else if(a==="dpok"){const el=g("stk-dpt"),S=dLoad();if(!el)return;let n=0;
+   // (v198) بيان بالعرض (المقاسات أعمدة): كل خانة = سطر بالحبة. تعديلات اليد تُلغى لأن ترقيم السطور يتغيّر
+   const ST=parseStatement(el.value);if(ST.ok){S.lines=S.lines.filter(l=>String(l.c||"").trim()||N(l.ct)>0);S.ov={};S.ctn=Object.assign(S.ctn&&typeof S.ctn==="object"?S.ctn:{},ST.ctn);let add=0;for(const x of ST.lines){if(S.lines.length>=DMAX)break;const o=S.lines.find(l=>l.md==="p"&&String(l.c).trim()===x.c&&String(l.cl||"").trim()===x.cl&&String(l.z||"").trim()===x.z);if(o)o.ct=x.q;else S.lines.push({c:x.c,cl:x.cl,z:x.z,ct:x.q,pk:"",md:"p",ref:""});add++}
+    while(S.lines.length<3)S.lines.push(dBlank());UI.dp=false;UI.dvw="w";dSave();paint(false);if(X.toast)X.toast("قُرئ البيان: "+ST.colors+" لون × "+ST.sizes.length+" مقاس = "+add+" خانة"+(add<ST.lines.length?" (الباقي تجاوز الحد "+DMAX+")":""));return}
+   S.lines=S.lines.filter(l=>String(l.c||"").trim()||N(l.ct)>0);
+   String(el.value||"").split(/\r?\n/).forEach(row=>{const p=row.split(row.indexOf("\t")>=0?"\t":/[,;،]/).map(s=>String(s).trim());if(!p[0]||S.lines.length>=DMAX)return;const ct=N(arDig(p[3]||"")),pk=N(arDig(p[4]||""));if(!(ct>0)&&!/\d/.test(p[0]))return;/* سطر عناوين */S.lines.push({c:p[0].slice(0,40),cl:(p[1]||"").slice(0,40),z:(p[2]||"").slice(0,20),ct:ct>0?ct:"",pk:pk>0?pk:"",md:"c",ref:""});n++});
    while(S.lines.length<3)S.lines.push(dBlank());UI.dp=false;dSave();paint(false);if(X.toast)X.toast(n?"أُضيف "+n+" سطر":"لم أجد صفوفاً صالحة")}
   else if(a==="dro"){UI.dro=!UI.dro;paint(false)}
+  else if(a==="dvw"){UI.dvw=t.dataset.v==="l"?"l":"w";paint(false)}
+  else if(a==="prnb"||a==="xlsb"){if(!BRX){if(X.toast)X.toast("لا بيان للطباعة");return}const o=LASTX;LASTX=BRX;try{if(a==="prnb")printX();else csv()}finally{LASTX=o}}
   else if(a==="ddef"){const S=dLoad();S.rules=Object.assign({},DDEF,{lv:{}});S.ov={};dSave();paint(false)}
   else if(a==="dovx"){dLoad().ov={};dSave();paint(false)}
   // (v188) التوزيع ← طلبات، ومراجعة التحويل قبل إنشائه
@@ -1658,6 +1715,7 @@ function wire(){
   if(t.dataset.nq!==undefined&&UI.nrx){UI.nrx.q=UI.nrx.q||{};UI.nrx.q[t.dataset.nq]=t.value===""?0:Math.max(0,Math.min(99999,Math.round(N(t.value))));return true}
   if(t.dataset.tq!==undefined&&UI.trx){const mx=Math.max(0,N(t.max));UI.trx.q=UI.trx.q||{};UI.trx.q[t.dataset.tq]=t.value===""?0:Math.max(0,Math.min(mx||99999,Math.round(N(t.value))));return true}
   if(t.dataset.dx!==undefined){const S=dLoad(),k=t.dataset.dx;if(t.value==="")delete S.ov[k];else S.ov[k]=Math.max(0,N(t.value));dSave();return true}
+  if(t.dataset.dw!==undefined){const S=dLoad(),p=t.dataset.dw.split("|"),r=DWK.rows[+p[0]],z=DWK.cols[+p[1]],v=Math.max(0,N(t.value));if(!r||z===undefined||!(v>0)||S.lines.length>=DMAX)return false;S.lines.push({c:r.c,cl:r.cl,z,ct:v,pk:"",md:"p",ref:""});dSave();return true}
   if(t.dataset.dl!==undefined){const S=dLoad(),p=t.dataset.dl.split("|"),i=+p[0],f=p[1];if(!(i>=0&&i<S.lines.length)||["c","cl","z","ct","pk","md","ref"].indexOf(f)<0)return false;const l=S.lines[i];
    l[f]=f==="ct"||f==="pk"?(t.value===""?"":Math.max(0,N(t.value))):f==="md"?(t.value==="p"?"p":"c"):String(t.value).trim().slice(0,40);Object.keys(S.ov).forEach(k=>{if(k.split("|")[0]===String(i))delete S.ov[k]});dSave();return true}
   if(t.dataset.dr!==undefined){const S=dLoad(),k=t.dataset.dr;if(["on","wh","cs","cmin","cmax","ps","pmin","pmax","mode"].indexOf(k)<0)return false;S.rules[k]=k==="mode"?(t.value==="all"||t.value==="eq"?t.value:"smart"):(t.value===""?"":Math.max(0,N(t.value)));S.ov={};dSave();return true}
@@ -1680,10 +1738,11 @@ function wire(){
  // (v184) خانة الكود/البحث: الضغط عليها يحدّد ما فيها، فالكتابة تستبدله مباشرة (صنف آخر بلا مسح يدوي)
  let PF=0;ROOT.addEventListener("pointerdown",e=>{const t=e.target;PF=t&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")&&document.activeElement!==t?1:0});
  ROOT.addEventListener("focusin",e=>{const t=e.target;if(PF&&t&&t.select&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")){PF=0;setTimeout(()=>{try{if(document.activeElement===t)t.select()}catch(x){}},0)}});
- ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file"||t.dataset.fo)return;if(t.dataset.lx){if(UI.lx&&t.dataset.lx!=="t")UI.lx[t.dataset.lx]=t.value;return}if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.tq!==undefined||t.dataset.nq!==undefined||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
+ ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file"||t.dataset.fo)return;if(t.dataset.lx){if(UI.lx&&t.dataset.lx!=="t")UI.lx[t.dataset.lx]=t.value;return}if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.tq!==undefined||t.dataset.nq!==undefined||t.dataset.dw!==undefined||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
  // (v192) خانة التاريخ: أثناء كتابة السنة يمرّ المتصفح بتواريخ ناقصة (سنة 0002…) ويطلق change مع كل رقم، وإعادة الرسم كانت تقطع الكتابة («بيعلّق»).
  // فالتاريخ غير المعقول يُتجاهل، والمعقول يُطبَّق بعد توقف قصير عن الكتابة
  ROOT.addEventListener("change",e=>{const t=e.target;if(t.id==="stk-file"){const f=[...t.files];t.value="";onFiles(f);return}
+  if(t.dataset.dbr){UI.dbr=t.value;paint();return}
   if(t.dataset.lx){if(UI.lx){if(t.dataset.lx==="t"){UI.lx.t=t.value;UI.lx.v="";paint()}else UI.lx[t.dataset.lx]=t.value}return}
   if(t.dataset.fo){focChange(t);return}
   // (v195) خانات التحديد: لا تعيد رسم الصفحة مع كل علامة (يُحدَّث العدّاد فقط)، و«تحديد كل المعروض» يعيد الرسم مرة
