@@ -1621,9 +1621,9 @@ function kindA(a){if(!a)return "";const c=a.cmp;if(c&&((c.st&&c.st.length>1)||(c
 const hGet=()=>{try{const a=JSON.parse(localStorage.getItem("stk_ask")||"[]");return Array.isArray(a)?a.filter(x=>typeof x==="string"&&x).slice(0,8):[]}catch(e){return []}};
 const hAdd=q=>{try{localStorage.setItem("stk_ask",JSON.stringify([q].concat(hGet().filter(x=>x!==q)).slice(0,8)))}catch(e){}};
 function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||!DATA||!DATA.has){UI.a=null;paint(false);return}
- const L=lexLoad(),q2=lexApply(q,L.d);UI.a=parseAsk(q2,askCtx());UI.a.q2=q2!==q.split(/\s+/).join(" ")?q2:"";hAdd(q);
+ const L=lexLoad();UI.a=parseAsk(q,askCtx());UI.a.q2="";hAdd(q);// (v212) القاموس اتشال: السؤال يُفهم كما كُتب
  // (v196) عدّاد التكرار + سجل ما لم يُفهم (على الجهاز)
- const e=L.f[q]||(L.f[q]={n:0,at:0});e.n=N(e.n)+1;e.at=Date.now();lexSave();lexLogUnk((UI.a.unk||[]).concat(UI.a.left||[]),q);const fk=askFailK(UI.a);if(fk)lexLogQ(q,fk);paint(false)}
+ const e=L.f[q]||(L.f[q]={n:0,at:0});e.n=N(e.n)+1;e.at=Date.now();lexSave();const fk=askFailK(UI.a);if(fk)lexLogQ(q,fk);paint(false)}
 let EXC=null;// أمثلة من بيانات الملف نفسه (أعلى كود وأعلى فرع مبيعاً)
 /* (v196) 📖 «اسأل» تتعلّم من المستخدم: قاموسه الخاص (كلمة أو عبارة ← معناها)، أسئلته المثبّتة والمتكررة، وسجل ما لم يُفهم.
    كله على الجهاز (localStorage.stk_lex). القاموس يستبدل العبارة بنص تفهمه القواعد الثابتة قبل الفهم، فالحساب نفسه لا يتغيّر */
@@ -1687,17 +1687,15 @@ function lexForm(){
  return '<div class="stk-lxf"><b>📖 علّمني</b><label>ما تكتبه أنت (كلمة أو عبارة)<input type="text" data-lx="w" id="stk-lxw" value="'+E(x.w||"")+'" maxlength="40" autocomplete="off"></label><label>تعني<select data-lx="t" id="stk-lxt">'+lexTypes.map(a=>'<option value="'+a[0]+'"'+(t===a[0]?" selected":"")+">"+a[1]+"</option>").join("")+"</select></label>"+val+'<button class="bt p s" type="button" data-sk="lxs">حفظ</button><button class="bt s" type="button" data-sk="lxx">إلغاء</button><small class="off">بعد الحفظ أفهمها في كل سؤال، بأي طريقة يُكتب بها باقي السؤال، ولكل من يفتح «تحليل المخزون».</small></div>'}
 function lexBox(){
  const L=lexLoad(),q=String(UI.aq||"").trim(),F=L.f,pins=L.p.slice(0,14),freq=Object.keys(F).filter(k=>F[k]&&L.p.indexOf(k)<0&&N(F[k].n)>=3).sort((a,b)=>N(F[b].n)-N(F[a].n)).slice(0,6);
- const ch=x=>'<button type="button" data-sk="ex" data-x="'+E(x)+'" data-notr>'+E(x)+"</button>",un=L.u.filter(e=>e.w&&!lexKnown(e.w));
- let h="";if(q&&UI.a&&askFailK(UI.a)==="q")h+='<p class="stk-lqn">📝 سجّلتُ هذا السؤال في «أسئلة تنتظر التعليم» ليتعلّمه فريق المنصة. يمكنك أيضاً تعليمي الكلمات غير المفهومة بالضغط عليها.</p>';
+ const ch=x=>'<button type="button" data-sk="ex" data-x="'+E(x)+'" data-notr>'+E(x)+"</button>";
+ let h="";if(q&&UI.a&&askFailK(UI.a)==="q")h+='<p class="stk-lqn">📝 سجّلتُ هذا السؤال في «أسئلة تنتظر التعليم» ليتعلّمه فريق المنصة.</p>';
  if(pins.length)h+='<div class="stk-chips"><i>⭐ المثبّتة</i>'+pins.map(x=>ch(x)+'<button type="button" class="stk-lxu" data-sk="lxup" data-x="'+E(x)+'" title="إلغاء التثبيت" aria-label="إلغاء التثبيت">✕</button>').join("")+"</div>";
  if(freq.length)h+='<div class="stk-chips"><i>تسألها كثيراً</i>'+freq.map(ch).join("")+"</div>";
- h+='<div class="stk-act" style="margin:10px 0 0">'+(q?'<button class="bt s" type="button" data-sk="lxp">'+(L.p.indexOf(q)>=0?"إلغاء تثبيت هذا السؤال":"⭐ ثبّت هذا السؤال")+"</button>":"")+'<button class="bt s" type="button" data-sk="lxo">📖 قاموسي ('+fmt(L.d.length)+")"+(un.length?" · "+fmt(un.length)+" كلمة لم تُفهم":"")+"</button>"+lqBtn(L)+"</div>"+lexForm()+lqPanel(L);
- if(L.open){h+='<div class="stk-lxl"><p class="stk-src">الكلمات التي تعلّمتُها منكم. مشتركة لكل من يفتح «تحليل المخزون»، وتُستبدل بمعناها قبل فهم السؤال.</p>'+(L.d.length?'<div class="stk-chips">'+L.d.map((e,i)=>'<button type="button" data-sk="lxd" data-i="'+i+'" title="حذف" data-notr>«'+E(e.w)+"» ← "+E(e.l||e.r||"تُتجاهل")+" ✕</button>").join("")+"</div>":'<p class="stk-src">لم تعلّمني شيئاً بعد. عندما لا أفهم كلمة في سؤالك سيظهر زر «علّمني» بجوارها.</p>')
-  +(un.length?'<p class="stk-src" style="margin-top:10px">كلمات لم أفهمها في أسئلتك (اضغط الكلمة لتعلّمني معناها):</p><div class="stk-chips">'+un.slice(0,30).map(e=>'<button type="button" data-sk="lxt" data-w="'+E(e.w)+'" title="'+E(e.q||"")+'" data-notr>'+E(e.w)+"</button>").join("")+'<button type="button" data-sk="lxuc">🗑 مسح السجل</button></div>':"")+"</div>"}
+ h+='<div class="stk-act" style="margin:10px 0 0">'+(q?'<button class="bt s" type="button" data-sk="lxp">'+(L.p.indexOf(q)>=0?"إلغاء تثبيت هذا السؤال":"⭐ ثبّت هذا السؤال")+"</button>":"")+lqBtn(L)+"</div>"+lqPanel(L);
  return h;
 }
 /* (v211) 📝 «أسئلة تنتظر التعليم»: ما لم يُفهم يُسجَّل وحده، ويكتب المستخدم أي سؤال يتوقعه، ثم ينسخ القائمة ويرسلها لفريق المنصة */
-const lqList=L=>L.u.filter(e=>!e.w&&e.q).map(e=>{let ok=false;try{const a=parseAsk(lexApply(e.q,L.d),askCtx());ok=!askFailK(a)}catch(x){}return Object.assign({ok},e)});
+const lqList=L=>L.u.filter(e=>!e.w&&e.q).map(e=>{let ok=false;try{const a=parseAsk(e.q,askCtx());ok=!askFailK(a)}catch(x){}return Object.assign({ok},e)});
 const LQK={q:["❓","لم تُفهم"],p:["◐","فُهمت جزئياً"],s:["💡","سؤال مقترح"]};
 function lqBtn(L){const n=L.u.filter(e=>!e.w&&e.q).length;return '<button class="bt s" type="button" data-sk="lqo">📝 أسئلة تنتظر التعليم ('+fmt(n)+")</button>"}
 function lqPanel(L){
@@ -1758,9 +1756,7 @@ function vAsk(){
  if(a.cmp&&a.cmp.b&&!B)nt.push(`<div class="stk-rep w">فترة المقارنة: تاريخ البداية بعد تاريخ النهاية.</div>`);
  if(a.where&&!a.code&&K!=="r"&&K!=="x")nt.push(`<div class="stk-rep">«مين عنده» تحتاج كود الصنف: اكتبه في السؤال أو في خانة الكود.</div>`);
  if(K==="x"&&cs&&a.cmp.b)nt.push(`<div class="stk-rep">قارنتُ الفروع في الفترة الأولى فقط. لمقارنة فترتين اترك فرعاً واحداً.</div>`);
- if(a.left&&a.left.length)nt.push('<div class="stk-rep">كلمات في سؤالك لم أستعملها (اضغط الكلمة لتعلّمني معناها، أو تجاهلها): '+a.left.slice(0,6).map(w=>'<button class="bt s" type="button" data-sk="lxt" data-w="'+E(w)+'" data-notr>«'+E(w)+"»</button>").join(" ")+"</div>");
- if(a.q2)nt.push('<div class="stk-rep">من قاموسك، قرأتُ السؤال هكذا: <b data-notr>'+E(a.q2)+"</b></div>");
- if(a.unk.length)nt.push('<div class="stk-rep">لم أفهم من سؤالك: <b data-notr>'+E(a.unk.join(" · "))+"</b> — لم يدخل في الحساب. علّمني معناها: "+a.unk.slice(0,6).map(w=>'<button class="bt s" type="button" data-sk="lxt" data-w="'+E(w)+'" data-notr>«'+E(w)+"»</button>").join(" ")+"</div>");
+ if(a.unk.length)nt.push('<div class="stk-rep">لم أفهم من سؤالك: <b data-notr>'+E(a.unk.join(" · "))+"</b> — لم يدخل في الحساب.</div>");
  const rcOld=!(META&&META.q&&META.q.rc!==undefined),upB=`<button class="bt s" type="button" data-sk="tab" data-t="up">افتح «الملفات»</button>`;// rcOld: ملف الكميات المحفوظ رُفع قبل تحديث المستلم
  if(a.rc&&!DATA.hasRc)nt.push(rcOld?`<div class="stk-rep w">«المستلم» لم يُحفظ بعد: ملف الكميات الموجود على المنصة رُفع قبل تحديث «المستلم». ارفع ملف الكميات مرة أخرى من تبويب «الملفات» ليظهر المستلم هنا. ${upB}</div>`:`<div class="stk-rep w">«المستلم» غير متاح: ملف الكميات المرفوع ليس فيه عمود استلام صالح لكل فرع. ارفع ملف كميات فيه عمود المستلم ليظهر هنا. المتاح الآن: الرصيد والمبيعات. ${upB}</div>`);
  if(a.rc&&DATA.hasRc)nt.push(`<div class="stk-rep">«المستلم» من ملف الكميات، وهو من أول السنة حتى يوم التقرير${a.per==="c"?" (لا يتبع الفترة المختارة)":""}. يظهر في بطاقة الفرع وبطاقة الصنف.</div>`);

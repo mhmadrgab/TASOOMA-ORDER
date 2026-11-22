@@ -3139,6 +3139,7 @@ export default {
 "كتبت أكثر من كود. اختر الكود:":"You typed more than one code. Choose the code:",
 "لم أجد هذا الكود كاملاً. أكواد تبدأ بما كتبت:":"I could not find this exact code. Codes that start with what you typed:",
 "أكثر من لون يطابق ما كتبت. اختر اللون:":"More than one colour matches what you typed. Choose the colour:",
+"📝 سجّلتُ هذا السؤال في «أسئلة تنتظر التعليم» ليتعلّمه فريق المنصة.":"📝 I logged this question in “Questions waiting to be taught” so the platform team can teach it.",
 "لم أفهم من سؤالك:":"I did not understand this part of your question:",
 "— لم يدخل في الحساب.":"— it was not used in the calculation.",
 "«المستلم» غير متاح: عمود":"“Received” is not available: the column",
