@@ -222,7 +222,7 @@ const TABS=[
  ["po","🚢","أوامر الشراء",()=>(ROLE.admin||ROLE.p.po===true||ROLE.p.rcv===true||ROLE.v===true)&&poFree(),()=>poCount(),"fin"],
  ["rcv","📦","استلام الحاويات",()=>rcvLim(),()=>poRcvCount(),"fin"],
  ["cus","💵","العهدة",()=>see("cus")&&secOk("cus"),null,"fin"],
- ["bcus","💼","عهدة الفروع",()=>see("cus")&&secOk("cus"),()=>(ROLE.admin||can("cus"))&&ROLE.v!==true?bcusPend():0,"fin"],// (v218) عهدة الفروع
+ ["bcus","💼","عهدة الفروع",()=>see("cus")&&secOk("cus"),()=>(ROLE.owner===true||ROLE.p.cus===true)&&ROLE.v!==true?bcusPend():0,"fin"],// (v218) عهدة الفروع · (v219) العدد لمن يراجع فقط: المحاسب والمالك
  ["gift","🎁","الهدايا",()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift"),()=>giftPend(),"fin"],
  // 📊 (v173) تحليل المخزون من تقارير السيستم: للأدمن ومالك النظام فقط (والقواعد كذلك)
  ["stk","📊","تحليل المخزون",()=>ROLE.owner===true||(ROLE.p.stk===true&&ROLE.v!==true),null,"fin"],
@@ -355,7 +355,7 @@ function start(){
  initPwSelf({auth,toast,label:me});// 🔑 كل موظف يغيّر كلمة مروره من «حسابي»
  P=tmpPw;// 🔑 (18 نوفمبر 2026) كلمات المرور لا تُحفظ: P = ما أُنشئ أو تغيّر في فتحة الصفحة هذه فقط (fb.js tmpPw)
  const adm=ROLE.admin;
- if(adm||can("cus")||vw)initBCus({db,toast,mode:"wh",staff:(adm||can("cus"))&&!vw,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 💼 (v218)
+ if(adm||can("cus")||vw)initBCus({db,toast,mode:"wh",staff:(ROLE.owner===true||ROLE.p.cus===true)&&!vw,ping:id=>ping(auth,[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 💼 (v218)
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك فقط
  // 🎁 الهدايا والعينات: الاعتماد لمدير التسويق (p.gm) واللي المالك اداله "اعتماد الهدايا" (p.ga) بس — مش المدير بصفته مدير.

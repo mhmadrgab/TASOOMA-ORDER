@@ -4329,4 +4329,8 @@ export default {
 "تعذّرت قراءة العهدة. ربما لم تتحدّث القواعد بعد":"Could not read custody. The rules may not be updated yet",
 "غير مسموح. ربما لم تتحدّث القواعد بعد":"Not allowed. The rules may not be updated yet",
 "تعذّر الحفظ":"Could not save",
+"✅ سُجّل التسليم، وأُبلغ الفرع":"✅ Handover recorded, and the branch was notified",
+"✅ اعتُمد، وأُبلغ الفرع":"✅ Approved, and the branch was notified",
+"رُفض، وأُبلغ الفرع":"Rejected, and the branch was notified",
+" التسليم والمراجعة والإقفال للمحاسب والمدير المالي فقط.":" Handover, review and closing are for the accountant and the financial manager only.",
 };

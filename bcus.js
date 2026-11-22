@@ -1,6 +1,6 @@
 // 💼 عهدة الفروع (v218، 22 نوفمبر 2026، طلب محمد: «ضيف مديول العهدة لكل الفروع»، والطريقة اللي وافق عليها):
 //   الفرع: يسجّل مصروفاته (البند، المبلغ، التاريخ، صورة الفاتورة إجبارياً) ويرى رصيده وكشف حسابه، ويعدّل أو يحذف ما لم يُراجَع.
-//   المستودع (المدير وصلاحية العهدة؛ المتابع يرى فقط): يسلّم مبالغ للفرع، يراجع كل مصروف (معتمد / مرفوض بسبب)، ويقفل الفترة فيُرحَّل الرصيد.
+//   (v219) المحاسب (صلاحية العهدة) والمالك/مالك النظام فقط؛ المديرون والمتابع يرون فقط: يسلّم مبالغ للفرع، يراجع كل مصروف (معتمد / مرفوض بسبب)، ويقفل الفترة فيُرحَّل الرصيد.
 //   bled/{id} = {br, k: in|out, amt, dt, cat?, note?, img?:1, by:{e,n}, ts, st: pend|ok|no, rv?:{e,n,at,note?}, o: 1 مفتوح|0 مقفول, sid?}
 //   bledimg/{id} = {img} صورة الفاتورة · bset/{id} = {br, at, bal, cnt, by, ts, from?}. القواعد في 002_rules.sql (v218).
 //   الرصيد = آخر إقفال + ما سُلِّم في الفترة − المصروف المعتمد. المرفوض لا يُخصم، والمنتظر يظهر منفصلاً.
@@ -47,7 +47,8 @@ const CSS=`
 `;
 const css=()=>{if(!g("bcx-css")){const s=document.createElement("style");s.id="bcx-css";s.textContent=CSS;document.head.appendChild(s)}};
 const isWh=()=>X&&X.mode==="wh";
-const canAct=()=>isWh()&&X.staff===true;
+const canAct=()=>isWh()&&X.staff===true;// (v219) staff = المحاسب (صلاحية العهدة) أو المالك/مالك النظام فقط
+const pg=id=>{try{if(X.ping&&id)X.ping(id)}catch(e){}};// 🔔 (v219) إشعار: مصروف جديد ← المحاسب والمالك، اعتماد/رفض/تسليم ← الفرع
 const brName=c=>{const L=(X&&X.branches?X.branches():[]).map(String);return L.find(b=>b.split("-")[0]===c)||c};
 // ctx: {db, toast, mode:"branch"|"wh", code?, brn?, me:{e,n}, staff?:bool, branches?:()=>[...], redraw?:()=>void}
 export function initBCus(ctx){
@@ -114,7 +115,7 @@ export function bcusView(){
  const sum=brs.map(b=>({b,c:calc(b)})),pendT=sum.reduce((a,x)=>a+x.c.pend,0);
  const opt=`<option value="">كل الفروع</option>${all.map(c=>`<option value="${E(c)}"${c===SEL?" selected":""}>‎${E(brName(c))}</option>`).join("")}`;
  const head=`<div class="bcx-h"><h2>💼 عهدة الفروع</h2><select data-bx-sel aria-label="الفرع">${opt}</select>${SEL&&canAct()?`<button type="button" class="b p" data-bx="give">➕ تسليم عهدة للفرع</button><button type="button" class="b" data-bx="close">🔒 إقفال الفترة</button>`:""}${SEL?`<button type="button" class="b" data-bx="csv" data-b="${E(SEL)}">⬇️ إكسل</button>`:""}</div>`;
- if(!SEL)return `<div class="pan bcx">${head}<p class="off" style="margin:0 0 10px">${pendT?`<b>${pendT}</b> مصروف بانتظار المراجعة في كل الفروع. `:""}اختر فرعاً لعرض كشف حسابه${canAct()?" وتسليم عهدة أو المراجعة أو الإقفال":""}.</p>
+ if(!SEL)return `<div class="pan bcx">${head}<p class="off" style="margin:0 0 10px">${pendT?`<b>${pendT}</b> مصروف بانتظار المراجعة في كل الفروع. `:""}اختر فرعاً لعرض كشف حسابه${canAct()?" وتسليم عهدة أو المراجعة أو الإقفال":""}.${canAct()?"":" التسليم والمراجعة والإقفال للمحاسب والمدير المالي فقط."}</p>
   ${sum.length?`<div style="overflow-x:auto"><table class="bcx-br"><thead><tr><th>الفرع</th><th>الرصيد الآن</th><th>بانتظار المراجعة</th><th>آخر إقفال</th></tr></thead><tbody>${sum.sort((a,b)=>b.c.pend-a.c.pend||a.b.localeCompare(b.b)).map(x=>`<tr data-bx="pick" data-b="${E(x.b)}"><td data-notr>‎${E(brName(x.b))}</td><td class="n">${money(x.c.bal)}</td><td>${x.c.pend?`<span class="bcx-s pend">${x.c.pend} · ${money(x.c.pendA)}</span>`:"—"}</td><td>${x.c.last?E(dts(x.c.last.at)):"—"}</td></tr>`).join("")}</tbody></table></div>`:`<div class="bcx-e">لا توجد حركات عهدة لأي فرع بعد.${canAct()?" اختر فرعاً وسلّمه عهدة.":""}</div>`}</div>`;
  const c=calc(SEL);
  return `<div class="pan bcx">${head}${tiles(c)}${rowsHtml(c.L,SEL,false)}${viewHtml()}${setsHtml(c,SEL)}</div>`;
@@ -183,14 +184,14 @@ async function onClick(e){
  if(a==="save"){const f=readForm(true);if(!f)return;const fi=g("bcx-f")&&g("bcx-f").files&&g("bcx-f").files[0];if(!fi){X.toast("صورة الفاتورة إجبارية","er");return}
   BUSY=true;t.disabled=true;try{const img=await shrink(fi),ref=doc(collection(X.db,"bled")),b=writeBatch(X.db);
    b.set(doc(X.db,"bledimg",ref.id),{img});b.set(ref,Object.assign({br:X.code,k:"out",amt:f.amt,dt:f.dt,cat:f.cat,img:1,by:{e:X.me.e,n:String(X.me.n||"").slice(0,60)},ts:Date.now(),st:"pend",o:1},f.note?{note:f.note}:{}));
-   await withTimeout(b.commit(),20000);closeM();X.toast("✅ سُجّل المصروف، بانتظار مراجعة المحاسب")}catch(x){BUSY=false;t.disabled=false;if(x&&/big|img/.test(x.message))X.toast("تعذّر تجهيز الصورة. جرّب صورة أخرى","er");else fail(x)}return}
+   await withTimeout(b.commit(),20000);closeM();X.toast("✅ سُجّل المصروف، بانتظار مراجعة المحاسب");pg(ref.id)}catch(x){BUSY=false;t.disabled=false;if(x&&/big|img/.test(x.message))X.toast("تعذّر تجهيز الصورة. جرّب صورة أخرى","er");else fail(x)}return}
  if(a==="esave"&&r){const f=readForm(true);if(!f)return;BUSY=true;t.disabled=true;
   try{await withTimeout(updateDoc(doc(X.db,"bled",id),{amt:f.amt,dt:f.dt,cat:f.cat,note:f.note}),15000);closeM();X.toast("✅ عُدّل")}catch(x){BUSY=false;t.disabled=false;fail(x)}return}
  if(a==="del"&&r){if(!confirm("حذف هذا المصروف؟"))return;BUSY=true;try{const b=writeBatch(X.db);b.delete(doc(X.db,"bled",id));b.delete(doc(X.db,"bledimg",id));await withTimeout(b.commit(),15000);X.toast("حُذف")}catch(x){fail(x)}BUSY=false;return}
  if(a==="gsave"&&canAct()&&SEL){const f=readForm(false);if(!f)return;BUSY=true;t.disabled=true;
-  try{await withTimeout(setDoc(doc(collection(X.db,"bled")),Object.assign({br:SEL,k:"in",amt:f.amt,dt:f.dt,by:{e:X.me.e,n:String(X.me.n||"").slice(0,60)},ts:Date.now(),st:"ok",o:1},f.note?{note:f.note}:{})),15000);closeM();X.toast("✅ سُجّل التسليم")}catch(x){BUSY=false;t.disabled=false;fail(x)}return}
+  try{const ref=doc(collection(X.db,"bled"));await withTimeout(setDoc(ref,Object.assign({br:SEL,k:"in",amt:f.amt,dt:f.dt,by:{e:X.me.e,n:String(X.me.n||"").slice(0,60)},ts:Date.now(),st:"ok",o:1},f.note?{note:f.note}:{})),15000);closeM();X.toast("✅ سُجّل التسليم، وأُبلغ الفرع");pg(ref.id)}catch(x){BUSY=false;t.disabled=false;fail(x)}return}
  if((a==="ok"||a==="no")&&r&&canAct()){let note="";if(a==="no"){note=String(prompt("سبب الرفض (يظهر للفرع):")||"").trim().slice(0,300);if(note.length<2){X.toast("اكتب سبب الرفض","er");return}}
-  BUSY=true;try{await withTimeout(updateDoc(doc(X.db,"bled",id),{st:a,rv:Object.assign({e:X.me.e,n:String(X.me.n||"").slice(0,60),at:Date.now()},note?{note}:{})}),15000);X.toast(a==="ok"?"✅ اعتُمد":"رُفض")}catch(x){fail(x)}BUSY=false;return}
+  BUSY=true;try{await withTimeout(updateDoc(doc(X.db,"bled",id),{st:a,rv:Object.assign({e:X.me.e,n:String(X.me.n||"").slice(0,60),at:Date.now()},note?{note}:{})}),15000);X.toast(a==="ok"?"✅ اعتُمد، وأُبلغ الفرع":"رُفض، وأُبلغ الفرع");pg(id)}catch(x){fail(x)}BUSY=false;return}
  if(a==="idel"&&r&&canAct()){if(!confirm("حذف تسليم العهدة هذا؟"))return;BUSY=true;try{await withTimeout(deleteDoc(doc(X.db,"bled",id)),15000);X.toast("حُذف")}catch(x){fail(x)}BUSY=false;return}
  if(a==="close"&&canAct()&&SEL){const c=calc(SEL);if(c.pend){X.toast(`راجع المصروفات المنتظرة أولاً (${c.pend})`,"er");return}if(!c.L.length){X.toast("لا حركات في الفترة المفتوحة","er");return}
   if(!confirm(`إقفال فترة فرع ${brName(SEL)}؟\nالرصيد المرحَّل: ${money(c.bal)} ريال (${c.L.length} حركة). لا يمكن التعديل بعد الإقفال.`))return;

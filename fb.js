@@ -115,17 +115,17 @@ export async function pushSave(db, info, tok, native) {
 }
 // ---------- سيرفر الإشعارات (Cloudflare) ----------
 export const PUSH_URL = "https://tasooma-push.tasooma.workers.dev";
-export async function ping(auth, ids, chats, trips, gifts, mnts, pos) {
+export async function ping(auth, ids, chats, trips, gifts, mnts, pos, cus) {
   try {
-    const u0 = a => [...new Set((a || []).filter(Boolean))]; ids = u0(ids); chats = u0(chats); trips = u0(trips); gifts = u0(gifts); mnts = u0(mnts); pos = u0(pos);
+    const u0 = a => [...new Set((a || []).filter(Boolean))]; ids = u0(ids); chats = u0(chats); trips = u0(trips); gifts = u0(gifts); mnts = u0(mnts); pos = u0(pos); cus = u0(cus);// 💼 (v219) cus = حركات عهدة الفروع
     chats.filter(c => /^g_/.test(c)).forEach(c => multiPush(auth, "/grp", {gid: c.slice(2)})); chats = chats.filter(c => !/^g_/.test(c));
     // 📦 (18 نوفمبر 2026) مرحلة الحاوية (ميناء / متجهة / وصلت المستودع) تُذاع للمديرين والمحاسبين، والفروع عند الوصول. على دفعات، والسيرفر يمنع التكرار
     if (auth && auth.currentUser && !/@tasooma\.app$/i.test(String(auth.currentUser.email || ""))) pos.forEach(x => multiPush(auth, "/pobc", {id: x}));
-    if (!PUSH_URL || !(ids.length || chats.length || trips.length || gifts.length || mnts.length || pos.length)) return;
+    if (!PUSH_URL || !(ids.length || chats.length || trips.length || gifts.length || mnts.length || pos.length || cus.length)) return;
     const u = auth && auth.currentUser; if (!u) return;
     const t = await u.getIdToken();
-    const jobs = [...trips.map(x => ({trips: [x]})), ...ids.map(x => ({ids: [x]})), ...chats.map(x => ({chats: [x]})), ...gifts.map(x => ({gifts: [x]})), ...mnts.map(x => ({mnts: [x]})), ...pos.map(x => ({pos: [x]}))].slice(0, 40);
-    jobs.forEach(b => fetch(PUSH_URL + "/notify", {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + t}, body: JSON.stringify({ids: [], chats: [], trips: [], gifts: [], mnts: [], pos: [], ...b}), keepalive: true}).catch(() => {}));
+    const jobs = [...trips.map(x => ({trips: [x]})), ...ids.map(x => ({ids: [x]})), ...chats.map(x => ({chats: [x]})), ...gifts.map(x => ({gifts: [x]})), ...mnts.map(x => ({mnts: [x]})), ...pos.map(x => ({pos: [x]})), ...cus.map(x => ({cus: [x]}))].slice(0, 40);
+    jobs.forEach(b => fetch(PUSH_URL + "/notify", {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + t}, body: JSON.stringify({ids: [], chats: [], trips: [], gifts: [], mnts: [], pos: [], cus: [], ...b}), keepalive: true}).catch(() => {}));
   } catch (e) {}
 }
 export const annPush = (auth, id) => multiPush(auth, "/ann", {id});
