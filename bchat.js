@@ -30,7 +30,7 @@ const isM=p=>{if(p[0]!=="w")return false;const d=DIR[pv(p)]||{};return MGMT.incl
 // عند الفرع والسواق: "المستودع" = المالك + اللي المالك اختارهم بس (طلب محمد)
 const inWh=d=>d&&(d.r==="owner"||d.w===true);
 // كل شخص في قسم واحد بس: w = 🏭 المستودع (المالك + المختارين، عند الكل)، m = الإدارة، s = باقي الموظفين
-const kindOf=p=>{if(p[0]!=="w")return p[0];if(inWh(DIR[pv(p)]))return "w";return isM(p)?"m":"s"};
+const kindOf=p=>{if(p[0]==="p")return "b";if(p[0]!=="w")return p[0];if(inWh(DIR[pv(p)]))return "w";return isM(p)?"m":"s"};
 // CUR = المحادثة المفتوحة (cid). CTX = "بخصوص طلب" لكل محادثة، PEND = طلب مستني الفرع يختار يكلّم مين عنه. AVA = الصور
 let PRT=0;
 let X=null,SUMS={},SO={},SN={},SG={},UNG=null,DIR={},DDIR={},AVA={},FILT="",CUR=null,GEN=0,UNM=null,UNS=null,UNS2=null,UND=null,UNA=null,UNDD=null,MSGS=[],LIM=PAGE,DRAFT={},CTX={},PEND=null,REC=null,PLAY={id:null,au:null},busy=false,marking=false,first=true,keepTop=null,ROOT=null,Q="";
@@ -334,6 +334,10 @@ const mmss=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+":"+String(s%
 // الأطراف: b-كود الفرع / w-إيميل الشخص اللي في المستودع / d-رقم السائق. X.me = طرفي أنا
 const T=()=>X.me[0];
 const pv=p=>String(p).slice(2);
+// 👥 (v216) p-{رقم} = شخص في فرع (موظف أو مدير الفرع). BP = ملفاتهم (المستودع فقط يقرؤها) ← اسمه ودوره وفرعه
+const TB=()=>T()==="b"||T()==="p";
+let BP={},UNBP=null;
+const bpRole=v=>{const d=BP[v];return d?(d.r==="m"?"مدير الفرع":"موظف")+" · "+(X&&X.brn?X.brn(d.br):d.br):""};
 const isOld=c=>/^\d{3}__/.test(c);// فرع مع المستودع: الشكل القديم {كود}__{إيميل}
 // 👥 الجروبات (نوفمبر 2026): grp/{gid} = {name, ms:[الأعضاء], ad:[مديرين الجروب], by, ts, last, u:{مفتاح:لسه ماقراش كام}, r:{مفتاح:قرا لحد إمتى}, nm:{مفتاح:اسمه}}
 //   الرسايل grp/{gid}/msgs والصوت aud والصور img. اسم المحادثة جوه الصفحة = "g_"+gid. المفتاح = الطرف من غير رموز (gk)
@@ -353,6 +357,7 @@ const byParty=(c,by)=>isOld(c)?(by==="br"?"b-"+c.slice(0,c.indexOf(SEP)):"w-"+c.
 function pname(p,c){const t=p[0],v=pv(p),s=c&&SUMS[c];
   if(isG(p)){const G=SUMS[p];return (G&&G.name)||"جروب"}
   if(t==="b")return X.brn(v)||v;
+  if(t==="p"){const d=BP[v];return (d&&d.n)||(s&&s.nm&&s.nm[p])||("شخص "+v)}
   if(t==="d"){const d=DDIR[v];return (d&&d.n)||(s&&s.nm&&s.nm[p])||v}
   const d=DIR[v];return (d&&d.n)||(s&&(s.whn||(s.nm&&s.nm[p])))||v.split("@")[0]}
 const pk=p=>p[0]==="w"?((DIR[pv(p)]||{}).k||""):"";
@@ -365,7 +370,7 @@ function unreadOf(s){if(!s)return 0;
 // المستودع: كام محادثة بانتظار رد. الفرع والسائق: كام رسالة جديدة
 export function unreadTotal(){if(!X)return 0;return Object.values(SUMS).reduce((a,s)=>a+(T()==="w"?(unreadOf(s)?1:0):unreadOf(s)),0)}
 // زرار "كلّم ... عن الطلب ده" على كارت الطلب (cls = شكل الزرار في الصفحة)
-export const rqBtn=(r,cls)=>X&&T()!=="d"?`<button class="${cls||"bcrqb"}" data-bcrq="${E(r.id)}" data-no="${E(r.no||"")}" data-br="${E(r.br||"")}" type="button" title="محادثة خاصة بخصوص هذا الطلب">💬 ${T()==="b"?"تواصل مع المستودع":"تواصل مع الفرع"}</button>`:"";
+export const rqBtn=(r,cls)=>X&&T()!=="d"?`<button class="${cls||"bcrqb"}" data-bcrq="${E(r.id)}" data-no="${E(r.no||"")}" data-br="${E(r.br||"")}" type="button" title="محادثة خاصة بخصوص هذا الطلب">💬 ${TB()?"تواصل مع المستودع":"تواصل مع الفرع"}</button>`:"";
 const modal=()=>T()!=="w";// الفرع والسائق: نافذة. المستودع: تبويب
 const GRP={w:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["b","الفروع"],["d","السائقين"],["s","الموظفين"]],b:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["d","السائقين"],["b","الفروع"]],d:[["","الكل"],["w","🏭 المستودع"],["m","🏛 الإدارة"],["g","👥 الجروبات"],["b","الفروع"],["s","الموظفين"]]};
 // (v175) الزر صار مشبك مرفقات: صور وملفات معاً
@@ -379,7 +384,7 @@ function convHtml(){
   <button class="bcdown" id="bcdown" data-bcdown type="button" aria-label="آخر رسالة" title="آخر رسالة" hidden>${IC.down}</button>
   <div class="bcrq" id="bcrq" hidden></div>
   <div class="bcrb" id="bcrb" hidden></div>
-  <div class="bcq">${(QUICK[T()]||[]).map(q=>`<button data-bcq="${E(q)}" type="button">${E(q)}</button>`).join("")}</div>
+  <div class="bcq">${(QUICK[T()==="p"?"b":T()]||[]).map(q=>`<button data-bcq="${E(q)}" type="button">${E(q)}</button>`).join("")}</div>
   <div class="bcf" id="bcfoot"><button class="pic" id="bcpic" type="button" title="إرسال صورة أو ملف" aria-label="إرسال صورة أو ملف">${IMG_IC}</button><input type="file" id="bcfile" accept="${FILE_ACCEPT}" multiple hidden><textarea id="bcin" rows="1" maxlength="${LEN}" placeholder="اكتب رسالة..."></textarea><button class="mic" id="bcmic" type="button" title="رسالة صوتية" aria-label="رسالة صوتية">${IC.mic}</button><button id="bcsend" type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>
   <div class="bcr2" id="bcrec" hidden><button class="x" data-bccancel type="button" title="إلغاء" aria-label="إلغاء">${IC.trash}</button><div class="pill"><span class="dot"></span><span class="tm" id="bcrt">0:00</span></div><button class="ok" data-bcstop type="button" title="إرسال" aria-label="إرسال">${IC.send}</button></div>`;
 }
@@ -462,7 +467,7 @@ function paintHead(){
     paintPin();const ty=typingTxt();g("bcsub").innerHTML=ty||`👥 ${ms.length} عضو · اضغط لعرض الأعضاء`;
     if(av)av.innerHTML=avHtml(CUR,n," sm");return}
   g("bct").innerHTML=`<bdi${p[0]==="b"?' dir="ltr"':""}>${E(n)}</bdi>`;
-  const kind=p[0]==="d"?"سائق":p[0]==="b"?"فرع":"";
+  const kind=p[0]==="d"?"سائق":p[0]==="b"?"فرع":p[0]==="p"?(bpRole(pv(p))||"فرع"):"";
   // 🟢 متصل الآن / آخر ظهور (لو مفيش معلومة: "محادثة خاصة" زي الأول)
   const pr=presTxt(p),on=pr&&presOf(p).on;
   const ty=typingTxt();paintPin();
@@ -1011,9 +1016,9 @@ async function play(id){
 // السائق: المستودع + الفروع. (سائق مع سائق ممنوع)
 function people(){
   const out=[],seen=new Set(),add=p=>{if(p&&p!==X.me&&!seen.has(p)){seen.add(p);out.push(p)}};
-  const brs=()=>(X.codes||[]).forEach(b=>add("b-"+String(b).split("-")[0]));
-  if(T()==="w"){if(X.canBr)brs();Object.keys(DDIR).forEach(d=>add("d-"+d));Object.keys(DIR).forEach(e=>add("w-"+e))}
-  else if(T()==="b"){Object.entries(DIR).forEach(([e,d])=>{if(inWh(d)||isM("w-"+e))add("w-"+e)});Object.keys(DDIR).forEach(d=>add("d-"+d));brs()}
+  const brs=()=>(X.codes||[]).forEach(b=>{const c=String(b).split("-")[0];if(T()==="p"&&X.home===c)return;add("b-"+c)});// (v216) الشخص لا يراسل حساب فرعه المشترك
+  if(T()==="w"){if(X.canBr){brs();Object.keys(BP).forEach(i=>{if(BP[i]&&BP[i].on===true)add("p-"+i)})}Object.keys(DDIR).forEach(d=>add("d-"+d));Object.keys(DIR).forEach(e=>add("w-"+e))}
+  else if(TB()){Object.entries(DIR).forEach(([e,d])=>{if(inWh(d)||isM("w-"+e))add("w-"+e)});Object.keys(DDIR).forEach(d=>add("d-"+d));brs()}
   else{Object.keys(DIR).forEach(e=>add("w-"+e));brs()}// السواق: كل المستودع زي ما هو (بيتنسّق مع مسؤولين السيارات)
   Object.values(SUMS).forEach(s=>add(s._peer));// محادثات مع ناس مابقوش في القايمة بتفضل ظاهرة
   return out;
@@ -1022,10 +1027,10 @@ function paintList(){
   if(!ROOT)return;const box=ROOT.querySelector(".bcli");if(!box)return;
   const rows=people().filter(p=>!FILT||kindOf(p)===FILT).map(p=>{
     const cid=cidFor(p),s=SUMS[cid],n=pname(p,cid),t=p[0],d=t==="w"?DIR[pv(p)]:null;
-    const role=t==="g"?`${(s&&Array.isArray(s.ms)?s.ms.length:0)} عضو`:t==="w"?(d?d.k||(isM(p)?"الإدارة":""):"لم يعد في المستودع"):t==="d"?(DDIR[pv(p)]?"سائق":"لم يعد موجوداً"):"";
-    return {p,cid,s,u:unreadOf(s),n,img:ph(p),av:t==="b"?E(pv(p)):t==="d"?"🚚":E([...n][0]||"؟"),cls:t==="b"?"":" p",role,o:t==="g"?0:t==="w"?(d?(ROLE_O[d.r]==null?3:ROLE_O[d.r]):9):t==="d"?4:5};
-  }).filter(x=>!Q||x.n.toLowerCase().includes(Q)||x.p.toLowerCase().includes(Q))
-    .sort((a,b)=>(b.u>0)-(a.u>0)||N(b.s&&b.s.last&&b.s.last.ts)-N(a.s&&a.s.last&&a.s.last.ts)||a.o-b.o||a.n.localeCompare(b.n));
+    const role=t==="g"?`${(s&&Array.isArray(s.ms)?s.ms.length:0)} عضو`:t==="p"?(bpRole(pv(p))||"لم يعد في الفرع"):t==="w"?(d?d.k||(isM(p)?"الإدارة":""):"لم يعد في المستودع"):t==="d"?(DDIR[pv(p)]?"سائق":"لم يعد موجوداً"):"";
+    return {p,cid,s,u:unreadOf(s),n,img:ph(p),av:t==="b"?E(pv(p)):t==="d"?"🚚":E([...n][0]||"؟"),cls:t==="b"?"":" p",role,o:t==="g"?0:t==="w"?(d?(ROLE_O[d.r]==null?3:ROLE_O[d.r]):9):t==="d"?4:5,gk:t==="b"?pv(p)+"0":t==="p"?(((BP[pv(p)]||{}).br)||"")+"1":""};
+  }).filter(x=>!Q||x.n.toLowerCase().includes(Q)||x.p.toLowerCase().includes(Q)||String(x.role||"").toLowerCase().includes(Q))
+    .sort((a,b)=>(b.u>0)-(a.u>0)||N(b.s&&b.s.last&&b.s.last.ts)-N(a.s&&a.s.last&&a.s.last.ts)||a.o-b.o||a.gk.localeCompare(b.gk)||a.n.localeCompare(b.n));
   // ⚡ (v178) القائمة بالفرق أيضاً (كانت تُبنى كلها مع كل دخول/خروج لأي شخص)
   const LI=rows.map(x=>{const l=x.s&&x.s.last,my=l&&mine(x.cid,l.by);
     // آخر رسالة: لو مني بعلامة ✓/✓✓ (اتقرت لو الطرف التاني فتح بعدها)
@@ -1050,7 +1055,7 @@ export function mountWh(host){
 export function hideWh(){if(CUR&&X&&!modal()){setCode(null);if(ROOT)ROOT.classList.remove("open")}}
 // المستودع: يفتح محادثة مع طرف (rq = بخصوص طلب)
 export function openPeer(p,rq){
-  if(!X||!/^([bdw]-.|g_.)/.test(String(p||""))||p===X.me)return;
+  if(!X||!/^([bdpw]-.|g_.)/.test(String(p||""))||p===X.me)return;
   if(modal())return void openBr(p,rq);
   if(!ROOT)ROOT=buildRoot();
   const cid=cidFor(p);if(rq)CTX[cid]=rq;setCode(cid);paintCtx();ROOT.classList.add("open");paintList();
@@ -1060,7 +1065,7 @@ export function openWh(code,rq){if(/^\d{3}$/.test(String(code||"")))openPeer("b-
 function paintFab(){
   if(!X||!modal())return;const n=unreadTotal();
   const f=g("bcfab");if(f){f.innerHTML=`${IC.chat}${n?`<i>${n}</i>`:""}`;f.classList.toggle("nw",!!n);f.title=n?`${n} رسالة جديدة`:"المحادثات"}
-  const m=g("bcme");if(m)m.innerHTML=`💬 ${T()==="b"?"المحادثات":"الرسائل"}${n?` <i>${n}</i>`:""}`;
+  const m=g("bcme");if(m)m.innerHTML=`💬 ${TB()?"المحادثات":"الرسائل"}${n?` <i>${n}</i>`:""}`;
   if(X.onBadge)X.onBadge(n);
 }
 // peer = الطرف (أو إيميل الشخص من إشعارات قديمة)، rq = بخصوص طلب (الفرع يختار يكلّم مين عنه)
@@ -1071,8 +1076,8 @@ export function openBr(peer,rq){
   if(!m){m=document.createElement("div");m.id="bcm";m.innerHTML=`<div class="bcp"></div>`;document.body.appendChild(m);ROOT=buildRoot();m.firstChild.appendChild(ROOT);
     m.addEventListener("click",e=>{if(e.target===m)closeBr()});addEventListener("keydown",e=>{if(e.key==="Escape"&&g("bcm")&&g("bcm").classList.contains("on")&&!REC)closeBr()})}
   m.className="on";
-  if(rq){PEND=rq;setCode(null);ROOT.classList.remove("open");if(T()==="b"){FILT="w";ROOT.querySelectorAll("[data-bcf]").forEach(b=>b.classList.toggle("on",b.dataset.bcf===FILT))}}
-  else if(peer&&typeof peer==="string"&&/^([bdw]-.|g_.)/.test(peer)&&peer!==X.me){setCode(cidFor(peer));ROOT.classList.add("open")}
+  if(rq){PEND=rq;setCode(null);ROOT.classList.remove("open");if(TB()){FILT="w";ROOT.querySelectorAll("[data-bcf]").forEach(b=>b.classList.toggle("on",b.dataset.bcf===FILT))}}
+  else if(peer&&typeof peer==="string"&&/^([bdpw]-.|g_.)/.test(peer)&&peer!==X.me){setCode(cidFor(peer));ROOT.classList.add("open")}
   else if(!CUR)ROOT.classList.remove("open");
   paintPend();paintList();markRead();
   if(CUR&&!isMob())setTimeout(()=>{const i=g("bcin");if(i)i.focus()},60);
@@ -1086,7 +1091,7 @@ export function initBChat(ctx){
   stopBChat();
   // (توافق: الصفحات القديمة كانت بتبعت by + me/code)
   const party=ctx.party||(ctx.by==="br"?"b-"+ctx.code:ctx.by==="wh"?"w-"+String(ctx.me||"").toLowerCase():"");
-  if(!/^[bdw]-./.test(party))return;
+  if(!/^[bdpw]-./.test(party))return;
   X={...ctx,me:party,by:party[0]==="b"?"br":party[0]==="w"?"wh":"d",canBr:party[0]==="w"?ctx.canBr!==false:false,brn:ctx.brn||(c=>c)};
   first=true;SUMS={};SO={};SN={};SG={};DIR={};DDIR={};FILT="";
   if(window.__mock)window.__bcTyping=(p,n,s)=>typingGot(CUR,{p,n,s});// نسخة التجربة فقط (لا Realtime فيها)
@@ -1107,7 +1112,7 @@ export function initBChat(ctx){
     first=false;paintHead();if(CUR)paintMsgs();paintList();paintFab();markRead();
     if(!modal()&&X.onBadge)X.onBadge(unreadTotal());
   };
-  let gotO=T()==="d"||(T()==="w"&&!X.canBr),gotN=false,gotG=false;
+  let gotO=T()==="d"||T()==="p"||(T()==="w"&&!X.canBr),gotN=false,gotG=false;
   const fire=()=>{if(gotO&&gotN&&gotG)onSum()};
   // أسماء وكنيات وصور اللي في المستودع، وأسماء السائقين
   const again=()=>{paintList();paintHead();if(CUR)paintMsgs()};
@@ -1117,6 +1122,8 @@ export function initBChat(ctx){
   PRT=setInterval(()=>{if(CUR)paintHead()},60000);
   UND=onSnapshot(collection(X.db,"whdir"),sn=>{DIR={};sn.docs.forEach(d=>{DIR[d.id]=d.data()});again()},()=>{});
   UNA=onSnapshot(collection(X.db,"ava"),sn=>{AVA={};sn.docs.forEach(d=>{const p=d.data().ph;if(typeof p==="string"&&/^data:image\/jpeg;base64,/.test(p))AVA[d.id]=p});again()},()=>{});
+  // 👥 (v216) أشخاص الفروع: المستودع اللي بيكلّم الفروع يشوفهم تحت فروعهم
+  if(T()==="w"&&X.canBr)UNBP=onSnapshot(collection(X.db,"bper"),sn=>{BP={};sn.docs.forEach(d=>{BP[d.id]=d.data()});again()},()=>{});
   UNDD=onSnapshot(collection(X.db,"ddir"),sn=>{DDIR={};sn.docs.forEach(d=>{DDIR[d.id]=d.data()});again()},()=>{});
   // محادثاتي: القديمة (فرع مع المستودع) + الجديدة (ps فيها أنا)
   if(T()==="b")UNS=onSnapshot(query(collection(X.db,"dm"),where("br","==",pv(X.me))),sn=>{SO={};sn.docs.forEach(d=>SO[d.id]=d.data());gotO=true;fire()},()=>{gotO=true;fire()});
@@ -1130,7 +1137,7 @@ export function initBChat(ctx){
   }
 }
 export function stopBChat(){
-  if(!X)return;stopRec(true);stopPlay();stopPres();clearInterval(PRT);[UNM,UNS,UNS2,UND,UNA,UNDD,UNG].forEach(f=>f&&f());UNM=UNS=UNS2=UND=UNA=UNDD=UNG=null;
+  if(!X)return;stopRec(true);stopPlay();stopPres();clearInterval(PRT);[UNM,UNS,UNS2,UND,UNA,UNDD,UNG,UNBP].forEach(f=>f&&f());UNM=UNS=UNS2=UND=UNA=UNDD=UNG=UNBP=null;BP={};
   CUR=null;GEN++;MSGS=[];SUMS={};SO={};SN={};SG={};DIR={};DDIR={};AVA={};DRAFT={};CTX={};PEND=null;AUD.clear();
   closeMenu();MC.clear();LC.clear();SEENM=new Set();EDT=null;Object.keys(RPL).forEach(k=>delete RPL[k]);
   typingJoin(null);SRCH={on:false,q:"",hits:[],i:-1};{const v=g("bcfw");if(v)v.remove()}

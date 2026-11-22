@@ -4263,4 +4263,6 @@ export default {
 "أُوقف الجهاز":"Device disabled",
 "✅ فُعّل الجهاز":"✅ Device enabled",
 "حُذف الجهاز":"Device deleted",
+"لم يعد في الفرع":"No longer in the branch",
+"شخص":"Person",
 };

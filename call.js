@@ -423,7 +423,7 @@ function incoming(id,d,via){
  // 🛡 (17 نوفمبر 2026) الاسم اللي المتصل بعته (frn) ممكن يتزوّر، فالاسم الحقيقي من الدليل (الموظف من whdir، السائق من ddir)، وكود الفرع بيظهر دايماً
  {const fr=String(d.fr||""),k=fr.slice(0,1),idp=fr.slice(2);
   if(k==="b"&&idp&&c.name.indexOf(idp)<0)c.name=(c.name+" · "+idp).slice(0,70);
-  else if((k==="w"||k==="d")&&idp)getDoc(doc(X.db,k==="w"?"whdir":"ddir",idp)).then(s=>{if(C!==c||!s.exists())return;const n=String((s.data()||{}).n||"").trim().slice(0,60);
+  else if((k==="w"||k==="d"||k==="p")&&idp)getDoc(doc(X.db,k==="w"?"whdir":k==="p"?"bper":"ddir",idp)).then(s=>{if(C!==c||!s.exists())return;const sd=s.data()||{};const n=(String(sd.n||"").trim()+(k==="p"&&sd.br?" · فرع "+sd.br:"")).slice(0,70);/* (v216) الشخص: اسمه وفرعه من ملفه (المستودع يقرؤه) */
    if(n&&n!==c.name){c.name=n;const el=g("tzc-n"),av=g("tzc-av"),pn=g("tzcp-n");if(el)el.textContent=n;if(av)av.textContent=initial(n);if(pn)pn.textContent=n}}).catch(()=>{})}
  const quiet=QUIET===id||(!!NAT()&&document.hidden);// التطبيق هو اللي بيرن (الصفحة في الخلفية): مانكررش الرنة
  if(QUIET===id)QUIET="";
@@ -499,7 +499,7 @@ addEventListener("online",()=>{const c=C;if(c&&c.t0&&c.pc&&c.pc.connectionState!
 // ---------- البداية ----------
 // ctx: {db, auth, party:"w-…"|"b-…"|"d-…", name:()=>اسمي, toast}
 export function initCall(ctx){
- if(!ctx||!ctx.db||!/^[bdw]-./.test(String(ctx.party||""))){stopCall();return}
+ if(!ctx||!ctx.db||!/^[bdpw]-./.test(String(ctx.party||""))){stopCall();return}
  // نفس الحساب اتبدأ قبل كده (earlyCall أو رسمة تانية): نحدّث البيانات بس، من غير ما نقفل مكالمة شغالة ولا نعيد السماع
  if(X&&UN&&X.party===ctx.party&&X.db===ctx.db){X=ctx;window.__tzCall=!!(window.RTCPeerConnection&&navigator.mediaDevices);return}
  stopCall();
@@ -526,7 +526,8 @@ export function earlyCall(ctx){
   un=onAuthStateChanged(ctx.auth,u=>{
    if(done||!u||!u.email)return;done=true;setTimeout(()=>{try{if(typeof un==="function")un()}catch(e){}},0);
    if(X)return;const em=String(u.email).toLowerCase(),b=em.match(/^(\d{3})@tasooma\.app$/),d=em.match(/^(drv\d{1,2})@tasooma\.app$/);
-   const party=b?"b-"+b[1]:d?"d-"+d[1]:em.indexOf("@tasooma.app")>0?"":"w-"+em;
+   const pp=em.match(/^p([0-9]{4,6})@tasooma\.app$/);// (v216) شخص في فرع
+   const party=b?"b-"+b[1]:d?"d-"+d[1]:pp?"p-"+pp[1]:em.indexOf("@tasooma.app")>0?"":"w-"+em;
    if(party)initCall({db:ctx.db,auth:ctx.auth,party,name:()=>"",toast:ctx.toast||(()=>{})})});
  }catch(e){}
 }
