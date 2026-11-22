@@ -49,6 +49,7 @@ html[data-bsec="hist"] .lock .sheet,html[data-bsec="hist"] .lock .act,html[data-
 html.bnv .lock #gfbtn,html.bnv .lock #mtbtn{display:none!important}
 html[data-bsec]:not([data-bsec="cus"]) .lock #bcus{display:none!important}
 html[data-bsec="cus"] .lock .sheet,html[data-bsec="cus"] .lock .act,html[data-bsec="cus"] .lock .tip,html[data-bsec="cus"] .lock #my,html[data-bsec="cus"] .lock #xf,html[data-bsec="cus"] .lock #hist,html[data-bsec="cus"] .lock #stkn,html[data-bsec="cus"] .lock #catn,html[data-bsec="cus"] .lock #hello{display:none!important}
+html[data-bsec] .lock #mtm .act{display:flex!important}
 html.bnv[data-bsec="hist"] .lock #hist{display:block!important}
 @media print{#bnv,#bnv-btn,#bnv-veil{display:none!important}html.bnv .lock{padding:0!important}}
 `;
