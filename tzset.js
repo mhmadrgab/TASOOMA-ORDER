@@ -31,6 +31,7 @@ function html(){
  return `<div class="tzst-k" role="document"><div class="tzst-hd"><div class="tzst-av" data-notr aria-hidden="true">${tag?E(tag):GEAR}</div><div class="tzst-id"><small id="tzset-h">${E(X.sub||"الإعدادات")}</small><b><bdi dir="auto" data-notr>${E(X.who?X.who():"")}</bdi></b></div><button type="button" class="tzst-x" data-tzs="x" aria-label="إغلاق" data-noico>${XIC}</button></div>
 <div class="tzst-b">
 ${X.pw?`<section class="tzst-s"><h4>الحساب</h4><div class="tzst-c">${row("🔑","تغيير كلمة المرور","لحسابك أنت فقط، وتُطلب الكلمة الحالية أولاً",GO,"data-pwself")}</div></section>`:""}
+${X.extra?X.extra(row,GO):""}
 <section class="tzst-s"><h4>المظهر واللغة</h4><div class="tzst-c"><div class="tzst-th"><b><span class="tzst-i" aria-hidden="true">🌙</span>المظهر</b>${window.tzTheme?window.tzTheme.seg():""}</div>${window.TZL?row("🌐","اللغة",en?"التبديل إلى العربية":"التبديل إلى الإنجليزية",`<span class="tzst-v" data-notr>${en?"English":"العربية"}</span>${GO}`,'data-tzs="lang"'):""}</div></section>
 ${X.bell?`<section class="tzst-s"><h4>الإشعارات</h4><div class="tzst-c"><div class="tzst-r tzst-nt"><span class="tzst-i" aria-hidden="true">🔔</span><span class="tzst-t"><b>إشعارات هذا الجهاز</b><small>ليصلك كل جديد فوراً، حتى والمنصة مغلقة</small></span><button id="bell" type="button" class="tzst-bell"></button><span class="tzst-v tzst-nb">غير مدعومة هنا</span></div></div></section>`:""}
 <section class="tzst-s"><h4>التطبيق</h4><div class="tzst-c">${X.bell?row("📲","تثبيت المنصة على هذا الجهاز","تفتح كتطبيق من الشاشة الرئيسية",GO,"data-install"+(CANI?"":" hidden")):""}${inApp?row("📱","تطبيق تاسومة","أنت تستخدم التطبيق الآن",av?`<span class="tzst-v" data-notr dir="ltr">${E(av)}</span>`:"","","div"):DROID&&!drv?row("📱","تطبيق تاسومة للأندرويد","تصلك المكالمات كاتصال حقيقي حتى والجوال مقفول",`<span class="tzst-v">تحميل</span>${GO}`,`href="${APK}" rel="noopener"`,"a"):""}${row("🔄","تحديث المنصة","يحمّل آخر نسخة من جديد دون تسجيل خروجك",GO,'data-tzs="fresh"')}</div></section>
@@ -71,7 +72,8 @@ export function initSettings(ctx){
   if(a==="x")close();
   else if(a==="lang"){if(window.TZL)window.TZL.set(window.TZL.lang==="en"?"ar":"en")}
   else if(a==="fresh")fresh(t);
-  else if(a==="out"){const f=X.logout;close();if(f)f()}});
+  else if(a==="out"){const f=X.logout;close();if(f)f()}
+  else if(a&&a.indexOf("ext:")===0&&X.act){const k=a.slice(4);close();X.act(k)}});// (v215) أقسام إضافية من الصفحة (كمبيوتر الفرع)
  document.addEventListener("keydown",e=>{const m=g("tzset");if(!m||m.className!=="on")return;
   if(e.key==="Escape"){const p=g("pws");if(p&&p.className==="on")return;e.preventDefault();close();return}
   // التركيز يبقى داخل النافذة

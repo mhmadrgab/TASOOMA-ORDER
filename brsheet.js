@@ -101,9 +101,9 @@ function table(rows){
 }
 function steps(r,ship){
  const S=[["أُرسل الطلب",N(r.ts)],["بدأ التجهيز",N(r.prep&&r.prep.at)||((r.st!=="new")?1:0)],["تم التجهيز",N(r.pdn)||(["go","done","recv"].indexOf(r.st)>=0?1:0)],
-  [ship?"خرج إلى شركة الشحن":"خرج مع السائق",N(r.dep)||(["go","done","recv"].indexOf(r.st)>=0?1:0)],[ship?"سُلِّم لشركة الشحن":"تم التسليم",N(r.dlv)||(["done","recv"].indexOf(r.st)>=0?1:0)],["استلمه الفرع",N(r.rcv&&r.rcv.at)||(r.st==="recv"?1:0)]];
+  [ship?"خرج إلى شركة الشحن":"خرج مع السائق",N(r.dep)||(["go","done","recv"].indexOf(r.st)>=0?1:0)],[ship?"سُلِّم لشركة الشحن":"تم التسليم",N(r.dlv)||(["done","recv"].indexOf(r.st)>=0?1:0)],[r.rcv&&r.rcv.bp&&r.rcv.bp.n?"استلمه "+String(r.rcv.bp.n).slice(0,40):"استلمه الفرع",N(r.rcv&&r.rcv.at)||(r.st==="recv"?1:0)]];
  let last=-1;S.forEach((s,i)=>{if(s[1])last=i});
- return `<div class="os-tl">${S.map((s,i)=>`<div class="os-s ${s[1]?"ok":""} ${i===last+1&&r.st!=="recv"?"cur":""}"><i></i><b>${s[0]}</b>${s[1]>1?`<small>${E(dt(s[1]))}</small>`:""}</div>`).join("")}</div>`;
+ return `<div class="os-tl">${S.map((s,i)=>`<div class="os-s ${s[1]?"ok":""} ${i===last+1&&r.st!=="recv"?"cur":""}"><i></i><b>${E(s[0])}</b>${s[1]>1?`<small>${E(dt(s[1]))}</small>`:""}</div>`).join("")}</div>`;
 }
 // ⚡ (v176، 19 نوفمبر 2026، محمد: "مراحل تجهيز الطلب عند الفروع مش بتتحدث لايف") الورقة المفتوحة تتحدّث لوحدها
 // مع أي تغيير في الطلب (index.html بينادي refreshSheet بعد كل بيانات جديدة). نرسم من جديد بس لو الطلب اتغيّر فعلاً،
@@ -136,7 +136,7 @@ export function openSheet(id,live){
  m.innerHTML=`<div class="os-pp"><button class="os-x" type="button" data-osh-a="close" aria-label="إغلاق">✕</button>
  <div class="os-ph"><div class="os-lg"><b>تاسومة · TASOOMA</b><small>ورقة طلب من المستودع</small></div><div class="os-no"><small>رقم الطلب</small><b>${E(r.no||"")}</b><div><span class="os-st">${E(X.lbl?X.lbl(r):r.st)}</span></div></div></div>
  <div class="os-mt"><div><small>الفرع</small><b><bdi dir="ltr">${E(r.brn||(X.brn&&X.brn())||"")}</bdi></b></div><div><small>تاريخ الطلب</small><b><bdi dir="ltr">${E(dt(r.ts))}</bdi></b></div><div><small>النوع</small><b>${by}</b></div>
- <div><small>عدد الأصناف</small><b>${N(r.codes)}</b></div><div><small>إجمالي القطع</small><b>${N(r.pcs)}</b></div>${r.dr?`<div><small>اسم من طلب</small><b data-notr>${E(r.dr)}</b></div>`:r.edn?`<div><small>آخر من عدّل</small><b data-notr>${E(r.edn)}</b></div>`:""}</div>
+ <div><small>عدد الأصناف</small><b>${N(r.codes)}</b></div><div><small>إجمالي القطع</small><b>${N(r.pcs)}</b></div>${r.bp&&r.bp.n?`<div><small>اسم من طلب</small><b data-notr>${E(r.bp.n)}</b></div>`:r.dr?`<div><small>اسم من طلب</small><b data-notr>${E(r.dr)}</b></div>`:r.edn?`<div><small>آخر من عدّل</small><b data-notr>${E(r.edn)}</b></div>`:""}</div>
  ${steps(r,ship)}
  <h4>📦 الأصناف</h4>${table(r.rows)}
  ${r.gn?`<h4>🗒 ملاحظات</h4><div class="os-nt" data-notr>${E(r.gn)}</div>`:""}

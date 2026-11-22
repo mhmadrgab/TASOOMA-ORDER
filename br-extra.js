@@ -43,6 +43,9 @@ function openRcv(id){
   });
   const note=g("rn").value.trim().slice(0,500),rcv={at:Date.now(),ok:!lines.length&&!note,lines,note};
   if(!note)delete rcv.note;
+  // 👥 (v215) الشخص يختم الاستلام باسمه، ومن كمبيوتر الفرع المسجّل فقط
+  {const bp=X.bp?X.bp():null;if(bp)rcv.bp=bp}
+  if(X.devOk&&!X.devOk()){X.toast("تأكيد الاستلام يتم من كمبيوتر الفرع المسجّل فقط. افتح المنصة من كمبيوتر الفرع","er");return}
   g("rc1").disabled=true;
   try{await withTimeout(updateDoc(doc(X.db,"requests",id),{st:"recv",rcv}),15000);if(X.ping)X.ping([id]);closeX();X.toast(rcv.ok?"تم تأكيد الاستلام ✅":"تم تسجيل الاستلام مع الملاحظات ✅")}
   catch(e){const b1=g("rc1");if(b1)b1.disabled=false;/* (v185) النافذة قد تكون أُغلقت قبل وصول الرد: كان يرمي خطأ ولا تظهر رسالة الفشل */const why=await failReason(e);X.toast(why==="denied"?"غير مسموح. ربما غيّر المستودع حالة الطلب.":FAIL_MSG[why],"er")}

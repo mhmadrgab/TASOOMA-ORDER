@@ -28,10 +28,15 @@ const APPS = {};
 const VIA_P = "https://tasooma-push.tasooma.workers.dev/sb";
 let VIA = SB_URL; try { if (localStorage.getItem("tz_via") === "p") VIA = VIA_P } catch (e) {}
 export const SB_VIA = VIA;
+// 🖥 (v215) كمبيوتر الفرع المسجّل: «رقم.مفتاح» محفوظ على الجهاز ويُرسَل في ترويسة x-tz-dev مع كل طلب، والقواعد تتأكد منه (priv.dev_br).
+// المفتاح نفسه لا يُخزَّن في القاعدة (البصمة فقط). تغييره يحتاج إعادة تحميل الصفحة (الترويسة تُضبط عند إنشاء الاتصال).
+export const devGet = () => { try { const v = localStorage.getItem("tz_dev") || ""; return /^[A-Za-z0-9]{6,20}\.[A-Za-z0-9]{16,64}$/.test(v) ? v : "" } catch (e) { return "" } };
+export const devSet = v => { try { if (v) localStorage.setItem("tz_dev", v); else localStorage.removeItem("tz_dev") } catch (e) {} };
 export function makeFb(name) {
   if (APPS[name]) return APPS[name];
+  const dv = name === "sec" ? "" : devGet();
   const c = createClient(VIA, SB_KEY, {auth: {storageKey: "tz-sb-" + name, persistSession: name !== "sec", autoRefreshToken: name !== "sec", detectSessionInUrl: false},
-    realtime: {params: {eventsPerSecond: 10}}});
+    realtime: {params: {eventsPerSecond: 10}}, global: {headers: dv ? {"x-tz-dev": dv} : {}}});
   const db = {c}, app = {name, sb: c, db};
   return APPS[name] = {app, db, auth: new S.Auth(c)};
 }
