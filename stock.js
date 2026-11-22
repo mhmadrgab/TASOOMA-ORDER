@@ -904,7 +904,14 @@ async function saveCfg(){try{const fb=await FB();const c={min:N(CFG.min),keep:N(
   await fb.setDoc(fb.doc(X.db,"stk","cfg"),c);if(X.toast)X.toast("تم حفظ القواعد ✅");if(DATA&&DATA.has)publish(true)}catch(e){if(X.toast)X.toast("تعذّر حفظ القواعد")}}
 
 /* ============ 6) الواجهة ============ */
-const CSS=`#stk{display:block}.stk-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px}.stk-hd h2{margin:0;font-size:21px}.stk-hd small{display:block;color:var(--mut);font-size:13px;line-height:1.7}
+const CSS=`.stk-lqn{margin:8px 0 0;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--acc,#8a5a83) 10%,transparent);font-size:13px}
+.stk-lqp{margin-top:10px;padding:12px;border:1px solid var(--line,#e3d6c4);border-radius:12px;background:var(--card,#fffaf3)}
+.stk-lql{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.stk-lql li{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:4px 10px;padding:8px 10px;border-radius:10px;border:1px solid var(--line,#e3d6c4)}
+.stk-lql li.ok{opacity:.62}.stk-lql li>b{font-weight:600;overflow-wrap:anywhere}.stk-lql li>small{grid-column:2;opacity:.7}
+.stk-lqk{font-size:12px;white-space:nowrap;opacity:.85}.stk-lqb{grid-row:1/3;grid-column:3;display:flex;gap:4px}
+@media(max-width:560px){.stk-lql li{grid-template-columns:1fr auto}.stk-lqk{grid-column:1}.stk-lql li>b,.stk-lql li>small{grid-column:1}.stk-lqb{grid-row:1/4;grid-column:2;flex-direction:column}}
+#stk{display:block}.stk-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px}.stk-hd h2{margin:0;font-size:21px}.stk-hd small{display:block;color:var(--mut);font-size:13px;line-height:1.7}
 .stk-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 14px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:14px}.stk-tabs::-webkit-scrollbar{display:none}
 .stk-tabs button{flex:none;min-height:40px;border:0;background:none;color:var(--mut);border-radius:10px;padding:0 14px;font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;white-space:nowrap}.stk-tabs button:hover{background:var(--soft);color:var(--ink)}.stk-tabs button.on{background:var(--acc);color:#fff;font-weight:700}
 .stk-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:0 0 12px}
@@ -1616,7 +1623,7 @@ const hAdd=q=>{try{localStorage.setItem("stk_ask",JSON.stringify([q].concat(hGet
 function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||!DATA||!DATA.has){UI.a=null;paint(false);return}
  const L=lexLoad(),q2=lexApply(q,L.d);UI.a=parseAsk(q2,askCtx());UI.a.q2=q2!==q.split(/\s+/).join(" ")?q2:"";hAdd(q);
  // (v196) عدّاد التكرار + سجل ما لم يُفهم (على الجهاز)
- const e=L.f[q]||(L.f[q]={n:0,at:0});e.n=N(e.n)+1;e.at=Date.now();lexSave();lexLogUnk((UI.a.unk||[]).concat(UI.a.left||[]),q);paint(false)}
+ const e=L.f[q]||(L.f[q]={n:0,at:0});e.n=N(e.n)+1;e.at=Date.now();lexSave();lexLogUnk((UI.a.unk||[]).concat(UI.a.left||[]),q);const fk=askFailK(UI.a);if(fk)lexLogQ(q,fk);paint(false)}
 let EXC=null;// أمثلة من بيانات الملف نفسه (أعلى كود وأعلى فرع مبيعاً)
 /* (v196) 📖 «اسأل» تتعلّم من المستخدم: قاموسه الخاص (كلمة أو عبارة ← معناها)، أسئلته المثبّتة والمتكررة، وسجل ما لم يُفهم.
    كله على الجهاز (localStorage.stk_lex). القاموس يستبدل العبارة بنص تفهمه القواعد الثابتة قبل الفهم، فالحساب نفسه لا يتغيّر */
@@ -1638,7 +1645,9 @@ const lexLoad=()=>{if(LEX)return LEX;let o=null;try{o=JSON.parse(localStorage.ge
  LEX={d:Array.isArray(o.d)?o.d.filter(e=>e&&typeof e.w==="string"&&typeof e.r==="string"):[],f,u:Array.isArray(o.u)?o.u.filter(e=>e&&typeof e.w==="string"):[],p:Array.isArray(o.p)?o.p.filter(x=>typeof x==="string"):Object.keys(f).filter(k=>f[k]&&f[k].pin),open:false};lexTrim(LEX);return LEX};
 const lexTrim=T=>{const S=(v,n)=>String(v==null?"":v).slice(0,n);
  T.d=(Array.isArray(T.d)?T.d:[]).filter(e=>e&&typeof e.w==="string"&&e.w.trim()).slice(0,300).map(e=>({w:S(e.w,40),r:S(e.r,80),l:S(e.l,90),t:S(e.t,8)}));
- T.u=(Array.isArray(T.u)?T.u:[]).filter(e=>e&&typeof e.w==="string"&&e.w).slice(0,100).map(e=>({w:S(e.w,40),q:S(e.q,120),at:N(e.at)}));
+ /* (v211) u فيها نوعان: كلمة لم تُفهم {w,q,at}، وسؤال كامل {w:"",q,at,k,n} (k: q لم يُفهم، p فُهم جزئياً، s سؤال كتبه المستخدم ليتعلّمه) */
+ const U0=(Array.isArray(T.u)?T.u:[]).filter(e=>e&&typeof e.w==="string"),QS=U0.filter(e=>!e.w&&typeof e.q==="string"&&e.q.trim()).slice(0,60).map(e=>({w:"",q:S(e.q,200),at:N(e.at),k:e.k==="s"||e.k==="p"?e.k:"q",n:S(e.n,40)}));
+ T.u=QS.concat(U0.filter(e=>e.w).slice(0,100-QS.length).map(e=>({w:S(e.w,40),q:S(e.q,120),at:N(e.at)})));
  T.p=(Array.isArray(T.p)?T.p:[]).filter(x=>typeof x==="string"&&x).slice(0,60).map(x=>S(x,200));return T};
 // تعديل مشترك: يُطبَّق على الجهاز فوراً، ثم يُقرأ ما في القاعدة ويُطبَّق عليه نفس التعديل ويُحفظ (فلا يمسح أحد ما علّمه غيره)
 let LEXQ=Promise.resolve(),LEXW=true;
@@ -1660,6 +1669,12 @@ function lexFromDb(R){
 let LEXP=[],LEXPT=0;
 const lexLogUnk=(words,q)=>{const L=lexLoad();let add=0;words.forEach(w=>{const k=normAr(w);if(k.length<2||lexKnown(w)||L.u.some(x=>normAr(x.w)===k)||LEXP.some(x=>normAr(x.w)===k))return;LEXP.push({w:String(w).slice(0,40),q:String(q).slice(0,120),at:Date.now()});add++});
  if(!add)return;clearTimeout(LEXPT);LEXPT=setTimeout(()=>{const P=LEXP;LEXP=[];if(P.length)lexDb(T=>{P.forEach(e=>{const k=normAr(e.w);if(!T.u.some(x=>normAr(x.w)===k)&&!T.d.some(x=>normAr(x.w)===k))T.u.unshift(e)})})},4000)};
+// (v211) نوع فشل السؤال: q لم يُفهم شيء أو بقيت كلمة غير مفهومة، p فُهم وبقيت كلمات لم تُستعمل، "" فُهم كله
+export const askFailK=a=>!a?"q":!a.kind||(a.unk&&a.unk.length)?"q":a.left&&a.left.length?"p":"";
+let LQP=[],LQPT=0;
+const lqHas=(L,q)=>{const k=normAr(q);return L.u.some(x=>!x.w&&normAr(x.q)===k)};
+const lexLogQ=(q,k)=>{q=String(q||"").trim().replace(/\s+/g," ").slice(0,200);if(q.length<2)return;const L=lexLoad(),nk=normAr(q);if(lqHas(L,q)||LQP.some(x=>normAr(x.q)===nk))return;
+ LQP.push({w:"",q,at:Date.now(),k,n:by().n});clearTimeout(LQPT);LQPT=setTimeout(()=>{const P=LQP;LQP=[];if(P.length)lexDb(T=>{P.forEach(e=>{if(!T.u.some(x=>!x.w&&normAr(x.q)===normAr(e.q)))T.u.unshift(e)})})},k==="s"?0:4000)};
 const lexSave=()=>{try{const ks=Object.keys(LEX.f);if(ks.length>80)ks.sort((a,b)=>(LEX.f[b].pin?1e15:0)+N(LEX.f[b].at)-((LEX.f[a].pin?1e15:0)+N(LEX.f[a].at))).slice(80).forEach(k=>{delete LEX.f[k]});localStorage.setItem("stk_lex",JSON.stringify({d:LEX.d,f:LEX.f,u:LEX.u,p:LEX.p}))}catch(e){}};
 const lexKnown=w=>{const k=normAr(w);return lexLoad().d.some(e=>{const n=normAr(e.w);return n===k||n.split(/\s+/).indexOf(k)>=0})};// كلمة عُلِّمت وحدها أو ضمن عبارة
 const lexTypes=[["store","فرع"],["vendor","مورد"],["code","كود"],["mean","معنى جاهز"],["skip","تجاهلها (كلمة زائدة)"]];
@@ -1672,14 +1687,33 @@ function lexForm(){
  return '<div class="stk-lxf"><b>📖 علّمني</b><label>ما تكتبه أنت (كلمة أو عبارة)<input type="text" data-lx="w" id="stk-lxw" value="'+E(x.w||"")+'" maxlength="40" autocomplete="off"></label><label>تعني<select data-lx="t" id="stk-lxt">'+lexTypes.map(a=>'<option value="'+a[0]+'"'+(t===a[0]?" selected":"")+">"+a[1]+"</option>").join("")+"</select></label>"+val+'<button class="bt p s" type="button" data-sk="lxs">حفظ</button><button class="bt s" type="button" data-sk="lxx">إلغاء</button><small class="off">بعد الحفظ أفهمها في كل سؤال، بأي طريقة يُكتب بها باقي السؤال، ولكل من يفتح «تحليل المخزون».</small></div>'}
 function lexBox(){
  const L=lexLoad(),q=String(UI.aq||"").trim(),F=L.f,pins=L.p.slice(0,14),freq=Object.keys(F).filter(k=>F[k]&&L.p.indexOf(k)<0&&N(F[k].n)>=3).sort((a,b)=>N(F[b].n)-N(F[a].n)).slice(0,6);
- const ch=x=>'<button type="button" data-sk="ex" data-x="'+E(x)+'" data-notr>'+E(x)+"</button>",un=L.u.filter(e=>!lexKnown(e.w));
- let h="";if(pins.length)h+='<div class="stk-chips"><i>⭐ المثبّتة</i>'+pins.map(x=>ch(x)+'<button type="button" class="stk-lxu" data-sk="lxup" data-x="'+E(x)+'" title="إلغاء التثبيت" aria-label="إلغاء التثبيت">✕</button>').join("")+"</div>";
+ const ch=x=>'<button type="button" data-sk="ex" data-x="'+E(x)+'" data-notr>'+E(x)+"</button>",un=L.u.filter(e=>e.w&&!lexKnown(e.w));
+ let h="";if(q&&UI.a&&askFailK(UI.a)==="q")h+='<p class="stk-lqn">📝 سجّلتُ هذا السؤال في «أسئلة تنتظر التعليم» ليتعلّمه فريق المنصة. يمكنك أيضاً تعليمي الكلمات غير المفهومة بالضغط عليها.</p>';
+ if(pins.length)h+='<div class="stk-chips"><i>⭐ المثبّتة</i>'+pins.map(x=>ch(x)+'<button type="button" class="stk-lxu" data-sk="lxup" data-x="'+E(x)+'" title="إلغاء التثبيت" aria-label="إلغاء التثبيت">✕</button>').join("")+"</div>";
  if(freq.length)h+='<div class="stk-chips"><i>تسألها كثيراً</i>'+freq.map(ch).join("")+"</div>";
- h+='<div class="stk-act" style="margin:10px 0 0">'+(q?'<button class="bt s" type="button" data-sk="lxp">'+(L.p.indexOf(q)>=0?"إلغاء تثبيت هذا السؤال":"⭐ ثبّت هذا السؤال")+"</button>":"")+'<button class="bt s" type="button" data-sk="lxo">📖 قاموسي ('+fmt(L.d.length)+")"+(un.length?" · "+fmt(un.length)+" كلمة لم تُفهم":"")+"</button></div>"+lexForm();
+ h+='<div class="stk-act" style="margin:10px 0 0">'+(q?'<button class="bt s" type="button" data-sk="lxp">'+(L.p.indexOf(q)>=0?"إلغاء تثبيت هذا السؤال":"⭐ ثبّت هذا السؤال")+"</button>":"")+'<button class="bt s" type="button" data-sk="lxo">📖 قاموسي ('+fmt(L.d.length)+")"+(un.length?" · "+fmt(un.length)+" كلمة لم تُفهم":"")+"</button>"+lqBtn(L)+"</div>"+lexForm()+lqPanel(L);
  if(L.open){h+='<div class="stk-lxl"><p class="stk-src">الكلمات التي تعلّمتُها منكم. مشتركة لكل من يفتح «تحليل المخزون»، وتُستبدل بمعناها قبل فهم السؤال.</p>'+(L.d.length?'<div class="stk-chips">'+L.d.map((e,i)=>'<button type="button" data-sk="lxd" data-i="'+i+'" title="حذف" data-notr>«'+E(e.w)+"» ← "+E(e.l||e.r||"تُتجاهل")+" ✕</button>").join("")+"</div>":'<p class="stk-src">لم تعلّمني شيئاً بعد. عندما لا أفهم كلمة في سؤالك سيظهر زر «علّمني» بجوارها.</p>')
   +(un.length?'<p class="stk-src" style="margin-top:10px">كلمات لم أفهمها في أسئلتك (اضغط الكلمة لتعلّمني معناها):</p><div class="stk-chips">'+un.slice(0,30).map(e=>'<button type="button" data-sk="lxt" data-w="'+E(e.w)+'" title="'+E(e.q||"")+'" data-notr>'+E(e.w)+"</button>").join("")+'<button type="button" data-sk="lxuc">🗑 مسح السجل</button></div>':"")+"</div>"}
  return h;
 }
+/* (v211) 📝 «أسئلة تنتظر التعليم»: ما لم يُفهم يُسجَّل وحده، ويكتب المستخدم أي سؤال يتوقعه، ثم ينسخ القائمة ويرسلها لفريق المنصة */
+const lqList=L=>L.u.filter(e=>!e.w&&e.q).map(e=>{let ok=false;try{const a=parseAsk(lexApply(e.q,L.d),askCtx());ok=!askFailK(a)}catch(x){}return Object.assign({ok},e)});
+const LQK={q:["❓","لم تُفهم"],p:["◐","فُهمت جزئياً"],s:["💡","سؤال مقترح"]};
+function lqBtn(L){const n=L.u.filter(e=>!e.w&&e.q).length;return '<button class="bt s" type="button" data-sk="lqo">📝 أسئلة تنتظر التعليم ('+fmt(n)+")</button>"}
+function lqPanel(L){
+ if(!L.qo)return "";const Q=lqList(L),pend=Q.filter(e=>!e.ok),dd=t=>{if(!t)return "";const d=new Date(t);return d.getDate()+"/"+(d.getMonth()+1)};
+ return '<div class="stk-lqp"><p class="stk-src">اكتب هنا أي سؤال تتوقع أن يُسأل، والمنصة تسجّل وحدها كل سؤال لم تفهمه. ثم اضغط «انسخ القائمة» وأرسلها لفريق المنصة ليعلّمها إياها. القائمة مشتركة لكل من يفتح «تحليل المخزون».</p>'
+  +'<div class="stk-askb"><input type="text" id="stk-lqa" maxlength="200" autocomplete="off" placeholder="مثال: أكثر مقاس مبيعاً في الأحذية الشهر ده"><button class="bt p" type="button" data-sk="lqa">أضف السؤال</button></div>'
+  +(Q.length?'<ul class="stk-lql">'+Q.map(e=>{const K=e.ok?["✅","أصبحتُ أفهمه"]:LQK[e.k]||LQK.q;return '<li'+(e.ok?' class="ok"':"")+'><span class="stk-lqk">'+K[0]+" "+K[1]+'</span><b data-notr>'+E(e.q)+'</b><small>'+(e.n?'<bdi data-notr>'+E(e.n)+"</bdi> · ":"")+dd(e.at)+'</small><span class="stk-lqb"><button class="bt s" type="button" data-sk="ex" data-x="'+E(e.q)+'">جرّب</button><button class="bt s" type="button" data-sk="lqd" data-x="'+E(e.q)+'" title="حذف" aria-label="حذف">✕</button></span></li>'}).join("")+"</ul>"
+   :'<p class="stk-src">لا توجد أسئلة بعد.</p>')
+  +'<div class="stk-act">'+(pend.length?'<button class="bt p s" type="button" data-sk="lqc">📋 انسخ القائمة لإرسالها ('+fmt(pend.length)+")</button>":"")+(Q.length>pend.length?'<button class="bt s" type="button" data-sk="lqk">🧹 امسح ما أصبحتُ أفهمه ('+fmt(Q.length-pend.length)+")</button>":"")+(Q.length?'<button class="bt s" type="button" data-sk="lqx">🗑 مسح الكل</button>':"")+"</div></div>"}
+function lqCopy(){
+ const L=lexLoad(),P=lqList(L).filter(e=>!e.ok);if(!P.length){if(X.toast)X.toast("لا أسئلة تنتظر التعليم");return}
+ const txt="أسئلة «اسأل» التي تحتاج تعليماً ("+P.length+") — "+today()+"\n"+P.map((e,i)=>(i+1)+") "+e.q+"   ["+(LQK[e.k]||LQK.q)[1]+(e.n?" · "+e.n:"")+"]").join("\n");
+ const done=()=>{if(X.toast)X.toast("✅ نُسخت القائمة، الصقها في رسالة لفريق المنصة")},fb=()=>{try{const ta=document.createElement("textarea");ta.value=txt;ta.setAttribute("readonly","");ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();done()}catch(x){if(X.toast)X.toast("تعذّر النسخ")}};
+ try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,fb);else fb()}catch(x){fb()}}
+function lqAdd(){const el=g("stk-lqa"),q=String(el&&el.value||"").trim().replace(/\s+/g," ").slice(0,200);if(q.length<2){if(X.toast)X.toast("اكتب السؤال أولاً");return}
+ if(lqHas(lexLoad(),q)){if(X.toast)X.toast("هذا السؤال موجود في القائمة");return}lexLogQ(q,"s");lexLoad().u.unshift({w:"",q,at:Date.now(),k:"s",n:by().n});if(X.toast)X.toast("✅ أُضيف السؤال");paint(false);const e2=g("stk-lqa");if(e2)e2.focus()}
 function lexSaveForm(){
  const x=UI.lx,L=lexLoad();if(!x)return;const w=String(x.w||"").trim().replace(/\s+/g," ").slice(0,40),t=x.t||"store";let r="",l="";
  if(!w){if(X.toast)X.toast("اكتب الكلمة أو العبارة");return}
@@ -1949,7 +1983,13 @@ function wire(){
   else if(a==="lxs")lexSaveForm();
   else if(a==="lxo"){const L=lexLoad();L.open=!L.open;paint(false)}
   else if(a==="lxd"){const L=lexLoad(),e=L.d[N(t.dataset.i)];if(e){const k=normAr(e.w);lexDb(T=>{T.d=T.d.filter(x=>normAr(x.w)!==k)})}if(UI.aq&&UI.a)doAsk(UI.aq);else paint(false)}
-  else if(a==="lxuc"){lexDb(T=>{T.u=[]});paint(false)}
+  else if(a==="lxuc"){lexDb(T=>{T.u=T.u.filter(e=>!e.w)});paint(false)}
+  else if(a==="lqo"){const L=lexLoad();L.qo=!L.qo;paint(false)}
+  else if(a==="lqa")lqAdd();
+  else if(a==="lqc")lqCopy();
+  else if(a==="lqd"){const k=normAr(t.dataset.x||"");lexDb(T=>{T.u=T.u.filter(e=>e.w||normAr(e.q)!==k)});paint(false)}
+  else if(a==="lqk"){const ok=lqList(lexLoad()).filter(e=>e.ok).map(e=>normAr(e.q));lexDb(T=>{T.u=T.u.filter(e=>e.w||ok.indexOf(normAr(e.q))<0)});paint(false)}
+  else if(a==="lqx"){if(!confirm("مسح كل الأسئلة من القائمة؟ (لكل من يفتح «تحليل المخزون»)"))return;lexDb(T=>{T.u=T.u.filter(e=>e.w)});paint(false)}
   else if(a==="lxp"){const L=lexLoad(),q=String(UI.aq||"").trim().slice(0,200);if(q){const on=L.p.indexOf(q)<0;lexDb(T=>{T.p=T.p.filter(x=>x!==q);if(on)T.p.unshift(q)});paint(false)}}
   else if(a==="lxup"){const q=t.dataset.x;lexDb(T=>{T.p=T.p.filter(x=>x!==q)});paint(false)}
   else if(a==="nmk"){if(!nSel().length){if(X.toast)X.toast("حدِّد السطور أولاً بالمربع في أول كل سطر");return}UI.nrx={q:{}};paint(false);try{ROOT.scrollIntoView({block:"start"})}catch(x){}}
@@ -2051,6 +2091,7 @@ function wire(){
   if(t.dataset.cf){const c=t.dataset.cf;CFG[c]=c==="wh"?t.value:Math.max(0,Math.min(9999,N(t.value)));return false}
   if(t.dataset.cx!==undefined){const s=new Set(CFG.ex||[]);if(t.checked)s.add(t.dataset.cx);else s.delete(t.dataset.cx);CFG.ex=[...s];return false}return false};
  ROOT.addEventListener("keydown",e=>{const t=e.target;if((e.key==="Enter"||e.key===" ")&&t&&t.dataset&&(t.dataset.sk==="oexp"||t.dataset.sk==="pexp")){e.preventDefault();t.click();return}if(e.key==="Enter"&&t&&t.id==="stk-ask"){e.preventDefault();doAsk(t.value)}
+  else if(e.key==="Enter"&&t&&t.id==="stk-lqa"){e.preventDefault();lqAdd()}
   else if(e.key==="Enter"&&t&&(t.id==="stk-a-ccodes"||t.id==="stk-foc")){e.preventDefault();t.blur()}
   else if((e.key==="Enter"||e.key===" ")&&t&&t.classList&&t.classList.contains("go")){e.preventDefault();t.click()}});
  // (v184) خانة الكود/البحث: الضغط عليها يحدّد ما فيها، فالكتابة تستبدله مباشرة (صنف آخر بلا مسح يدوي)
