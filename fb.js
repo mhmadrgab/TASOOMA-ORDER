@@ -85,9 +85,10 @@ export async function pushRegister(app, db, info) {
     if (!tok) return false;
     if (!window.__fgm) { window.__fgm = 1; m.onMessage(msg, p => {
       const n = (p && p.notification) || {}, d = (p && p.data) || {};
+      if (String(d.tag || "").indexOf("call") === 0) try { if (window.__tzCallIn) window.__tzCallIn(String(d.tag).slice(4)) } catch (e) {}// ⚡ (v213) الرنة فوراً من إشعار الجهاز
       if (String(d.tag || "").indexOf("call") !== 0) try { if (window.__tzNote) window.__tzNote(n.title || d.t || "", n.body || d.b || "", (p.fcmOptions && p.fcmOptions.link) || d.link || "") } catch (e) {}// 🔔 (v179) سجل الإشعارات
       if (!(document.hidden || !document.hasFocus()) && d.tag !== "test") return;
-      if (String(d.tag || "").indexOf("call") === 0) return;// 📞 المكالمة: شاشة الرد في call.js
+      if (String(d.tag || "").indexOf("call") === 0) return;// 📞 المكالمة: شاشة الرد في call.js (والخبر وصلها فوق)
       reg.showNotification(n.title || d.t || "تاسومة", {body: n.body || d.b || "", tag: d.tag || undefined, icon: "./icon-192.png", dir: document.documentElement.dir || "rtl", lang: document.documentElement.lang || "ar", data: {link: (p.fcmOptions && p.fcmOptions.link) || d.link || ""}}).catch(() => {});
     }) }
     await pushSave(db, info, tok);

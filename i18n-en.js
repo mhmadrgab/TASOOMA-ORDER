@@ -4202,4 +4202,6 @@ export default {
 "هذا السؤال موجود في القائمة":"This question is already in the list",
 "✅ أُضيف السؤال":"✅ Question added",
 "مسح كل الأسئلة من القائمة؟ (لكل من يفتح «تحليل المخزون»)":"Clear all questions from the list? (for everyone who opens “Stock analysis”)",
+"تعذّر تبديل السماعة على هذا الجهاز":"Could not switch the speaker on this device",
+"على الآيفون يخرج صوت المكالمة من مكبّر الجوال أو من السماعة المتصلة (AirPods)، وأبقِ المنصة مفتوحة أمامك طوال المكالمة":"On iPhone the call audio plays from the loudspeaker or connected headphones (AirPods). Keep the platform open in front of you during the call",
 };

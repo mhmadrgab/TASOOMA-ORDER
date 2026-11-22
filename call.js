@@ -21,7 +21,15 @@
 import {collection,doc,getDoc,setDoc,updateDoc,onSnapshot,query,where,onAuthStateChanged,PUSH_URL} from "./fb.js";
 const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
-const RING_MS=45000,CONNECT_MS=20000,WIN=10*6e4,DROP_MS=25000,RS_MAX=3,ICE_TTL=40*6e4;
+const RING_MS=45000,CONNECT_MS=20000,WIN=10*6e4,DROP_MS=45000,RS_MAX=6,ICE_TTL=40*6e4;
+// v6 (22 نوفمبر 2026، محمد: «الرنة بتظهر متأخرة، والمكالمة بتفصل في نص الكلام كتير، ومفيش تبديل سماعة، وخصوصاً آيفون لآيفون»):
+//   1) الرنة لها 3 طرق سريعة جنب السماع القديم: إشارة لحظية من السيرفر على قناة خاصة بالطرف (tz-c:الطرف، بلا قاعدة بيانات)،
+//      وإشعار الجهاز لو المنصة مفتوحة (من fb.js ومن sw.js). أي واحدة توصل أولاً تجيب المكالمة برقمها (fetchCall).
+//   2) القطع: الآيفون بيوقف الصفحة أول ما الشاشة تتقفل (القفل التلقائي 30 ثانية!) فالمكالمة كانت بتموت. دلوقتي الشاشة
+//      بتفضل منوّرة طول المكالمة (Wake Lock)، ولما الصفحة ترجع قدامه بنرجّع الصوت والميكروفون ونعيد الاتصال فوراً،
+//      والمهلة قبل «انقطع الاتصال» 45 ثانية ومحاولات إعادة الاتصال 6.
+//   3) السماعة في متصفح أندرويد: المسار تابع للميكروفون المختار (Speakerphone / Headset earpiece) فالتبديل بتبديل الميكروفون.
+//      الآيفون: المتصفح لا يتيح سماعة الأذن (الصوت من المكبّر أو السماعة المتصلة) — بنقولها للمستخدم مرة.
 const RELAY_ONLY=false;// true = كل الصوت عبر السيرفر الوسيط دائماً (أبطأ؛ للتجربة فقط)
 const canVib=()=>!!navigator.vibrate&&(!navigator.userActivation||navigator.userActivation.hasBeenActive);
 const NAT=()=>window.TasoomaApp||null;
@@ -69,7 +77,27 @@ function hiq(sdp){
 const gathered=pc=>new Promise(ok=>{if(pc.iceGatheringState==="complete")return ok();let done=false;const fin=()=>{if(done)return;done=true;clearTimeout(t);ok()};
  const t=setTimeout(fin,ICE.turn?1800:1000);pc.addEventListener("icegatheringstatechange",()=>{if(pc.iceGatheringState==="complete")fin()});
  pc.addEventListener("icecandidate",e=>{if(!e.candidate){fin();return}if(ICE.turn&&/ typ relay/.test(e.candidate.candidate))setTimeout(fin,150)})});
-async function mic(){return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1,sampleRate:48000},video:false})}
+async function mic(dev){const a={echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1,sampleRate:48000};if(dev)a.deviceId={exact:dev};return navigator.mediaDevices.getUserMedia({audio:a,video:false})}
+// ---------- 🔆 الشاشة منوّرة طول المكالمة (قفل الشاشة على الآيفون بيوقف الصفحة فالمكالمة بتقطع) ----------
+let WL=null;
+function awake(on){
+ if(!on){if(WL){const l=WL;WL=null;try{l.release()}catch(e){}}return}
+ if(NAT()||WL||!("wakeLock" in navigator)||document.visibilityState!=="visible")return;// التطبيق له خدمته
+ try{navigator.wakeLock.request("screen").then(l=>{if(!C||WL){try{l.release()}catch(e){}return}WL=l;l.addEventListener("release",()=>{if(WL===l)WL=null})}).catch(()=>{})}catch(e){}
+}
+// ---------- 🎤 الميكروفون وقف (مكالمة هاتف، سيري، رجوع من الخلفية): نفتحه من جديد على نفس الاتصال ----------
+const micWatch=c=>{try{const t=c.stream&&c.stream.getAudioTracks()[0];if(t)t.onended=()=>{if(document.visibilityState==="visible")micFix(c)}}catch(e){}};
+async function micSwap(c,dev){
+ const old=c.stream,ot=old&&old.getAudioTracks()[0],s=await mic(dev);
+ if(C!==c){s.getTracks().forEach(x=>{try{x.stop()}catch(e){}});return false}
+ const nt=s.getAudioTracks()[0];nt.enabled=!c.mute;
+ const sd=c.pc?c.pc.getSenders().find(x=>x.track&&(x.track===ot||x.track.kind==="audio"))||(c.tr&&c.tr.sender):null;if(sd)await sd.replaceTrack(nt);
+ c.stream=s;if(old)old.getTracks().forEach(x=>{try{x.onended=null;x.stop()}catch(e){}});micWatch(c);return true;
+}
+async function micFix(c){
+ if(C!==c||!c.stream||c.micBusy||!c.pc)return;const t=c.stream.getAudioTracks()[0];if(t&&t.readyState==="live")return;
+ c.micBusy=true;try{await micSwap(c)}catch(e){}c.micBusy=false;
+}
 const failMsg=()=>ICE.turn?"تعذّر توصيل الصوت بسبب ضعف الإنترنت عند أحد الطرفين. حاول مرة أخرى":"تعذّر توصيل الصوت: شبكة أحد الطرفين تمنع الاتصال المباشر";
 function mkPc(servers){
  const pc=new RTCPeerConnection({iceServers:servers&&servers.length?servers:STUNS,bundlePolicy:"max-bundle",iceCandidatePoolSize:1,iceTransportPolicy:RELAY_ONLY&&ICE.turn?"relay":"all"});
@@ -83,13 +111,15 @@ function connState(pc){
  if(s==="connected"&&!weak){
   if(c.inc&&c.st==="ring")return;// اتجهّز قبل الرد: مانبدأش العداد إلا بعد ما يرد
   clearTimeout(c.dropT);c.dropT=0;clearTimeout(c.rsT);c.rsT=0;clearInterval(c.rpoll);c.rpoll=0;clearTimeout(c.ct);
-  if(!c.t0){c.t0=Date.now();mark(c,"con");tone(null);if(IOS&&AC){try{AC.suspend()}catch(e){}}paint();try{const A=NAT();if(A&&A.callOn)A.callOn(String(c.name||""))}catch(e){}spkInit(c);setTimeout(()=>pairInfo(c),2500)}
+  if(!c.t0){c.t0=Date.now();mark(c,"con");tone(null);if(IOS&&AC){try{AC.suspend()}catch(e){}}paint();try{const A=NAT();if(A&&A.callOn)A.callOn(String(c.name||""))}catch(e){}spkInit(c);awake(true);iosHint();setTimeout(()=>pairInfo(c),2500)}
   status("");return}
  if(!c.t0){if(bad)hang("fail");return}// قبل أول توصيل: المهلة (connectWatch) هي الحكم
  if(!weak)return;
  // 🔁 الاتصال ضعف أو قطع والمكالمة شغالة: مانقفلش. المتصل يعيد التفاوض، والطرفان يتابعان المستند كل ثانية لحد ما يرجع
  status("الاتصال ضعيف… جارٍ إعادة الاتصال",true);
- if(!c.dropT)c.dropT=setTimeout(()=>{if(C===c&&c.pc===pc&&pc.connectionState!=="connected")hang("drop")},DROP_MS);
+ // المهلة: لو المؤقّت نفسه اتأخر (الصفحة كانت واقفة في الخلفية ورجعت) بندّي فرصة 15 ثانية لإعادة الاتصال بدل القفل فوراً
+ if(!c.dropT){const due=Date.now()+DROP_MS,fire=()=>{c.dropT=0;if(C!==c||c.pc!==pc||pc.connectionState==="connected")return;
+   if(Date.now()-due>3000&&!c.dropX){c.dropX=1;c.dropT=setTimeout(fire,15000);if(!c.inc)restart(c);docPoll(c);return}hang("drop")};c.dropT=setTimeout(fire,DROP_MS)}
  if(!c.rpoll)c.rpoll=setInterval(()=>docPoll(c),1000);
  if(!c.inc){if(bad)restart(c);else if(!c.rsT)c.rsT=setTimeout(()=>{c.rsT=0;if(C===c&&pc.connectionState!=="connected")restart(c)},2500)}
 }
@@ -115,19 +145,31 @@ async function spkInit(c){
  try{const A=NAT();
   if(A&&typeof A.speaker==="function"){const r=String(A.speaker(false)||"");c.spkCan=r==="ear"||r==="spk";c.spk=r==="spk";c.spkNat=true;if(C===c)buttons();return}
   const au=g("tzc-au"),md=navigator.mediaDevices;
-  if(!au||typeof au.setSinkId!=="function"||!md||!md.enumerateDevices)return;
-  const L=(await md.enumerateDevices()).filter(d=>d.kind==="audiooutput"&&d.deviceId&&d.label);
-  const ear=L.find(d=>/earpiece|handset|receiver/i.test(d.label)),sp=L.find(d=>/speaker/i.test(d.label)&&!/earpiece|handset/i.test(d.label));
-  if(!ear||!sp||C!==c)return;
-  c.sinks={ear:ear.deviceId,spk:sp.deviceId};c.spkCan=true;c.spk=true;buttons();
+  if(IOS||!md||!md.enumerateDevices)return;
+  const D=await md.enumerateDevices();if(C!==c)return;
+  if(au&&typeof au.setSinkId==="function"){
+   const L=D.filter(d=>d.kind==="audiooutput"&&d.deviceId&&d.label);
+   const ear=L.find(d=>/earpiece|handset|receiver/i.test(d.label)),sp=L.find(d=>/speaker/i.test(d.label)&&!/earpiece|handset/i.test(d.label));
+   if(ear&&sp){c.sinks={ear:ear.deviceId,spk:sp.deviceId};c.spkCan=true;c.spk=true;buttons();return}}
+  // متصفح أندرويد: مفيش مخارج بأسمائها، لكن الميكروفونات «Speakerphone» و«Headset earpiece» هي اللي بتحدد مخرج الصوت
+  const I=D.filter(d=>d.kind==="audioinput"&&d.deviceId&&d.label),ei=I.find(d=>/earpiece|handset/i.test(d.label)),si=I.find(d=>/speakerphone/i.test(d.label));
+  if(!ei||!si)return;
+  const t=c.stream&&c.stream.getAudioTracks()[0],cur=t&&t.getSettings?String(t.getSettings().deviceId||""):"";
+  c.ins={ear:ei.deviceId,spk:si.deviceId};c.spkCan=true;c.spk=cur!==ei.deviceId;buttons();
  }catch(e){}
+}
+// الآيفون: نقولها مرة واحدة على الجهاز
+function iosHint(){
+ if(!IOS||NAT())return;try{if(localStorage.getItem("tz_call_ios"))return;localStorage.setItem("tz_call_ios","1")}catch(e){return}
+ if(X&&X.toast)X.toast("على الآيفون يخرج صوت المكالمة من مكبّر الجوال أو من السماعة المتصلة (AirPods)، وأبقِ المنصة مفتوحة أمامك طوال المكالمة");
 }
 async function spkToggle(){
  const c=C;if(!c||!c.spkCan)return;const want=!c.spk;
  try{
   if(c.spkNat){const r=String(NAT().speaker(want)||"");if(r!=="ear"&&r!=="spk"){c.spkCan=false;buttons();if(r==="ext"&&X&&X.toast)X.toast("الصوت يخرج من السماعة المتصلة");return}c.spk=r==="spk"}
   else if(c.sinks){await g("tzc-au").setSinkId(want?c.sinks.spk:c.sinks.ear);c.spk=want}
- }catch(e){c.spkCan=false}
+  else if(c.ins){if(c.micBusy)return;c.micBusy=true;try{if(await micSwap(c,want?c.ins.spk:c.ins.ear))c.spk=want}finally{c.micBusy=false}}
+ }catch(e){c.spkCan=false;if(X&&X.toast)X.toast("تعذّر تبديل السماعة على هذا الجهاز")}
  if(C===c)buttons();
 }
 function levelStop(){if(LV){clearInterval(LV.iv);try{LV.src.disconnect()}catch(e){}LV=null;const el=g("tzc");if(el)el.style.setProperty("--lv","0")}}
@@ -258,7 +300,7 @@ function cleanup(why){
  if(c.ofRes){try{c.ofRes()}catch(e){}c.ofRes=null}
  if(c.stream)c.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});
  if(c.pc)try{c.pc.close()}catch(e){}
- const a=g("tzc-au");if(a)a.srcObject=null;tone(null);levelStop();
+ const a=g("tzc-au");if(a)a.srcObject=null;tone(null);levelStop();awake(false);
  try{const A=NAT();if(A&&A.callOff)A.callOff()}catch(e){}
  metrics(c,why);
 }
@@ -339,7 +381,7 @@ export async function startCall(to,name){
  const pIce=iceServers().catch(()=>null);// خوادم الاتصال بالتوازي مع إذن الميكروفون
  try{c.stream=await mic()}catch(e){if(C===c){cleanup();closeUi("اسمح للمنصة باستخدام الميكروفون ثم حاول مرة أخرى")}return}
  if(C!==c){c.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});return}
- mark(c,"mic");
+ mark(c,"mic");micWatch(c);awake(true);
  const base=()=>({fr:X.party,to,frn:String(X.name()||"").slice(0,60),st:"ring",ts:Date.now()});
  // 1) الرنة أولاً: المستند من غير offer + الإشعار، والتجهيز بالتوازي. لو المتصل لغى قبل ما الكتابة تخلص: نقفلها عند الطرف التاني
  let first=!LEGACY,pDoc=null;
@@ -405,12 +447,26 @@ window.__tzCallAct=callAct;
 // 📱 تطبيق تاسومة وهو بيرن (والصفحة في الخلفية) بينادي دي: نجهّز الرد بصمت، فلما يضغط «رد» الصوت يتوصّل فوراً
 window.__tzCallWarm=id=>{if(!X||!id||C||SEEN.has(id))return;QUIET=String(id);fetchCall(id)};
 // رسالة من الـ SW (المنصة مفتوحة وضغط رد/رفض من الإشعار)
-if(navigator.serviceWorker)navigator.serviceWorker.addEventListener("message",e=>{const m=e.data;if(m&&m.t==="tz-call")callAct(m.id,m.act)});
+if(navigator.serviceWorker)navigator.serviceWorker.addEventListener("message",e=>{const m=e.data;if(m&&m.t==="tz-call")callAct(m.id,m.act);else if(m&&m.t==="tz-call-in")callIn(m.id)});
+// ⚡ (v6) مكالمة واردة وصل خبرها من طريق سريع (قناة السيرفر اللحظية، أو إشعار الجهاز والمنصة مفتوحة): نجيبها برقمها فوراً
+const callIn=id=>{if(X&&id&&!C)fetchCall(String(id))};
+window.__tzCallIn=callIn;
+let RCH=null;
+function rtLeave(c0){if(!RCH)return;const ch=RCH;RCH=null;try{if(c0&&c0.removeChannel)c0.removeChannel(ch);else ch.unsubscribe()}catch(e){}}
+function rtJoin(){
+ const c=X&&X.db&&X.db.c;rtLeave(c);if(!c||typeof c.channel!=="function")return;
+ try{RCH=c.channel("tz-c:"+X.party,{config:{private:true,broadcast:{self:false}}});
+  RCH.on("broadcast",{event:"ring"},m=>{const p=m&&m.payload;if(p&&p.id)callIn(p.id)}).subscribe(()=>{})}catch(e){RCH=null}
+}
+// الصفحة رجعت قدام المستخدم والمكالمة شغالة: الشاشة تفضل منوّرة، والصوت والميكروفون يرجعوا، ولو الاتصال واقع نعيده فوراً
+document.addEventListener("visibilitychange",()=>{const c=C;if(!c||document.visibilityState!=="visible")return;awake(true);
+ const au=g("tzc-au");if(au&&au.srcObject&&au.paused){const p=au.play();if(p&&p.catch)p.catch(()=>{if(C===c){c.tap=true;status("اضغط على الشاشة لتشغيل الصوت")}})}
+ micFix(c);if(c.t0&&c.pc&&c.pc.connectionState!=="connected"&&!c.inc)restart(c);docPoll(c)});
 async function accept(){
  const c=C;if(!c||!c.inc||c.st!=="ring")return;tone(null);c.st="conn";mark(c,"tap");paint();status("جارٍ توصيل الصوت",true);
  try{c.stream=await mic()}catch(e){if(C===c){hang("rej");closeUi("اسمح للمنصة باستخدام الميكروفون للرد")}return}
  if(C!==c){c.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});return}
- mark(c,"mic");
+ mark(c,"mic");micWatch(c);awake(true);
  try{
   // «الرنة أولاً»: لو ضغط رد قبل ما الـ offer يوصل بنستناه (لحد 12 ثانية) بدل ما نفشل
   if(!c.of){await new Promise(ok=>{c.ofRes=ok;setTimeout(ok,12000)});if(C!==c)return;if(!c.of)throw new Error("no-offer")}
@@ -451,6 +507,7 @@ export function initCall(ctx){
  // مكالمات آخر 10 دقايق (بساعة الجهاز ده)، والفلترة الحقيقية بالحالة "بترن" + الرنة من لحظة الوصول، فاختلاف ساعة الموبايل مايضيّعش المكالمة
  UN=onSnapshot(query(collection(X.db,"call"),where("to","==",X.party),where("ts",">=",Date.now()-WIN)),sn=>{
   sn.docs.forEach(s=>{const d=s.data();if(d&&d.st==="ring"&&Math.abs(Date.now()-N(d.ts))<WIN)incoming(s.id,d,"rt")})},()=>{});
+ rtJoin();
  iceCached();setTimeout(()=>{if(X)iceServers()},1200);// خوادم الاتصال: من المحفوظ على الجهاز فوراً، ونجدّدها بعد لحظة
  // 🛡 (17 نوفمبر 2026) الرد التلقائي من الرابط (act=acc) كان يخلّي أي حد يبعت رابط "…?call=رقم&act=acc" ثم يتصل، فالمكالمة تترد لوحدها والمايك يفتح.
  // دلوقتي: الرابط بيتقبل جوه تطبيق تاسومة بس ولما التطبيق نفسه هو اللي فتح الصفحة (من غير referrer؛ الضغط على رابط جوه الصفحة له referrer).
@@ -475,4 +532,4 @@ export function earlyCall(ctx){
 }
 export const callState=()=>C?{id:C.id,st:C.st,inc:C.inc,conn:C.pc?C.pc.connectionState:"",t0:!!C.t0,ready:!!C.ready,of:!!(C.of||(!C.inc&&C.tm&&C.tm.ofw!=null)),spkCan:!!C.spkCan,spk:!!C.spk,rs:C.rs||0,rn:C.rn||0,pair:C.pair||"",tm:Object.assign({},C.tm),legacy:LEGACY}:null;// للتشخيص والاختبار
 export const callRestart=()=>{if(C&&!C.inc)return restart(C)};// للاختبار: إعادة التفاوض يدوياً
-export function stopCall(){if(C)hang("end");if(UN){try{UN()}catch(e){}UN=null}X=null;window.__tzCall=false}
+export function stopCall(){if(C)hang("end");if(UN){try{UN()}catch(e){}UN=null}rtLeave(X&&X.db&&X.db.c);X=null;window.__tzCall=false}
