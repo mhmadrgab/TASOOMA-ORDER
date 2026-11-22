@@ -47,18 +47,21 @@ html[data-bsec="new"] .lock #my,html[data-bsec="new"] .lock #xf,html[data-bsec="
 html[data-bsec="my"] .lock .sheet,html[data-bsec="my"] .lock .act,html[data-bsec="my"] .lock .tip,html[data-bsec="my"] .lock #hist,html[data-bsec="my"] .lock #stkn,html[data-bsec="my"] .lock #catn{display:none!important}
 html[data-bsec="hist"] .lock .sheet,html[data-bsec="hist"] .lock .act,html[data-bsec="hist"] .lock .tip,html[data-bsec="hist"] .lock #my,html[data-bsec="hist"] .lock #xf,html[data-bsec="hist"] .lock #stkn,html[data-bsec="hist"] .lock #catn,html[data-bsec="hist"] .lock #hello{display:none!important}
 html.bnv .lock #gfbtn,html.bnv .lock #mtbtn{display:none!important}
+html[data-bsec]:not([data-bsec="cus"]) .lock #bcus{display:none!important}
+html[data-bsec="cus"] .lock .sheet,html[data-bsec="cus"] .lock .act,html[data-bsec="cus"] .lock .tip,html[data-bsec="cus"] .lock #my,html[data-bsec="cus"] .lock #xf,html[data-bsec="cus"] .lock #hist,html[data-bsec="cus"] .lock #stkn,html[data-bsec="cus"] .lock #catn,html[data-bsec="cus"] .lock #hello{display:none!important}
 html.bnv[data-bsec="hist"] .lock #hist{display:block!important}
 @media print{#bnv,#bnv-btn,#bnv-veil{display:none!important}html.bnv .lock{padding:0!important}}
 `;
 let X=null,SEC="new",OBS=null,TMR=0;
 const H=document.documentElement;
-const SECS=[["new","طلب جديد","new"],["my","طلباتي ومتابعتها","my"],["hist","سجل الأوراق","hist"]];
+const SECS=[["new","طلب جديد","new"],["my","طلباتي ومتابعتها","my"],["hist","سجل الأوراق","hist"],["cus","العهدة","cus"]];
 function cnt(id,sel){const b=g(id);if(!b)return 0;let n=0;b.querySelectorAll(sel).forEach(s=>{const m=/\d+/.exec(String(s.textContent||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)));if(m)n+=+m[0]});return n}
 function items(){
- const L=[["الطلبات"]].concat(SECS.map(s=>({k:s[0],t:s[1],ic:s[2],n:s[0]==="my"?(X.myCount?X.myCount():0):0})));
+ const L=[["الطلبات"]].concat(SECS.filter(s=>s[0]!=="cus").map(s=>({k:s[0],t:s[1],ic:s[2],n:s[0]==="my"?(X.myCount?X.myCount():0):0})));
  const fr=[];
  if(g("gfbtn"))fr.push({a:"gfbtn",t:"الهدايا والعينات",ic:"gift",n:cnt("gfbtn",".bd span")});
  if(g("mtbtn"))fr.push({a:"mtbtn",t:"طلبات الصيانة",ic:"mnt",n:cnt("mtbtn",".m-bd span")});
+ if(g("bcus"))fr.push({k:"cus",t:"العهدة",ic:"cus",n:0});// 💼 (v218) عهدة الفرع = قسم
  (X.extra?X.extra():[]).forEach(e=>fr.push(e));
  if(fr.length)L.push(["الفرع"]),fr.forEach(x=>L.push(x));
  if(g("bcme")){L.push(["التواصل"]);L.push({a:"bcme",t:"المحادثات",ic:"chat",n:X.chatCount?X.chatCount():0})}

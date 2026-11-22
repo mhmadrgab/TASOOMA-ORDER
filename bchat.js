@@ -1123,7 +1123,7 @@ export function initBChat(ctx){
   UND=onSnapshot(collection(X.db,"whdir"),sn=>{DIR={};sn.docs.forEach(d=>{DIR[d.id]=d.data()});again()},()=>{});
   UNA=onSnapshot(collection(X.db,"ava"),sn=>{AVA={};sn.docs.forEach(d=>{const p=d.data().ph;if(typeof p==="string"&&/^data:image\/jpeg;base64,/.test(p))AVA[d.id]=p});again()},()=>{});
   // 👥 (v216) أشخاص الفروع: المستودع اللي بيكلّم الفروع يشوفهم تحت فروعهم
-  if(T()==="w"&&X.canBr)UNBP=onSnapshot(collection(X.db,"bper"),sn=>{BP={};sn.docs.forEach(d=>{BP[d.id]=d.data()});again()},()=>{});
+  /* ⛔ (v217) أشخاص الفروع أُلغوا: لا نقرأ bper ولا يظهر أحد منهم في القائمة */
   UNDD=onSnapshot(collection(X.db,"ddir"),sn=>{DDIR={};sn.docs.forEach(d=>{DDIR[d.id]=d.data()});again()},()=>{});
   // محادثاتي: القديمة (فرع مع المستودع) + الجديدة (ps فيها أنا)
   if(T()==="b")UNS=onSnapshot(query(collection(X.db,"dm"),where("br","==",pv(X.me))),sn=>{SO={};sn.docs.forEach(d=>SO[d.id]=d.data());gotO=true;fire()},()=>{gotO=true;fire()});

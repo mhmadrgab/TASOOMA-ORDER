@@ -156,8 +156,8 @@ import {initPwSelf,stopPwSelf} from "./pwself.js";
 import {initCall,stopCall,earlyCall} from "./call.js";
 import {initAnn,stopAnn,annBtn} from "./ann.js";
 import {initShort,stopShort,shortView,weeklyCfgView} from "./short.js";
+import {initBCus,stopBCus,bcusView,bcusPend} from "./bcus.js";// 💼 (v218) عهدة الفروع
 import {initStaff,view as staffView,permView,lockView,stop as stopStaff,syncDir,staffName,OWNER_NAME} from "./staff.js";
-import {initBp,bpView,stopBp} from "./bpeople.js";// 👥 (v215) أشخاص الفروع وكمبيوتر الفروع
 import {initProf,stopProf,chip as meChip} from "./prof.js";
 import {initAudit,view as logView,stopAudit} from "./audit.js";
 import {initWorkers,view as wkView,stop as stopWorkers,pick as pickWorkers,has as hasWorkers} from "./workers.js";
@@ -222,6 +222,7 @@ const TABS=[
  ["po","🚢","أوامر الشراء",()=>(ROLE.admin||ROLE.p.po===true||ROLE.p.rcv===true||ROLE.v===true)&&poFree(),()=>poCount(),"fin"],
  ["rcv","📦","استلام الحاويات",()=>rcvLim(),()=>poRcvCount(),"fin"],
  ["cus","💵","العهدة",()=>see("cus")&&secOk("cus"),null,"fin"],
+ ["bcus","💼","عهدة الفروع",()=>see("cus")&&secOk("cus"),()=>(ROLE.admin||can("cus"))&&ROLE.v!==true?bcusPend():0,"fin"],// (v218) عهدة الفروع
  ["gift","🎁","الهدايا",()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift"),()=>giftPend(),"fin"],
  // 📊 (v173) تحليل المخزون من تقارير السيستم: للأدمن ومالك النظام فقط (والقواعد كذلك)
  ["stk","📊","تحليل المخزون",()=>ROLE.owner===true||(ROLE.p.stk===true&&ROLE.v!==true),null,"fin"],
@@ -276,7 +277,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBp();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBCus();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -354,6 +355,7 @@ function start(){
  initPwSelf({auth,toast,label:me});// 🔑 كل موظف يغيّر كلمة مروره من «حسابي»
  P=tmpPw;// 🔑 (18 نوفمبر 2026) كلمات المرور لا تُحفظ: P = ما أُنشئ أو تغيّر في فتحة الصفحة هذه فقط (fb.js tmpPw)
  const adm=ROLE.admin;
+ if(adm||can("cus")||vw)initBCus({db,toast,mode:"wh",staff:(adm||can("cus"))&&!vw,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 💼 (v218)
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك فقط
  // 🎁 الهدايا والعينات: الاعتماد لمدير التسويق (p.gm) واللي المالك اداله "اعتماد الهدايا" (p.ga) بس — مش المدير بصفته مدير.
@@ -384,7 +386,6 @@ function start(){
    unsubs.push(onSnapshot(doc(db,"brx","main"),d=>{BRX=d.exists()&&Array.isArray(d.data().l)?d.data().l.map(String):[];brxApply(BRX);try{localStorage.setItem("tz_brx",JSON.stringify(BRX))}catch(x){}draw()},()=>{}));
  if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
- if(ROLE.owner===true)initBp({db,fb:{collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot},mkUser:async(em,pw)=>{const a=sec();try{await createUserWithEmailAndPassword(a,em,pw)}finally{try{await signOut(a)}catch(e){}}},setPw:adminSetPw,branches:()=>BR,toast,redraw:draw,me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase()});
  if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm"||sub==="lk")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,co:ROLE.co===true,lock:()=>LOCK,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
  if(ROLE.owner===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});
  else if(ROLE.p.stk===true&&ROLE.v!==true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,ro:true,me:{e:me,get n(){return ROLE.name||me}},branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});/* (v194) صلاحية «تحليل المخزون»: مشاهدة وتحليل فقط */// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
@@ -444,11 +445,11 @@ window.addEventListener("tz-news-go",e=>{const sb=e&&e.detail&&e.detail.sub;
  if(sb==="pm"&&ROLE.owner===true&&okTab("set")){tab="set";sub="pm";try{localStorage.setItem("st_sub","pm")}catch(x){}draw();return}// 👑 كارت الإدارة ← جدول الصلاحيات
  if(ROLE.co&&okTab("set")){tab="set";draw()}});
 // أقسام الإعدادات: [المعرّف، الأيقونة، الاسم]. قسم جديد: أضفه هنا وفي سلسلة الشرط داخل setView (يظهر تلقائياً في القائمة الجانبية تحت «الإعدادات»)
-const setSubs=()=>{const S=[["perm","👥","الموظفون والحسابات"],["br","🏬","حسابات الفروع"],["rep","📊","التقارير والإشعارات"]].concat(ROLE.owner===true?[["bp","👤","أشخاص الفروع"],["cat","📦","كتالوج الأصناف"],["hl","📏","صحة المنصة"]]:[]);S.splice(1,0,["pm","🔐","جدول الصلاحيات"]);if(ROLE.owner===true)S.splice(2,0,["lk","🔒","الأقسام الخاصة"]);return S};
+const setSubs=()=>{const S=[["perm","👥","الموظفون والحسابات"],["br","🏬","حسابات الفروع"],["rep","📊","التقارير والإشعارات"]].concat(ROLE.owner===true?[["cat","📦","كتالوج الأصناف"],["hl","📏","صحة المنصة"]]:[]);S.splice(1,0,["pm","🔐","جدول الصلاحيات"]);if(ROLE.owner===true)S.splice(2,0,["lk","🔒","الأقسام الخاصة"]);return S};
 const fixSub=()=>{if(!setSubs().some(a=>a[0]===sub))sub="perm"};
 function setView(){
  const S=setSubs();fixSub();
- return `<div class="stg"><nav class="stg-nav" aria-label="أقسام الإعدادات">${S.map(a=>`<button type="button" class="${sub===a[0]?"on":""}" data-ss="${a[0]}">${a[1]} ${a[2]}</button>`).join("")}</nav><section class="stg-body">${sub==="perm"?staffView():sub==="pm"?permView():sub==="lk"?lockView():sub==="br"?brView():sub==="cat"?catAdminView():sub==="bp"?bpView():sub==="hl"?healthView():(weeklyCfgView()||`<div class="pan"><p class="off" style="margin:0">إعدادات التقارير والإشعارات يحدّدها مالك النظام.</p></div>`)}</section></div>`
+ return `<div class="stg"><nav class="stg-nav" aria-label="أقسام الإعدادات">${S.map(a=>`<button type="button" class="${sub===a[0]?"on":""}" data-ss="${a[0]}">${a[1]} ${a[2]}</button>`).join("")}</nav><section class="stg-body">${sub==="perm"?staffView():sub==="pm"?permView():sub==="lk"?lockView():sub==="br"?brView():sub==="cat"?catAdminView():sub==="hl"?healthView():(weeklyCfgView()||`<div class="pan"><p class="off" style="margin:0">إعدادات التقارير والإشعارات يحدّدها مالك النظام.</p></div>`)}</section></div>`
 }
 function brView(){
  const info={};BR.forEach(b=>info[code(b)]={n:0,p:0,t:0});
@@ -526,7 +527,7 @@ function drawNow(){
  if(HT.getAttribute("data-tab")!==tab){HT.setAttribute("data-tab",tab);try{sessionStorage.setItem("tz_tab",tab)}catch(x){}}
  // (v184) تحليل المخزون مفتوح ومركَّب: لا نعيد بناء الصفحة مع كل تحديث لحظي (كان يُنزع المديول ويُعاد، فتُقفل القوائم المفتوحة ويطير المؤشر من الخانة أثناء الكتابة)
  const stkOn=tab==="stk"&&g("stkhost")&&g("stkhost").firstElementChild&&g("stkhost").firstElementChild.id==="stk";
- if(!stkOn)g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
+ if(!stkOn)g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="bcus"?bcusView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
  showSheet();
  if(tab==="chat")mountWh(g("bchost"));else hideWh();// الدردشة عنصر ثابت بيتحط في مكانه (الكتابة والتسجيل مايضيعوش)
  if(tab==="stk")stockMount(g("stkhost"));// تحليل المخزون: عنصر ثابت كذلك
