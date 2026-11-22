@@ -364,6 +364,7 @@ function draw(){
   g("bf").onclick=fuelForm;g("be").onclick=endForm;if(g("badd"))g("badd").onclick=()=>addToTrip(g("badd"));
   mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));mn.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>pickUp(b.dataset.pk,b));mn.querySelectorAll("[data-ct]").forEach(i=>i.onchange=()=>saveCt(i));wireIt(mn);wireNat(mn);
   initDMap({trip:()=>active(),geo:()=>GEO,codeOf,shipOf});dmapMount(g("dmap-slot"));
+  clearInterval(tick);tick=setInterval(()=>{const e=g("el"),t=active();if(e&&t)e.textContent=dur(Date.now()-N(t.start))},30000);// (v214) رجع: كان اتشال بالغلط في v203
   liveOn();if(g("wk"))g("wk").onchange=()=>{lsSet("drv_wake",g("wk").checked?"1":"0");if(g("wk").checked)wake();else if(LIVE.lock){LIVE.lock.release().catch(()=>{});LIVE.lock=null}};
   return;
  }

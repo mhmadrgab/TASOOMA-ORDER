@@ -545,8 +545,8 @@ const tipShow=b=>{if(!HT.classList.contains("tzn-col")||innerWidth<=1024)return;
 const navCol=()=>{NAVC=!NAVC;try{localStorage.setItem("tzn_col",NAVC?"1":"0")}catch(x){}HT.classList.toggle("tzn-col",NAVC);tipHide();
  setTimeout(()=>{try{window.dispatchEvent(new Event("resize"))}catch(x){}},320)};// الخرائط تعيد حساب عرضها بعد انتهاء الحركة
 document.addEventListener("click",e=>{const n=e.target.closest("[data-nav]");
- if(n){const a=n.dataset.nav;if(a==="open")navOpen(true);else if(a==="close")navOpen(false);else if(a==="col")navCol();return}
- const b=e.target.closest("#tzn [data-t],#tzn [data-ss]");if(b){tipHide();navOpen(false);window.scrollTo(0,0)}});
+ if(n){const a=n.dataset.nav;if(a==="open")navOpen(!HT.classList.contains("tzn-open"));/* (v214) ☰ يفتح ويقفل */else if(a==="close")navOpen(false);else if(a==="col")navCol();return}
+ const b=e.target.closest("#tzn [data-t],#tzn [data-ss]");if(b){if(b.dataset.t==="set"&&tab==="set")return;tipHide();navOpen(false);window.scrollTo(0,0)}});
 document.addEventListener("keydown",e=>{
  if(e.key==="Escape"&&HT.classList.contains("tzn-open")){navOpen(false);return}
  const t=e.target;if(!t||!t.closest||!t.closest("#tzn-nav"))return;
@@ -696,7 +696,10 @@ document.addEventListener("click",async e=>{
  const t=e.target.closest("[data-ss],[data-t],[data-s],[data-a],[data-sp],[data-mk],[data-tg],[data-shp],[data-pw],[data-ad],[data-cp],[data-brx],#bradd,#genall,#cpall,#logout");if(!t)return;
  try{
  if(t.dataset.ss){sub=t.dataset.ss;try{localStorage.setItem("st_sub",sub)}catch(x){}draw()}
- else if(t.dataset.t){if(okTab(t.dataset.t)){tab=t.dataset.t;draw()}}
+ else if(t.dataset.t){const nv=g("tzn-nav");
+  // (v214) الضغط على «الإعدادات» وهي مفتوحة يطوي أقسامها، والضغطة التالية تفتحها (كانت لا تُطوى أبداً)
+  if(t.dataset.t==="set"&&tab==="set"&&nv&&t.closest("#tzn")){const x=!nv.classList.contains("subx");nv.classList.toggle("subx",x);t.setAttribute("aria-expanded",String(!x));return}
+  if(nv)nv.classList.remove("subx");if(okTab(t.dataset.t)){tab=t.dataset.t;draw()}}
  else if(t.dataset.s){fs=t.dataset.s;draw()}
  else if(t.id==="logout"){await signOut(auth)}
  else if(t.dataset.a){const r=R.find(x=>x.id===t.dataset.id),a=t.dataset.a;if(!r)return;

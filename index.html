@@ -522,6 +522,7 @@ import {initSheet,stopSheet,refreshSheet} from "./brsheet.js";
 import {catLoad,catSheet} from "./cat.js";
 import {initBrStock,stopBrStock} from "./brstock.js";// 📦 (v179) المتوفر في المستودع + الطلب المقترح
 import {initCall,stopCall,earlyCall} from "./call.js";
+import {initBrNav,stopBrNav,brNavSec,brNavRefresh} from "./brnav.js";// 🧭 (v214) القائمة الجانبية
 const {app,db,auth}=makeFb("branch");
 earlyCall({db,auth,toast:(m,t)=>{try{toast(m,t)}catch(e){}}});// 📞 الصفحة اتفتحت على مكالمة: نبدأ المكالمات قبل باقي التحميل
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام",go:"في الطريق إليك 🚚"};
@@ -655,7 +656,8 @@ function enter(b){
  initSettings({kind:"branch",who:()=>b,tag:()=>code(b),sub:"أنت مسجّل الدخول في فرع",pw:true,bell:true,wire:wireButtons,logout:()=>signOut(auth),outLabel:"تسجيل الخروج",outHint:"للدخول بفرع آخر من هذا الجهاز",toast});
  initNotes({acct:"b-"+code(b),anchor:()=>document.getElementById("mx")});// 🔔 (v179) جرس سجل الإشعارات جنب الإعدادات
  initBChat({db,app,party:"b-"+code(b),codes:BR,name:()=>String(st&&st.dr||"").trim(),myLabel:()=>b,brn:c=>BR.find(x=>code(x)===c)||(c===code(b)?b:c),toast,beep,notify,ping:c=>ping(auth,[],[c]),
-  visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))},onBadge:setBadge});
+  visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))},onBadge:()=>{setBadge();brNavRefresh()}});
+ initBrNav({who:()=>b,myCount:()=>Object.values(REQS).filter(r=>r.st==="done").length+(XF||[]).filter(r=>(r.st==="new"||r.st==="prep")&&!+r.rdy).length,chatCount:()=>bcUnread()});
  // فتح من الإشعار: index.html?chat=إيميل الشخص (بيفتح محادثته على طول بعد ما الأسماء تتحمّل)
  const qc=new URLSearchParams(location.search).get("chat");if(qc!==null){setTimeout(()=>openBr((q=>/^g_/.test(q)?q:q.toLowerCase())(qc)),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}
 }
@@ -663,7 +665,7 @@ function enter(b){
 function setBadge(){const all=Object.values(REQS);badge(all.filter(r=>r.st==="done").length+(XF||[]).filter(r=>(r.st==="new"||r.st==="prep")&&!+r.rdy).length+bcUnread())}
 // الضغط على إشعار: index.html?req=رقم الطلب يفتح الطلب نفسه، و?gift=1 يفتح الهدايا
 function deepReq(id){
- let n=0;const iv=setInterval(()=>{n++;if(n>40){clearInterval(iv);return}
+ brNavSec("my");let n=0;const iv=setInterval(()=>{n++;if(n>40){clearInterval(iv);return}
   if(!REQS[id])return;clearInterval(iv);
   opn.add(id);paint();
   setTimeout(()=>{const a=document.querySelector(`#ml .mr[data-id="${CSS.escape(id)}"]`);if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
@@ -672,9 +674,9 @@ function deepReq(id){
  if(q.get("gift")){let n=0;const iv=setInterval(()=>{n++;const b=document.querySelector('[data-gf="bopen"]');if(b){clearInterval(iv);b.click()}else if(n>40)clearInterval(iv)},500)}
  if(rq||q.get("gift"))try{history.replaceState(null,"",location.pathname)}catch(e){}}
 // كارت التحديث (ui.js) زرار "اعرض طلباتي": ننزل لقايمة الطلبات ونفتح آخر طلب كورقة (لو فيه طلبات)
-window.addEventListener("tz-news-go",()=>{const my=g("my");if(my)my.scrollIntoView({behavior:"smooth",block:"start"});const c=document.querySelector("#ml .mr[data-id]"),b=c&&c.querySelector("[data-osh]");if(b)setTimeout(()=>b.click(),500)});
+window.addEventListener("tz-news-go",()=>{brNavSec("my");const my=g("my");if(my)my.scrollIntoView({behavior:"smooth",block:"start"});const c=document.querySelector("#ml .mr[data-id]"),b=c&&c.querySelector("[data-osh]");if(b)setTimeout(()=>b.click(),500)});
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
-function gateOn(){B=null;stopBrStock();stopNotes();stopSettings();stopPwSelf();stopCall();stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBrNav();stopBrStock();stopNotes();stopSettings();stopPwSelf();stopCall();stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");
  if(!p){showErr("اكتب كلمة المرور");return}

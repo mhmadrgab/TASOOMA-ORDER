@@ -360,6 +360,7 @@ html.tz-en .tzn-i::before{right:auto;left:-12px;border-radius:0 4px 4px 0}
 .tzn-sub>div{position:relative;min-height:0;overflow:hidden;padding-inline-start:30px}
 .tzn-sub>div::before{content:"";position:absolute;top:6px;bottom:8px;inset-inline-start:23px;width:1px;background:rgba(255,255,255,.14)}
 .tzn-i.on+.tzn-sub{grid-template-rows:1fr;visibility:visible;transition:grid-template-rows var(--duration-fast) var(--ease-smooth-out),visibility 0s}
+#tzn-nav.subx .tzn-i.on+.tzn-sub{grid-template-rows:0fr;visibility:hidden;transition:grid-template-rows var(--duration-fast) var(--ease-smooth-out),visibility 0s var(--duration-fast)}
 .tzn-sub button{position:relative;display:block;width:100%;min-height:34px;padding:0 12px;border:0;border-radius:10px;background:none;color:var(--tzn-mut);font:inherit;font-size:13.5px;font-weight:500;text-align:start;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
  transition:background-color var(--duration-quick) var(--ease-out),color var(--duration-quick) var(--ease-out)}
 .tzn-sub button:hover{background:var(--tzn-hov);color:#fff}

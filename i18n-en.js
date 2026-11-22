@@ -4204,4 +4204,7 @@ export default {
 "مسح كل الأسئلة من القائمة؟ (لكل من يفتح «تحليل المخزون»)":"Clear all questions from the list? (for everyone who opens “Stock analysis”)",
 "تعذّر تبديل السماعة على هذا الجهاز":"Could not switch the speaker on this device",
 "على الآيفون يخرج صوت المكالمة من مكبّر الجوال أو من السماعة المتصلة (AirPods)، وأبقِ المنصة مفتوحة أمامك طوال المكالمة":"On iPhone the call audio plays from the loudspeaker or connected headphones (AirPods). Keep the platform open in front of you during the call",
+"طلباتي ومتابعتها":"My orders",
+"منصة تاسومة":"Tasooma platform",
+"القائمة":"Menu",
 };
