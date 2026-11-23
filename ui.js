@@ -518,7 +518,7 @@
  function scan(){
   const t=Date.now();
   if(H.classList.contains("aw"))return;
-  if(!armed){armed=t+1200;if(!loginOn())enter()}
+  if(!armed)armed=t+1200;// (v225) فتح المنصة: شاشة البداية هي حركة الدخول، فلا حركة زيادة فوقها (كانت القائمة والشريط بيبانوا غامقين لثواني)
   const lg=loginOn();
   if(lastLg===false&&lg){NUM.clear();SEEN.clear();RUN.clear()}// خرج: حساب جديد يبدأ من الصفر
   if(lastLg===true&&!lg){armed=t+1200;enter()}// دخل
@@ -540,7 +540,8 @@
  }
  // المراقبة: callback الـ MutationObserver بيشتغل قبل الرسم، فالعنصر المعاد رسمه مايظهرش لحظة من غير حركته
  const start=()=>{if(!document.body)return setTimeout(start,50);
-  new MutationObserver(scan).observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["hidden"]});
+  // تغيّر class يهمّنا فقط على شاشة الدخول أو حاوية الصفحة (#gate / #app): الفرع بيظهر شاشة الدخول بـ class مش hidden
+  new MutationObserver(ms=>{for(let i=0;i<ms.length;i++){const m=ms[i];if(m.type!=="attributes"||m.attributeName!=="class"||/^(gate|app)$/.test(m.target.id||"")){scan();return}}}).observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["hidden","class"]});
   new MutationObserver(scan).observe(H,{attributes:true,attributeFilter:["class"]});scan()};
  start();
  window.tzMotion={scan,state:()=>({armed:armed&&Date.now()>=armed,nums:NUM.size,items:SEEN.size,run:RUN.size})};

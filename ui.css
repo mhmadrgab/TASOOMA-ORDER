@@ -568,11 +568,11 @@ html.tz-en .tzst-go{transform:rotate(-135deg)}
 @keyframes tzm-pulse{0%{transform:none}35%{transform:scale(1.012)}100%{transform:none}}
 @keyframes tzm-ok{0%{outline-color:transparent;outline-offset:8px}18%{outline-color:var(--tzm-ok);outline-offset:3px}100%{outline-color:transparent;outline-offset:3px}}
 /* بعد الدخول (أو أول ظهور بعد شاشة البداية): المحتوى يصعد بالتتابع (texts reveal) */
-html.tz-in #tzm>*,html.tz-in #mn>*,html.tz-in body.lock .w>*{animation:tzm-rise 560ms var(--ease-smooth-out) both;animation-delay:calc(var(--tzk,0) * 55ms - var(--tz-el,0ms))}
-html.tz-in #tzn,html.tz-in #tzt{animation:tzm-fade 420ms ease-out both;animation-delay:calc(0ms - var(--tz-el,0ms))}
+/* (v225) بعد تسجيل الدخول فقط (مش عند فتح المنصة)، والقائمة والشريط لا يختفيان، ومن غير blur */
+html.tz-in #tzm>*,html.tz-in #mn>*,html.tz-in body.lock .w>*{animation:tzm-rise 520ms var(--ease-smooth-out) both;animation-delay:calc(var(--tzk,0) * 50ms - var(--tz-el,0ms))}
 #tzm>:nth-child(2),#mn>:nth-child(2),.w>:nth-child(2){--tzk:1}#tzm>:nth-child(3),#mn>:nth-child(3),.w>:nth-child(3){--tzk:2}#tzm>:nth-child(4),#mn>:nth-child(4),.w>:nth-child(4){--tzk:3}
 #tzm>:nth-child(5),#mn>:nth-child(5),.w>:nth-child(5){--tzk:4}#tzm>:nth-child(n+6),#mn>:nth-child(n+6),.w>:nth-child(n+6){--tzk:5}
-@keyframes tzm-rise{0%{opacity:0;transform:translateY(16px);filter:blur(3px)}100%{opacity:1;transform:none;filter:none}}
+@keyframes tzm-rise{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:none}}
 @keyframes tzm-fade{0%{opacity:0}100%{opacity:1}}
 /* شاشة الدخول لها حركتها من قبل (ui-up / ui-pop فوق: الشعار يظهر ويطفو والخانات تصعد بالتتابع) */
 /* الخروج: الصفحة تذوب وتصغر شوية قبل ما تظهر شاشة الدخول (fb.js signOut) */
