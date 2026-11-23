@@ -59,7 +59,7 @@
   return {t,dt,hj}};
  // sub: سطر تحت التحية، chips: [[أيقونة, نص], ...]
  window.uiHello=(name,sub,chips)=>{const [g,ic]=greet(),{t,dt,hj}=fmtT();
-  return `<div class="hello"><div class="hl"><b><span data-greet>${g}</span> يا ${esc(name)} <span data-gic>${ic}</span></b>${sub?`<p>${sub}</p>`:""}${chips&&chips.length?`<div class="hchips">${chips.map(([i,x])=>`<span>${i} ${x}</span>`).join("")}</div>`:""}</div>
+  return `<div class="hello"><div class="hl"><b><span data-greet>${g}</span> يا ${esc(name)} <span data-gic>${ic}</span></b>${sub?`<p>${sub}</p>`:""}${chips&&chips.length?`<div class="hchips">${chips.map(([i,x],k)=>`<span data-tzn="hc:${k}">${i} ${x}</span>`).join("")}</div>`:""}</div>
   <div class="hc"><b data-clock>${t}</b><small data-date>${dt}</small><small data-hijri>${hj}</small></div></div>`};
  setInterval(()=>{if(!document.querySelector(".hello"))return;const [g,ic]=greet(),{t,dt,hj}=fmtT();
   const set=(s,v)=>document.querySelectorAll(s).forEach(e=>{if(e.textContent!==v)e.textContent=v});
@@ -494,4 +494,54 @@
  function at(t){var x=/([\w.\-]+\.(?:js|html))(?:\?[^:\s)]*)?:(\d+):(\d+)/.exec(String(t||""));return x?x[1]+":"+x[2]+":"+x[3]:""}
  addEventListener("error",function(e){if(e&&e.message)send(e.message,at((e.filename||"")+":"+(e.lineno||0)+":"+(e.colno||0)))});
  addEventListener("unhandledrejection",function(e){var r=e&&e.reason;if(r==null)return;send(typeof r==="string"?r:(r.message||r.code||""),at(r&&r.stack))});
+})();
+
+// ✨ (v224، 23 نوفمبر 2026، طلب محمد: «انيميشن حلوة مع التغيّر اللحظي في رقم أو طلب أو أي حاجة تلفت الانتباه… حتى تسجيل الدخول والخروج»)
+// من مهارة transitions-dev: number pop-in (رقم زاد) · number subtle change (رقم قلّ) · notification badge (عدّاد ظهر) · texts reveal (الشاشة تظهر).
+// الصفحات تُعيد رسم محتواها كله مع كل تحديث، فالحركة لا تعيش على العنصر: بعد كل رسمة نقارن بما كان ظاهراً بمفاتيح ثابتة:
+//   [data-tzn="مفتاح"] رقم (العدّادات): زاد ← tz-up، قلّ ← tz-down. عدّاد في القائمة الجانبية (nav:/bnv:) ظهر من الصفر ← tz-up.
+//   [data-tzi="مفتاح"] + data-tzs (الحالة) + data-tzt (وقت الإنشاء): جديد من آخر دقيقتين ← tz-new، الحالة اتغيّرت ← tz-chg.
+// لو الصفحة اتعادت رسمتها وسط الحركة: العنصر الجديد يكمل من نفس اللحظة (--tz-dl سالب). مقفولة في html.lite و«تقليل الحركة».
+(function(){
+ const H=document.documentElement,mq=window.matchMedia?matchMedia("(prefers-reduced-motion: reduce)"):null;
+ const off=()=>H.classList.contains("lite")||!!(mq&&mq.matches);
+ const DUR={"tz-up":600,"tz-down":480,"tz-new":2800,"tz-chg":1900},CLS=Object.keys(DUR);
+ const NUM=new Map(),SEEN=new Map(),RUN=new Map();let armed=0,lastLg=null,enterAt=0,enterT=0;
+ const numOf=el=>{const s=String(el.textContent||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)),m=s.match(/\d[\d,]*/);return m?+m[0].replace(/,/g,""):null};
+ const ib=el=>{try{if(getComputedStyle(el).display==="inline")el.classList.add("tz-ib")}catch(e){}};
+ function play(el,key,cls){RUN.set(key,{cls,t0:Date.now()});el.style.removeProperty("--tz-dl");CLS.forEach(c=>el.classList.remove(c));ib(el);void el.offsetWidth;el.classList.add(cls)}
+ function resume(el,key){const r=RUN.get(key);if(!r)return;const e=Date.now()-r.t0;if(e>=DUR[r.cls]){RUN.delete(key);return}
+  if(!el.classList.contains(r.cls)){ib(el);el.style.setProperty("--tz-dl",(-e)+"ms");el.classList.add(r.cls)}}
+ const loginOn=()=>{const L=document.querySelectorAll('input[type="password"]');for(let i=0;i<L.length;i++){if(L[i].offsetParent!==null&&!L[i].closest(".fm,.mdl,#pws,#tzset,[role=dialog]"))return true}return false};
+ function enter(){if(off())return;enterAt=Date.now();document.querySelectorAll("#tzm>*,#mn>*,body.lock .w>*").forEach(el=>{el.__tzEl=1;el.style.setProperty("--tz-el","0ms")});H.classList.add("tz-in");clearTimeout(enterT);
+  enterT=setTimeout(()=>{enterAt=0;H.classList.remove("tz-in");document.querySelectorAll("#tzm>*,#mn>*,body.lock .w>*").forEach(el=>{el.style.removeProperty("--tz-el")})},1500)}
+ function scan(){
+  const t=Date.now();
+  if(H.classList.contains("aw"))return;
+  if(!armed){armed=t+1200;if(!loginOn())enter()}
+  const lg=loginOn();
+  if(lastLg===false&&lg){NUM.clear();SEEN.clear();RUN.clear()}// خرج: حساب جديد يبدأ من الصفر
+  if(lastLg===true&&!lg){armed=t+1200;enter()}// دخل
+  lastLg=lg;
+  // العنصر اللي اتعاد رسمه وسط حركة الدخول يكمل من نفس اللحظة (قيمته تتكتب مرة واحدة عليه هو، فالعناصر الباقية ماتتقدّمش)
+  if(enterAt){const e=(t-enterAt)+"ms";document.querySelectorAll("#tzm>*,#mn>*,body.lock .w>*").forEach(el=>{if(!el.__tzEl){el.__tzEl=1;el.style.setProperty("--tz-el",e)}})}
+  if(off())return;
+  const live=t>=armed,seen=new Set();
+  document.querySelectorAll("[data-tzn]").forEach(el=>{const k=el.getAttribute("data-tzn"),v=numOf(el);seen.add(k);if(v==null)return;
+   let p=NUM.get(k);NUM.set(k,v);if(p===undefined&&live&&/^(nav|bnv):/.test(k))p=0;
+   if(live&&p!==undefined&&p!==v)play(el,k,v>p?"tz-up":"tz-down");else resume(el,k)});
+  NUM.forEach((v,k)=>{if(!seen.has(k)&&/^(nav|bnv):/.test(k))NUM.set(k,0)});// العدّاد اختفى = صفر، فظهوره التالي يلفت النظر
+  const fresh=[];
+  document.querySelectorAll("[data-tzi]").forEach(el=>{const k=el.getAttribute("data-tzi"),s=el.getAttribute("data-tzs")||"",ts=+(el.getAttribute("data-tzt")||0),p=SEEN.get(k);SEEN.set(k,s);
+   if(!live)return;
+   if(p===undefined){if(ts&&t-ts<12e4&&t-ts>-6e4)fresh.push([el,k]);else resume(el,k);return}
+   if(p!==s)play(el,k,"tz-chg");else resume(el,k)});
+  if(fresh.length&&fresh.length<=6)fresh.forEach(x=>play(x[0],x[1],"tz-new"));// أكتر من 6 مرة واحدة = تحميل قائمة، مش حدث
+ }
+ // المراقبة: callback الـ MutationObserver بيشتغل قبل الرسم، فالعنصر المعاد رسمه مايظهرش لحظة من غير حركته
+ const start=()=>{if(!document.body)return setTimeout(start,50);
+  new MutationObserver(scan).observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["hidden"]});
+  new MutationObserver(scan).observe(H,{attributes:true,attributeFilter:["class"]});scan()};
+ start();
+ window.tzMotion={scan,state:()=>({armed:armed&&Date.now()>=armed,nums:NUM.size,items:SEEN.size,run:RUN.size})};
 })();

@@ -547,3 +547,37 @@ html.tz-en .tzst-go{transform:rotate(-135deg)}
 .tz-stay{animation:tz-stay .4s cubic-bezier(.36,.07,.19,.97)}
 @keyframes tz-stay{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 @media (prefers-reduced-motion:reduce){.tz-stay{animation:none}}
+/* ✨ (v224) حركة التغييرات اللحظية + الدخول والخروج — من مهارة transitions-dev (المحرك في آخر ui.js).
+   number pop-in للرقم اللي زاد، number subtle change للرقم اللي قلّ، حلقة بلون المنصة للطلب الجديد أو اللي اتغيّرت حالته،
+   texts reveal (صعود متتابع) لظهور الشاشة بعد الدخول وظهور شاشة الدخول، وتلاشٍ ناعم عند الخروج. */
+:root{--tzm-pop:600ms;--tzm-sub:455ms;--tzm-ease-pop:cubic-bezier(0.34,1.36,0.64,1);--tzm-ring:rgba(138,90,131,.62);--tzm-ring2:rgba(138,90,131,.26);--tzm-ok:rgba(111,125,69,.7);--tzm-ok2:rgba(111,125,69,.25)}
+:root[data-theme=dark]{--tzm-ring:rgba(201,163,192,.7);--tzm-ring2:rgba(201,163,192,.28);--tzm-ok:rgba(164,180,110,.75);--tzm-ok2:rgba(164,180,110,.28)}
+.tz-ib{display:inline-block}
+/* رقم زاد: يطلع من تحت ويكبر بارتداد خفيف (number pop-in) */
+.tz-up{animation:tzm-up var(--tzm-pop) var(--tzm-ease-pop) both;animation-delay:var(--tz-dl,0ms);transform-origin:center}
+@keyframes tzm-up{0%{transform:translateY(.5em) scale(.6);opacity:0;filter:blur(var(--blur-small,2px))}55%{transform:translateY(0) scale(1.18);opacity:1;filter:blur(0)}100%{transform:none;opacity:1;filter:none}}
+/* رقم قلّ: ينزل في مكانه بهدوء (number subtle change) */
+.tz-down{animation:tzm-down var(--tzm-sub) var(--ease-smooth-out) both;animation-delay:var(--tz-dl,0ms)}
+@keyframes tzm-down{0%{transform:translateY(-.35em);opacity:0;filter:blur(.05em)}100%{transform:none;opacity:1;filter:none}}
+/* طلب جديد: يصعد في مكانه ثم حلقة بلون المنصة تلمع وتهدأ (outline: من غير ما نلمس ظل الكارت ولا مقاسه) */
+.tz-new{outline:2px solid transparent;outline-offset:3px;animation:tzm-in 520ms var(--ease-smooth-out) both,tzm-ring 2800ms ease-out;animation-delay:var(--tz-dl,0ms),var(--tz-dl,0ms)}
+@keyframes tzm-in{0%{opacity:0;transform:translateY(14px) scale(.985);filter:blur(3px)}100%{opacity:1;transform:none;filter:none}}
+@keyframes tzm-ring{0%{outline-color:transparent;outline-offset:10px}14%{outline-color:var(--tzm-ring);outline-offset:3px}45%{outline-color:var(--tzm-ring2)}62%{outline-color:var(--tzm-ring)}100%{outline-color:transparent;outline-offset:3px}}
+/* حالته اتغيّرت: نبضة خفيفة وحلقة زيتونية */
+.tz-chg{outline:2px solid transparent;outline-offset:3px;animation:tzm-pulse 620ms var(--ease-smooth-out),tzm-ok 1900ms ease-out;animation-delay:var(--tz-dl,0ms),var(--tz-dl,0ms)}
+@keyframes tzm-pulse{0%{transform:none}35%{transform:scale(1.012)}100%{transform:none}}
+@keyframes tzm-ok{0%{outline-color:transparent;outline-offset:8px}18%{outline-color:var(--tzm-ok);outline-offset:3px}100%{outline-color:transparent;outline-offset:3px}}
+/* بعد الدخول (أو أول ظهور بعد شاشة البداية): المحتوى يصعد بالتتابع (texts reveal) */
+html.tz-in #tzm>*,html.tz-in #mn>*,html.tz-in body.lock .w>*{animation:tzm-rise 560ms var(--ease-smooth-out) both;animation-delay:calc(var(--tzk,0) * 55ms - var(--tz-el,0ms))}
+html.tz-in #tzn,html.tz-in #tzt{animation:tzm-fade 420ms ease-out both;animation-delay:calc(0ms - var(--tz-el,0ms))}
+#tzm>:nth-child(2),#mn>:nth-child(2),.w>:nth-child(2){--tzk:1}#tzm>:nth-child(3),#mn>:nth-child(3),.w>:nth-child(3){--tzk:2}#tzm>:nth-child(4),#mn>:nth-child(4),.w>:nth-child(4){--tzk:3}
+#tzm>:nth-child(5),#mn>:nth-child(5),.w>:nth-child(5){--tzk:4}#tzm>:nth-child(n+6),#mn>:nth-child(n+6),.w>:nth-child(n+6){--tzk:5}
+@keyframes tzm-rise{0%{opacity:0;transform:translateY(16px);filter:blur(3px)}100%{opacity:1;transform:none;filter:none}}
+@keyframes tzm-fade{0%{opacity:0}100%{opacity:1}}
+/* شاشة الدخول لها حركتها من قبل (ui-up / ui-pop فوق: الشعار يظهر ويطفو والخانات تصعد بالتتابع) */
+/* الخروج: الصفحة تذوب وتصغر شوية قبل ما تظهر شاشة الدخول (fb.js signOut) */
+html.tz-out body>*:not(#boot):not(#toast):not(.toast){opacity:0;transform:scale(.985);filter:blur(4px);transition:opacity 260ms ease,transform 260ms var(--ease-smooth-out),filter 260ms ease;pointer-events:none}
+html.lite .tz-up,html.lite .tz-down,html.lite .tz-new,html.lite .tz-chg,html.lite.tz-in #tzm>*,html.lite.tz-in #mn>*,html.lite.tz-in body.lock .w>*,html.lite.tz-in #tzn,html.lite.tz-in #tzt{animation:none!important}
+html.lite.tz-out body>*{transition:none!important}
+@media (prefers-reduced-motion:reduce){.tz-up,.tz-down,.tz-new,.tz-chg,html.tz-in #tzm>*,html.tz-in #mn>*,html.tz-in body.lock .w>*,html.tz-in #tzn,html.tz-in #tzt{animation:none!important}html.tz-out body>*{transition:none!important}}
+@media print{.tz-up,.tz-down,.tz-new,.tz-chg{animation:none!important;outline:0!important}}

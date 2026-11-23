@@ -72,7 +72,7 @@ function html(){
  const who=X.who?X.who():"";
  return `<div class="bnv-h"><span class="bnv-lg" aria-hidden="true">T</span><div><b data-notr><bdi dir="ltr">${String(who).replace(/[&<>"']/g,"")}</bdi></b><small>منصة تاسومة</small></div><button type="button" class="bnv-x" data-bact="__x" aria-label="إغلاق القائمة" data-noico><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`+
   items().map(x=>Array.isArray(x)?`<div class="bnv-g">${x[0]}</div>`:
-   `<button type="button" class="bnv-i${x.k&&x.k===SEC?" on":""}" ${x.k?`data-bsec="${x.k}"${x.k===SEC?' aria-current="page"':""}`:`data-bact="${x.a}"`}>${svg(x.ic)}<span>${x.t}</span>${x.n?`<i class="bnv-n" data-notr>${x.n>99?"99+":x.n}</i>`:""}</button>`).join("")+
+   `<button type="button" class="bnv-i${x.k&&x.k===SEC?" on":""}" ${x.k?`data-bsec="${x.k}"${x.k===SEC?' aria-current="page"':""}`:`data-bact="${x.a}"`}>${svg(x.ic)}<span>${x.t}</span>${x.n?`<i class="bnv-n" data-notr data-tzn="bnv:${x.k||x.a}">${x.n>99?"99+":x.n}</i>`:""}</button>`).join("")+
   `<div class="bnv-sp"></div><div class="bnv-f"><button type="button" class="bnv-i" data-bact="mx">${svg("set")}<span>الإعدادات</span></button></div>`;
 }
 let LAST="";

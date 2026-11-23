@@ -8,7 +8,17 @@ const {createClient} = self.supabase;
 import {SB_URL, SB_KEY} from "./sb-config.js";
 import * as S from "./sbcore.js";
 const {collection, doc, getDoc, getDocs, onSnapshot, query, where, orderBy, limit, increment, arrayUnion, deleteField,
-  signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword} = S;
+  signInWithEmailAndPassword, onAuthStateChanged, updatePassword} = S;
+// ✨ (v224) الخروج: الصفحة تذوب في 260ms قبل ما تظهر شاشة الدخول (ui.css html.tz-out). مقفولة في الوضع الخفيف و«تقليل الحركة» والصفحة المخفية
+async function signOut(a) {
+  const H = typeof document !== "undefined" ? document.documentElement : null;
+  try {
+    if (H && !H.classList.contains("lite") && document.visibilityState === "visible" && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+      H.classList.add("tz-out"); await new Promise(r => setTimeout(r, 270));
+    }
+  } catch (e) {}
+  try { return await S.signOut(a) } finally { if (H) setTimeout(() => H.classList.remove("tz-out"), 80) }
+}
 
 // Firebase: للإشعارات بس (FCM)
 const firebaseConfig = {
