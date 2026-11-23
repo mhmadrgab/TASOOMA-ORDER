@@ -4445,4 +4445,5 @@ export default {
 "تأكيد الوصول ✅":"Confirm arrival ✅",
 "وصلت ✅":"Arrived ✅",
 "صوّر ما سلّمته أو مكان الوصول (صورة واحدة على الأقل)":"Photograph what you delivered or the arrival place (at least one photo)",
+"🔗 بلا تتبع":"🔗 No tracking","السائق الخارجي لم يفتح رابط الرحلة أو لم يسمح بالموقع، فلا يصل مكانه. التسليم يُسجَّل من الرابط كالمعتاد.":"The external driver has not opened the trip link or has not allowed location, so his position does not arrive. Delivery is still recorded from the link as usual.",
 };

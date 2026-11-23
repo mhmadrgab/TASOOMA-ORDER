@@ -136,8 +136,10 @@ function liveListen(){
 const SIGMS=6*6e4;
 const lastSig=t=>{const lv=LV[t.drv];return Math.max(N(t.loc&&t.loc.ts),lv&&lv.trip===t.id?N(lv.ts):0)};
 const sigOff=t=>t.st==="active"&&Date.now()-(lastSig(t)||N(t.start))>SIGMS;
-const sigPill=t=>sigOff(t)?`<span class="pill" style="background:#fdecea;color:#c0392b">📵 انقطع الاتصال ${ago(lastSig(t)||t.start)}</span>`:`<span class="pill" style="background:#e8f7ee;color:#1f7a44">🟢 متصل</span>`;
-function sigBanner(){return TR.filter(sigOff).map(t=>{const l=lastSig(t);return l?`<div class="al">📵 <b>${E(t.drvn)}</b>: لا تصل إشارة من جواله ${ago(l)} (آخر إشارة ${hm(l)}). غالباً انقطع الإنترنت عنده أو أُغلق التطبيق، والمكان على الخريطة هو آخر مكان وصل.</div>`
+// (v227) رحلة خارجية (شركة شحن / سيارة مؤجّرة) لم يصل منها أي موقع: السائق لم يفتح الرابط أو لم يسمح بالموقع. ليست «انقطاعاً»، فلا تُعرض بالأحمر ولا في شريط التنبيه
+const noTrack=t=>!!t.ext&&t.st==="active"&&!lastSig(t);
+const sigPill=t=>noTrack(t)?`<span class="pill" style="background:#f1efe9;color:#74687a" title="السائق الخارجي لم يفتح رابط الرحلة أو لم يسمح بالموقع، فلا يصل مكانه. التسليم يُسجَّل من الرابط كالمعتاد.">🔗 بلا تتبع</span>`:sigOff(t)?`<span class="pill" style="background:#fdecea;color:#c0392b">📵 انقطع الاتصال ${ago(lastSig(t)||t.start)}</span>`:`<span class="pill" style="background:#e8f7ee;color:#1f7a44">🟢 متصل</span>`;
+function sigBanner(){return TR.filter(t=>sigOff(t)&&!noTrack(t)).map(t=>{const l=lastSig(t);return l?`<div class="al">📵 <b>${E(t.drvn)}</b>: لا تصل إشارة من جواله ${ago(l)} (آخر إشارة ${hm(l)}). غالباً انقطع الإنترنت عنده أو أُغلق التطبيق، والمكان على الخريطة هو آخر مكان وصل.</div>`
   :`<div class="al">📵 <b>${E(t.drvn)}</b>: لم يصل أي موقع من جواله منذ بداية الرحلة (${hm(t.start)}). تأكد أن تطبيق التتبع يعمل والإنترنت متاح عنده.</div>`}).join("")}
 function paintSig(){const b=document.getElementById("flsig");if(b)b.innerHTML=sigBanner();document.querySelectorAll("[data-sig]").forEach(el=>{const t=TR.find(x=>x.id===el.dataset.sig);if(t)el.innerHTML=sigPill(t)})}
 function liveStop(){if(LVU){LVU();LVU=null}if(LVT){clearInterval(LVT);LVT=null}LV={}}
