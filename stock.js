@@ -913,6 +913,7 @@ const CSS=`.stk-lqn{margin:8px 0 0;padding:8px 10px;border-radius:10px;backgroun
 @media(max-width:560px){.stk-lql li{grid-template-columns:1fr auto}.stk-lqk{grid-column:1}.stk-lql li>b,.stk-lql li>small{grid-column:1}.stk-lqb{grid-row:1/4;grid-column:2;flex-direction:column}}
 #stk{display:block}.stk-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px}.stk-hd h2{margin:0;font-size:21px}.stk-hd small{display:block;color:var(--mut);font-size:13px;line-height:1.7}
 .stk-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 14px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:14px}.stk-tabs::-webkit-scrollbar{display:none}
+@media (hover:hover) and (pointer:fine){.stk-tabs{flex-wrap:wrap;overflow-x:visible}}/* (v226) بالماوس لا يوجد سحب: الأقسام تنزل سطراً ثانياً فتظهر كلها. باللمس تبقى شريطاً يُسحب */
 .stk-tabs button{flex:none;min-height:40px;border:0;background:none;color:var(--mut);border-radius:10px;padding:0 14px;font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;white-space:nowrap}.stk-tabs button:hover{background:var(--soft);color:var(--ink)}.stk-tabs button.on{background:var(--acc);color:#fff;font-weight:700}
 .stk-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:0 0 12px}
 .stk-bar label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--mut);margin:0;min-width:0}.stk-bar select,.stk-bar input{height:42px;min-width:0;margin:0}.stk-bar input[type=number]{width:86px}.stk-bar input[type=search],.stk-bar input[type=text]{width:150px}
@@ -1938,6 +1939,7 @@ let PT=0;
 function paint(keepFocus){
  if(!ROOT)return;const a=document.activeElement,id=a&&ROOT.contains(a)?a.id:"",s0=a&&id?[a.selectionStart,a.selectionEnd]:null;
  ROOT.innerHTML=body();
+ if(X&&X.nav)try{X.nav()}catch(e){}/* (v226) أقسام المديول في القائمة الجانبية: القسم المفتوح والأقسام المتاحة */
  if(id&&keepFocus!==false){const el=g(id);if(el&&el.focus){try{el.focus({preventScroll:true});if(s0&&s0[0]!=null&&el.setSelectionRange)el.setSelectionRange(s0[0],s0[1])}catch(e){}}}
  // فترة تحتاج شهوراً لم تُحمَّل بعد
  const homeNeed=()=>{const p=period(),e=qEnd(),b=dHas()?{from:addDays(e,-59),to:e}:null;return p&&b?{from:p.from<b.from?p.from:b.from,to:p.to>b.to?p.to:b.to}:p||b};
@@ -2119,4 +2121,8 @@ export function stockMount(host){
  if(!LOADED&&!LOADING)load();
 }
 export function stopStock(){un.forEach(f=>f());un=[];X=null;DATA=null;META=null;SENT=[];TRL=[];LOADED=false;LOADING=false;BUSY="";REP=[];SOLDC={};MFAIL={};CFG=Object.assign({},DEF);if(ROOT){ROOT.remove();ROOT=null}}
+// 🧭 (v226، طلب محمد: «خلي الأقسام تحت المديول في القائمة الجانبية») الأقسام المتاحة الآن، والمفتوح، والانتقال من القائمة
+export const stockTabs=()=>{if(!X)return [];const has=!!(DATA&&DATA.has);return TABS.filter(a=>(has||a[0]==="up")&&!(X.ro&&a[0]==="cfg")).map(a=>[a[0],a[1],a[2]])};
+export const stockTab=()=>DATA&&DATA.has?UI.tab:"up";
+export function stockGo(id){if(!X||!TABS.some(a=>a[0]===id))return;if(UI.tab!==id){UI.q="";UI.fr="";UI.tt="";UI.trx=null}UI.tab=id;UI.lim=200;if(ROOT){paint(false);try{window.scrollTo(0,0)}catch(e){}}}
 export const stockState=()=>({loaded:LOADED,has:!!(DATA&&DATA.has),meta:META,cfg:CFG,ui:UI,rep:REP,busy:BUSY});

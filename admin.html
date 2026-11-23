@@ -151,7 +151,7 @@ import {initGifts,stopGifts,giftsView,pendingCount as giftPend} from "./gifts.js
 import {initMnt,stopMnt,mntView,mntCount} from "./mnt.js";
 import {initPo,stopPo,poView,poCount} from "./po.js";
 import {initPoRcv,stopPoRcv,poRcvView,poRcvCount} from "./porcv.js";
-import {initStock,stopStock,stockMount} from "./stock.js";
+import {initStock,stopStock,stockMount,stockTabs,stockTab,stockGo} from "./stock.js";
 import {initCat,catAdminView,catLoad,catCodes} from "./cat.js";
 import {initHealth,stopHealth,healthView} from "./health.js";
 import {initPwSelf,stopPwSelf} from "./pwself.js";
@@ -398,8 +398,8 @@ function start(){
  }
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
  if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm"||sub==="lk")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,co:ROLE.co===true,lock:()=>LOCK,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
- if(ROLE.owner===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});
- else if(ROLE.p.stk===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,ro:true,me:{e:me,get n(){return ROLE.name||me}},branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});/* (v194) صلاحية «تحليل المخزون»: مشاهدة وتحليل فقط */// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
+ if(ROLE.owner===true)initStock({nav:()=>navSync(),db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});
+ else if(ROLE.p.stk===true)initStock({nav:()=>navSync(),db,fb:{doc,getDoc,setDoc,writeBatch},toast,ro:true,me:{e:me,get n(){return ROLE.name||me}},branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});/* (v194) صلاحية «تحليل المخزون»: مشاهدة وتحليل فقط */// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
  // النسخة الاحتياطية: لمالك النظام بس
  initBackup({db,toast,owner:ROLE.owner===true,redraw:draw});
@@ -496,18 +496,19 @@ function navHtml(){
  const vis=TABS.filter(a=>a[3]()),S=ROLE.admin?setSubs():[];
  return NAV_G.map(G=>{const L=vis.filter(a=>a[5]===G[0]);if(!L.length)return "";
   return `<div class="tzn-g" role="group" aria-label="${G[1]}"><div class="tzn-gl"><span>${G[1]}</span></div>${L.map(a=>{const c=cntTxt(navCnt(a)),on=tab===a[0];
-   return `<button type="button" class="tzn-i${on?" on":""}" data-t="${a[0]}"${on?' aria-current="page"':""}><span class="tzn-ic" aria-hidden="true">${a[1]}</span><span class="tzn-tx">${a[2]}</span>${c?`<b class="tzn-n" data-notr data-tzn="nav:${a[0]}">${c}</b>`:""}</button>${a[0]==="set"&&S.length?`<div class="tzn-sub"><div>${S.map(x=>`<button type="button" class="${sub===x[0]?"on":""}" data-ss="${x[0]}">${x[2]}</button>`).join("")}</div></div>`:""}`}).join("")}</div>`}).join("");
+   return `<button type="button" class="tzn-i${on?" on":""}" data-t="${a[0]}"${on?' aria-current="page"':""}><span class="tzn-ic" aria-hidden="true">${a[1]}</span><span class="tzn-tx">${a[2]}</span>${c?`<b class="tzn-n" data-notr data-tzn="nav:${a[0]}">${c}</b>`:""}</button>${a[0]==="set"&&S.length?`<div class="tzn-sub"><div>${S.map(x=>`<button type="button" class="${sub===x[0]?"on":""}" data-ss="${x[0]}">${x[2]}</button>`).join("")}</div></div>`:""}${a[0]==="stk"&&stockTabs().length?`<div class="tzn-sub"><div>${stockTabs().map(x=>`<button type="button" class="${stockTab()===x[0]?"on":""}" data-stk="${x[0]}">${x[2]}</button>`).join("")}</div></div>`:""}`}).join("")}</div>`}).join("");/* (v226) أقسام تحليل المخزون تحت المديول */
 }
 // القائمة: لو الأقسام الظاهرة نفسها، نحدّث «المفتوح الآن» والعدّادات في مكانها (فتعمل الحركة ولا يضيع التركيز)؛ وتُبنى من جديد فقط لو تغيّر ما يظهر
 function navSync(){
  const n=g("tzn-nav");if(!n||!authed)return;
- const key=TABS.filter(a=>a[3]()).map(a=>a[0]).join(",")+"|"+(ROLE.admin?setSubs().map(x=>x[0]).join(","):"");
+ const key=TABS.filter(a=>a[3]()).map(a=>a[0]).join(",")+"|"+(ROLE.admin?setSubs().map(x=>x[0]).join(","):"")+"|"+stockTabs().map(x=>x[0]).join(",");
  if(key!==NAVK){NAVK=key;const st=n.scrollTop;n.innerHTML=navHtml();n.scrollTop=st;NAVT="";navSeen();return}
  TABS.forEach(a=>{const b=n.querySelector('[data-t="'+a[0]+'"]');if(!b)return;const on=tab===a[0];
   if(b.classList.contains("on")!==on){b.classList.toggle("on",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")}
   const t=cntTxt(navCnt(a));let e=b.querySelector(".tzn-n");
   if(!t){if(e)e.remove()}else{if(!e){e=document.createElement("b");e.className="tzn-n";e.setAttribute("data-notr","");e.setAttribute("data-tzn","nav:"+a[0]);b.appendChild(e)}if(e.textContent!==t)e.textContent=t}});
  n.querySelectorAll(".tzn-sub [data-ss]").forEach(b=>{const on=b.dataset.ss===sub;if(b.classList.contains("on")!==on)b.classList.toggle("on",on)});
+ {const st=stockTab();n.querySelectorAll(".tzn-sub [data-stk]").forEach(b=>{const on=b.dataset.stk===st;if(b.classList.contains("on")!==on)b.classList.toggle("on",on)})}
  navSeen();
 }
 // القسم المفتوح يبقى ظاهراً داخل القائمة (على اللابتوب الصغير قد يكون تحت التمرير). مرة عند تغيّر القسم فقط، حتى لا نعاكس تمرير المستخدم
@@ -561,7 +562,8 @@ const navCol=()=>{NAVC=!NAVC;try{localStorage.setItem("tzn_col",NAVC?"1":"0")}ca
  setTimeout(()=>{try{window.dispatchEvent(new Event("resize"))}catch(x){}},320)};// الخرائط تعيد حساب عرضها بعد انتهاء الحركة
 document.addEventListener("click",e=>{const n=e.target.closest("[data-nav]");
  if(n){const a=n.dataset.nav;if(a==="open")navOpen(!HT.classList.contains("tzn-open"));/* (v214) ☰ يفتح ويقفل */else if(a==="close")navOpen(false);else if(a==="col")navCol();return}
- const b=e.target.closest("#tzn [data-t],#tzn [data-ss]");if(b){if(b.dataset.t==="set"&&tab==="set")return;tipHide();navOpen(false);window.scrollTo(0,0)}});
+ const k=e.target.closest("#tzn [data-stk]");if(k){stockGo(k.dataset.stk);navSync();tipHide();navOpen(false);return}/* (v226) قسم من تحليل المخزون */
+ const b=e.target.closest("#tzn [data-t],#tzn [data-ss]");if(b){if((b.dataset.t==="set"&&tab==="set")||(b.dataset.t==="stk"&&tab==="stk"))return;tipHide();navOpen(false);window.scrollTo(0,0)}});
 document.addEventListener("keydown",e=>{
  if(e.key==="Escape"&&HT.classList.contains("tzn-open")){navOpen(false);return}
  const t=e.target;if(!t||!t.closest||!t.closest("#tzn-nav"))return;
@@ -713,7 +715,7 @@ document.addEventListener("click",async e=>{
  if(t.dataset.ss){sub=t.dataset.ss;try{localStorage.setItem("st_sub",sub)}catch(x){}draw()}
  else if(t.dataset.t){const nv=g("tzn-nav");
   // (v214) الضغط على «الإعدادات» وهي مفتوحة يطوي أقسامها، والضغطة التالية تفتحها (كانت لا تُطوى أبداً)
-  if(t.dataset.t==="set"&&tab==="set"&&nv&&t.closest("#tzn")){const x=!nv.classList.contains("subx");nv.classList.toggle("subx",x);t.setAttribute("aria-expanded",String(!x));return}
+  if((t.dataset.t==="set"||t.dataset.t==="stk")&&tab===t.dataset.t&&nv&&t.closest("#tzn")){/* (v226) ونفس الشيء لتحليل المخزون */const x=!nv.classList.contains("subx");nv.classList.toggle("subx",x);t.setAttribute("aria-expanded",String(!x));return}
   if(nv)nv.classList.remove("subx");if(okTab(t.dataset.t)){tab=t.dataset.t;draw()}}
  else if(t.dataset.s){fs=t.dataset.s;draw()}
  else if(t.id==="logout"){await signOut(auth)}
