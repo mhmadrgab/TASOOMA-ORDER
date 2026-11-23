@@ -223,10 +223,10 @@ const TABS=[
  ["po","🚢","أوامر الشراء",()=>(ROLE.admin||ROLE.p.po===true||ROLE.p.rcv===true||ROLE.v===true)&&poFree(),()=>poCount(),"fin"],
  ["rcv","📦","استلام الحاويات",()=>rcvLim(),()=>poRcvCount(),"fin"],
  ["cus","💵","العهدة",()=>see("cus")&&secOk("cus"),null,"fin"],
- ["bcus","💼","عهدة الفروع",()=>see("cus")&&secOk("cus"),()=>(ROLE.owner===true||ROLE.p.cus===true)&&ROLE.v!==true?bcusPend():0,"fin"],// (v218) عهدة الفروع · (v219) العدد لمن يراجع فقط: المحاسب والمالك
+ ["bcus","💼","عهدة الفروع",()=>see("cus")&&secOk("cus"),()=>ROLE.owner===true||ROLE.p.cus===true?bcusPend():0,"fin"],// (v218) عهدة الفروع · (v219) العدد لمن يراجع فقط: المحاسب والمالك
  ["gift","🎁","الهدايا",()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift"),()=>giftPend(),"fin"],
  // 📊 (v173) تحليل المخزون من تقارير السيستم: للأدمن ومالك النظام فقط (والقواعد كذلك)
- ["stk","📊","تحليل المخزون",()=>ROLE.owner===true||(ROLE.p.stk===true&&ROLE.v!==true),null,"fin"],
+ ["stk","📊","تحليل المخزون",()=>ROLE.owner===true||ROLE.p.stk===true,null,"fin"],
  ["chat","💬","الدردشة",()=>ROLE.owner===true||ROLE.p.nc!==true,()=>bcUnread(),"com"],
  ["set","⚙","الإعدادات",()=>ROLE.admin,null,"sys"],
  ["log","📜","السجل",()=>(ROLE.owner===true||ROLE.v===true)&&secOk("log"),null,"sys"]];
@@ -235,7 +235,11 @@ const LAND=["req","chat","fl","cus","wk","set","gift","mnt","po","rcv","log","sh
 const landTab=()=>LAND.find(t=>okTab(t))||"req";
 // حساب المتابع: أزرار الحفظ والتعديل والحذف بتستخبى وبتتقفل (والقواعد في Firebase بتمنع أي كتابة أصلاً). العرض والطباعة والتقارير شغّالة
 const RO_SEL='[data-a]:not([data-a="print"]),[data-fl]:not([data-fl="trd"]):not([data-fl="tmap"]):not([data-fl="pmap"]):not([data-fl="mfit"]):not([data-fl="mwh"]):not([data-fl="mbig"]):not([data-fl="mfollow"]):not([data-fl="rep"]):not([data-fl="mrep"]):not([data-fl="cancel"]),[data-cx]:not([data-cx="img"]):not([data-cx="ps"]):not([data-cx="stmt"]):not([data-cx="cancel"]),[data-wk]:not([data-wk="rep"]):not([data-wk="slip"]),[data-gf="ok"],[data-gf="no"],[data-gf="new"],[data-gf="edit"],[data-gf="del"],[data-wst],[data-asd],[data-asc],[data-bk],#bkall,[data-bkd],#bkd,#bkc';
-document.addEventListener("click",e=>{if(ROLE.v===true&&e.target.closest(RO_SEL)){e.preventDefault();e.stopImmediatePropagation();toast("👁 حسابك للمتابعة فقط، وليس للتعديل")}},true);
+// 👁 (v222) القسم المفتوح «مشاهدة فقط» للمتابع إلا لو معه صلاحيته (TRW = صلاحيات كل قسم)
+const TRW={req:["req"],cus:["cus"],bcus:["cus"],fl:["fl"],gift:["gift","ga","req"],mnt:["mt"],po:["po","rcv"],rcv:["rcv"],stk:["stk"],chat:["_"]};
+const vwRO=t=>ROLE.v===true&&!(TRW[t]||[]).some(k=>k==="_"||ROLE.p[k]===true);
+const vwOn=k=>ROLE.v===true&&ROLE.p[k]!==true;// المتابع بلا صلاحية هذا القسم = مشاهدة فقط
+document.addEventListener("click",e=>{if(document.body.classList.contains("ro")&&e.target.closest(RO_SEL)){e.preventDefault();e.stopImmediatePropagation();toast("👁 حسابك للمتابعة فقط، وليس للتعديل")}},true);
 {const s=document.createElement("style");s.textContent=RO_SEL.split(",").map(x=>".ro "+x).join(",")+"{display:none!important}";document.head.appendChild(s)}
 const okTab=t=>{const x=TABS.find(a=>a[0]===t);return !!x&&x[3]()};
 let R=[],P={},B={},unsubs=[],tab="req",fs="all",fb="",fdf="",fdt="",first=true,openSet=new Set(),authed=false,tt;
@@ -356,17 +360,17 @@ function start(){
  initPwSelf({auth,toast,label:me});// 🔑 كل موظف يغيّر كلمة مروره من «حسابي»
  P=tmpPw;// 🔑 (18 نوفمبر 2026) كلمات المرور لا تُحفظ: P = ما أُنشئ أو تغيّر في فتحة الصفحة هذه فقط (fb.js tmpPw)
  const adm=ROLE.admin;
- if(adm||can("cus")||vw)initBCus({db,toast,mode:"wh",staff:(ROLE.owner===true||ROLE.p.cus===true)&&!vw,ping:id=>ping(auth,[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 💼 (v218)
+ if(adm||can("cus")||vw)initBCus({db,toast,mode:"wh",staff:ROLE.owner===true||ROLE.p.cus===true,ping:id=>ping(auth,[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 💼 (v218)
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك فقط
  // 🎁 الهدايا والعينات: الاعتماد لمدير التسويق (p.gm) واللي المالك اداله "اعتماد الهدايا" (p.ga) بس — مش المدير بصفته مدير.
  // المستودع (المديرين وصلاحية الطلبات) بيسجّل هدايا المستودع وبتروح بانتظار الاعتماد. المحاسب (gift) والمتابع بيشوفوا ويطلّعوا تقارير
  if((adm||can("req")||can("gift")||can("gm")||can("ga")||vw)&&secOk("gift"))initGifts({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},approver:ROLE.p.gm===true||ROLE.p.ga===true,
   // المحاسب (gift) من غير تسجيل ولا اعتماد: بيشوف المعتمد بس ويسوّيه بمرجع السند في السيستم. المديرين كمان يقدروا يسوّوا
-  acc:!adm&&!vw&&can("gift")&&ROLE.p.gm!==true&&ROLE.p.ga!==true,/* (15 نوفمبر 2026) حتى لو معاه صلاحية الطلبات: بيشوف المعتمد بس (+ اللي سجّله بنفسه) */settler:!vw&&(adm||can("gift")),noNew:!(adm||can("req")),view:vw,owner:()=>ROLE.owner===true,branches:BR,redraw:draw,tab:()=>tab,
+  acc:!adm&&!vw&&can("gift")&&ROLE.p.gm!==true&&ROLE.p.ga!==true,/* (15 نوفمبر 2026) حتى لو معاه صلاحية الطلبات: بيشوف المعتمد بس (+ اللي سجّله بنفسه) */settler:(adm||can("gift"))&&!vwOn("gift"),noNew:!(adm||can("req")),view:vw&&!ROLE.p.gift&&!ROLE.p.ga&&!ROLE.p.req,owner:()=>ROLE.owner===true,branches:BR,redraw:draw,tab:()=>tab,
   ping:ids=>ping(auth,[],[],[],ids),badge:()=>navSync()});
  // 🔧 الصيانة: المدير والمهندس يعتمدوا ويقفلوا، والمتابع يشوف بس
-  if((adm||can("mt")||vw)&&secOk("mt"))initMnt({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},eng:!vw&&(adm||can("mt")),view:vw,branches:BR,redraw:draw,active:()=>tab==="mnt",
+  if((adm||can("mt")||vw)&&secOk("mt"))initMnt({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},eng:!vwOn("mt")&&(adm||can("mt")),view:vwOn("mt"),branches:BR,redraw:draw,active:()=>tab==="mnt",
    ping:ids=>ping(auth,[],[],[],[],ids),badge:()=>navSync()});
   // 🚢 أوامر الشراء: مسؤول المشتريات (p.po) بيعمل الأمر ويحدّث المراحل، والاستلام للمالك و p.rcv بس، والمديرين والمتابع بيشوفوا
   if(ROLE.owner===true)initCat({db,toast,me:{e:me,get n(){return ROLE.name||me}},redraw:()=>{if(tab==="set"&&sub==="cat")draw()}});
@@ -375,7 +379,7 @@ function start(){
   initPimg({db,fb:{doc,getDoc,setDoc,writeBatch},zoom:zoomOpen,toast,owner:ROLE.owner===true,me:{e:me,get n(){return ROLE.name||me}},codes:catCodes,redraw:()=>{if(tab==="set"&&sub==="img")draw()}});// 🖼 (v221) صور الأصناف: العرض للكل، والرفع للأدمن ومالك النظام
      // 🔒 لا نبدأ أوامر الشراء لمن حُجبت عنه
    if((adm||ROLE.p.po===true||ROLE.p.rcv===true||vw)&&secOk("po"))initPo({db,toast,me:{e:me,get n(){return ROLE.name||me}},owner:ROLE.owner===true,
-    edit:!vw&&(ROLE.owner===true||ROLE.p.po===true),rcv:!vw&&(ROLE.owner===true||ROLE.p.rcv===true),redraw:draw,active:()=>tab==="po",
+    edit:ROLE.owner===true||ROLE.p.po===true,rcv:ROLE.owner===true||ROLE.p.rcv===true,/* (v222) المتابع: p.po/p.rcv لا تبقى معه إلا لو عُلِّمت له */redraw:draw,active:()=>tab==="po",
     ping:ids=>ping(auth,[],[],[],[],[],ids),badge:()=>navSync()});
    // حالة الأقسام الخاصة (كل موظف يقرؤها ليعرف ما حُجب عنه). تغيّر ما حُجب عني = إعادة تشغيل اللوحة مرة واحدة بالحالة الجديدة
    if(rcvLim())initPoRcv({db,toast,me:{e:me,get n(){return ROLE.name||me}},redraw:draw,active:()=>tab==="rcv",ping:ids=>ping(auth,[],[],[],[],[],ids),
@@ -386,11 +390,11 @@ function start(){
      draw()},()=>{}))}
    // ➕ الفروع المضافة
    unsubs.push(onSnapshot(doc(db,"brx","main"),d=>{BRX=d.exists()&&Array.isArray(d.data().l)?d.data().l.map(String):[];brxApply(BRX);try{localStorage.setItem("tz_brx",JSON.stringify(BRX))}catch(x){}draw()},()=>{}));
- if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vw,ping:(ids,trips)=>ping(auth,ids,[],trips)});
+ if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vwOn("fl"),ping:(ids,trips)=>ping(auth,ids,[],trips)});
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
  if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm"||sub==="lk")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,co:ROLE.co===true,lock:()=>LOCK,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
  if(ROLE.owner===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});
- else if(ROLE.p.stk===true&&ROLE.v!==true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,ro:true,me:{e:me,get n(){return ROLE.name||me}},branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});/* (v194) صلاحية «تحليل المخزون»: مشاهدة وتحليل فقط */// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
+ else if(ROLE.p.stk===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,ro:true,me:{e:me,get n(){return ROLE.name||me}},branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});/* (v194) صلاحية «تحليل المخزون»: مشاهدة وتحليل فقط */// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
  // النسخة الاحتياطية: لمالك النظام بس
  initBackup({db,toast,owner:ROLE.owner===true,redraw:draw});
@@ -482,7 +486,7 @@ const IC_X='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="
 const IC_COL='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3.5"/><path d="M15 4.5v15"/><path class="tzn-ar" d="M9 9.5l2.5 2.5L9 14.5"/></svg>';
 const navCnt=a=>{try{return a[4]?NUM(a[4]()):0}catch(x){return 0}};
 const cntTxt=n=>n?(n>99?"99+":String(n)):"";
-const whoLbl=()=>ROLE.v===true?"👁 متابعة فقط":ROLE.root?"الأدمن":ROLE.owner?"مالك النظام":ROLE.admin?"مدير":E(ROLE.name||"محاسب");
+const whoLbl=()=>ROLE.v===true?(Object.keys(ROLE.p).some(k=>k!=="nc")?"👁 متابع":"👁 متابعة فقط"):ROLE.root?"الأدمن":ROLE.owner?"مالك النظام":ROLE.admin?"مدير":E(ROLE.name||"محاسب");
 function navHtml(){
  const vis=TABS.filter(a=>a[3]()),S=ROLE.admin?setSubs():[];
  return NAV_G.map(G=>{const L=vis.filter(a=>a[5]===G[0]);if(!L.length)return "";
@@ -508,7 +512,7 @@ function navSeen(){const k=tab+"|"+(tab==="set"?sub:"");if(k===NAVT)return;NAVT=
 // الشريط العلوي: المجموعة ← عنوان القسم المفتوح، والأدوات كل واحدة في خانتها (تُعاد كتابتها فقط لو تغيّر نصها)
 function topSync(){
  const a=TABS.find(x=>x[0]===tab)||TABS[0],gl=(NAV_G.find(G=>G[0]===a[5])||["",""])[1],sx=tab==="set"?setSubs().find(x=>x[0]===sub):null;
- const h=`<div class="tzt-cr"><span>${gl}</span>${sx?`<i></i><span>${a[2]}</span>`:""}</div><h1><span class="tzt-hi" aria-hidden="true">${sx?sx[1]:a[1]}</span><span class="tzt-ht">${sx?sx[2]:a[2]}</span>${ROLE.v===true?`<em class="tzt-ro">متابعة فقط</em>`:""}</h1>`;
+ const h=`<div class="tzt-cr"><span>${gl}</span>${sx?`<i></i><span>${a[2]}</span>`:""}</div><h1><span class="tzt-hi" aria-hidden="true">${sx?sx[1]:a[1]}</span><span class="tzt-ht">${sx?sx[2]:a[2]}</span>${vwRO(tab)?`<em class="tzt-ro">متابعة فقط</em>`:""}</h1>`;
  if(h!==TOPH){TOPH=h;const el=g("tzt-ti");if(el)el.innerHTML=h}
  const slot=(id,html)=>{if(SL[id]!==html){SL[id]=html;const el=g(id);if(el)el.innerHTML=html}};
  slot("tzt-ann",annBtn());slot("tzt-me",meChip());slot("tzn-bk",backupBtn());slot("tzn-who",whoLbl());
@@ -523,7 +527,7 @@ function shell(){
 function drawNow(){
  DQ=0;DG++;
  if(!authed)return;
- document.body.classList.toggle("ro",ROLE.v===true);
+ document.body.classList.toggle("ro",vwRO(tab));// 👁 (v222) مشاهدة فقط في الأقسام التي ليس للمتابع صلاحيتها
  const keep=window.scrollY,ui=snapUi();
  fixSub();shell();navSync();topSync();
  if(HT.getAttribute("data-tab")!==tab){HT.setAttribute("data-tab",tab);try{sessionStorage.setItem("tz_tab",tab)}catch(x){}}
@@ -760,7 +764,9 @@ document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)document.title="لوحة المستودع - تاسومة"});
 const deny=async m=>{lastErr=m;stop();login(m);try{await signOut(auth)}catch(e){}};
 // صلاحيات الحساب من staff/{email}. المتابع (v) مالوش أي صلاحية تعديل حتى لو اتعلّم غلط
-const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;window.__tzCo=co;window.__tzRoot=false;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,cw:!v&&s.cw===true,p:v?{}:(s.p||{}),name:s.name||"",k:s.k||""}};
+// 👁 (v222) المتابع: يحتفظ بالصلاحيات التي يعلّمها له الأدمن أو مالك النظام (VWK) فيعمل في أقسامها، وباقي الأقسام مشاهدة فقط
+const VWK=["req","cus","fl","gift","mt","po","rcv","stk","ga","nc"],vwP=p=>{const o={};VWK.forEach(k=>{if(p&&p[k]===true)o[k]=true});return o};
+const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;window.__tzCo=co;window.__tzRoot=false;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,cw:!v&&s.cw===true,p:v?vwP(s.p):(s.p||{}),name:s.name||"",k:s.k||""}};
 async function enterStaff(u){
  const em=String(u.email||"").toLowerCase();
  try{

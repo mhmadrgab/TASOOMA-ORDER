@@ -4389,4 +4389,5 @@ export default {
 "تعذّر الحذف: ":"Delete failed: ",
 " (الصورة)":" (image)",
 " (الحفظ)":" (saving)",
+"👁 متابع":"👁 Viewer",
 };

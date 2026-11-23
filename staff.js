@@ -111,7 +111,7 @@ export function view(){// (خانات الصلاحيات انتقلت إلى per
 // 🔐 جدول الصلاحيات (18 نوفمبر 2026، طلب محمد: "أي صلاحية حطها في الإعدادات في مكانها وأنا أختار أديها لمين، أنا أو مالك النظام").
 // صف لكل موظف وعمود لكل صلاحية، والعلامة تُحفظ فوراً. قبل ذلك الخانات كانت في جدولي المديرين والمحاسبين فقط،
 // فمهندس الصيانة ومدير المشتريات ومدير التسويق لم يكن لهم أي خانة (مثلاً «مراسلة الفروع» لمهندس الصيانة).
-//   المدير يدخل كل الأقسام تلقائياً (خاناتها مقفولة ✓)، ومالك النظام له كل شيء، والمتابع للمشاهدة فقط.
+//   المدير يدخل كل الأقسام تلقائياً (خاناتها مقفولة ✓)، ومالك النظام له كل شيء، والمتابع يرى كل شيء ويعمل فقط فيما يُعلَّم له (v222).
 //   من يعدّل: الأدمن ومالك النظام كل شيء (حساب مالك النظام للأدمن فقط)، والمدير الذي معه 🔑 يعدّل الأربعة الأولى للمحاسبين.
 const PG=[["أقسام يدخلها",[["req","الطلبات"],["cus","العهدة"],["fl","السيارات والسائقين"],["gift","الهدايا: مشاهدة وتسوية"],["mt","الصيانة"],["po","أوامر الشراء"],["stk","تحليل المخزون"]]],
  ["اعتماد واستلام",[["ga","اعتماد الهدايا"],["rcv","استلام الحاويات"]]],
@@ -140,7 +140,8 @@ export function permView(){
   const lockedCo=co&&!X.root;// حساب مالك النظام يعدّله الأدمن فقط
   if(k==="chat"){if(co)return td(lk);const on=!(s.p&&s.p.nc===true);return td(`<input type="checkbox" data-snc="${id}" ${on?"checked":""} ${own?"":"disabled"} aria-label="الدردشة مفتوحة">`)}
   if(k==="cw"){if(vw)return td(lk);return td(`<input type="checkbox" data-scw="${id}" ${s.cw===true?"checked":""} ${own&&!lockedCo?"":"disabled"} aria-label="مراسلة الفروع">`)}
-  if(vw)return td(na);
+  // 👁 (v222، طلب محمد) المتابع: يرى كل الأقسام كما هو، والقسم الذي يُعلَّم له يعمل فيه فعلاً كأي موظف معه الصلاحية. يمنحها الأدمن ومالك النظام فقط
+  if(vw){if(k==="pm")return td(na);const lkv=secDenyKey(k);return td(`<input type="checkbox" data-sp2="${k}" data-id="${id}" ${s.p&&s.p[k]===true?"checked":""} ${own&&!lkv?"":"disabled"} ${lkv?'title="قسم خاص: يعدّلها مالك النظام فقط"':""} aria-label="${lab}">`)}
   if(co)return td(lk);
   if(k==="pm")return adm?td(`<input type="checkbox" data-sp2="pm" data-id="${id}" ${s.p&&s.p.pm===true?"checked":""} ${own?"":"disabled"} aria-label="${lab}">`):td(na);
   if(adm&&SECK.includes(k))return td(lk);
@@ -174,7 +175,7 @@ const LKM_CSS=`.lkm-t{border-collapse:separate;border-spacing:0;width:100%;min-w
 @media (min-width:761px){.lkm-mode{display:none}}`;
 const lkPeople=()=>{const rt=String(X.rootEmail||"").toLowerCase(),L=[{id:rt,n:ownerMe().n||OWNER_NAME,r:"👑 الأدمن",root:true,adm:true,vw:false,p:{}}];
  S.filter(s=>s.enabled&&!(s.admin===true&&s.co===true&&s.v!==true)).sort((a,b)=>{const r=s=>s.admin&&!s.v?0:s.v?1:2;return r(a)-r(b)||String(a.name||"").localeCompare(String(b.name||""),"ar")})
-  .forEach(s=>L.push({id:String(s.id).toLowerCase(),n:s.name||s.id,r:roleLbl(s),root:false,adm:s.v!==true&&s.admin===true,vw:s.v===true,p:s.v===true?{}:(s.p||{})}));return L};
+  .forEach(s=>L.push({id:String(s.id).toLowerCase(),n:s.name||s.id,r:roleLbl(s),root:false,adm:s.v!==true&&s.admin===true,vw:s.v===true,p:s.p||{}}));return L};// (v222) صلاحيات المتابع المعلَّمة تُحسب كما في القواعد
 const secRole=(u,k)=>k==="log"?(u.root||u.vw):(u.root||u.adm||u.vw||(k==="gift"&&u.p.req===true)||SEC_EXP[k].some(x=>u.p[x]===true));
 const secExpU=(u,k)=>!u.root&&SEC_EXP[k].some(x=>u.p[x]===true);
 const secVis=(o,u,k)=>!o[k].hide.includes(u.id)&&(!o[k].on||o[k].al.includes(u.id)||secExpU(u,k));
