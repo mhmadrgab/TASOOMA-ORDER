@@ -241,6 +241,7 @@ body[data-ty="tr"] .rc:not(.to) small{color:#7fd0dc}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script type="module">/* 📦 كتالوج الأصناف (17 نوفمبر 2026): الكود ← ألوانه بس ← مقاساته بس، من الكاش اللي اللوحة نزّلته */
 import {catFromCache,catSheet} from "./cat.js";
+import {pimgFrame} from "./pimg.js";pimgFrame();// 🖼 (v221) صورة الصنف مكان رقم السطر (القراءة من اللوحة)
 const go=()=>{try{if(catFromCache())catSheet()}catch(e){}};go();
 addEventListener("storage",e=>{if(e.key==="tz_cat")go()});</script>
 <script>

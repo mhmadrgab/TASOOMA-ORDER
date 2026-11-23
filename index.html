@@ -520,6 +520,7 @@ import {initNotes,stopNotes} from "./notes.js";// 🔔 (v179) سجل الإشع�
 import {initTrack,stopTrack,trackBtn} from "./track.js";
 import {initSheet,stopSheet,refreshSheet} from "./brsheet.js";
 import {catLoad,catSheet} from "./cat.js";
+import {initPimg,stopPimg} from "./pimg.js";import {zoomOpen} from "./zoom.js";// 🖼 (v221) صور الأصناف في الورقة وورقة الطلب
 import {initBrStock,stopBrStock} from "./brstock.js";// 📦 (v179) المتوفر في المستودع + الطلب المقترح
 import {initCall,stopCall,earlyCall} from "./call.js";
 import {initBrNav,stopBrNav,brNavSec,brNavRefresh} from "./brnav.js";// 🧭 (v214) القائمة الجانبية
@@ -639,6 +640,7 @@ function enter(b){
  initBranch({db,toast,reqs:()=>REQS,ping:ids=>ping(auth,ids)});
  // 📦 كتالوج الأصناف: اقتراحات الكود ← ألوانه ← مقاساته في ورقة النواقص (لو مفيش كتالوج مرفوع الورقة زي ما هي)
  catLoad(db).then(c=>{if(c)catSheet()}).catch(()=>{});
+ initPimg({db,fb:{doc,getDoc},zoom:zoomOpen,toast}).catch(()=>{});// 🖼 (v221) صورة الصنف مكان رقم السطر
  initBrStock({db,code:code(b),toast}).catch(()=>{});// 📦 (v179) «متوفر/قليل/غير متوفر» في الورقة و«✨ الطلب المقترح»
   // 📄 ورقة الطلب (15 نوفمبر 2026): الضغط على كارت الطلب بيفتحه في شكل ورقة، ومعاه صور التسليم/إيصال الشحن
   initSheet({db,toast,get:id=>REQS[id],lbl,isShip,ship:()=>SHIP,brn:()=>B});
@@ -678,7 +680,7 @@ function deepReq(id){
 // كارت التحديث (ui.js) زرار "اعرض طلباتي": ننزل لقايمة الطلبات ونفتح آخر طلب كورقة (لو فيه طلبات)
 window.addEventListener("tz-news-go",e=>{if(e&&e.detail&&e.detail.sub==="cus"&&g("bcus")){brNavSec("cus");try{scrollTo(0,0)}catch(x){}return}/* 💼 (v220) كارت العهدة ← قسم العهدة */brNavSec("my");const my=g("my");if(my)my.scrollIntoView({behavior:"smooth",block:"start"});const c=document.querySelector("#ml .mr[data-id]"),b=c&&c.querySelector("[data-osh]");if(b)setTimeout(()=>b.click(),500)});
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
-function gateOn(){B=null;stopBCus();stopBrNav();stopBrStock();stopNotes();stopSettings();stopPwSelf();stopCall();stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBCus();stopPimg();stopBrNav();stopBrStock();stopNotes();stopSettings();stopPwSelf();stopCall();stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");
  if(!p){showErr("اكتب كلمة المرور");return}

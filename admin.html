@@ -144,13 +144,14 @@ const {app,db,auth}=makeFb("admin");
 earlyCall({db,auth,toast:(m,t)=>{try{toast(m,t)}catch(e){}}});// 📞 الصفحة اتفتحت على مكالمة: نبدأ المكالمات قبل باقي التحميل
 import {initExtra,view as cusView,stop as stopExtra,adminHdr,ledger} from "./ad-extra.js";
 import {initFleet,view as fleetView,stop as stopFleet,cars as fleetCars} from "./fleet.js";
-import {initZoom} from "./zoom.js";
+import {initZoom,zoomOpen} from "./zoom.js";
+import {initPimg,stopPimg,pimgAdminView} from "./pimg.js";// 🖼 (v221) صور الأصناف
 import {initGifts,stopGifts,giftsView,pendingCount as giftPend} from "./gifts.js";
 import {initMnt,stopMnt,mntView,mntCount} from "./mnt.js";
 import {initPo,stopPo,poView,poCount} from "./po.js";
 import {initPoRcv,stopPoRcv,poRcvView,poRcvCount} from "./porcv.js";
 import {initStock,stopStock,stockMount} from "./stock.js";
-import {initCat,catAdminView,catLoad} from "./cat.js";
+import {initCat,catAdminView,catLoad,catCodes} from "./cat.js";
 import {initHealth,stopHealth,healthView} from "./health.js";
 import {initPwSelf,stopPwSelf} from "./pwself.js";
 import {initCall,stopCall,earlyCall} from "./call.js";
@@ -258,7 +259,7 @@ const gHtml=(rows,print)=>{
  const G=groups(src.map(r=>({k:String(r&&r.k||""),c:String(r&&r.c||""),z:String(r&&r.z||""),q:NUM(r&&r.q),n:String(r&&r.n||""),na:!!r.na,add:!!r.add,oq:r.oq})));
  let h="";
  G.forEach(x=>x.cols.forEach((c,i)=>{const tot=c.rs.reduce((a,r)=>a+(r.na?0:r.q),0);
-  h+=`<tr>${i===0?`<td class="kc" rowspan="${x.cols.length}"><bdi dir="ltr">${E(x.k)}</bdi></td>`:""}<td><bdi dir="ltr">${E(c.c)}</bdi></td><td>${c.rs.map(r=>`<span class="ch${r.na?" na":""}${r.add&&!print?" ad":""}" ${r.na?'title="غير متوفر"':r.add?'title="أضافه المستودع"':""}>${r.add&&!print?"<em>➕</em>":""}${r.z?`<i><bdi dir="ltr">${E(r.z)}</bdi></i>`:""}<b>${r.q}</b>${!print&&r.oq!=null&&!r.na?`<s>${NUM(r.oq)}</s>`:""}</span>`).join("")}</td><td class="tq">${tot}</td><td class="cm3">${E(c.n)}${!print&&c.rs.some(r=>r.na)?`<div class="nam">🚫 ${c.rs.filter(r=>r.na).map(r=>E(r.z||"")).join("، ")} غير متوفر</div>`:""}</td><td><span class="bx2"></span></td></tr>`}));
+  h+=`<tr>${i===0?`<td class="kc" rowspan="${x.cols.length}"><bdi dir="ltr">${E(x.k)}</bdi>${print?"":`<span class="pim" data-pimg="${E(x.k)}"></span>`}</td>`:""}<td><bdi dir="ltr">${E(c.c)}</bdi></td><td>${c.rs.map(r=>`<span class="ch${r.na?" na":""}${r.add&&!print?" ad":""}" ${r.na?'title="غير متوفر"':r.add?'title="أضافه المستودع"':""}>${r.add&&!print?"<em>➕</em>":""}${r.z?`<i><bdi dir="ltr">${E(r.z)}</bdi></i>`:""}<b>${r.q}</b>${!print&&r.oq!=null&&!r.na?`<s>${NUM(r.oq)}</s>`:""}</span>`).join("")}</td><td class="tq">${tot}</td><td class="cm3">${E(c.n)}${!print&&c.rs.some(r=>r.na)?`<div class="nam">🚫 ${c.rs.filter(r=>r.na).map(r=>E(r.z||"")).join("، ")} غير متوفر</div>`:""}</td><td><span class="bx2"></span></td></tr>`}));
  return `<table class="g"><thead><tr><th>الكود</th><th>اللون</th><th>المقاس / الكمية</th><th>الإجمالي</th><th>ملاحظات</th><th></th></tr></thead><tbody>${h}</tbody></table>`;
 };
 
@@ -277,7 +278,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBCus();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBCus();stopPimg();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -371,6 +372,7 @@ function start(){
   if(ROLE.owner===true)initCat({db,toast,me:{e:me,get n(){return ROLE.name||me}},redraw:()=>{if(tab==="set"&&sub==="cat")draw()}});
   if(ROLE.owner===true)initHealth({root:ROLE.root===true,db,toast,me,redraw:()=>{if(tab==="set"&&sub==="hl")draw()}});// 📏 صحة المنصة: للأدمن ومالك النظام
   else catLoad(db).catch(()=>{});// الورقة اليدوية بتقرا الكتالوج من الكاش ده
+  initPimg({db,fb:{doc,getDoc,setDoc,writeBatch},zoom:zoomOpen,toast,owner:ROLE.owner===true,me:{e:me,get n(){return ROLE.name||me}},codes:catCodes,redraw:()=>{if(tab==="set"&&sub==="img")draw()}});// 🖼 (v221) صور الأصناف: العرض للكل، والرفع للأدمن ومالك النظام
      // 🔒 لا نبدأ أوامر الشراء لمن حُجبت عنه
    if((adm||ROLE.p.po===true||ROLE.p.rcv===true||vw)&&secOk("po"))initPo({db,toast,me:{e:me,get n(){return ROLE.name||me}},owner:ROLE.owner===true,
     edit:!vw&&(ROLE.owner===true||ROLE.p.po===true),rcv:!vw&&(ROLE.owner===true||ROLE.p.rcv===true),redraw:draw,active:()=>tab==="po",
@@ -445,11 +447,11 @@ window.addEventListener("tz-news-go",e=>{const sb=e&&e.detail&&e.detail.sub;
  if(sb==="pm"&&ROLE.owner===true&&okTab("set")){tab="set";sub="pm";try{localStorage.setItem("st_sub","pm")}catch(x){}draw();return}// 👑 كارت الإدارة ← جدول الصلاحيات
  if(ROLE.co&&okTab("set")){tab="set";draw()}});
 // أقسام الإعدادات: [المعرّف، الأيقونة، الاسم]. قسم جديد: أضفه هنا وفي سلسلة الشرط داخل setView (يظهر تلقائياً في القائمة الجانبية تحت «الإعدادات»)
-const setSubs=()=>{const S=[["perm","👥","الموظفون والحسابات"],["br","🏬","حسابات الفروع"],["rep","📊","التقارير والإشعارات"]].concat(ROLE.owner===true?[["cat","📦","كتالوج الأصناف"],["hl","📏","صحة المنصة"]]:[]);S.splice(1,0,["pm","🔐","جدول الصلاحيات"]);if(ROLE.owner===true)S.splice(2,0,["lk","🔒","الأقسام الخاصة"]);return S};
+const setSubs=()=>{const S=[["perm","👥","الموظفون والحسابات"],["br","🏬","حسابات الفروع"],["rep","📊","التقارير والإشعارات"]].concat(ROLE.owner===true?[["cat","📦","كتالوج الأصناف"],["img","🖼","صور الأصناف"],["hl","📏","صحة المنصة"]]:[]);S.splice(1,0,["pm","🔐","جدول الصلاحيات"]);if(ROLE.owner===true)S.splice(2,0,["lk","🔒","الأقسام الخاصة"]);return S};
 const fixSub=()=>{if(!setSubs().some(a=>a[0]===sub))sub="perm"};
 function setView(){
  const S=setSubs();fixSub();
- return `<div class="stg"><nav class="stg-nav" aria-label="أقسام الإعدادات">${S.map(a=>`<button type="button" class="${sub===a[0]?"on":""}" data-ss="${a[0]}">${a[1]} ${a[2]}</button>`).join("")}</nav><section class="stg-body">${sub==="perm"?staffView():sub==="pm"?permView():sub==="lk"?lockView():sub==="br"?brView():sub==="cat"?catAdminView():sub==="hl"?healthView():(weeklyCfgView()||`<div class="pan"><p class="off" style="margin:0">إعدادات التقارير والإشعارات يحدّدها مالك النظام.</p></div>`)}</section></div>`
+ return `<div class="stg"><nav class="stg-nav" aria-label="أقسام الإعدادات">${S.map(a=>`<button type="button" class="${sub===a[0]?"on":""}" data-ss="${a[0]}">${a[1]} ${a[2]}</button>`).join("")}</nav><section class="stg-body">${sub==="perm"?staffView():sub==="pm"?permView():sub==="lk"?lockView():sub==="br"?brView():sub==="cat"?catAdminView():sub==="img"?pimgAdminView():sub==="hl"?healthView():(weeklyCfgView()||`<div class="pan"><p class="off" style="margin:0">إعدادات التقارير والإشعارات يحدّدها مالك النظام.</p></div>`)}</section></div>`
 }
 function brView(){
  const info={};BR.forEach(b=>info[code(b)]={n:0,p:0,t:0});
