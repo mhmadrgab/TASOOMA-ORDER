@@ -143,7 +143,8 @@ window.__tzMod=1;// (15 نوفمبر 2026) الكود الأساسي اشتغل:
 const {app,db,auth}=makeFb("admin");
 earlyCall({db,auth,toast:(m,t)=>{try{toast(m,t)}catch(e){}}});// 📞 الصفحة اتفتحت على مكالمة: نبدأ المكالمات قبل باقي التحميل
 import {initExtra,view as cusView,stop as stopExtra,adminHdr,ledger} from "./ad-extra.js";
-import {initFleet,view as fleetView,stop as stopFleet,cars as fleetCars} from "./fleet.js";
+import {initFleet,view as fleetView,stop as stopFleet,cars as fleetCars,drivers as fleetDrivers} from "./fleet.js";
+import {initErrand,stopErrand,errandView,errPlace,errBack} from "./errand.js";// 🧭 (v223) المشاوير
 import {initZoom,zoomOpen} from "./zoom.js";
 import {initPimg,stopPimg,pimgAdminView} from "./pimg.js";// 🖼 (v221) صور الأصناف
 import {initGifts,stopGifts,giftsView,pendingCount as giftPend} from "./gifts.js";
@@ -282,7 +283,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBCus();stopPimg();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBCus();stopPimg();stopErrand();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -390,7 +391,11 @@ function start(){
      draw()},()=>{}))}
    // ➕ الفروع المضافة
    unsubs.push(onSnapshot(doc(db,"brx","main"),d=>{BRX=d.exists()&&Array.isArray(d.data().l)?d.data().l.map(String):[];brxApply(BRX);try{localStorage.setItem("tz_brx",JSON.stringify(BRX))}catch(x){}draw()},()=>{}));
- if(adm||can("fl")||vw)initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vwOn("fl"),ping:(ids,trips)=>ping(auth,ids,[],trips)});
+ if(adm||can("fl")||vw){
+  // 🧭 (v223) المشاوير: المدير وصاحب «السيارات» ينشئونها، والمتابع يرى
+  initErrand({db,fb:{collection,doc,query,where,onSnapshot,setDoc,updateDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||(ROLE.root?OWNER_NAME:"")||me}},staff:(adm||can("fl"))&&!vwOn("fl"),drivers:fleetDrivers,redraw:()=>{if(tab==="fl")draw()},ping:ids=>ping(auth,[],[],[],[],[],[],[],ids)});
+  initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vwOn("fl"),ping:(ids,trips)=>ping(auth,ids,[],trips),errands:errandView,place:errPlace,errBack});
+ }
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
  if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm"||sub==="lk")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,co:ROLE.co===true,lock:()=>LOCK,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
  if(ROLE.owner===true)initStock({db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});
