@@ -393,7 +393,7 @@ function start(){
    unsubs.push(onSnapshot(doc(db,"brx","main"),d=>{BRX=d.exists()&&Array.isArray(d.data().l)?d.data().l.map(String):[];brxApply(BRX);try{localStorage.setItem("tz_brx",JSON.stringify(BRX))}catch(x){}draw()},()=>{}));
  if(adm||can("fl")||vw){
   // 🧭 (v223) المشاوير: المدير وصاحب «السيارات» ينشئونها، والمتابع يرى
-  initErrand({db,fb:{collection,doc,query,where,onSnapshot,setDoc,updateDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||(ROLE.root?OWNER_NAME:"")||me}},staff:(adm||can("fl"))&&!vwOn("fl"),drivers:fleetDrivers,redraw:()=>{if(tab==="fl")draw()},ping:ids=>ping(auth,[],[],[],[],[],[],[],ids)});
+  initErrand({db,fb:{collection,doc,getDoc,query,where,onSnapshot,setDoc,updateDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||(ROLE.root?OWNER_NAME:"")||me}},staff:(adm||can("fl"))&&!vwOn("fl"),drivers:fleetDrivers,redraw:()=>{if(tab==="fl")draw()},ping:ids=>ping(auth,[],[],[],[],[],[],[],ids)});
   initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vwOn("fl"),ping:(ids,trips,oils)=>ping(auth,ids,[],trips,[],[],[],[],[],oils),me:{e:me,get n(){return ROLE.name||(ROLE.root?OWNER_NAME:"")||me}},errands:errandView,place:errPlace,errBack});
  }
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)

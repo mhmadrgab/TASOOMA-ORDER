@@ -239,6 +239,7 @@ export async function dropAtt(db,path,ref){
  await deleteDoc(doc(db,...p));
 }
 // مسح كل المرفقات الإضافية (للمالك: تعديل أو حذف المستند)
-export async function dropExtras(db,col,id){
- const L=await loadExtras(db,col,id);for(const x of L){try{await dropAtt(db,x.path,x.file?x.src:"")}catch(e){}}
+// (v239) strict = للاستبدال: لو قراءة المرفقات القديمة فشلت نرمي الخطأ ومانكمّلش (كانت بترجع فاضية فالقديم يفضل ويتلخبط مع الجديد)
+export async function dropExtras(db,col,id,strict){
+ const L=strict?await loadAtts(db,col,id,"x"):await loadExtras(db,col,id);for(const x of L){try{await dropAtt(db,x.path,x.file?x.src:"")}catch(e){}}
 }

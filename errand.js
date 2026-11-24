@@ -19,7 +19,11 @@ export function parseLoc(s){
  const t=String(s||"").trim();let m=t.match(/@(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/)||t.match(/[?&](?:q|query|ll|destination)=(-?\d{1,2}\.\d+)(?:,|%2C)\s*(-?\d{1,3}\.\d+)/i)||t.match(/^\s*(-?\d{1,2}\.\d+)\s*[,،]\s*(-?\d{1,3}\.\d+)\s*$/)||t.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
  if(!m)return null;const lat=+(+m[1]).toFixed(5),lng=+(+m[2]).toFixed(5);if(Math.abs(lat)>90||Math.abs(lng)>180||(lat===0&&lng===0))return null;return {lat,lng};
 }
-async function savePlaces(l){const by={e:String(X.me.e||"").slice(0,120),n:String(X.me.n||"").slice(0,60)};await X.fb.setDoc(X.fb.doc(X.db,"places","main"),{l:l.slice(0,100),at:Date.now(),by})}
+// (v239) fn(القايمة الحالية) ← الجديدة. بنقرا آخر نسخة من القاعدة الأول (اتنين بيضيفوا مكان في نفس الوقت ماحدش يمسح التاني)،
+// ولو القايمة عدّت 100 بنشيل الأقدم مش الجديد
+async function savePlaces(fn){const by={e:String(X.me.e||"").slice(0,120),n:String(X.me.n||"").slice(0,60)};let cur=PL;
+ try{if(X.fb.getDoc){const s=await X.fb.getDoc(X.fb.doc(X.db,"places","main"));if(s.exists()&&Array.isArray(s.data().l))cur=s.data().l.filter(p=>p&&p.n).map(p=>({n:String(p.n),...(Number.isFinite(+p.lat)?{lat:+p.lat,lng:+p.lng}:{})}))}}catch(e){}
+ const l=fn(cur.map(p=>({...p})));await X.fb.setDoc(X.fb.doc(X.db,"places","main"),{l:l.slice(-100),at:Date.now(),by})}
 // ---------- العرض ----------
 const ST={prep:["⏳ بانتظار خروج السائق","#946000"],go:["🚚 في الطريق","#2a78d6"],done:["✅ وصل","#4b6b25"],x:["ملغى","#74687a"]};
 export function errandView(){
@@ -40,7 +44,8 @@ export function errandView(){
 }
 // ---------- النافذة ----------
 function box(){let m=g("erm");if(!m){m=document.createElement("div");m.id="erm";m.className="fm";document.body.appendChild(m)}return m}
-function closeM(){const m=box();m.className="fm";m.innerHTML="";BUSY=false}
+function closeM(){const m=box();m.className="fm";m.innerHTML="";BUSY=false;EDRAFT=null}
+let EDRAFT=null;// 🛟 (v239) رقم المشوار الجديد ثابت طول ما النموذج مفتوح (الضغط تاني بعد رد متأخر مابيعملش مشوار تاني)
 function form(){
  const dr=(X.drivers?X.drivers():[]).filter(d=>d.enabled);
  const m=box();m.innerHTML=`<div class="fk"><h3>🧭 مشوار جديد</h3>
@@ -59,11 +64,14 @@ async function save(btn){
  const loc=lr?parseLoc(lr):null;if(lr&&!loc){X.toast("لم أفهم الموقع. الصق رابط خرائط جوجل الكامل أو اكتب الإحداثيات مثل 24.71, 46.67","er");return}
  BUSY=true;btn.disabled=true;const ts=Date.now(),d=new Date(ts),p2=x=>String(x).padStart(2,"0");
  try{
-  const ref=X.fb.doc(X.fb.collection(X.db,"errands")),data={no:`M-${p2(d.getMonth()+1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}`,brn,note,st:"prep",asg:{drv:dv.id,drvn:String(dv.name||"").slice(0,60)},by:{e:String(X.me.e||"").slice(0,120),n:String(X.me.n||"").slice(0,60)},ts,upd:ts};if(ct)data.ct=ct;
+  if(!EDRAFT)EDRAFT=X.fb.doc(X.fb.collection(X.db,"errands")).id;
+  const ref=X.fb.doc(X.db,"errands",EDRAFT),data={no:`M-${p2(d.getMonth()+1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}`,brn,note,st:"prep",asg:{drv:dv.id,drvn:String(dv.name||"").slice(0,60)},by:{e:String(X.me.e||"").slice(0,120),n:String(X.me.n||"").slice(0,60)},ts,upd:ts};if(ct)data.ct=ct;
   await X.fb.setDoc(ref,data);
-  const i=PL.findIndex(p=>p.n===brn);if(i<0||loc){const l=PL.map(p=>({...p}));const o=i<0?{n:brn}:l[i];if(loc){o.lat=loc.lat;o.lng=loc.lng}if(i<0)l.push(o);try{await savePlaces(l)}catch(e){}}
+  if(PL.findIndex(p=>p.n===brn)<0||loc){try{await savePlaces(l=>{const i=l.findIndex(p=>p.n===brn);const o=i<0?{n:brn}:l[i];if(loc){o.lat=loc.lat;o.lng=loc.lng}if(i<0)l.push(o);return l})}catch(e){}}
   closeM();if(X.ping)X.ping([ref.id]);X.toast(`✅ أُرسل المشوار إلى ${dv.name}`);
- }catch(e){BUSY=false;btn.disabled=false;X.toast("تعذّر الحفظ: "+(e&&(e.code||e.message)||""),"er")}
+ }catch(e){
+  try{const id=EDRAFT,s=id&&X.fb.getDoc?await X.fb.getDoc(X.fb.doc(X.db,"errands",id)):null;if(s&&s.exists()){closeM();if(X.ping)X.ping([id]);X.toast(`✅ أُرسل المشوار إلى ${dv.name}`);return}}catch(x){}
+  BUSY=false;btn.disabled=false;X.toast("تعذّر الحفظ: "+(e&&(e.code||e.message)||""),"er")}
 }
 // المشاوير التي لم يصل إليها السائق في رحلة انتهت أو أُزيلت منها: ترجع «بانتظار خروج السائق» لنفس السائق
 export async function errBack(ids){
@@ -84,8 +92,8 @@ if(!errandView.w){errandView.w=1;
   if(a==="x"&&r){if(!confirm(`إلغاء مشوار «${r.brn}»؟`))return;try{await X.fb.updateDoc(X.fb.doc(X.db,"errands",id),{st:"x",x:{at:Date.now(),e:String(X.me.e||"").slice(0,120),n:String(X.me.n||"").slice(0,60)},upd:Date.now()});if(X.ping)X.ping([id]);X.toast("أُلغي المشوار")}catch(x){X.toast("تعذّر الإلغاء","er")}return}
   if(a==="ploc"){const n=b.dataset.n,p=PL.find(x=>x.n===n);if(!p)return;const v=prompt(`موقع «${n}»: الصق رابط خرائط جوجل أو اكتب الإحداثيات (مثل 24.71, 46.67). اتركه فارغاً لمسح الموقع المحفوظ.`,Number.isFinite(+p.lat)?p.lat+", "+p.lng:"");if(v===null)return;
    const loc=v.trim()?parseLoc(v):null;if(v.trim()&&!loc){X.toast("لم أفهم الموقع. الصق الرابط الكامل أو الإحداثيات","er");return}
-   const l=PL.map(x=>{if(x.n!==n)return x;const o={n:x.n};if(loc){o.lat=loc.lat;o.lng=loc.lng}return o});try{await savePlaces(l);X.toast(loc?"✅ حُفظ الموقع":"مُسح الموقع")}catch(x){X.toast("تعذّر الحفظ","er")}return}
-  if(a==="pdel"){const n=b.dataset.n;if(!confirm(`حذف «${n}» من الأماكن المحفوظة؟ (المشاوير السابقة لا تتأثر)`))return;try{await savePlaces(PL.filter(x=>x.n!==n));X.toast("حُذف المكان")}catch(x){X.toast("تعذّر الحذف","er")}return}
+   try{await savePlaces(L=>L.map(x=>{if(x.n!==n)return x;const o={n:x.n};if(loc){o.lat=loc.lat;o.lng=loc.lng}return o}));X.toast(loc?"✅ حُفظ الموقع":"مُسح الموقع")}catch(x){X.toast("تعذّر الحفظ","er")}return}
+  if(a==="pdel"){const n=b.dataset.n;if(!confirm(`حذف «${n}» من الأماكن المحفوظة؟ (المشاوير السابقة لا تتأثر)`))return;try{await savePlaces(L=>L.filter(x=>x.n!==n));X.toast("حُذف المكان")}catch(x){X.toast("تعذّر الحذف","er")}return}
  });
  document.addEventListener("keydown",e=>{if(e.key==="Escape"){const m=g("erm");if(m&&m.className.includes("on"))closeM()}});
 }

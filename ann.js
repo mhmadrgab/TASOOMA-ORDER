@@ -220,6 +220,8 @@ async function delAnn(id){
   const a=A.find(x=>x.id===id);
   try{if(a&&a.img){const ks=["f","t"];for(let k=2;k<=icOf(a);k++)ks.push("f"+k,"t"+k);await Promise.all(ks.map(k=>deleteDoc(doc(X.db,"ann",id,"img",k)).catch(()=>{})))}
     if(a&&a.v)await deleteDoc(doc(X.db,"ann",id,"aud","a")).catch(()=>{});
+    // (v239) سجلات «مين قرا» (rd) كانت بتفضل في القاعدة للأبد بعد حذف التعميم
+    try{const rd=await getDocs(collection(X.db,"ann",id,"rd"));const ids=rd.docs.map(d=>d.id);for(let i=0;i<ids.length;i+=20)await Promise.all(ids.slice(i,i+20).map(k=>deleteDoc(doc(X.db,"ann",id,"rd",k)).catch(()=>{})))}catch(x){}
     await withTimeout(deleteDoc(doc(X.db,"ann",id)),20000);X.toast("🗑 حُذف التعميم")}
   catch(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w])}
 }

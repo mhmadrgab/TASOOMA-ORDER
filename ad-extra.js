@@ -87,7 +87,7 @@ async function save(type){
   const ref=edit?doc(X.db,"ledger",edit.id):doc(collection(X.db,"ledger"));
   await setDoc(ref,edit?{...d,...(edit.sid?{sid:edit.sid}:{})}:d);
   let bad=0;
-  if(replace){if(edit&&keep)await dropExtras(X.db,"ledger",ref.id);bad=await saveExtras(X.db,"ledger",ref.id,IMS.slice(1).concat(PDFS))}
+  if(replace){if(edit&&keep)await dropExtras(X.db,"ledger",ref.id,true);bad=await saveExtras(X.db,"ledger",ref.id,IMS.slice(1).concat(PDFS))}
   else if(addOnly){const ex0=await loadExtras(X.db,"ledger",ref.id);const st=ex0.length?Math.max(...ex0.map(x=>x.k))+1:2;bad=await saveExtras(X.db,"ledger",ref.id,IMS.concat(PDFS),st)}
   closeM();X.toast(bad?`تم الحفظ، لكن تعذّر رفع ${bad} من المرفقات`:"تم الحفظ",bad?"er":undefined)
  }catch(x){X.toast("تعذر الحفظ: "+(x&&x.code||x&&x.message))}

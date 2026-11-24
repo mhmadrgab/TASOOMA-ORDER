@@ -497,7 +497,7 @@ async function save(){
     X.toast("تم حفظ التعديل ✅");closeM();if(X.mode==="branch")openBranch();else{viewGift(id);if(X.redraw)X.redraw()}return}
    const b=writeBatch(X.db);b.set(doc(X.db,"gifts",edit.id),d);if(img)b.set(doc(X.db,"giftimg",edit.id),{img});
    await withTimeout(b.commit(),20000);
-   if(img||PDFS.length){await dropExtras(X.db,"giftimg",edit.id);const bad=await saveExtras(X.db,"giftimg",edit.id,EXTRA);if(bad)X.toast(`تعذّر حفظ ${bad} من المرفقات الإضافية`,"er")}
+   if(img||PDFS.length){await dropExtras(X.db,"giftimg",edit.id,true);const bad=await saveExtras(X.db,"giftimg",edit.id,EXTRA);if(bad)X.toast(`تعذّر حفظ ${bad} من المرفقات الإضافية`,"er")}
    X.toast("تم حفظ التعديل ✅");closeM();if(X.mode==="branch")openBranch();return;
   }
   const wh=X.mode!=="branch",ts=Date.now(),dd=new Date(ts),p=n=>String(n).padStart(2,"0"),br=wh?"WH":X.code;

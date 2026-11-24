@@ -240,7 +240,9 @@ async function add(){
    catch(x){if(x&&x.code==="auth/email-already-in-use"){try{await signInWithEmailAndPassword(a,e,pw)}catch(y){if(y&&(y.code==="auth/invalid-credential"||y.code==="auth/wrong-password"))throw {code:"x/exists-wrong-pw"};throw y}}else throw x}
    finally{try{await signOut(a)}catch(x){}}
   }
-  else{pw=genPw();try{await createUserWithEmailAndPassword(a,e,pw)}finally{try{await signOut(a)}catch(x){}}}
+  // 🛟 (v239) محاولة سابقة عملت الحساب وفشلت قبل ملف الموظف: البريد «موجود» وكلمة المرور الجديدة غلط فكانت الإضافة بتقف للأبد.
+  // دلوقتي (البريد مش موظف عندنا أصلاً) بنظبط كلمة المرور من السيرفر ونكمّل
+  else{pw=genPw();try{await createUserWithEmailAndPassword(a,e,pw)}catch(x){if(x&&x.code==="auth/email-already-in-use"&&X.setPw)await X.setPw(e,pw);else throw x}finally{try{await signOut(a)}catch(x){}}}
   X.tmpPw[e]=pw;// 🔑 لا تُحفظ في القاعدة: تظهر في فتحة الصفحة هذه فقط
   const adm=f.r==="adm",vw=f.r==="view",mk=f.r==="mkt",eg=f.r==="eng",pu=f.r==="pur",co=f.r==="co"&&X.root===true;
   // المتابع: من غير أي صلاحية تعديل (v = يشوف بس)
