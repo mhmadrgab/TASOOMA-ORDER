@@ -581,3 +581,9 @@ html.lite .tz-up,html.lite .tz-down,html.lite .tz-new,html.lite .tz-chg,html.lit
 html.lite.tz-out body>*{transition:none!important}
 @media (prefers-reduced-motion:reduce){.tz-up,.tz-down,.tz-new,.tz-chg,html.tz-in #tzm>*,html.tz-in #mn>*,html.tz-in body.lock .w>*,html.tz-in #tzn,html.tz-in #tzt{animation:none!important}html.tz-out body>*{transition:none!important}}
 @media print{.tz-up,.tz-down,.tz-new,.tz-chg{animation:none!important;outline:0!important}}
+/* 🔔 (v235) الإشعار الصغير فوق (#toast): المخفي كان بيتزق 120–140px بس، فالإشعار الطويل (سطرين أو تلاتة على الموبايل)
+   كان بيفضل طرفه باين تحت الشريط وكأنه معلّق. دلوقتي بيختفي كله مهما كان طوله، والضغط عليه يقفله */
+html #toast{max-width:min(92vw,560px);text-align:center;line-height:1.6;cursor:pointer;transition:transform .5s cubic-bezier(.16,1,.3,1),opacity .25s ease,visibility 0s linear .5s,border-color .3s,background-color .3s}
+html #toast:not(.on){transform:translateX(-50%) translateY(calc(-100% - 140px));opacity:0;visibility:hidden;pointer-events:none}
+html #toast.on{opacity:1;visibility:visible;transition:transform .5s cubic-bezier(.16,1,.3,1),opacity .2s ease,visibility 0s,border-color .3s,background-color .3s}
+@media (prefers-reduced-motion:reduce){html #toast,html #toast.on{transition:none}}

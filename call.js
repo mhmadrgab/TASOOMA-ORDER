@@ -21,7 +21,7 @@
 import {collection,doc,getDoc,setDoc,updateDoc,onSnapshot,query,where,onAuthStateChanged,PUSH_URL} from "./fb.js";
 const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
-const RING_MS=45000,CONNECT_MS=20000,WIN=10*6e4,DROP_MS=45000,RS_MAX=6,ICE_TTL=40*6e4;
+const RING_MS=45000,CONNECT_MS=30000,WIN=10*6e4,DROP_MS=45000,RS_MAX=6,ICE_TTL=40*6e4;
 // v6 (22 نوفمبر 2026، محمد: «الرنة بتظهر متأخرة، والمكالمة بتفصل في نص الكلام كتير، ومفيش تبديل سماعة، وخصوصاً آيفون لآيفون»):
 //   1) الرنة لها 3 طرق سريعة جنب السماع القديم: إشارة لحظية من السيرفر على قناة خاصة بالطرف (tz-c:الطرف، بلا قاعدة بيانات)،
 //      وإشعار الجهاز لو المنصة مفتوحة (من fb.js ومن sw.js). أي واحدة توصل أولاً تجيب المكالمة برقمها (fetchCall).
@@ -74,9 +74,13 @@ function hiq(sdp){
 }
 // تجميع العناوين (من غير trickle): بنخلص أول ما العناوين تكمل، أو بعد أول عنوان على السيرفر الوسيط بلحظة (هو الضمان)،
 // أو بعد مهلة قصيرة. الاتصال بيبدأ يجمّع من لحظة إنشائه (iceCandidatePoolSize) فغالباً العناوين جاهزة قبل ما نوصل هنا.
-const gathered=pc=>new Promise(ok=>{if(pc.iceGatheringState==="complete")return ok();let done=false;const fin=()=>{if(done)return;done=true;clearTimeout(t);ok()};
- const t=setTimeout(fin,ICE.turn?1800:1000);pc.addEventListener("icegatheringstatechange",()=>{if(pc.iceGatheringState==="complete")fin()});
- pc.addEventListener("icecandidate",e=>{if(!e.candidate){fin();return}if(ICE.turn&&/ typ relay/.test(e.candidate.candidate))setTimeout(fin,150)})});
+// (v235) كانت المهلة 1.8 ثانية: على نت موبايل بطيء عنوان السيرفر الوسيط (relay) بيوصل بعدها، فالمكالمة كانت بتتبعت من غيره
+// وتفضل «جارٍ توصيل الصوت» وتقطع (خصوصاً الآيفون على بيانات الموبايل). دلوقتي بنستنى أول عنوان relay لحد 6 ثواني
+// (الوقت ده مستخبي: الرنة بتوصل قبل الـ offer، والمستقبل بيجهّز وهي بترن)، وأي عنوان relay موجود = نكمّل بعده بلحظة.
+const hasRelay=pc=>{try{const d=pc.localDescription;return !!(d&&/ typ relay/.test(d.sdp))}catch(e){return false}};
+const gathered=pc=>new Promise(ok=>{if(pc.iceGatheringState==="complete")return ok();if(ICE.turn&&hasRelay(pc))return setTimeout(ok,250);let done=false;const fin=()=>{if(done)return;done=true;clearTimeout(t);ok()};
+ const t=setTimeout(fin,ICE.turn?6000:1500);pc.addEventListener("icegatheringstatechange",()=>{if(pc.iceGatheringState==="complete")fin()});
+ pc.addEventListener("icecandidate",e=>{if(!e.candidate){fin();return}if(ICE.turn&&/ typ relay/.test(e.candidate.candidate))setTimeout(fin,250)})});
 async function mic(dev){const a={echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1,sampleRate:48000};if(dev)a.deviceId={exact:dev};return navigator.mediaDevices.getUserMedia({audio:a,video:false})}
 // ---------- 🔆 الشاشة منوّرة طول المكالمة (قفل الشاشة على الآيفون بيوقف الصفحة فالمكالمة بتقطع) ----------
 let WL=null;
@@ -123,7 +127,13 @@ function connState(pc){
  if(!c.rpoll)c.rpoll=setInterval(()=>docPoll(c),1000);
  if(!c.inc){if(bad)restart(c);else if(!c.rsT)c.rsT=setTimeout(()=>{c.rsT=0;if(C===c&&pc.connectionState!=="connected")restart(c)},2500)}
 }
-function connectWatch(){if(!C)return;const id=C.id;clearTimeout(C.ct);C.ct=setTimeout(()=>{if(C&&C.id===id&&!C.t0)hang("fail")},CONNECT_MS)}
+// (v235) بعد الرد: لو الصوت ماتوصّلش في 8 ثواني، المتصل يعيد التفاوض مرة عبر السيرفر الوسيط بس (relay) بدل ما يستنى ويقفل
+function connectWatch(){if(!C)return;const c=C,id=C.id;clearTimeout(C.ct);clearTimeout(C.ct8);
+ C.ct8=setTimeout(()=>{if(C!==c||c.t0)return;if(!c.rpoll)c.rpoll=setInterval(()=>docPoll(c),1000);// الطرفان يتابعان المستند (العرض الجديد والرد عليه)
+  if(!c.inc&&ICE.turn&&!c.relayTry){c.relayTry=1;status("جارٍ توصيل الصوت عبر خادم المنصة",true);restart(c,true)}},8000);
+ C.ct=setTimeout(()=>{if(C&&C.id===id&&!C.t0)hang("fail")},CONNECT_MS)}
+// كل الاتصال عبر السيرفر الوسيط (لإعادة الاتصال: أثبت لما الشبكة تتغيّر أو الطريق المباشر يقطع)
+function relayOnly(pc){try{if(!ICE.turn||!pc||!pc.setConfiguration)return;const cf=pc.getConfiguration();if(cf.iceTransportPolicy==="relay")return;cf.iceTransportPolicy="relay";pc.setConfiguration(cf)}catch(e){}}
 // نوع المسار اللي الصوت ماشي عليه فعلاً (hh مباشر على نفس الشبكة، ss مباشر عبر الإنترنت، r = عبر السيرفر الوسيط) + زمن الذهاب والعودة
 function pairInfo(c){
  if(!c||!c.pc||C!==c)return;
@@ -224,6 +234,7 @@ const CSS=`#tzc{--lv:0;position:fixed;inset:0;z-index:99995;display:none;overflo
 #tzc .tzc-av{position:relative;width:132px;height:132px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:700;line-height:1;background:linear-gradient(150deg,#c9a3c0 0%,#8a5a83 55%,#5b3a58 100%);box-shadow:0 18px 40px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.25)}
 #tzc .tzc-nm{font-size:28px;font-weight:700;line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.2px}
 #tzc .tzc-sub{font-size:14px;color:rgba(255,255,255,.62)}
+#tzc-bz{position:absolute;top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translate(-50%,-12px);max-width:min(88vw,420px);padding:10px 16px;border-radius:14px;background:rgba(196,54,43,.92);color:#fff;font-size:14.5px;font-weight:700;line-height:1.5;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .35s cubic-bezier(.16,1,.3,1);z-index:3}#tzc-bz.on{opacity:1;transform:translate(-50%,0)}
 #tzc .tzc-st{margin-top:10px;font-size:15px;color:#f0dcea;min-height:24px;line-height:1.6;max-width:330px}
 #tzc .tzc-st .dots::after{content:"";display:inline-block;width:1.1em;text-align:start;animation:tzc-d 1.4s steps(4,end) infinite}@keyframes tzc-d{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
 #tzc .tzc-tm{margin-top:10px;display:inline-flex;align-items:center;gap:10px;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);font-size:17px;font-variant-numeric:tabular-nums;letter-spacing:.6px;direction:ltr}
@@ -257,7 +268,7 @@ function ui(){
  const p=document.createElement("div");p.id="tzcp";p.setAttribute("role","button");p.setAttribute("tabindex","0");p.setAttribute("data-noico","");p.dataset.tzc="max";
  p.innerHTML=`<span class="dot">${SV(15,P.call)}</span><b id="tzcp-n" data-notr></b><span class="mu">${SV(16,P.micOff)}</span><span class="t" id="tzcp-t"></span>`;document.body.appendChild(p);
 }
-const initial=s=>{const t=String(s||"").replace(/^[^0-9A-Za-z؀-ۿ]+/,"").trim();return t?t.slice(0,1):"?"};
+const initial=s=>{const t=String(s||"").replace(/^[^0-9A-Za-z؀-ۿ]+/,"").trim(),m=/[A-Za-zء-ي]/.exec(t);return m?m[0].toUpperCase():t?t.slice(0,1):"?"};// (v235) «029-ALAJAWEED» ← A مش 0
 const kindOf=p=>{p=String(p||"");return p[0]==="b"?"فرع":p[0]==="d"?"سائق":"المستودع"};
 function paint(){
  if(!C)return;ui();const d=g("tzc");d.className="on"+(C.st==="ring"?" ring":"");g("tzcp").className="";
@@ -291,12 +302,12 @@ function metrics(c,why){
  if(!X||!c||!c.id||c.msent||(!c.inc&&!c.docOk))return;c.msent=true;
  const m={v:5,u:PLAT(),e:String(why||c.st||"").slice(0,8)};
  Object.keys(c.tm||{}).forEach(k=>{const v=Math.round(N(c.tm[k]));if(v>=0&&v<6e5)m[k]=v});
- if(c.t0)m.dur=Math.round((Date.now()-c.t0)/1000);if(ICE.turn)m.tn=1;if(c.rs)m.rs=c.rs;if(c.via)m.w=c.via;if(c.pair)m.p=c.pair;if(c.rtt!=null)m.rtt=c.rtt;if(c.pn!=null)m.pn=c.pn;
+ if(c.t0)m.dur=Math.round((Date.now()-c.t0)/1000);if(ICE.turn)m.tn=1;if(c.rs)m.rs=c.rs;if(c.relayTry)m.rl=1;if(c.via)m.w=c.via;if(c.pair)m.p=c.pair;if(c.rtt!=null)m.rtt=c.rtt;if(c.pn!=null)m.pn=c.pn;
  updateDoc(doc(X.db,"call",c.id),{[c.inc?"mt":"mf"]:m}).catch(()=>{});
 }
 function cleanup(why){
  if(!C)return;const c=C;C=null;
- clearInterval(c.iv);clearInterval(c.poll);clearInterval(c.opoll);clearInterval(c.rpoll);clearTimeout(c.rt);clearTimeout(c.dropT);clearTimeout(c.ct);clearTimeout(c.rsT);if(c.un)try{c.un()}catch(e){}
+ clearInterval(c.iv);clearInterval(c.poll);clearInterval(c.opoll);clearInterval(c.rpoll);clearTimeout(c.rt);clearTimeout(c.dropT);clearTimeout(c.ct);clearTimeout(c.ct8);clearTimeout(c.rsT);if(c.un)try{c.un()}catch(e){}
  if(c.ofRes){try{c.ofRes()}catch(e){}c.ofRes=null}
  if(c.stream)c.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});
  if(c.pc)try{c.pc.close()}catch(e){}
@@ -319,8 +330,9 @@ async function hang(why){
 }
 // ---------- 🔁 إعادة الاتصال والمكالمة شغالة (ICE restart) ----------
 // المتصل (صاحب الـ offer) وحده يبدأ: offer جديد بعناوين جديدة في ro = {t,s,n}، والمستقبل يرد في ra بنفس الرقم n. بحد أقصى RS_MAX مرات.
-async function restart(c){
- if(C!==c||c.inc||c.rsBusy||!c.t0||!c.pc||(c.rs||0)>=RS_MAX)return;c.rsBusy=true;const n=(c.rs||0)+1;
+async function restart(c,pre){
+ if(C!==c||c.inc||c.rsBusy||(!c.t0&&!pre)||!c.pc||(c.rs||0)>=RS_MAX)return;c.rsBusy=true;const n=(c.rs||0)+1;
+ relayOnly(c.pc);// (v235) إعادة الاتصال عبر السيرفر الوسيط
  try{const of=await c.pc.createOffer({iceRestart:true});await c.pc.setLocalDescription({type:"offer",sdp:hiq(of.sdp)});await gathered(c.pc);
   if(C===c){c.rs=n;await updateDoc(doc(X.db,"call",c.id),{ro:{t:"offer",s:c.pc.localDescription.sdp,n}})}}catch(e){}
  c.rsBusy=false;
@@ -414,10 +426,22 @@ function gotOffer(c,of){
  if(c.ofRes){const f=c.ofRes;c.ofRes=null;f()}
 }
 let PEND_ACT=null;// {id, act:"acc"|"rej"} من إشعار المكالمة
+// 📵 (v235) مكالمة جت وانت في مكالمة: شريط صغير جوه شاشة المكالمة 6 ثواني + سطر في الجرس (المتصل بيشوف «مشغول»)
+function busyNote(nm,fr){
+ const t="📵 "+nm+" اتصل بك وأنت في مكالمة";
+ try{if(window.__tzNote)window.__tzNote(t,"اتصل به بعد انتهاء مكالمتك",fr?(location.pathname.split("/").pop()||"index.html")+"?chat="+encodeURIComponent(fr):"")}catch(e){}
+ try{const box=g("tzc");if(!box)return;let b=g("tzc-bz");if(!b){b=document.createElement("div");b.id="tzc-bz";b.setAttribute("role","status");box.appendChild(b)}
+  b.textContent=t;b.className="on";clearTimeout(b._t);b._t=setTimeout(()=>{b.className=""},6000)}catch(e){}
+ try{if(navigator.vibrate&&canVib())navigator.vibrate([60,80,60])}catch(e){}
+}
 function incoming(id,d,via){
  if(SEEN.has(id))return;SEEN.add(id);
  if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="rej"){PEND_ACT=null;updateDoc(doc(X.db,"call",id),{st:"rej"}).catch(()=>{});return}
- if(C){updateDoc(doc(X.db,"call",id),{st:"busy"}).catch(()=>{});return}
+ if(C){updateDoc(doc(X.db,"call",id),{st:"busy"}).catch(()=>{});
+  // (v235) كان بيترفض «مشغول» من غير ما اللي في المكالمة يعرف: دلوقتي بيظهرله سطر وبيتسجّل في الجرس كمكالمة فائتة
+  {const fr=String(d.fr||""),nm=String(d.frn||(fr.slice(0,1)==="b"?"فرع "+fr.slice(2):"")||"شخص").slice(0,60);
+   busyNote(nm,fr)}
+  return}
  const c={id,inc:true,to:d.fr,name:String(d.frn||(String(d.fr||"").slice(0,1)==="b"?"فرع "+String(d.fr).slice(2):"مكالمة")),st:"ring",of:null,mute:false,tm:{},t00:Date.now(),via:via||"rt"};C=c;
  {const lag=Date.now()-N(d.ts);if(lag>=0&&lag<6e5)c.tm.lag=lag}// من لحظة الاتصال لحد ما وصلت الجهاز ده (بساعة الجهازين، تقريبي)
  // 🛡 (17 نوفمبر 2026) الاسم اللي المتصل بعته (frn) ممكن يتزوّر، فالاسم الحقيقي من الدليل (الموظف من whdir، السائق من ddir)، وكود الفرع بيظهر دايماً

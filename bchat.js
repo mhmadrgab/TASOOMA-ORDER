@@ -54,7 +54,7 @@ const STYLE=`
 .bch button:hover,.bclh button:hover{background:var(--soft,#f6eee3)}
 .bch #bcav:empty{display:none}
 /* الصور الرمزية: صورة الشخص، أو أول حرف بلون ثابت لكل اسم */
-.av{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:16px;flex:none;color:#fff;direction:ltr;object-fit:cover;position:relative;overflow:hidden;letter-spacing:-.3px}
+.av{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:16px;flex:0 0 auto!important;/* (v235) قواعد زي «.gfi span{flex:1}» كانت بتمطّ الصورة الحرفية لبيضاوي */color:#fff;direction:ltr;object-fit:cover;position:relative;overflow:hidden;letter-spacing:-.3px}
 .av.c0{background:linear-gradient(135deg,#b48aab,#8a5a83)}.av.c1{background:linear-gradient(135deg,#3f8fd8,#235f9e)}.av.c2{background:linear-gradient(135deg,#3fb27f,#1f7a52)}.av.c3{background:linear-gradient(135deg,#e0776a,#b04538)}
 .av.c4{background:linear-gradient(135deg,#8b74e0,#5a43b0)}.av.c5{background:linear-gradient(135deg,#2bb3c0,#17808b)}.av.c6{background:linear-gradient(135deg,#e39a4a,#b36b1e)}.av.c7{background:linear-gradient(135deg,#4b4b4b,#2a1d2c);color:#e3c8dd}
 .av.sm{width:40px;height:40px;font-size:14.5px}.av.avb{font-size:13.5px}.av.avd{font-size:21px}

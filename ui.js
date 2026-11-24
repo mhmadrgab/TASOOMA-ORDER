@@ -546,3 +546,5 @@
  start();
  window.tzMotion={scan,state:()=>({armed:armed&&Date.now()>=armed,nums:NUM.size,items:SEEN.size,run:RUN.size})};
 })();
+// 🔔 (v235) الضغط على الإشعار الصغير فوق (#toast) يقفله على طول
+document.addEventListener("click",function(e){var t=e.target&&e.target.closest?e.target.closest("#toast"):null;if(t)t.classList.remove("on")},true);
