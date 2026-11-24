@@ -135,7 +135,8 @@ function card(r){
 // ---------- النوافذ ----------
 function box(){let m=g("mtm");if(!m){m=document.createElement("div");m.id="mtm";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}
 function openM(html,v){const m=box();m.innerHTML=`<div class="mk">${html}</div>`;m.dataset.v=v||"";m.className="on"}
-function closeM(){const m=g("mtm");if(m){m.className="";m.innerHTML="";m.dataset.v=""}PK=null;busy=false}
+function closeM(){const m=g("mtm");if(m){m.className="";m.innerHTML="";m.dataset.v=""}PK=null;busy=false;MDRAFT=null}
+let MDRAFT=null;// 🛟 (v238) رقم طلب الصيانة الجديد ثابت طول ما النموذج مفتوح (الضغط تاني بعد رد متأخر مابيعملش طلب تاني)
 
 // نافذة الفرع: طلباته + زرار طلب جديد
 function openBranch(){
@@ -169,16 +170,19 @@ async function save(){
  const wh=isWh(),brn=wh?String(g("mt-fb").value||""):String(X.brn||X.code),br=brn==="المستودع"?"WH":brn.split("-")[0];
  if(!/^(\d{3}|WH)$/.test(br)){X.toast("اختر الفرع أو المستودع");return}
  const ts=Date.now(),dd=new Date(ts),p=n=>String(n).padStart(2,"0");
- const ref=doc(collection(X.db,"mnt"));
+ if(!MDRAFT)MDRAFT=doc(collection(X.db,"mnt")).id;
+ const ref=doc(X.db,"mnt",MDRAFT);
  const d={br,brn:brn.slice(0,40),no:`M-${br}-${p(dd.getMonth()+1)}${p(dd.getDate())}-${p(dd.getHours())}${p(dd.getMinutes())}`,ts,dt:dd.toLocaleDateString("en-CA"),cat,item,pri,st:wh?"ok":"new",by:{e:X.me.e,n:String(X.me.n||X.me.e).slice(0,60)},src:wh?"eng":"br"};
  if(desc)d.desc=desc;if(IMS.length||PDFS.length)d.img=1;
  const btn=document.querySelector('[data-mt="save"]');busy=true;if(btn){btn.disabled=true;btn.textContent="⏳ جاري الإرسال..."}
  try{const b=writeBatch(X.db);b.set(ref,d);if(IMS[0])b.set(doc(X.db,"mntimg",ref.id),{img:IMS[0]});await withTimeout(b.commit(),20000);
   let bad=0;if(EXTRA.length){if(btn)btn.textContent=`⏳ رفع المرفقات (${IMS.length+PDFS.length})...`;bad=await saveExtras(X.db,"mntimg",ref.id,EXTRA)}
-  if(X.ping)X.ping([ref.id]);busy=false;
+  if(X.ping)X.ping([ref.id]);busy=false;MDRAFT=null;
   X.toast(bad?`أُرسل الطلب، لكن تعذّر رفع ${bad} من الصور`:wh?(br==="WH"?"✅ فُتح طلب صيانة باسم المستودع":"✅ فُتح طلب الصيانة للفرع"):"✅ أُرسل طلب الصيانة للمهندس",bad?"er":undefined);
   if(wh)closeM();else openBranch();
- }catch(e){busy=false;if(btn){btn.disabled=false;btn.textContent="إرسال الطلب"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
+ }catch(e){
+  try{const s=await withTimeout(getDoc(ref),8000);if(s.exists()){busy=false;MDRAFT=null;if(X.ping)X.ping([ref.id]);X.toast(EXTRA.length?"✅ أُرسل الطلب (الاتصال كان بطيئاً). لو الصور الإضافية ناقصة أضفها من الطلب":"✅ أُرسل طلب الصيانة");if(wh)closeM();else openBranch();return}}catch(x){}
+  busy=false;if(btn){btn.disabled=false;btn.textContent="إرسال الطلب"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
 }
 // المهندس: اعتماد/تعديل الموعد
 function apForm(id){const r=A.get(id);if(!r)return;const pl=r.plan||{};

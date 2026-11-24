@@ -294,7 +294,8 @@ function csv(){
 // ---------- النوافذ ----------
 function box(){let m=g("pom");if(!m){m=document.createElement("div");m.id="pom";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}
 function openM(html,v){const m=box();m.innerHTML=`<div class="mk">${html}</div>`;m.dataset.v=v||"";m.className="on"}
-function closeM(){const m=g("pom");if(m){m.className="";m.innerHTML="";m.dataset.v=""}PK=null;busy=false}
+function closeM(){const m=g("pom");if(m){m.className="";m.innerHTML="";m.dataset.v=""}PK=null;busy=false;PDRAFT=null}
+let PDRAFT=null;// 🛟 (v238) رقم أمر الشراء الجديد ثابت طول ما النموذج مفتوح (الضغط تاني بعد رد متأخر مابيعملش أمر تاني)
 const err=async e=>{const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد أو تغيّرت الحالة":FAIL_MSG[w],"er")};
 const btnBusy=(sel,t)=>{const b=document.querySelector(sel);if(b){b.disabled=!!t;if(t){b.dataset.t=b.dataset.t||b.textContent;b.textContent=t}else if(b.dataset.t)b.textContent=b.dataset.t}};
 
@@ -353,22 +354,27 @@ async function save(id){
  const d=readForm();if(!d)return;
  busy=true;btnBusy('[data-po="save"]',"⏳ جاري الحفظ...");
  try{
-  if(id){const r=A.get(id);if(!r)throw new Error("gone");
+  if(id){let r=A.get(id);if(!r)throw new Error("gone");
+   // 🛟 (v238) نقرا الأمر من القاعدة قبل الحفظ: النسخة اللي في الصفحة ممكن تكون أقدم من تحديث مرحلة عمله حد تاني، فالحفظ كان بيرجّعه
+   try{const f=await withTimeout(getDoc(doc(X.db,"po",id)),10000);if(f.exists())r=Object.assign({id},f.data())}catch(x){}
    // التعديل: من غير ما نلمس المرحلة والسجل. الحقول اللي اتمسحت بتتشال
    const patch={upd:Date.now()};Object.keys(d).forEach(k=>{patch[k]=d[k]==null?null:d[k]});
    const nx={...r,...patch};delete nx.id;Object.keys(nx).forEach(k=>{if(nx[k]==null)delete nx[k]});
    await withTimeout(setDoc(doc(X.db,"po",id),nx),15000);busy=false;X.toast("✅ حُفظ التعديل");closeM();return}
   const ts=Date.now(),t=new Date(ts),p=n=>String(n).padStart(2,"0");
-  const ref=doc(collection(X.db,"po"));
+  if(!PDRAFT)PDRAFT=doc(collection(X.db,"po")).id;
+  const ref=doc(X.db,"po",PDRAFT);
   const IMS=PK?PK.imgs():[],PDFS=PK?PK.files():[],ATT=IMS.concat(PDFS);
   const o=clean({...d,no:`PO-${String(t.getFullYear()).slice(2)}${p(t.getMonth()+1)}${p(t.getDate())}-${p(t.getHours())}${p(t.getMinutes())}`,st:"new",ts,by:who(),
    h:[{s:"new",at:d.dt,ts,...who()}]});
   if(ATT.length)o.att=1;
   await withTimeout(setDoc(ref,o),20000);
   let bad=0;if(ATT.length){btnBusy('[data-po="save"]',`⏳ رفع المرفقات (${ATT.length})...`);bad=await saveExtras(X.db,"poatt",ref.id,ATT,2)}
-  busy=false;if(X.ping)X.ping([ref.id]);
+  busy=false;PDRAFT=null;if(X.ping)X.ping([ref.id]);
   X.toast(bad?`أُنشئ الأمر، لكن تعذّر رفع ${bad} من المرفقات`:"✅ أُنشئ أمر الشراء "+o.no,bad?"er":undefined);closeM();
- }catch(e){busy=false;btnBusy('[data-po="save"]',"");err(e)}
+ }catch(e){
+  if(!id&&PDRAFT){try{const s=await withTimeout(getDoc(doc(X.db,"po",PDRAFT)),8000);if(s.exists()){const pid=PDRAFT;busy=false;PDRAFT=null;if(X.ping)X.ping([pid]);X.toast("✅ أُنشئ أمر الشراء "+(s.data().no||"")+" (الاتصال كان بطيئاً). لو المرفقات ناقصة أضفها من الأمر");closeM();return}}catch(x){}}
+  busy=false;btnBusy('[data-po="save"]',"");err(e)}
 }
 // تحديث المرحلة (مسؤول المشتريات): المرحلة + تاريخ حصولها الفعلي + ملاحظة، ولو "تم الشحن" بيانات الشحن
 let UPS="";

@@ -25,7 +25,8 @@ img.rc{max-width:100%;border-radius:10px}
 :where([data-theme=dark]) .rcb{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .rcb.ok{background:#2a301b;color:#b9c68a}:where([data-theme=dark]) .rq.go .chp{background:#2a2450;color:#c3b8f5}
 @media print{.cm{display:none!important}}
 `;
-const cur=()=>calc(LA,SA);
+let SAL=false;// (v238) الإقفالات اتقرت
+const cur=()=>calc(LA,SA,SAL);
 export function hdr(){if(!X)return;badge(X.newReqs())}
 function sync(){if(X.tab()==="cus"||X.tab()==="fl")X.redraw();hdr()}
 // ---------- التبويب ----------
@@ -97,10 +98,17 @@ async function closePeriod(){
  if(!confirm(`إقفال العهدة؟\nعهدة ${fmt(k.ins)} · مصروفات ${fmt(k.exps)} · الرصيد المرحّل ${fmt(k.bal)}\nبعد الإقفال لا يمكن تعديل هذه الحركات، ويصبح الرصيد افتتاحياً للفترة القادمة.`))return;
  const d=new Date(),p=n=>String(n).padStart(2,"0"),id=doc(collection(X.db,"settlements")).id;
  const s={br:"WH",no:`C-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`,from:k.open[0].dt,to:today(),opening:k.opening,ins:k.ins,exps:k.exps,bal:Math.round(k.bal*100)/100,ids:k.open.map(e=>e.id),st:"approved",ts:Date.now()};
- for(let i=0;i<k.open.length;i+=400){const bt=writeBatch(X.db);k.open.slice(i,i+400).forEach(e=>bt.update(doc(X.db,"ledger",e.id),{sid:id}));await bt.commit()}
- await setDoc(doc(X.db,"settlements",id),s);
- X.toast("تم الإقفال. الرصيد المرحّل "+fmt(s.bal));stmt(k,"كشف حساب العهدة — "+s.no,s.from,s.to,k.open,k.opening);
+ // 🛟 (v238) ضغطتين = إقفالين، والفشل في النص كان بيضيّع الحركات من الرصيد من غير رسالة. دلوقتي: قفل للضغط المكرر، ورسالة واضحة،
+ // والحركات اللي اتعلّمت من غير إقفال بتفضل محسوبة مفتوحة (cust.calc) فإعادة الضغط بتكمّل الإقفال صح
+ if(CLOSING)return;CLOSING=true;
+ try{
+  for(let i=0;i<k.open.length;i+=400){const bt=writeBatch(X.db);k.open.slice(i,i+400).forEach(e=>bt.update(doc(X.db,"ledger",e.id),{sid:id}));await bt.commit()}
+  await setDoc(doc(X.db,"settlements",id),s);
+  X.toast("تم الإقفال. الرصيد المرحّل "+fmt(s.bal));stmt(k,"كشف حساب العهدة — "+s.no,s.from,s.to,k.open,k.opening);
+ }catch(x){X.toast("لم يكتمل الإقفال (الاتصال أو الصلاحية). الحركات لا تزال مفتوحة ومحسوبة، اضغط إقفال مرة أخرى بعد قليل")}
+ finally{CLOSING=false}
 }
+let CLOSING=false;
 // ✏️ تصحيح الرصيد الافتتاحي (16 نوفمبر 2026، طلب محمد: "المبلغ اللي استلمته غلط"): الافتتاحي = رصيد آخر فترة مقفولة،
 // فالتصحيح بيتكتب على الفترة دي نفسها (bal) مع سجل بالقديم والجديد والسبب (adj) علشان يفضل واضح. للمالك بس (القواعد كمان).
 function adjForm(){
@@ -183,9 +191,9 @@ let LON=false;
 export function ledgerOn(){
  if(!X||LON)return;LON=true;
  un.push(onSnapshot(collection(X.db,"ledger"),sn=>{LA=sn.docs.map(d=>({id:d.id,...d.data()}));sync()},()=>X.toast("تعذر قراءة العهدة. تأكد من تحديث القواعد (Rules)")));
- un.push(onSnapshot(collection(X.db,"settlements"),sn=>{SA=sn.docs.map(d=>({id:d.id,...d.data()}));sync()},()=>{}));
+ un.push(onSnapshot(collection(X.db,"settlements"),sn=>{SA=sn.docs.map(d=>({id:d.id,...d.data()}));SAL=true;sync()},()=>{}));
  un.push(onSnapshot(doc(X.db,"cfg","cus"),s=>{const v=s.exists()?s.data():{};XC=Array.isArray(v.cats)?v.cats.filter(c=>typeof c==="string"&&c.trim()):[];sync()},()=>{}));
 }
-export function stop(){un.forEach(f=>f());un=[];LA=[];SA=[];XC=[];mode="";LON=false;const m=g("cmx");if(m){m.className="cm";m.innerHTML=""}}
+export function stop(){un.forEach(f=>f());un=[];LA=[];SA=[];SAL=false;XC=[];mode="";LON=false;const m=g("cmx");if(m){m.className="cm";m.innerHTML=""}}
 export const ledger=()=>LA;
 export {hdr as adminHdr};

@@ -6,11 +6,14 @@ export const fmt=x=>N(x).toLocaleString("en-US",{minimumFractionDigits:0,maximum
 export const today=()=>new Date().toLocaleDateString("en-CA");
 export const SL={pending:"بانتظار الاعتماد",approved:"معتمد",rejected:"مرفوض"};
 // حساب الرصيد: L = حركات الفرع، S = تسويات الفرع
-export function calc(L,S){
+export function calc(L,S,sLoaded){
  L=Array.isArray(L)?L:[];S=Array.isArray(S)?S:[];
  const ap=S.filter(s=>s.st==="approved").sort((a,b)=>N(a.ts)-N(b.ts)),last=ap[ap.length-1];
  const opening=last?N(last.bal):0;
- const open=L.filter(e=>!e.sid&&e.st!=="rejected").sort((a,b)=>N(a.ts)-N(b.ts));
+ // 🛟 (v238) إقفال اتقطع في النص (الحركات اتعلّمت بـ sid والإقفال نفسه ماتكتبش): الحركة اللي إقفالها مش موجود = لسه مفتوحة
+ // (من غير كده كانت بتختفي من الرصيد). بس بعد ما الإقفالات تتقري (sLoaded)، وإلا كل الحركات المقفولة هتبان مفتوحة لحظة
+ const SID=new Set(S.map(s=>s.id));
+ const open=L.filter(e=>(!e.sid||(sLoaded&&!SID.has(e.sid)))&&e.st!=="rejected").sort((a,b)=>N(a.ts)-N(b.ts));
  const ins=open.filter(e=>e.type==="in"&&e.st==="approved").reduce((a,e)=>a+N(e.amt),0);
  const exps=open.filter(e=>e.type==="exp").reduce((a,e)=>a+N(e.amt),0);
  const pin=open.filter(e=>e.type==="in"&&e.st==="pending").reduce((a,e)=>a+N(e.amt),0);

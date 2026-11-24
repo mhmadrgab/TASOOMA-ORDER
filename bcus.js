@@ -196,8 +196,11 @@ async function onClick(e){
  if(a==="close"&&canAct()&&SEL){const c=calc(SEL);if(c.pend){X.toast(`راجع المصروفات المنتظرة أولاً (${c.pend})`,"er");return}if(!c.L.length){X.toast("لا حركات في الفترة المفتوحة","er");return}
   if(!confirm(`إقفال فترة فرع ${brName(SEL)}؟\nالرصيد المرحَّل: ${money(c.bal)} ريال (${c.L.length} حركة). لا يمكن التعديل بعد الإقفال.`))return;
   BUSY=true;t.disabled=true;try{const sref=doc(collection(X.db,"bset")),L=c.L;
-   for(let i=0;i<L.length;i+=390){const b=writeBatch(X.db);if(i===0)b.set(sref,Object.assign({br:SEL,at:Date.now(),bal:c.bal,cnt:L.length,by:{e:X.me.e,n:String(X.me.n||"").slice(0,60)},ts:Date.now()},c.last?{from:N(c.last.at)}:{}));
-    L.slice(i,i+390).forEach(r=>b.update(doc(X.db,"bled",r.id),{sid:sref.id,o:0}));await withTimeout(b.commit(),30000)}
+   // 🛟 (v238) الإقفال كله في عملية واحدة (كله أو ولا حاجة) لحد 498 حركة + الإقفال (حد w() 500 عملية): كان بيتقسم على 390،
+   // ولو الدفعة التانية فشلت الرصيد كان بيتحسب مرتين. الأكتر من كده (نادر جداً لفترة فرع واحد) لسه على دفعات
+   const CH=L.length<=498?498:390;
+   for(let i=0;i<L.length;i+=CH){const b=writeBatch(X.db);if(i===0)b.set(sref,Object.assign({br:SEL,at:Date.now(),bal:c.bal,cnt:L.length,by:{e:X.me.e,n:String(X.me.n||"").slice(0,60)},ts:Date.now()},c.last?{from:N(c.last.at)}:{}));
+    L.slice(i,i+CH).forEach(r=>b.update(doc(X.db,"bled",r.id),{sid:sref.id,o:0}));await withTimeout(b.commit(),30000)}
    X.toast("🔒 أُقفلت الفترة ورُحّل الرصيد")}catch(x){fail(x)}BUSY=false;t.disabled=false;return}
 }
 function onChange(e){

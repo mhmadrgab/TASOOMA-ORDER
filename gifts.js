@@ -454,7 +454,9 @@ async function ensureRange(){
 // ---------- النافذة ----------
 function box(){let m=g("gfm");if(!m){m=document.createElement("div");m.id="gfm";m.className="gfm";m.addEventListener("click",e=>{if(e.target===m)closeM()});document.body.appendChild(m)}return m}
 function openM(h,v){const m=box();m.innerHTML=`<div class="gfk">${h}</div>`;m.className="gfm on";m.dataset.v=v||""}
-function closeM(){const m=g("gfm");if(m){m.className="gfm";m.innerHTML="";m.dataset.v=""}img="";imgBusy=false;edit=null;PK=null;ACC=null;ACCL=[]}
+function closeM(){const m=g("gfm");if(m){m.className="gfm";m.innerHTML="";m.dataset.v=""}img="";imgBusy=false;edit=null;PK=null;ACC=null;ACCL=[];GDRAFT=null}
+// 🛟 (v238) رقم الهدية الجديدة ثابت طول ما النموذج مفتوح: لو الحفظ وصل والرد اتأخر، الضغط تاني مابيعملش هدية تانية
+let GDRAFT=null;
 // ---------- نموذج التسجيل ----------
 const rowHtml=(x={})=>`<div class="gf-row"><input data-r="k" placeholder="الكود" dir="ltr" maxlength="40" value="${E(x.k||"")}"><input data-r="c" placeholder="اللون" maxlength="40" value="${E(x.c||"")}"><input data-r="z" placeholder="المقاس" maxlength="20" value="${E(x.z||"")}"><input data-r="q" placeholder="العدد" inputmode="numeric" value="${x.q?E(x.q):""}"><button type="button" data-gf="rmrow" title="احذف السطر">✕</button></div>`;
 function form(r){
@@ -499,17 +501,22 @@ async function save(){
    X.toast("تم حفظ التعديل ✅");closeM();if(X.mode==="branch")openBranch();return;
   }
   const wh=X.mode!=="branch",ts=Date.now(),dd=new Date(ts),p=n=>String(n).padStart(2,"0"),br=wh?"WH":X.code;
-  const ref=doc(collection(X.db,"gifts")),no=`G-${br}-${p(dd.getMonth()+1)}${p(dd.getDate())}-${p(dd.getHours())}${p(dd.getMinutes())}`;
+  if(!GDRAFT)GDRAFT=doc(collection(X.db,"gifts")).id;
+  const ref=doc(X.db,"gifts",GDRAFT),no=`G-${br}-${p(dd.getMonth()+1)}${p(dd.getDate())}-${p(dd.getHours())}${p(dd.getMinutes())}`;
   const d={br,brn:wh?"المستودع":String(X.brn||br).slice(0,40),no,ts,dt:today(),rows,pcs,to,why,by:{e:X.me.e,n:byN},st:"pend"};
   if(note)d.note=note;if(img||PDFS.length)d.img=1;
   const b=writeBatch(X.db);b.set(ref,d);if(img)b.set(doc(X.db,"giftimg",ref.id),{img});
   await withTimeout(b.commit(),20000);
   if(EXTRA.length){if(btn)btn.textContent=`⏳ جاري رفع المرفقات (${IMS.length+PDFS.length})...`;const bad=await saveExtras(X.db,"giftimg",ref.id,EXTRA);if(bad)X.toast(`سُجّلت الهدية، لكن تعذّر رفع ${bad} من المرفقات. افتحها وأضفها لاحقاً أو أبلغ المستودع`,"er")}
-  if(X.ping)X.ping([ref.id]);
+  if(X.ping)X.ping([ref.id]);GDRAFT=null;
   X.toast(IMS.length+PDFS.length>1?`سُجّلت ✅ مع ${IMS.length+PDFS.length} مرفقات، وبانتظار اعتماد مدير التسويق`:"سُجّلت ✅ وبانتظار اعتماد مدير التسويق");
   // (15 نوفمبر 2026) المستودع: نفتح السند على طول، فيه زرار «تعديل» لحد ما تتعتمد (بدل ما يدوّر عليها في القايمة)
   if(X.mode==="branch")openBranch();else{MINE.set(ref.id,{...d,id:ref.id});closeM();viewGift(ref.id);if(X.redraw)X.redraw()}
- }catch(e){if(btn){btn.disabled=false;btn.textContent=edit?"💾 حفظ التعديل":"✅ تسجيل"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
+ }catch(e){
+  if(!edit&&GDRAFT){try{const id=GDRAFT,s=await withTimeout(getDoc(doc(X.db,"gifts",id)),8000);if(s.exists()){GDRAFT=null;if(X.ping)X.ping([id]);
+   X.toast(EXTRA.length?"سُجّلت ✅ (الاتصال كان بطيئاً). لو المرفقات الإضافية ناقصة افتحها وأضفها":"سُجّلت ✅ وبانتظار اعتماد مدير التسويق");
+   if(X.mode==="branch")openBranch();else{MINE.set(id,Object.assign({id},s.data()));closeM();viewGift(id);if(X.redraw)X.redraw()}return}}catch(x){}}
+  if(btn){btn.disabled=false;btn.textContent=edit?"💾 حفظ التعديل":"✅ تسجيل"}const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":FAIL_MSG[w],"er")}
 }
 // ---------- الاعتماد / الرفض ----------
 async function decide(id,ok,rt){
