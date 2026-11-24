@@ -374,8 +374,8 @@ function draw(){
   ${(()=>{// توصيلات اتعيّنت له بعد ما بدأ الرحلة: بتظهر هنا ويضيفها للرحلة (بدل ما تستخبى إلى ما ينهي)
     const nw=REQ.filter(r=>r.st==="prep"&&!st.some(s=>s.rid===r.id));if(!nw.length)return "";
     return `<div class="card" style="border:2px solid var(--acc)"><h3>📦 ${nw.length===1?"توصيلة جديدة عُيّنت لك":nw.length+" توصيلات جديدة عُيّنت لك"}</h3>${nw.map(r=>`<div class="mut" style="padding:4px 0">${r._e?"🧭 مشوار: ":r.tr?`🔄 استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ← `:""}<b style="direction:ltr;display:inline-block;color:var(--ink)">${E(r.brn)}</b> · ${r._e?E(r.note||""):N(r.pcs)+" قطعة"}</div>`).join("")}<button class="b g" id="badd" type="button" style="margin-top:8px">➕ أضفها إلى هذه الرحلة</button></div>`})()}
-  <div class="row"><button class="b" id="bf" type="button">⛽ بنزين</button><button class="b p" id="be" type="button">🏁 إنهاء الرحلة</button></div>`;
-  g("bf").onclick=fuelForm;g("be").onclick=endForm;if(g("badd"))g("badd").onclick=()=>addToTrip(g("badd"));
+  <div class="row"><button class="b" id="bf" type="button">⛽ بنزين</button><button class="b" id="bo" type="button">🛢 غيّرت الزيت</button><button class="b p" id="be" type="button">🏁 إنهاء الرحلة</button></div>`;
+  g("bf").onclick=fuelForm;g("bo").onclick=oilForm;g("be").onclick=endForm;if(g("badd"))g("badd").onclick=()=>addToTrip(g("badd"));
   mn.querySelectorAll("[data-arr]").forEach(b=>b.onclick=()=>podForm(b.dataset.arr));mn.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>pickUp(b.dataset.pk,b));mn.querySelectorAll("[data-ct]").forEach(i=>i.onchange=()=>saveCt(i));wireIt(mn);wireNat(mn);
   initDMap({trip:()=>active(),geo:()=>GEO,codeOf,shipOf});dmapMount(g("dmap-slot"));
   clearInterval(tick);tick=setInterval(()=>{const e=g("el"),t=active();if(e&&t)e.textContent=dur(Date.now()-N(t.start))},30000);// (v214) رجع: كان اتشال بالغلط في v203
@@ -391,13 +391,13 @@ function draw(){
  <label>قراءة العداد الآن (كم) *${lastCarOdo(cid)?` — آخر قراءة مسجّلة ${lastCarOdo(cid)}`:""}</label><input id="so" inputmode="numeric" autocomplete="off" value="${E(odoV!==null?odoV:"")}" placeholder="انظر إلى العداد واكتب الرقم">
  <label>التوصيلات (${rs.length}) — يُضبط الترتيب تلقائياً على أقصر طريق</label>${rs.length?rs.map(r=>`<label class="pick"><input type="checkbox" data-r="${E(r.id)}" ${off.has(r.id)?"":"checked"}><span style="flex:1">${r._e?`<small style="display:block;color:#5b3fb0;font-weight:700">🧭 مشوار</small>`:""}${r.tr?`<small style="display:block;color:#1c4f86;font-weight:700">🔄 تحويل: استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi> ${N(r.rdy)?"✅ جاهز":"⏳ لا يزال قيد التجهيز"}</small>`:""}${shipOf(r)?`<small style="display:block;color:#1c4f86;font-weight:700">🚚 شحن: تسلّمه لشركة ${E(shipOf(r))}</small>`:""}<b style="direction:ltr;display:inline-block">${E(r.brn)}</b>${r._e?`<small class="mut" style="display:block">${E(r.note||"")}${r.ct?` · المستلم: ${E(r.ct)}`:""}</small>`:`<small class="mut" style="display:block"><bdi dir="ltr">${E(r.no)}</bdi> · ${N(r.codes)} صنف · ${N(r.pcs)} قطعة</small>${ctBox(r.id,shipOf(r),CT[r.id])}`}</span>${itBtn(r.id)}</label>`).join(""):'<div class="mut">لا توجد توصيلات معيّنة لك حالياً. انتظر تعيين المستودع.</div>'}<div id="sord">${ordPreview(rs.filter(r=>!off.has(r.id)))}</div>
  <button class="b g" id="bs" type="button" style="margin-top:10px" ${rs.length?"":"disabled"}>🚚 ابدأ الرحلة</button></div>
- <div class="row" style="margin:0 0 14px"><button class="b" id="bf" type="button">⛽ تسجيل بنزين</button></div>
+ <div class="row" style="margin:0 0 14px"><button class="b" id="bf" type="button">⛽ تسجيل بنزين</button><button class="b" id="bo" type="button">🛢 غيّرت الزيت</button></div>
  ${dayTr.length?`<div class="card"><h3>رحلات اليوم</h3>${dayTr.map(t=>`<div class="mut" style="padding:6px 0;border-bottom:1px solid var(--line)">${hm(t.start)} ← ${hm(t.end)} · ${dur(N(t.end)-N(t.start))} · ${Math.max(0,N(t.odo1)-N(t.odo0))} كم · ${(t.stops||[]).filter(s=>s.arr).length} توصيلة</div>`).join("")}</div>`:""}`;
  g("sc").onchange=()=>{lsSet("drv_car",g("sc").value);odoV=null;draw()};g("so").oninput=()=>{odoV=g("so").value};
  mn.querySelectorAll("[data-r]").forEach(c=>c.onchange=()=>{c.checked?off.delete(c.dataset.r):off.add(c.dataset.r);const so=g("sord");if(so)so.innerHTML=ordPreview(rs.filter(r=>!off.has(r.id)))});
  mn.querySelectorAll("[data-ct]").forEach(i=>i.oninput=()=>{const v=ctV(i.value);if(v)CT[i.dataset.ct]=v;else delete CT[i.dataset.ct];ctSave()});
  mn.insertAdjacentHTML("beforeend",gpsCard());wireCpy(mn);wireNat(mn);
- g("bf").onclick=fuelForm;g("bs").onclick=startTrip;wireIt(mn);
+ g("bf").onclick=fuelForm;g("bo").onclick=oilForm;g("bs").onclick=startTrip;wireIt(mn);
 }
 // محتوى الطلب (الأصناف والكميات) علشان السائق يراجع وهو بيحمّل
 const itBtn=rid=>{const r=REQ.find(x=>x.id===rid);return r&&Array.isArray(r.rows)&&r.rows.length?`<button class="b it" data-it="${E(rid)}" type="button">📋 الأصناف</button>`:""};
@@ -543,6 +543,38 @@ function fuelForm(){
   g("f1").disabled=true;
   try{await withTimeout(addDoc(collection(db,"fuel"),{drv:me.id,drvn:me.name,car:cc.id,carn:cc.name,ts:Date.now(),dt:today(),liters:l,cost:m,odo:o,full:g("ff").checked}),15000);lsSet("drv_odo_"+cc.id,String(o));closeM();toast("تم تسجيل البنزين ✅")}
   catch(e){g("f1").disabled=false;fail(e,"غير مسموح بالتسجيل.")}
+ };
+}
+// 🛢 (v232) بلاغ تغيير الزيت: السائق يكتب العداد وقت التغيير (+ صورة الفاتورة أو الستيكر)، والمستودع يراجعه ويسجّله على السيارة
+function oilForm(){
+ const a=active(),cid=a?a.car:(g("sc")&&g("sc").value)||lsGet("drv_car")||"",c=CARS.find(x=>x.id===cid)||CARS[0];
+ if(!c){toast("لا توجد سيارات — تواصل مع المستودع","er");return}
+ const lo=lastCarOdo(c.id);
+ openM(`<h3>🛢 غيّرت الزيت</h3><div class="mut" style="margin-bottom:6px">اكتب رقم العداد وقت تغيير الزيت (مكتوب على الفاتورة أو الستيكر الملصق في السيارة). سيراجعه المستودع ويسجّله.</div>
+ <label>السيارة</label><select id="ocar">${CARS.map(x=>`<option value="${E(x.id)}" ${x.id===c.id?"selected":""}>${E(x.name)} ${E(x.plate||"")}</option>`).join("")}</select>
+ <label>قراءة العداد وقت التغيير (كم) *${lo?` — آخر قراءة مسجّلة ${lo}`:""}</label><input id="oo" inputmode="numeric" autocomplete="off" placeholder="مثلاً ${lo||45000}">
+ <label>تاريخ التغيير</label><input id="od" type="date" value="${today()}" max="${today()}">
+ <label>المبلغ (اختياري)</label><input id="om" inputmode="decimal" autocomplete="off">
+ <label>ملاحظة (اختياري)</label><input id="on" maxlength="200" autocomplete="off" placeholder="مثلاً: غيّرت الفلتر أيضاً">
+ <label>صورة الفاتورة أو الستيكر (اختياري)</label><div id="omp"></div>
+ <div class="row"><button class="b" id="o0" type="button">رجوع</button><button class="b p" id="o1" type="button">إرسال للمستودع</button></div>`);
+ const PK=multiPick(g("omp"),{max:1,w:1100,cap:450000,pdf:false,toast,add:"صورة"});
+ g("o0").onclick=closeM;
+ g("o1").onclick=async()=>{
+  const cc=CARS.find(x=>x.id===g("ocar").value),o=N(toEn(g("oo").value)),dt=g("od").value,m=g("om").value.trim(),nt=g("on").value.trim(),l0=lastCarOdo(cc?cc.id:"");
+  if(!cc){toast("اختر السيارة","er");return}
+  if(!(o>0)||o>9999999){toast("اكتب قراءة العداد وقت تغيير الزيت","er");return}
+  if(l0&&o-l0>MAXLEG){toast(`الرقم كبير جداً (${o-l0} كم من آخر قراءة). راجع العداد`,"er");return}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dt)||dt>today()){toast("اختر تاريخ التغيير (اليوم أو قبله)","er");return}
+  const mv=m?N(toEn(m)):null;if(m&&!(mv>=0&&mv<=100000)){toast("المبلغ غير صحيح","er");return}
+  if(PK.busy()){toast("انتظر حتى تنتهي الصورة","er");return}
+  const img=PK.imgs()[0]||"";g("o1").disabled=true;g("o1").textContent="جاري الإرسال...";
+  try{
+   const ref=doc(collection(db,"oil")),d={drv:me.id,drvn:me.name,car:cc.id,carn:(cc.name+(cc.plate?" "+cc.plate:"")).slice(0,80),odo:o,dt,ts:Date.now(),st:"pend"};
+   if(mv!==null)d.cost=mv;if(nt)d.note=nt.slice(0,200);
+   if(img){await withTimeout(setDoc(doc(db,"oilimg",ref.id),{img}),20000);d.img=1}
+   await withTimeout(setDoc(ref,d),15000);ping(auth,[],[],[],[],[],[],[],[],[ref.id]);closeM();toast("تم إرسال تغيير الزيت للمستودع ✅");
+  }catch(e){const x=g("o1");if(x){x.disabled=false;x.textContent="إرسال للمستودع"}fail(e,"غير مسموح. ربما لم تتحدّث قواعد المستودع بعد.")}
  };
 }
 function endForm(){

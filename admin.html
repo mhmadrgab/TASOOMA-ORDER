@@ -394,7 +394,7 @@ function start(){
  if(adm||can("fl")||vw){
   // 🧭 (v223) المشاوير: المدير وصاحب «السيارات» ينشئونها، والمتابع يرى
   initErrand({db,fb:{collection,doc,query,where,onSnapshot,setDoc,updateDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||(ROLE.root?OWNER_NAME:"")||me}},staff:(adm||can("fl"))&&!vwOn("fl"),drivers:fleetDrivers,redraw:()=>{if(tab==="fl")draw()},ping:ids=>ping(auth,[],[],[],[],[],[],[],ids)});
-  initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vwOn("fl"),ping:(ids,trips)=>ping(auth,ids,[],trips),errands:errandView,place:errPlace,errBack});
+  initFleet({db,auth,toast,tab:()=>tab,redraw:draw,R:()=>R,admin:adm,view:vwOn("fl"),ping:(ids,trips,oils)=>ping(auth,ids,[],trips,[],[],[],[],[],oils),me:{e:me,get n(){return ROLE.name||(ROLE.root?OWNER_NAME:"")||me}},errands:errandView,place:errPlace,errBack});
  }
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
  if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm"||sub==="lk")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,co:ROLE.co===true,lock:()=>LOCK,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});

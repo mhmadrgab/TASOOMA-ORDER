@@ -3,6 +3,7 @@ import {makeFb,emailOf,collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapsh
 import {E,N,fmt,today,stmtHtml,printStmt,ensurePrintCss} from "./cust.js";
 import {notify,beep,pushOn} from "./notify.js";
 import {ledger,ledgerOn} from "./ad-extra.js";
+import {zoomOpen} from "./zoom.js";
 import {leaflet,baseMap,pin,okPt,MAP_CSS,roadRoute,glide,prepPath,pointAt,pathFrom,glideAlong,setHd,driveTo,bearing} from "./map.js";
 const g=id=>document.getElementById(id);
 const toEn=s=>String(s||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/٫/g,".").replace(/[٬,]/g,"");
@@ -15,6 +16,17 @@ let X=null,CARS=[],DRV=[],TR=[],FU=[],PW={},GEOD=null,geoReady=false,un=[],pT=nu
 // الرحلات والبنزين: TRL/FUL = اللي بيتسمع لايف (الشهر ده واللي قبله)، OLDT/OLDF = شهور أقدم اتحمّلت لما حد طلبها،
 // TR/FU = الاتنين مع بعض (اللي كل الشاشات بتستخدمه)
 let TRL=[],FUL=[],OLDT=new Map(),OLDF=new Map(),LOADED=new Set(),DDR=null;
+let OIL=[],pO=null;// 🛢 (v232) بلاغات تغيير الزيت من السائقين (بانتظار المراجعة)
+function oilHtml(){
+ if(!OIL.length)return "";
+ const rows=OIL.slice().sort((a,b)=>N(a.ts)-N(b.ts)).map(o=>{const c=CARS.find(x=>x.id===o.car),cur=c?N(c.oilLast):0;
+  return `<tr><td class="l" style="direction:rtl">${E(o.carn||o.car)}${c?"":`<small style="display:block;color:#c4362b">السيارة محذوفة</small>`}</td><td>${E(o.drvn||o.drv)}</td><td><b>${fmt(N(o.odo))}</b>${cur?`<small class="off" style="display:block">المسجّل الآن ${fmt(cur)}</small>`:""}</td><td>${E(o.dt||"")}</td><td>${o.cost!=null?fmt(N(o.cost)):"—"}</td><td class="l" style="direction:rtl;max-width:220px"><span data-notr>${E(o.note||"")}</span></td>
+  <td>${o.img?`<button class="bt s" data-fl="oilv" data-id="${E(o.id)}" type="button">📎 الصورة</button>`:"—"}</td>
+  <td style="white-space:nowrap">${X.admin&&!X.view?`<button class="bt s g" data-fl="oilok" data-id="${E(o.id)}" type="button">✅ سجّله على السيارة</button> <button class="bt s r" data-fl="oilno" data-id="${E(o.id)}" type="button">❌ رفض</button>`:`<span class="off">بانتظار المدير</span>`}</td></tr>`}).join("");
+ return `<div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🛢 تغيير الزيت: بلاغات السائقين (${OIL.length})</h3></div>
+ <p class="off" style="margin:4px 0 8px">راجع رقم العداد مع الصورة، ثم «سجّله على السيارة» فيُحدَّث عداد آخر تغيير زيت ويختفي تنبيه التأخير.</p>
+ <div class="pan"><div class="tw"><table><thead><tr><th>السيارة</th><th>السائق</th><th>العداد وقت التغيير</th><th>التاريخ</th><th>المبلغ</th><th>ملاحظة</th><th>الصورة</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
 // ddir/{drv1} = {n}: السائقين المفعّلين بس. بنكتب اللي اتغيّر بس (مش مع كل تحديث)
 function syncDdir(){
  if(!X||!X.admin||!DDR||!DRV.length)return;
@@ -388,6 +400,7 @@ function alerts(){
   if(c.oilEvery&&N(c.oilLast)>=0&&odo>0){const rem=due-odo;if(rem<=0)A.push({l:"al",t:`🛢 ${E(c.name)}: تغيير الزيت متأخر ${fmt(-rem)} كم`});else if(rem<=500)A.push({l:"al w",t:`🛢 ${E(c.name)}: باقي ${fmt(rem)} كم على تغيير الزيت`})}
   [["insExp","التأمين"],["licExp","رخصة السيارة"]].forEach(([f,n])=>{if(c[f]){const d=Math.ceil((new Date(c[f]).getTime()-now)/864e5);if(d<0)A.push({l:"al",t:`📄 ${E(c.name)}: ${n} منتهي من ${-d} يوم`});else if(d<=30)A.push({l:"al w",t:`📄 ${E(c.name)}: ${n} ينتهي بعد ${d} يوم`})}});
  });
+ OIL.forEach(o=>A.push({l:"al w",t:`🛢 ${E(o.drvn||o.drv)} أبلغ بتغيير زيت ${E(o.carn||o.car)} عند ${fmt(N(o.odo))} كم: راجعه في «تغيير الزيت» أسفل الصفحة`}));
  TR.filter(t=>t.st==="active").forEach(t=>{if(now-N(t.start)>10*36e5)A.push({l:"al",t:`⏱ رحلة ${E(t.drvn)} مفتوحة منذ ${dur(now-N(t.start))}`})});
  // (12 نوفمبر 2026) المقارنة بآخر رحلة قبلها بس (مش بأكبر قراءة اتكتبت في أي وقت): قراءة غلط واحدة قديمة كانت بتطلّع تنبيه على كل رحلة بعدها.
  // وتنبيه واحد بس لكل عربية (الأحدث). الرحلات الخارجية (car:"ext") مالهاش عداد
@@ -427,7 +440,7 @@ export function view(){
   <div class="fl2" style="margin:0">${t.ext?telBtn({phone:t.ext.ph})+`<button class="bt s g" data-fl="xlink" data-id="${E(t.id)}" type="button">🔗 رابط السواق</button>`:telBtn(DRV.find(d=>d.id===t.drv))}<button class="bt s" data-fl="trd" data-id="${E(t.id)}" type="button">تفاصيل</button>${hasMap(t)?`<button class="bt s" data-fl="tmap" data-id="${E(t.id)}" type="button">🗺 خريطة</button>`:""}<button class="bt s r" data-fl="tend" data-id="${E(t.id)}" type="button">⏹ إنهاء الرحلة من المستودع</button></div></div>`}).join(""):'<div class="pan off">لا توجد سيارة على الطريق حالياً.</div>'}
  ${X.errands?X.errands():""}
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">📦 تعيين التوصيلات</h3>${!X.view&&openR.length?`<button class="bt s g" data-fl="xnew" type="button" style="margin-inline-start:auto" title="عربية مأجّرة أو شركة شحن من غير تطبيق: رابط واحد للسواق">🚐 رحلة خارجية</button>`:""}</div><div class="pan">${openR.length>1?`<div class="fl2 bk"><label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="bkall" style="width:auto" ${openR.every(r=>BK.has(r.id))?"checked":""}> الكل</label><span class="off">محدَّد <b id="bkn">${BK.size}</b></span><select id="bkd"><option value="">السائق</option>${dOpt(dr.map(d=>[d.id,d.name]),bkD)}</select><select id="bkc"><option value="">السيارة</option>${dOpt(CARS.filter(c=>c.active!==false).map(c=>[c.id,c.name+(c.plate?" "+c.plate:"")]),bkC)}</select><button class="bt s g" data-fl="bulk" type="button">تعيين المحدَّدين</button></div>`:""}<div class="tw"><table><thead><tr>${openR.length>1?"<th></th>":""}<th>الفرع</th><th>الطلب</th><th>قطع</th><th>المعيّن</th><th>سائق</th><th>سيارة</th><th></th></tr></thead><tbody>${openR.length?openR.map(r=>`<tr>${openR.length>1?`<td><input type="checkbox" data-bk="${E(r.id)}" style="width:20px;height:20px" ${BK.has(r.id)?"checked":""}></td>`:""}<td class="l">${r.tr?`🔄 استلم من <bdi dir="ltr">${E(r.tr.frn)}</bdi>${N(r.rdy)?" ✅":" ⏳"}<br>← سلّم لـ `:""}${E(r.brn)}</td><td><bdi dir="ltr">${E(r.no)}</bdi></td><td>${N(r.pcs)}</td><td>${r.asg&&r.asg.drvn?`<span class="pill go">${E(r.asg.drvn)} · ${E(r.asg.carn||"")}</span>`:'<span class="off">—</span>'}</td><td><select data-asd="${E(r.id)}"><option value="">اختر</option>${dOpt(dr.map(d=>[d.id,d.name]),r.asg&&r.asg.drv)}</select></td><td><select data-asc="${E(r.id)}"><option value="">اختر</option>${dOpt(CARS.filter(c=>c.active!==false).map(c=>[c.id,c.name+(c.plate?" "+c.plate:"")]),r.asg&&r.asg.car)}</select></td><td style="white-space:nowrap"><button class="bt s g" data-fl="asg" data-id="${E(r.id)}" type="button">تعيين</button>${r.asg&&r.asg.drv?` <button class="bt s" data-fl="unasg" data-id="${E(r.id)}" type="button">إلغاء</button>`:""}</td></tr>`).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">لا توجد طلبات مفتوحة</td></tr>'}</tbody></table></div><p class="off" style="font-size:13px;margin:8px 0 0">بعد التعيين يظهر الطلب لدى السائق في تطبيقه، ويرى الفرع "في الطريق" عندما يبدأ السائق الرحلة.</p></div>
- <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🚗 السيارات</h3>${X.admin?'<button class="bt s g" data-fl="car" type="button" style="margin-inline-start:auto">➕ إضافة سيارة</button>':""}<button class="bt s" data-fl="fuel" type="button" ${X.admin?"":'style="margin-inline-start:auto"'}>⛽ تسجيل بنزين</button></div>
+ ${oilHtml()}<div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">🚗 السيارات</h3>${X.admin?'<button class="bt s g" data-fl="car" type="button" style="margin-inline-start:auto">➕ إضافة سيارة</button>':""}<button class="bt s" data-fl="fuel" type="button" ${X.admin?"":'style="margin-inline-start:auto"'}>⛽ تسجيل بنزين</button></div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السيارة</th><th>العداد</th><th>كم الشهر</th><th>بنزين الشهر</th><th>كم/لتر</th><th>تكلفة/كم</th><th>الزيت</th><th>التأمين / الرخصة</th><th></th></tr></thead><tbody>${CARS.length?CARS.map(c=>{const s=carStat(c),due=N(c.oilLast)+N(c.oilEvery||5000);return `<tr><td class="l" style="direction:rtl">${E(c.name)}<small class="off" style="display:block;direction:ltr">${E(c.plate||"")}</small></td><td>${s.odo?fmt(s.odo):"—"}</td><td>${fmt(s.km)}</td><td>${fmt(s.fl)} لتر<small class="off" style="display:block">${fmt(s.fc)}</small></td><td>${s.kmpl?s.kmpl.toFixed(1):"—"}</td><td>${s.cpk!==null?s.cpk.toFixed(2):"—"}</td><td>${c.oilEvery&&s.odo?(due-s.odo<=0?`<span style="color:#c4362b;font-weight:700">متأخر</span>`:`باقي ${fmt(due-s.odo)} كم`):"—"}</td><td style="font-size:13px">${E(c.insExp||"—")}<br>${E(c.licExp||"—")}</td><td>${X.admin?`<button class="bt s" data-fl="car" data-id="${E(c.id)}" type="button">تعديل</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="9" class="off" style="text-align:center;padding:20px">أضف السيارات من زر "إضافة سيارة"</td></tr>'}</tbody></table></div></div>
  <div class="fl2" style="margin-top:22px"><h3 class="sub" style="margin:0">👷 السائقين</h3>${X.admin?'<button class="bt s g" data-fl="drv" type="button" style="margin-inline-start:auto">➕ إضافة سائق</button>':""}</div>
  <div class="pan"><div class="tw"><table><thead><tr><th>السائق</th><th>اسم الدخول</th><th>الحالة</th><th>رحلات الشهر</th><th>كم الشهر</th><th>كلمة المرور</th><th></th></tr></thead><tbody>${DRV.length?DRV.map(d=>{const m=dk(Date.now()).slice(0,7),t=TR.filter(x=>x.drv===d.id&&x.st==="done"&&monthOf(x.start)===m);return `<tr><td><b>${E(d.name)}</b>${d.phone?`<small class="off" style="display:block;direction:ltr;text-align:right">${E(d.phone)}</small>`:""}</td><td class="l">${E(d.id)}</td><td><span class="pill ${d.enabled?"":"off2"}">${d.enabled?"مفعّل":"معطّل"}</span></td><td>${t.length}</td><td>${fmt(t.reduce((a,x)=>a+Math.max(0,N(x.odo1)-N(x.odo0)),0))}</td><td>${PW[d.id]?`<span class="pin" data-fpw="${E(d.id)}">••••••••</span> <button class="bt s" data-fl="spw" data-id="${E(d.id)}" type="button">إظهار</button>`:'<span class="off" title="كلمة المرور لا تُحفظ: تظهر مرة واحدة بعد الإنشاء أو التغيير">لا تُحفظ</span>'}</td><td style="white-space:nowrap">${telBtn(d)} ${X.admin?`<button class="bt s ${d.gps?"g":""}" data-fl="gps" data-id="${E(d.id)}" type="button" title="تتبع السائق في الخلفية">📡 التتبع${d.gps?" ✓":""}</button> <button class="bt s" data-fl="dwa" data-id="${E(d.id)}" type="button">📲 واتساب</button> <button class="bt s" data-fl="dedit" data-id="${E(d.id)}" type="button">تعديل</button> <button class="bt s" data-fl="dtg" data-id="${E(d.id)}" type="button">${d.enabled?"تعطيل":"تفعيل"}</button> <button class="bt s" data-fl="dpw" data-id="${E(d.id)}" type="button">كلمة مرور جديدة</button> <button class="bt s" data-fl="dcp" data-id="${E(d.id)}" type="button">نسخ رسالة</button>`:""}</td></tr>`}).join(""):'<tr><td colspan="7" class="off" style="text-align:center;padding:20px">لا يوجد سائقون بعد</td></tr>'}</tbody></table></div></div>
@@ -618,7 +631,7 @@ function gpsForm(d){
 async function click(e){
  const t=e.target.closest("[data-fl]");if(!t)return;const a=t.dataset.fl,id=t.dataset.id;
  try{
-  if(!X.admin&&["car","carsave","cardel","fx","trx","drv","dtg","dpw","dcp","spw","dedit","dsave","dwa","gps","gnew","gmsg","gcp"].includes(a)){X.toast("هذه الصلاحية للمدير فقط");return}
+  if(!X.admin&&["car","carsave","cardel","fx","trx","drv","dtg","dpw","dcp","spw","dedit","dsave","dwa","gps","gnew","gmsg","gcp","oilok","oilno"].includes(a)){X.toast("هذه الصلاحية للمدير فقط");return}
   if(a==="tmap"||a==="pmap"||a==="mfit"||a==="mfollow"||a==="mwh"||a==="mbig")e.preventDefault();// لينكات الخريطة (#)
   if(a==="cancel")closeM();
   else if(a==="tmap")tripMapM(id);
@@ -636,6 +649,18 @@ async function click(e){
    await setDoc(doc(X.db,"cars",ctxEd||doc(collection(X.db,"cars")).id),d);closeM();X.toast("تم الحفظ");
   }
   else if(a==="cardel"){if(ctxEd&&confirm("حذف السيارة؟ ستبقى الرحلات القديمة في السجل."))await deleteDoc(doc(X.db,"cars",ctxEd));closeM()}
+  else if(a==="oilv"){const s=await getDoc(doc(X.db,"oilimg",id));const im=s.exists()?s.data().img:"";if(im)zoomOpen(im,"🛢 فاتورة تغيير الزيت");else X.toast("لا توجد صورة","er")}
+  else if(a==="oilok"||a==="oilno"){
+   const o=OIL.find(x=>x.id===id);if(!o)return;const c=CARS.find(x=>x.id===o.car),me=X.me||{},rv={e:String(me.e||"").toLowerCase(),n:String(me.n||"").slice(0,60),at:Date.now()};
+   if(a==="oilno"){const why=(prompt("سبب رفض البلاغ (يصل للسائق):")||"").trim();if(why.length<2){if(why)X.toast("اكتب سبباً واضحاً","er");return}rv.note=why.slice(0,200);
+    await updateDoc(doc(X.db,"oil",id),{st:"no",rv,upd:Date.now()});if(X.ping)X.ping([],[],[id]);X.toast("رُفض البلاغ وأُبلغ السائق");return}
+   if(!c){X.toast("السيارة محذوفة من المنصة؛ ارفض البلاغ","er");return}
+   const v=prompt(`عداد آخر تغيير زيت لـ ${c.name} (عدّله لو الرقم غلط):`,String(N(o.odo)));if(v===null)return;const odo=N(toEn(v));
+   if(!(odo>0)||odo>9999999){X.toast("رقم العداد غير صحيح","er");return}
+   if(N(c.oilLast)>odo&&!confirm(`المسجّل الآن على السيارة ${fmt(N(c.oilLast))} كم، وهذا أقل منه. تسجيله رغم ذلك؟`))return;
+   rv.odo=odo;const b=writeBatch(X.db);b.update(doc(X.db,"cars",c.id),{oilLast:odo});b.update(doc(X.db,"oil",id),{st:"ok",rv,upd:Date.now()});
+   await b.commit();if(X.ping)X.ping([],[],[id]);X.toast(`سُجّل تغيير الزيت على ${c.name} عند ${fmt(odo)} كم ✅`);
+  }
   else if(a==="fuel")fuelForm();
   else if(a==="fuelsave"){
    const c=CARS.find(x=>x.id===g("fc").value),dv=DRV.find(x=>x.id===g("fd").value),l=N(toEn(g("fl").value)),m=N(toEn(g("fm").value)),o=N(toEn(g("fo").value));
@@ -681,7 +706,7 @@ async function click(e){
    b.update(doc(X.db,"trips",id),{stops:st.filter((x,k)=>k!==i)});
    const back=!twice&&rq&&(rq.st==="go"||rq.st==="prep");
    if(back)b.update(doc(X.db,"requests",s.rid),{st:"prep",asg:null,upd:ts});
-   await b.commit();if(s.x&&!twice&&X.errBack)await X.errBack([s.rid]);// 🧭 (v223) المشوار يرجع «بانتظار خروج السائق»if(X.ping)X.ping(back?[s.rid]:[],[id]);X.toast(twice?"أُزيلت التوصيلة المكرّرة من الرحلة":back?"أُزيلت من الرحلة، والطلب رجع إلى قيد التجهيز":"أُزيلت من الرحلة");
+   await b.commit();if(s.x&&!twice&&X.errBack)await X.errBack([s.rid]);/* 🧭 (v223) المشوار يرجع «بانتظار خروج السائق» */if(X.ping)X.ping(back?[s.rid]:[],[id]);X.toast(twice?"أُزيلت التوصيلة المكرّرة من الرحلة":back?"أُزيلت من الرحلة، والطلب رجع إلى قيد التجهيز":"أُزيلت من الرحلة");
   }
   else if(a==="tend"){
    // رحلة السائق نسي يقفلها: المستودع يقفلها، والفروع اللي ماوصلهاش ترجع "قيد التجهيز"
@@ -759,5 +784,10 @@ export function initFleet(ctx){
   if(pF)FUL.forEach(f=>{if(!(f.id in pF)&&f.drv!=="admin")X.toast(`⛽ ${f.drvn}: ${fmt(f.liters)} لتر بنزين`)});
   pF={};FUL.forEach(f=>pF[f.id]=1);draw();
  },()=>{}));
+ pO=null;un.push(onSnapshot(query(collection(X.db,"oil"),where("st","==","pend")),sn=>{
+  OIL=sn.docs.map(d=>({id:d.id,...d.data()}));
+  if(pO)OIL.forEach(o=>{if(!pO[o.id])X.toast(`🛢 ${o.drvn}: غيّر زيت ${o.carn}`)});
+  pO={};OIL.forEach(o=>pO[o.id]=1);draw();
+ },()=>{}));
 }
-export function stop(){un.forEach(f=>f());un=[];liveStop();DDR=null;dropLive();dropM();CARS=[];DRV=[];TR=[];FU=[];TRL=[];FUL=[];OLDT=new Map();OLDF=new Map();LOADED=new Set();PW={};GEOD=null;geoReady=false;mode="";const m=g("flm");if(m){m.className="fm";m.innerHTML=""}}
+export function stop(){un.forEach(f=>f());un=[];OIL=[];pO=null;liveStop();DDR=null;dropLive();dropM();CARS=[];DRV=[];TR=[];FU=[];TRL=[];FUL=[];OLDT=new Map();OLDF=new Map();LOADED=new Set();PW={};GEOD=null;geoReady=false;mode="";const m=g("flm");if(m){m.className="fm";m.innerHTML=""}}
