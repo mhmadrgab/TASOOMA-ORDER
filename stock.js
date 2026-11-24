@@ -820,7 +820,7 @@ async function load(){
   try{const c=await fb.getDoc(fb.doc(X.db,"stk","cfg"));if(c.exists())CFG=Object.assign({},DEF,c.data())}catch(e){}
   try{const c=await fb.getDoc(fb.doc(X.db,"stk","sent"));SENT=c.exists()&&Array.isArray(c.data().l)?c.data().l:[]}catch(e){SENT=[]}
   try{const c=await fb.getDoc(fb.doc(X.db,"stk","lex"));lexFromDb(c.exists()?c.data():null)}catch(e){}// (v197) القاموس المشترك
-  await loadPub();
+  await loadPub();if(!X.ro&&rpcC())tabStatus();// 🗄 (v234) حالة جداول قاعدة البيانات (من غير انتظار)
   DATA=newData();SOLDC={};
   if(META&&META.q&&N(META.q.parts)>0){const z=await getParts(fb,"q",N(META.q.parts));if(z)loadQ(DATA,JSON.parse(await gun(z)))}
   }catch(e){if(!DATA)DATA=newData();REP=[{kind:"r",t:"تعذّر تحميل بيانات المخزون. تأكد من الإنترنت ومن لصق القواعد الجديدة، ثم أعد فتح القسم."}];UI.tab="up"}
@@ -864,8 +864,9 @@ async function saveD(R){
   else{const P=parts(await gz(JSON.stringify(monthDoc(DATA,ym))));if(P.length>10)throw new Error("big");P.forEach((p,i)=>b.set(fb.doc(X.db,"stk",i?"d"+ym+"_"+i:"d"+ym),{v:1,z:p,at:Date.now()}));for(let i=P.length;i<oldP;i++)b.delete(fb.doc(X.db,"stk","d"+ym+"_"+i));
    meta.d[ym]={n:r.length/5,parts:P.length,sold,dmin,dmax,cv,at:Date.now()}}
   meta.at=Date.now();meta.by=by();b.set(fb.doc(X.db,"stk","meta"),meta);await b.commit();META=Object.assign({},meta)}
- SOLDC={};return all.length;
+ SOLDC={};LASTD=all;return all.length;
 }
+let LASTD=[];// (v234) الشهور اللي آخر ملف تاريخ لمسها (لجداول قاعدة البيانات)
 // 📤 (v179) النشر للفروع (stkpub): الأجزاء والفروع أولاً ثم meta (الفرع يقرأ meta ويتجاهل أي جزء رقمه مختلف = نشر لم يكتمل)
 let PUB=null,PUBBUSY=false;
 async function loadPub(){try{const fb=await FB();const s=await fb.getDoc(fb.doc(X.db,"stkpub","meta"));PUB=s.exists()?s.data():null}catch(e){PUB=null}}
@@ -881,10 +882,47 @@ async function publish(quiet){
  catch(e){if(X.toast)X.toast(e&&e.code==="permission-denied"?"تعذّر النشر للفروع: الصق القواعد الجديدة في Supabase":"تعذّر النشر للفروع، حاول مرة أخرى");return false}
  finally{PUBBUSY=false;if(!quiet){BUSY="";paint()}}
 }
+/* 🗄 (v234) جداول قاعدة البيانات الحقيقية (schema stock) للإدارة والـ IT: سطر لكل صنف في كل مخزن، تتملى من الذاكرة بعد كل رفع.
+   الصفحة تبعت على دفعات (4000 سطر) والسيرفر يبدّل «الحالي» مرة واحدة في الآخر، فمحدش يشوف نص ملف. */
+const TAB_CH=4000;let TABST=null,TABBUSY=false;
+const rpcC=()=>X&&X.db&&X.db.c&&typeof X.db.c.rpc==="function"?X.db.c:null;
+async function rpcx(fn,args){const c=rpcC();if(!c)throw new Error("norpc");const r=await c.rpc(fn,args);if(r&&r.error)throw r.error;return r?r.data:null}
+async function tabPush(kind,ym,meta,rows,lbl){
+ const id=await rpcx("stk_tab_begin",{p_kind:kind,p_ym:ym||"",p_meta:Object.assign({n:rows.length},meta||{})});
+ for(let i=0;i<rows.length;i+=TAB_CH){const e=g("stk-pg");if(e)e.textContent=lbl+" "+Math.min(100,Math.round((i+TAB_CH)/rows.length*100))+"%";await rpcx("stk_tab_rows",{p_id:id,p_rows:rows.slice(i,i+TAB_CH)})}
+ return await rpcx("stk_tab_end",{p_id:id});
+}
+export function tabOnhandRows(D){const L=[];D.q.forEach((a,ki)=>{if(!a)return;const k=D.k[ki];for(let j=0;j<a.length;j+=4)L.push([k[0],k[1]||"",k[2]||"",D.st[a[j]],a[j+3]>=0&&D.vn[a[j+3]]!==undefined?D.vn[a[j+3]]:"",N(a[j+1]),N(a[j+2]),D.hasRc?rcOf(D,ki,a[j]):null])});return L}
+export function tabSalesRows(D,ym){const r=D.d[ym]||[],L=[];for(let i=0;i<r.length;i+=5){const k=D.k[r[i]];L.push([ym+"-"+String(r[i+2]).padStart(2,"0"),k[0],k[1]||"",k[2]||"",D.st[r[i+1]],N(r[i+3]),N(r[i+4])?N(r[i+4]):null])}return L}
+async function tabStatus(){try{TABST=await rpcx("stk_tab_status",{})}catch(e){TABST=undefined}}
+const tabErr=e=>{const c=String(e&&(e.code||e.message)||e||"");return /PGRST202|Could not find the function|norpc/.test(c)?"الصق القواعد الجديدة في Supabase أولاً":c.slice(0,80)};
+async function tabSync(opt){
+ if(X.ro||TABBUSY||!DATA||!DATA.has||!rpcC())return null;TABBUSY=true;const out={ok:0,err:""};
+ try{
+  if(opt.q){const q=META&&META.q||{};await tabPush("onhand","",{from:q.from||"",to:q.to?addDays(q.to,-1):"",src:q.src||""},tabOnhandRows(DATA),"الأرصدة");out.ok++}
+  const yms=(opt.yms||[]).filter(ym=>META&&META.d&&META.d[ym]);let fb=null;
+  for(const ym of yms){if(!DATA.d[ym]){fb=fb||await FB();const z=await getParts(fb,"d"+ym,Math.max(1,N(META.d[ym].parts)));if(z){loadMonth(DATA,ym,JSON.parse(await gun(z)));SOLDC={}}}
+   const rows=tabSalesRows(DATA,ym);if(rows.length){await tabPush("sales",ym,{},rows,"مبيعات "+ym);out.ok++}}
+ }catch(e){out.err=tabErr(e)}
+ finally{TABBUSY=false;await tabStatus()}
+ return out;
+}
+async function tabAll(){if(BUSY)return;BUSY="جاري تحديث جداول قاعدة البيانات…";paint();const r=await tabSync({q:true,yms:Object.keys(META&&META.d||{}).sort()});BUSY="";
+ if(X.toast)X.toast(!r?"غير متاح هنا":r.err?"تعذّر تحديث الجداول: "+r.err:"🗄 اتحدّثت جداول قاعدة البيانات ✅");paint()}
+function tabCard(){
+ if(X.ro||!DATA||!DATA.has)return "";const L=Array.isArray(TABST)?TABST:[],oh=L.find(x=>x.kind==="onhand"),sm=L.filter(x=>x.kind==="sales");
+ const dt=t=>t?E(new Date(t).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})):"";
+ return `<div class="stk-card"><h3>🗄 جداول قاعدة البيانات (للإدارة والـ IT)</h3><p>نفس البيانات محفوظة كجداول حقيقية في Supabase (schema <b data-notr dir="ltr">stock</b>): سطر لكل صنف في كل مخزن. تُقرأ من Table Editor أو SQL Editor أو أي برنامج تقارير، وتتحدّث تلقائياً مع كل رفع.</p>
+ <div class="stk-day"><span style="width:auto;flex:1;direction:rtl">الأرصدة <b data-notr dir="ltr">stock.onhand</b></span><b data-notr>${oh?fmt(oh.rows)+" سطر · "+dt(oh.at):TABST===undefined?"—":"لم تُملأ بعد"}</b></div>
+ <div class="stk-day"><span style="width:auto;flex:1;direction:rtl">المبيعات اليومية <b data-notr dir="ltr">stock.sales_daily</b></span><b data-notr>${sm.length?sm.length+" شهر · "+fmt(sm.reduce((s,x)=>s+N(x.rows),0))+" سطر":TABST===undefined?"—":"لم تُملأ بعد"}</b></div>
+ ${TABST===undefined?`<p style="color:#8a2218">تعذّر قراءة حالة الجداول: الصق القواعد الجديدة في Supabase ثم اضغط الزر.</p>`:""}
+ <button class="bt" type="button" data-sk="tabs" style="margin-top:8px">🗄 حدّث الجداول الآن</button></div>`;
+}
 async function onFiles(files){
  if(X.ro){if(X.toast)X.toast("رفع الملفات للأدمن ومالك النظام فقط");return}
  if(BUSY||!files||!files.length)return;REP=[];UI.rec=null;MFAIL={};UI.nsel={};UI.tsel={};UI.nrx=null;
  if(typeof CompressionStream==="undefined"||typeof DecompressionStream==="undefined"){REP=[{kind:"r",t:"هذا المتصفح قديم ولا يستطيع قراءة ملفات الإكسل هنا. استخدم Chrome أو Edge حديثاً."}];paint();return}
+ let TQ=false;const TY=new Set();// 🗄 (v234) اللي اتحفظ ← جداول قاعدة البيانات مرة واحدة بعد كل الملفات
  for(const f of [...files]){const nm=String(f.name||"ملف");
   try{BUSY="جاري قراءة "+nm+"…";paint();let last=0;const R=await readFile(f,p=>{const pc=Math.round(p*100);if(pc-last>=4){last=pc;const e=g("stk-pg");if(e)e.textContent=pc+"%"}});
    if(!R.ok){REP.push({kind:"r",f:nm,t:"لم نتعرّف على أعمدة هذا الملف. المطلوب: DESCRIPTION2 و Store Name و SOLD_QTY، ومعها OH_QTY (ملف الكميات) أو أعمدة التاريخ (ملف التاريخ)."});continue}
@@ -895,14 +933,16 @@ async function onFiles(files){
     REP.push({kind:"r",f:nm,t:"مجموع الصفوف لا يطابق سطر الإجمالي في الملف (المبيعات "+R.sum.sold+" والإجمالي "+R.tot.sold+(R.type==="q"&&R.tot.on!==undefined?"، الرصيد "+R.sum.on+" والإجمالي "+R.tot.on:"")+")، فلم يُحفظ حتى لا تُبنى الأرقام على ملف ناقص. أعد تنزيل التقرير."});continue}
    if(R.tot.sold===undefined)REP.push({kind:"w",f:nm,t:"لا يوجد سطر إجمالي في هذا الملف، فلم تُراجَع مجاميعه."});
    if(R.type==="q"){if(R.trunc){REP.push({kind:"r",f:nm,t:"ملف الكميات مقطوع من Power BI (أكثر من 150 ألف سطر)، فلم يُحفظ. نزّله بلا أعمدة زائدة أو على مجموعتين من الفروع."});continue}
-    BUSY="جاري حفظ الكميات…";paint();await saveQ(R,nm);BUSY="جاري النشر للفروع…";paint();const pubOk=await publish(true);REP.push({kind:pubOk?"g":"w",f:nm,t:pubOk?"📤 نُشر للفروع: المتوفر في المستودع والطلب المقترح لكل فرع.":"لم يُنشر للفروع (الصق القواعد الجديدة ثم اضغط «انشر للفروع الآن»)."});REP.push({kind:"g",f:nm,t:"ملف الكميات: "+R.n+" سطر · "+R.k.length+" صنف · "+R.st.length+" مخزن · الرصيد "+R.sum.on+" · المبيعات "+R.sum.sold+(R.rcOk?" · المستلم "+R.sum.rc:"")+chk});
+    BUSY="جاري حفظ الكميات…";paint();await saveQ(R,nm);TQ=true;BUSY="جاري النشر للفروع…";paint();const pubOk=await publish(true);REP.push({kind:pubOk?"g":"w",f:nm,t:pubOk?"📤 نُشر للفروع: المتوفر في المستودع والطلب المقترح لكل فرع.":"لم يُنشر للفروع (الصق القواعد الجديدة ثم اضغط «انشر للفروع الآن»)."});REP.push({kind:"g",f:nm,t:"ملف الكميات: "+R.n+" سطر · "+R.k.length+" صنف · "+R.st.length+" مخزن · الرصيد "+R.sum.on+" · المبيعات "+R.sum.sold+(R.rcOk?" · المستلم "+R.sum.rc:"")+chk});
     if(!R.from)REP.push({kind:"w",f:nm,t:"الملف ليس في آخره فترة التقرير (تصدير بلا سطر الإجمالي)، فاعتبرنا مبيعاته من 1 يناير حتى اليوم. معدل البيع في «الشراء المقترح» و«يكفي كم يوماً» محسوب على ذلك."});
     if(!R.rcOk&&R.rcn)REP.push({kind:"w",f:nm,t:"عمود المستلم في هذا الملف فيه "+R.rcn+" كود فقط، فلم يُعتمد (يُعتمد لو فيه استلام لعشرين كوداً فأكثر)."})}
    else{if(R.trunc){const cov=R.tot.sold?Math.round(R.sum.sold/R.tot.sold*100):0;
      REP.push({kind:"r",f:nm,t:"ملف التاريخ مقطوع من Power BI عند 150 ألف سطر"+(cov?" (يحتوي على "+cov+"% فقط من مبيعات الفترة)":"")+"، فلم يُحفظ. نزّله على فترات أقصر (شهر أو شهرين في كل ملف) وارفع الملفات كلها: المنصة تجمعها، وكل ملف يستبدل أيام فترته فقط."});continue}
-    BUSY="جاري حفظ مبيعات الأيام…";paint();const n=await saveD(R);REP.push({kind:"g",f:nm,t:"ملف التاريخ: "+R.n+" سطر · "+R.days.length+" يوماً"+(R.from?" · الفترة من "+R.from+" إلى "+addDays(R.to,-1):"")+" · "+n+" شهر محدَّث · المبيعات "+R.sum.sold+chk})}
+    BUSY="جاري حفظ مبيعات الأيام…";paint();const n=await saveD(R);LASTD.forEach(ym=>TY.add(ym));REP.push({kind:"g",f:nm,t:"ملف التاريخ: "+R.n+" سطر · "+R.days.length+" يوماً"+(R.from?" · الفترة من "+R.from+" إلى "+addDays(R.to,-1):"")+" · "+n+" شهر محدَّث · المبيعات "+R.sum.sold+chk})}
    if(R.bad)REP.push({kind:"w",f:nm,t:R.bad+" سطر تُرك لنقص الكود أو التاريخ."})}
   catch(e){const c=e&&(e.code||e.message)||"";REP.push({kind:"r",f:nm,t:c==="notzip"?"الملف ليس xlsx ولا csv صالحاً.":c==="permission-denied"?"غير مسموح بالحفظ. تأكد من لصق القواعد الجديدة في Supabase.":c==="big"?"الملف أكبر من المسموح بتخزينه.":"تعذّرت قراءة الملف أو حفظه ("+String(c).slice(0,60)+")."})}}
+ if((TQ||TY.size)&&rpcC()){BUSY="جاري تحديث جداول قاعدة البيانات…";paint();const tb=await tabSync({q:TQ,yms:[...TY].sort()});
+  if(tb)REP.push(tb.err?{kind:"w",t:"لم تتحدّث جداول قاعدة البيانات ("+tb.err+"). البيانات محفوظة في المنصة عادي، واضغط «حدّث الجداول الآن» بعدين."}:{kind:"g",t:"🗄 اتحدّثت جداول قاعدة البيانات (stock.onhand و stock.sales_daily) للإدارة والـ IT."})}
  BUSY="";if(DATA&&DATA.has&&!REP.some(r=>r.kind==="r"))UI.tab="up";paint();
 }
 async function saveCfg(){try{const fb=await FB();const c={min:N(CFG.min),keep:N(CFG.keep),slow:N(CFG.slow),days:N(CFG.days),stale:N(CFG.stale),ex:(CFG.ex||[]).slice(0,40),wh:String(CFG.wh||DEF.wh),ov:(CFG.ov||[]).slice(0,60),at:Date.now(),by:by().e};
@@ -1731,7 +1771,7 @@ function vUp(){
  const pub=has?`<div class="stk-card"><h3>📤 النشر للفروع</h3><p>تشاهد الفروع وهي تكتب ورقة النواقص هل الصنف «متوفر» أو «كمية قليلة» أو «غير متوفر» في المستودع (بلا أرقام)، ولكل فرع «طلب مقترح» بالأصناف التي رصيده منها أقل من الحد وكانت تُباع عنده. يُنشر تلقائياً مع كل ملف كميات ومع حفظ القواعد.</p>
  <div class="stk-day"><span style="width:auto;flex:1;direction:rtl">آخر نشر</span><b data-notr>${PUB&&PUB.at?E(new Date(N(PUB.at)).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})):"لم يُنشر بعد"}</b></div>
  <button class="bt p" type="button" data-sk="pub" style="margin-top:8px">📤 انشر للفروع الآن</button></div>`:"";
- const drop=X.ro?`<div class="stk-rep">صلاحيتك في هذا القسم للمشاهدة والتحليل. رفع الملفات والنشر للفروع وتعديل القواعد للأدمن ومالك النظام.</div>`:pub+`<label class="stk-drop" id="stk-drop"><input type="file" id="stk-file" accept=".xlsx,.csv" multiple><b>⬆️ ارفع ملفات اليوم</b><small>اختر ملف الكميات وملف التاريخ معاً (أو اسحبهما هنا). المنصة تتعرّف على كل ملف من أعمدته وتربط بينهما.</small></label>`;
+ const drop=X.ro?`<div class="stk-rep">صلاحيتك في هذا القسم للمشاهدة والتحليل. رفع الملفات والنشر للفروع وتعديل القواعد للأدمن ومالك النظام.</div>`:pub+tabCard()+`<label class="stk-drop" id="stk-drop"><input type="file" id="stk-file" accept=".xlsx,.csv" multiple><b>⬆️ ارفع ملفات اليوم</b><small>اختر ملف الكميات وملف التاريخ معاً (أو اسحبهما هنا). المنصة تتعرّف على كل ملف من أعمدته وتربط بينهما.</small></label>`;
  return `${drop}
  ${REP.map(r=>`<div class="stk-rep ${r.kind==="g"?"g":r.kind==="w"?"w":"r"}">${r.f?`<b data-notr>${E(r.f)}</b> — `:""}${E(r.t)}</div>`).join("")}
  <div class="stk-up"><div class="stk-card"><h3>📦 ملف الكميات</h3>${q?`<p>آخر رفع: <b data-notr dir="ltr">${dts(q.at)}</b>${q.src?` · <span data-notr>${E(q.src)}</span>`:""}</p><p>${fmt(q.rows)} سطر · ${fmt(q.skus)} صنف (كود ولون ومقاس)</p><p>الرصيد ${fmt(q.on)} قطعة · المبيعات ${fmt(q.sold)} قطعة${q.from?` · من <span data-notr dir="ltr">${E(q.from)}</span> إلى <span data-notr dir="ltr">${E(addDays(q.to,-1))}</span>`:""}</p>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه <b data-notr>OH_QTY</b> (الكمية) بلا تاريخ.</p>`}</div>
@@ -2087,7 +2127,7 @@ function body(){
  const mf=Object.keys(MFAIL).sort(),mfl=mf.join(" · "),fail=mf.length&&t!=="up"&&t!=="cfg"?`<div class="stk-rep r">تعذّر تحميل مبيعات هذه الشهور من ملفات التاريخ: <b data-notr>${E(mfl)}</b>، فالمبيعات المعروضة للفترة ناقصة بقدرها. تأكد من الإنترنت ثم <button class="bt s" type="button" data-sk="mretry">أعد المحاولة</button></div>`:"";
  return hd+tabs+busy+(t!=="cfg"?stl:"")+fail+v;
 }
-const RO_ACT=["cfgsave","cfgdef","pub","mk","mkgo","dgo","nmk","nmkgo","mkc","pgo","pdst"];// ما لا يفعله صاحب صلاحية المشاهدة (والقواعد ترفضه أصلاً)
+const RO_ACT=["cfgsave","cfgdef","pub","tabs","mk","mkgo","dgo","nmk","nmkgo","mkc","pgo","pdst"];// ما لا يفعله صاحب صلاحية المشاهدة (والقواعد ترفضه أصلاً)
 let PT=0;
 function paint(keepFocus){
  if(!ROOT)return;const a=document.activeElement,id=a&&ROOT.contains(a)?a.id:"",s0=a&&id?[a.selectionStart,a.selectionEnd]:null;
@@ -2211,6 +2251,7 @@ function wire(){
    UI.lim=200;paint(false);window.scrollTo(0,0)}
   else if(a==="recon")doRecon();
   else if(a==="pub")publish(false);
+  else if(a==="tabs")tabAll();
   else if(a==="recx"||a==="qx"){const X1=xOther(a==="recx"?"rec":t.dataset.k);if(X1){const keep=LASTX;LASTX=X1;csv();LASTX=keep}}
   else if(a==="ala"){const k=String(g("stk-an").value||"").trim().slice(0,40),s=g("stk-as").value;if(!k||!s){if(X.toast)X.toast("اكتب الاسم واختر المخزن");return}
    const rest=(CFG.ov||[]).filter(o=>!(o.t==="a"&&wkey(o.k)===wkey(k)));if(rest.length>=60){if(X.toast)X.toast("وصلت الحد الأقصى (60) للحدود الخاصة والأسماء");return}CFG.ov=rest.concat([{t:"a",k,s}]);ASKC=null;paint()}
