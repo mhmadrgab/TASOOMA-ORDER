@@ -525,6 +525,7 @@ import {initBrStock,stopBrStock} from "./brstock.js";// 📦 (v179) المتوف
 import {initCall,stopCall,earlyCall} from "./call.js";
 import {initBrNav,stopBrNav,brNavSec,brNavRefresh} from "./brnav.js";// 🧭 (v214) القائمة الجانبية
 import {initBCus,stopBCus} from "./bcus.js";// 💼 (v218) عهدة الفرع
+import {initDay,stopDay} from "./bday.js";// 🧾 (v241) يومية الفرع
 const {app,db,auth}=makeFb("branch");
 earlyCall({db,auth,toast:(m,t)=>{try{toast(m,t)}catch(e){}}});// 📞 الصفحة اتفتحت على مكالمة: نبدأ المكالمات قبل باقي التحميل
 const LBL={new:"وصل المستودع",prep:"قيد التجهيز",done:"تم التسليم",recv:"تم الاستلام",go:"في الطريق إليك 🚚"};
@@ -661,7 +662,9 @@ function enter(b){
  initBChat({db,app,party:"b-"+code(b),codes:BR,name:()=>String(st&&st.dr||"").trim(),myLabel:()=>b,brn:c=>BR.find(x=>code(x)===c)||(c===code(b)?b:c),toast,beep,notify,ping:c=>ping(auth,[],[c]),
   visible:()=>{const m=g("bcm");return !!(m&&m.classList.contains("on"))},onBadge:()=>{setBadge();brNavRefresh()}});
  initBCus({db,toast,mode:"branch",code:code(b),brn:b,ping:id=>ping(auth,[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:"فرع "+b}});
+ initDay({db,toast,mode:"branch",code:code(b),brn:b,ping:id=>ping(auth,[],[],[],[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:"فرع "+b}});// 🧾 (v241)
  initBrNav({who:()=>b,myCount:()=>Object.values(REQS).filter(r=>r.st==="done").length+(XF||[]).filter(r=>(r.st==="new"||r.st==="prep")&&!+r.rdy).length,chatCount:()=>bcUnread()});
+ if(/[?&]dc=1/.test(location.search)&&g("bday"))brNavSec("dc");// 🧾 (v241) إشعار اليومية ← قسم اليومية
  // فتح من الإشعار: index.html?chat=إيميل الشخص (بيفتح محادثته على طول بعد ما الأسماء تتحمّل)
  const qc=new URLSearchParams(location.search).get("chat");if(qc!==null){setTimeout(()=>openBr((q=>/^g_/.test(q)?q:q.toLowerCase())(qc)),900);try{history.replaceState(null,"",location.pathname)}catch(e){}}
 }
@@ -680,7 +683,7 @@ function deepReq(id){
 // كارت التحديث (ui.js) زرار "اعرض طلباتي": ننزل لقايمة الطلبات ونفتح آخر طلب كورقة (لو فيه طلبات)
 window.addEventListener("tz-news-go",e=>{if(e&&e.detail&&e.detail.sub==="cus"&&g("bcus")){brNavSec("cus");try{scrollTo(0,0)}catch(x){}return}/* 💼 (v220) كارت العهدة ← قسم العهدة */brNavSec("my");const my=g("my");if(my)my.scrollIntoView({behavior:"smooth",block:"start"});const c=document.querySelector("#ml .mr[data-id]"),b=c&&c.querySelector("[data-osh]");if(b)setTimeout(()=>b.click(),500)});
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[wrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m)deepReq(m[1])});
-function gateOn(){B=null;stopBCus();stopPimg();stopBrNav();stopBrStock();stopNotes();stopSettings();stopPwSelf();stopCall();stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
+function gateOn(){B=null;stopBCus();stopDay();stopPimg();stopBrNav();stopBrStock();stopNotes();stopSettings();stopPwSelf();stopCall();stopBranch();stopSheet();stopGifts();stopMnt();stopAnn();stopBChat();stopTrack();REQS={};XF=null;seenXf.clear();const xf=g("xf");if(xf)xf.remove();if(unsub){unsub();unsub=null}document.body.classList.remove("lock");g("gp").value="";g("gate").className="on"}
 g("gg").onclick=async()=>{
  const b=g("gb").value,p=g("gp").value;showErr("");
  if(!p){showErr("اكتب كلمة المرور");return}

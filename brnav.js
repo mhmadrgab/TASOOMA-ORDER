@@ -10,6 +10,7 @@ const ICO={
  gift:'<rect x="3.5" y="8" width="17" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12"/><path d="M12 8c-2-3.5-6-3.5-6-1s4 1 6 1c2 0 6 1.5 6-1s-4-2.5-6 1z"/>',
  mnt:'<path d="M14.5 6.5a4 4 0 0 0-5.3 5.2L4 17l3 3 5.3-5.2a4 4 0 0 0 5.2-5.3l-2.6 2.6-2.4-.6-.6-2.4z"/>',
  cus:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M16 15h2"/>',
+ dc:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
  chat:'<path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/>',
  set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
  menu:'<path d="M4 7h16M4 12h16M4 17h16"/>'};
@@ -48,6 +49,8 @@ html[data-bsec="my"] .lock .sheet,html[data-bsec="my"] .lock .act,html[data-bsec
 html[data-bsec="hist"] .lock .sheet,html[data-bsec="hist"] .lock .act,html[data-bsec="hist"] .lock .tip,html[data-bsec="hist"] .lock #my,html[data-bsec="hist"] .lock #xf,html[data-bsec="hist"] .lock #stkn,html[data-bsec="hist"] .lock #catn,html[data-bsec="hist"] .lock #hello{display:none!important}
 html.bnv .lock #gfbtn,html.bnv .lock #mtbtn{display:none!important}
 html[data-bsec]:not([data-bsec="cus"]) .lock #bcus{display:none!important}
+html[data-bsec]:not([data-bsec="dc"]) .lock #bday{display:none!important}
+html[data-bsec="dc"] .lock .sheet,html[data-bsec="dc"] .lock .act,html[data-bsec="dc"] .lock .tip,html[data-bsec="dc"] .lock #my,html[data-bsec="dc"] .lock #xf,html[data-bsec="dc"] .lock #hist,html[data-bsec="dc"] .lock #stkn,html[data-bsec="dc"] .lock #catn,html[data-bsec="dc"] .lock #hello,html[data-bsec="dc"] .lock #bcus{display:none!important}
 html[data-bsec="cus"] .lock .sheet,html[data-bsec="cus"] .lock .act,html[data-bsec="cus"] .lock .tip,html[data-bsec="cus"] .lock #my,html[data-bsec="cus"] .lock #xf,html[data-bsec="cus"] .lock #hist,html[data-bsec="cus"] .lock #stkn,html[data-bsec="cus"] .lock #catn,html[data-bsec="cus"] .lock #hello{display:none!important}
 html[data-bsec] .lock #mtm .act{display:flex!important}
 html.bnv[data-bsec="hist"] .lock #hist{display:block!important}
@@ -55,13 +58,14 @@ html.bnv[data-bsec="hist"] .lock #hist{display:block!important}
 `;
 let X=null,SEC="new",OBS=null,TMR=0;
 const H=document.documentElement;
-const SECS=[["new","طلب جديد","new"],["my","طلباتي ومتابعتها","my"],["hist","سجل الأوراق","hist"],["cus","العهدة","cus"]];
+const SECS=[["new","طلب جديد","new"],["my","طلباتي ومتابعتها","my"],["hist","سجل الأوراق","hist"],["cus","العهدة","cus"],["dc","اليومية","dc"]];
 function cnt(id,sel){const b=g(id);if(!b)return 0;let n=0;b.querySelectorAll(sel).forEach(s=>{const m=/\d+/.exec(String(s.textContent||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)));if(m)n+=+m[0]});return n}
 function items(){
- const L=[["الطلبات"]].concat(SECS.filter(s=>s[0]!=="cus").map(s=>({k:s[0],t:s[1],ic:s[2],n:s[0]==="my"?(X.myCount?X.myCount():0):0})));
+ const L=[["الطلبات"]].concat(SECS.filter(s=>s[0]!=="cus"&&s[0]!=="dc").map(s=>({k:s[0],t:s[1],ic:s[2],n:s[0]==="my"?(X.myCount?X.myCount():0):0})));
  const fr=[];
  if(g("gfbtn"))fr.push({a:"gfbtn",t:"الهدايا والعينات",ic:"gift",n:cnt("gfbtn",".bd span")});
  if(g("mtbtn"))fr.push({a:"mtbtn",t:"طلبات الصيانة",ic:"mnt",n:cnt("mtbtn",".m-bd span")});
+ if(g("bday"))fr.push({k:"dc",t:"اليومية",ic:"dc",n:+(g("bday").dataset.n||0)});// 🧾 (v241) يومية الفرع = قسم (الرقم = المرجّعة للتصحيح)
  if(g("bcus"))fr.push({k:"cus",t:"العهدة",ic:"cus",n:0});// 💼 (v218) عهدة الفرع = قسم
  (X.extra?X.extra():[]).forEach(e=>fr.push(e));
  if(fr.length)L.push(["الفرع"]),fr.forEach(x=>L.push(x));
