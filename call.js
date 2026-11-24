@@ -117,7 +117,10 @@ function connState(pc){
   clearTimeout(c.dropT);c.dropT=0;clearTimeout(c.rsT);c.rsT=0;clearInterval(c.rpoll);c.rpoll=0;clearTimeout(c.ct);
   if(!c.t0){c.t0=Date.now();mark(c,"con");tone(null);if(IOS&&AC){try{AC.suspend()}catch(e){}}paint();try{const A=NAT();if(A&&A.callOn)A.callOn(String(c.name||""))}catch(e){}spkInit(c);awake(true);iosHint();setTimeout(()=>pairInfo(c),2500)}
   status("");return}
- if(!c.t0){if(bad)hang("fail");return}// قبل أول توصيل: المهلة (connectWatch) هي الحكم
+ // قبل أول توصيل: المهلة (connectWatch) هي الحكم. (v236) الفشل المبكر ماعادش بيقفل على طول: المتصل يجرّب مرة عبر السيرفر الوسيط
+ // (كان hang("fail") بيسبق محاولة الـ 8 ثواني، وده بالظبط حالة «عرض من غير عنوان relay»)، والمستقبل يستنى العرض الجديد
+ if(!c.t0){if(bad){if(!c.ans&&!c.inc)return;if(!c.inc&&ICE.turn&&!c.relayTry){c.relayTry=1;status("جارٍ توصيل الصوت عبر خادم المنصة",true);if(!c.rpoll)c.rpoll=setInterval(()=>docPoll(c),1000);restart(c,true);return}
+   if(c.inc&&ICE.turn){if(!c.rpoll)c.rpoll=setInterval(()=>docPoll(c),1000);return}if(c.relayTry&&c.rsBusy)return;hang("fail")}return}
  if(!weak)return;
  // 🔁 الاتصال ضعف أو قطع والمكالمة شغالة: مانقفلش. المتصل يعيد التفاوض، والطرفان يتابعان المستند كل ثانية لحد ما يرجع
  status("الاتصال ضعيف… جارٍ إعادة الاتصال",true);
@@ -439,8 +442,11 @@ function incoming(id,d,via){
  if(PEND_ACT&&PEND_ACT.id===id&&PEND_ACT.act==="rej"){PEND_ACT=null;updateDoc(doc(X.db,"call",id),{st:"rej"}).catch(()=>{});return}
  if(C){updateDoc(doc(X.db,"call",id),{st:"busy"}).catch(()=>{});
   // (v235) كان بيترفض «مشغول» من غير ما اللي في المكالمة يعرف: دلوقتي بيظهرله سطر وبيتسجّل في الجرس كمكالمة فائتة
-  {const fr=String(d.fr||""),nm=String(d.frn||(fr.slice(0,1)==="b"?"فرع "+fr.slice(2):"")||"شخص").slice(0,60);
-   busyNote(nm,fr)}
+  // 🛡 (v236) الاسم من الدليل زي المكالمة العادية (frn ممكن يتزوّر): الفرع بكوده، والموظف/السائق من whdir/ddir
+  {const fr=String(d.fr||""),k=fr.slice(0,1),idp=fr.slice(2);
+   if(k==="b"){const f=String(d.frn||"").slice(0,50);busyNote((f&&f.indexOf(idp)>=0?f:(f?f+" · ":"فرع ")+idp).slice(0,60),fr)}// نفس قاعدة incoming(): كود الفرع يظهر دايماً
+   else if((k==="w"||k==="d")&&idp)getDoc(doc(X.db,k==="w"?"whdir":"ddir",idp)).then(s=>{const n=s.exists()?String((s.data()||{}).n||"").trim():"";busyNote((n||idp).slice(0,60),fr)}).catch(()=>busyNote(idp.slice(0,60),fr));
+   else busyNote("شخص",fr)}
   return}
  const c={id,inc:true,to:d.fr,name:String(d.frn||(String(d.fr||"").slice(0,1)==="b"?"فرع "+String(d.fr).slice(2):"مكالمة")),st:"ring",of:null,mute:false,tm:{},t00:Date.now(),via:via||"rt"};C=c;
  {const lag=Date.now()-N(d.ts);if(lag>=0&&lag<6e5)c.tm.lag=lag}// من لحظة الاتصال لحد ما وصلت الجهاز ده (بساعة الجهازين، تقريبي)

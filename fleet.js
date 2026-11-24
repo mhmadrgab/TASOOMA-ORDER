@@ -604,7 +604,8 @@ function carForm(id){
  openM(`<h3>${id?"تعديل":"إضافة"} سيارة</h3><label>الاسم (مثلاً: سيارة 1 — دينا)</label><input id="cn" maxlength="60" value="${E(c.name||"")}"><label>رقم اللوحة</label><input id="cp" maxlength="30" value="${E(c.plate||"")}">
  <label>كل كم كيلومتراً تغيّر الزيت</label><input id="co" inputmode="numeric" value="${E(c.oilEvery||5000)}"><label>عداد آخر تغيير زيت (كم)</label><input id="cl" inputmode="numeric" value="${E(c.oilLast||"")}">
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>تاريخ تغيير الزيت</label><input id="cld" type="date" value="${today()}" max="${today()}"></div><div><label>مبلغ تغيير الزيت (اختياري)</label><input id="clc" inputmode="decimal"></div></div>
- <small class="off" style="display:block">لو غيّرت رقم «عداد آخر تغيير زيت» يُضاف تغيير جديد إلى «سجل تغيير الزيت» بهذا التاريخ والمبلغ.</small>
+ ${id?`<label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input id="clh" type="checkbox" style="width:auto"> أضِف هذا الرقم كتغيير زيت في السجل</label>`:""}
+ <small class="off" style="display:block">لو كبّرت رقم «عداد آخر تغيير زيت» يُضاف تغيير جديد إلى «سجل تغيير الزيت» بهذا التاريخ والمبلغ. لو بتصحّح رقماً غلطاً لا تعلّم الخانة. ولتسجيل تغييرات قديمة: علّم الخانة وسجّلها من الأقدم للأحدث.</small>
  <label>انتهاء التأمين</label><input id="ci" type="date" value="${E(c.insExp||"")}"><label>انتهاء رخصة السيارة</label><input id="cx" type="date" value="${E(c.licExp||"")}">
  <div class="fl2" style="margin-top:16px"><button class="bt p" data-fl="carsave" type="button">حفظ</button><button class="bt" data-fl="cancel" type="button">رجوع</button>${id?'<button class="bt r" style="margin-inline-start:auto" data-fl="cardel" type="button">حذف السيارة</button>':""}</div>`);
 }
@@ -702,7 +703,9 @@ async function click(e){
    const nm=g("cn").value.trim();if(!nm){X.toast("اكتب اسم السيارة");return}
    const d={name:nm.slice(0,60),plate:g("cp").value.trim().slice(0,30),oilEvery:N(toEn(g("co").value))||5000,oilLast:N(toEn(g("cl").value)),insExp:g("ci").value,licExp:g("cx").value,active:true};
    const c0=ctxEd?CARS.find(x=>x.id===ctxEd)||{}:{};if(Array.isArray(c0.oh))d.oh=c0.oh;// 🛢 (v233) السجل يفضل (setDoc بيستبدل المستند كله)
-   if(d.oilLast>0&&d.oilLast!==N(c0.oilLast)){const dt=/^\d{4}-\d{2}-\d{2}$/.test(g("cld").value)&&g("cld").value<=today()?g("cld").value:today(),cs=String(g("clc").value||"").trim(),me=X.me||{};
+   // (v236) يتسجّل «تغيير» بس لسيارة موجودة والرقم الجديد أكبر (تصحيح رقم غلط لتحت أو أول إدخال لسيارة جديدة = تصحيح، مش تغيير زيت)
+   const logIt=g("clh")&&g("clh").checked;// إدخال قديم (من الأقدم للأحدث) أو أول تسجيل: بالعلامة
+   if(ctxEd&&d.oilLast>0&&d.oilLast!==N(c0.oilLast)&&(logIt||(N(c0.oilLast)>0&&d.oilLast>N(c0.oilLast)))){try{const fs=await getDoc(doc(X.db,"cars",ctxEd));if(fs.exists()&&Array.isArray(fs.data().oh))d.oh=fs.data().oh}catch(e){}const dt=/^\d{4}-\d{2}-\d{2}$/.test(g("cld").value)&&g("cld").value<=today()?g("cld").value:today(),cs=String(g("clc").value||"").trim(),me=X.me||{};
     const e={odo:d.oilLast,dt,at:Date.now(),s:"m",by:String(me.n||"").slice(0,60)};if(cs){const v=N(toEn(cs));if(!(v>=0&&v<=100000)){X.toast("مبلغ تغيير الزيت غير صحيح","er");return}e.c=v}d.oh=ohAdd(d,e)}
    await setDoc(doc(X.db,"cars",ctxEd||doc(collection(X.db,"cars")).id),d);closeM();X.toast("تم الحفظ");
   }
@@ -711,13 +714,14 @@ async function click(e){
   else if(a==="ohx")oilCsv(id);
   else if(a==="oilv"){const s=await getDoc(doc(X.db,"oilimg",id));const im=s.exists()?s.data().img:"";if(im)zoomOpen(im,"🛢 فاتورة تغيير الزيت");else X.toast("لا توجد صورة","er")}
   else if(a==="oilok"||a==="oilno"){
-   const o=OIL.find(x=>x.id===id);if(!o)return;const c=CARS.find(x=>x.id===o.car),me=X.me||{},rv={e:String(me.e||"").toLowerCase(),n:String(me.n||"").slice(0,60),at:Date.now()};
+   const o=OIL.find(x=>x.id===id);if(!o)return;let c=CARS.find(x=>x.id===o.car);const me=X.me||{},rv={e:String(me.e||"").toLowerCase(),n:String(me.n||"").slice(0,60),at:Date.now()};
    if(a==="oilno"){const why=(prompt("سبب رفض البلاغ (يصل للسائق):")||"").trim();if(why.length<2){if(why)X.toast("اكتب سبباً واضحاً","er");return}rv.note=why.slice(0,200);
     await updateDoc(doc(X.db,"oil",id),{st:"no",rv,upd:Date.now()});if(X.ping)X.ping([],[],[id]);X.toast("رُفض البلاغ وأُبلغ السائق");return}
    if(!c){X.toast("السيارة محذوفة من المنصة؛ ارفض البلاغ","er");return}
    const v=prompt(`عداد آخر تغيير زيت لـ ${c.name} (عدّله لو الرقم غلط):`,String(N(o.odo)));if(v===null)return;const odo=N(toEn(v));
    if(!(odo>0)||odo>9999999){X.toast("رقم العداد غير صحيح","er");return}
    if(N(c.oilLast)>odo&&!confirm(`المسجّل الآن على السيارة ${fmt(N(c.oilLast))} كم، وهذا أقل منه. تسجيله رغم ذلك؟`))return;
+   try{const fs=await getDoc(doc(X.db,"cars",c.id));if(fs.exists())c=Object.assign({},c,fs.data())}catch(e){}// (v236) أحدث سجل قبل الإضافة (موافقتين في نفس اللحظة ماتمسحش بعض)
    rv.odo=odo;const he={odo,dt:/^\d{4}-\d{2}-\d{2}$/.test(o.dt||"")?o.dt:today(),at:Date.now(),s:"d",d:String(o.drvn||o.drv||"").slice(0,60),by:rv.n,oid:id};if(o.cost!=null)he.c=N(o.cost);
    const b=writeBatch(X.db);b.update(doc(X.db,"cars",c.id),{oilLast:odo,oh:ohAdd(c,he)});b.update(doc(X.db,"oil",id),{st:"ok",rv,upd:Date.now()});
    await b.commit();if(X.ping)X.ping([],[],[id]);X.toast(`سُجّل تغيير الزيت على ${c.name} عند ${fmt(odo)} كم ✅`);
