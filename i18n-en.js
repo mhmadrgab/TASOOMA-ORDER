@@ -4544,5 +4544,12 @@ export default {
 "سبب رفض البلاغ (يصل للسائق):":"Reason for rejecting the report (sent to the driver):","اكتب سبباً واضحاً":"Write a clear reason","رُفض البلاغ وأُبلغ السائق":"Report rejected and the driver notified",
 "السيارة محذوفة من المنصة؛ ارفض البلاغ":"The vehicle was deleted from the platform; reject the report","عداد آخر تغيير زيت لـ ":"Last oil change odometer for "," (عدّله لو الرقم غلط):":" (correct it if the number is wrong):","رقم العداد غير صحيح":"Invalid odometer",
 "المسجّل الآن على السيارة ":"Currently recorded on the vehicle: "," كم، وهذا أقل منه. تسجيله رغم ذلك؟":" km, and this is lower. Record it anyway?","سُجّل تغيير الزيت على ":"Oil change recorded on "," عند ":" at ",
+"سجل تغيير الزيت":"Oil change log","تاريخ تغيير الزيت":"Oil change date","مبلغ تغيير الزيت (اختياري)":"Oil change amount (optional)","مبلغ تغيير الزيت غير صحيح":"Invalid oil change amount",
+"لو غيّرت رقم «عداد آخر تغيير زيت» يُضاف تغيير جديد إلى «سجل تغيير الزيت» بهذا التاريخ والمبلغ.":"If you change the “last oil change odometer” number, a new change is added to the “Oil change log” with this date and amount.",
+"يبدأ السجل من 24 نوفمبر 2026 (قبله كان يُحفظ آخر رقم فقط). كل تغيير يُسجَّل من بلاغ السائق أو من «تعديل» السيارة.":"The log starts on 24 November 2026 (before that only the last number was kept). Each change is recorded from the driver's report or from the vehicle's “Edit”.",
+"تغيير زيت":"oil changes","مرة تأخر عن موعده":"times late","مرات التغيير":"Changes","آخر تغيير":"Last change","متوسط المسافة بين تغييرين":"Average distance between changes","تأخر عن موعده":"Late","تكلفة":"Cost",
+"لا يوجد بعد":"None yet","المفروض كل ":"Due every ","أكثرها ":"worst ","في موعده":"On time","تغيير مسجّل":"changes recorded","التكلفة ":"Cost ","المتوسط ":"average "," بين تغييرين":" between changes",
+"المسافة من التغيير السابق":"Distance since previous change","من غيّره":"Changed by","سجّله":"Recorded by","أول تسجيل":"First record","متأخر ":"Late ","من بلاغ السائق":"from the driver's report","من تعديل السيارة":"from vehicle edit",
+"لا يوجد تغيير زيت مسجّل بعد":"No oil change recorded yet",
 "🔗 بلا تتبع":"🔗 No tracking","السائق الخارجي لم يفتح رابط الرحلة أو لم يسمح بالموقع، فلا يصل مكانه. التسليم يُسجَّل من الرابط كالمعتاد.":"The external driver has not opened the trip link or has not allowed location, so his position does not arrive. Delivery is still recorded from the link as usual.",
 };
