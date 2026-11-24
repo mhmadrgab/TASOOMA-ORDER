@@ -163,7 +163,9 @@ document.addEventListener("click",e=>{
  const a=e.target.closest&&e.target.closest("[data-osh-a]");
  if(a){const w=a.dataset.oshA;
   if(w==="close")return void closeSheet();
-  if(w==="print"){document.body.classList.add("osh-pr");const done=()=>{document.body.classList.remove("osh-pr");removeEventListener("afterprint",done)};addEventListener("afterprint",done);setTimeout(()=>window.print(),50);return}
+  // (v237) الآيفون أحياناً مابيطلقش afterprint، فالورقة كانت تفضل «وضع طباعة» وماتتحدّثش لايف: بنرجّعها كمان لما الصفحة ترجع قدامه
+  if(w==="print"){document.body.classList.add("osh-pr");const done=()=>{document.body.classList.remove("osh-pr");removeEventListener("afterprint",done);removeEventListener("focus",done);document.removeEventListener("visibilitychange",vis);refreshSheet()},vis=()=>{if(!document.hidden)setTimeout(done,300)};
+   addEventListener("afterprint",done);setTimeout(()=>{window.print();setTimeout(()=>{addEventListener("focus",done);document.addEventListener("visibilitychange",vis)},400)},50);return}
   if(w==="rcv"){const id=CUR;closeSheet();const b=document.querySelector(`#ml [data-rcv="${CSS.escape(id||"")}"]`);if(b)b.click();return}
   if(w==="img"||w==="sig")return void pics(w,a);
   return}

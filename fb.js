@@ -134,8 +134,8 @@ export async function ping(auth, ids, chats, trips, gifts, mnts, pos, cus, ers, 
     if (!PUSH_URL || !(ids.length || chats.length || trips.length || gifts.length || mnts.length || pos.length || cus.length || ers.length || oils.length)) return;
     const u = auth && auth.currentUser; if (!u) return;
     const t = await u.getIdToken();
-    const jobs = [...trips.map(x => ({trips: [x]})), ...ids.map(x => ({ids: [x]})), ...chats.map(x => ({chats: [x]})), ...gifts.map(x => ({gifts: [x]})), ...mnts.map(x => ({mnts: [x]})), ...pos.map(x => ({pos: [x]})), ...cus.map(x => ({cus: [x]})), ...ers.map(x => ({ers: [x]})), ...oils.map(x => ({oils: [x]}))].slice(0, 40);
-    jobs.forEach(b => fetch(PUSH_URL + "/notify", {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + t}, body: JSON.stringify({ids: [], chats: [], trips: [], gifts: [], mnts: [], pos: [], cus: [], ers: [], oils: [], ...b}), keepalive: true}).catch(() => {}));
+    const jobs = [...trips.map(x => ({trips: [x]})), ...ids.map(x => ({ids: [x]})), ...chats.map(x => ({chats: [x]})), ...gifts.map(x => ({gifts: [x]})), ...mnts.map(x => ({mnts: [x]})), ...pos.map(x => ({pos: [x]})), ...cus.map(x => ({cus: [x]})), ...ers.map(x => ({ers: [x]})), ...oils.map(x => ({oils: [x]}))].slice(0, 200);// (v237) كان 40 وبيسيب الباقي بصمت (تعيين جماعي لأكتر من 40 طلب)؛ السيرفر يسمح 240 في الدقيقة للحساب
+    jobs.forEach((b, i) => setTimeout(() => fetch(PUSH_URL + "/notify", {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + t}, body: JSON.stringify({ids: [], chats: [], trips: [], gifts: [], mnts: [], pos: [], cus: [], ers: [], oils: [], ...b}), keepalive: i < 40}).catch(() => {}), i < 40 ? 0 : (i - 39) * 60));// keepalive له حد حجم في المتصفح: لأول 40 بس، والباقي متباعد شوية
   } catch (e) {}
 }
 export const annPush = (auth, id) => multiPush(auth, "/ann", {id});
@@ -154,6 +154,7 @@ export async function quotaOut() { return false }
 export async function checkQuota() { document.documentElement.classList.remove("ui-quota"); return false }
 export async function failReason(x) {
   if (x && x.code === "permission-denied") return "denied";
+  if (x && x.code === "resource-exhausted") return "quota";// (v237) حد الكتابة اليومي: «الخدمة متوقفة مؤقتاً… أبلغ المستودع» بدل «اضغط مجدداً»
   if (!navigator.onLine) return "offline";
   return "slow";
 }

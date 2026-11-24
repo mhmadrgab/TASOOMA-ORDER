@@ -711,6 +711,12 @@ onAuthStateChanged(auth,async u=>{
   window.__push=()=>pushRegister(app,db,{role:"branch",key:c,email:u.email});autoPush();nativePush(db,{role:"branch",key:c,email:u.email});
  }
 });
+async function sentOk(ref,no){
+ ping(auth,[ref.id]);// إشعار للمستودع في نفس الثانية
+ await ask({i:"✅",t:"وصل طلبك للمستودع",p:`رقم الطلب ${no} — يمكنك متابعة حالته بالأسفل في "طلباتي وحالتها"`,ok:"حسناً",one:true});
+ st.sent=no;delete st.rid;delete st.rno;
+ st=mk({br:st.br,dr:st.dr,ty:"load"});lib.cur=st.id;save();loadUI();window.scrollTo(0,0);
+}
 const mkNo=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");return `${code(B)}-${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`};
 g("sd").onclick=async()=>{
  if(!B)return;
@@ -726,11 +732,11 @@ g("sd").onclick=async()=>{
  const no=st.rno||(st.rno=mkNo());
  try{
   await withTimeout(setDoc(ref,{br:code(B),brn:B,no,dt:String(st.dt||"").slice(0,12),dr:(st.dr||"").slice(0,100),gn:(st.gn||"").slice(0,1000),rows,codes,pcs,st:"new",ts:Date.now()}),15000);
-  ping(auth,[ref.id]);// إشعار للمستودع في نفس الثانية
-  await ask({i:"✅",t:"وصل طلبك للمستودع",p:`رقم الطلب ${no} — يمكنك متابعة حالته بالأسفل في "طلباتي وحالتها"`,ok:"حسناً",one:true});
-  st.sent=no;delete st.rid;delete st.rno;
-  st=mk({br:st.br,dr:st.dr,ty:"load"});lib.cur=st.id;save();loadUI();window.scrollTo(0,0);
+  await sentOk(ref,no);
  }catch(x){
+  // 🛟 (v237) الحفظ ممكن يكون وصل والرد اتأخر: لو الطلب موجود فعلاً بنفس الرقم نعتبره اتبعت (كان الضغط تاني بيقول «غير مسموح» والورقة تفضل مليانة)
+  let there=false;try{const s=await withTimeout(getDoc(ref),8000);there=s.exists()&&s.data().no===no}catch(e){}
+  if(there){await sentOk(ref,no);g("sd").disabled=false;return}
   // نعرف السبب الحقيقي بدل ما نقول "النت ضعيف" على كل حاجة
   const why=await failReason(x);
   await ask({i:why==="slow"?"⏳":"⚠️",t:why==="quota"?"الإرسال متوقف مؤقتاً":why==="offline"?"لا يوجد إنترنت":why==="denied"?"غير مسموح بالإرسال":"لم يتم تأكيد الإرسال بعد",

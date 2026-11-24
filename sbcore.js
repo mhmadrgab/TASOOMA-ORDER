@@ -60,6 +60,7 @@ export function mapErr(e) {
   const m = String(e.message || e.details || e.hint || ""), c = String(e.code || "");
   if (c === "42501" || /permission-denied|permission denied|row-level security/i.test(m)) return err("permission-denied", m);
   if (c === "P0002" || /not-found/.test(m)) return err("not-found", m);
+  if (/resource-exhausted/i.test(m)) return err("resource-exhausted", m);// (v237) حد الكتابة اليومي للحساب (priv.wl): مش «نت بطيء»
   if (/Failed to fetch|NetworkError|network|fetch failed|TypeError/i.test(m) || e.name === "TypeError") return err("unavailable", m);
   return err("internal", m);
 }
@@ -106,9 +107,9 @@ async function runQ1(q) {
 }
 async function getDoc1(ref) {
   if (netDown()) throw offErr();
-  const {data, error} = await ref.db.c.from("docs").select("path,data").eq("path", ref.path).maybeSingle();
+  const {data, error} = await ref.db.c.from("docs").select("path,data,updated_at").eq("path", ref.path).maybeSingle();
   if (error) throw mapErr(error);
-  return new DocSnap(ref, data ? data.data : null);
+  const s = new DocSnap(ref, data ? data.data : null); s._u = data && data.updated_at ? msOf(data.updated_at) : 0; return s;
 }
 // قراءة لمرة واحدة: لو الخطأ مؤقت نجرّب مرتين كمان (بعد 0.6 ثم 1.5 ثانية) قبل ما نرجّع الخطأ للصفحة
 async function twice(fn) {
@@ -321,14 +322,19 @@ function hubRemove(h, s) {
 export function onSnapshot(target, next, onErr) {
   const db = target.db, c = db.c, isDoc = target.type === "doc";
   const q = isDoc ? null : (target.type === "query" ? target : query(target));
-  let alive = true, loaded = false, cur = [], curDoc, pend = [], timer = null, refetching = false, again = false, fails = 0, denied = false, rt = null;
+  let alive = true, loaded = false, cur = [], curDoc, pend = [], pendDoc = null, timer = null, refetching = false, again = false, fails = 0, denied = false, rt = null;
   const fail = e => { if (alive && onErr) try { onErr(mapErr(e)) } catch (x) {} };
   const emit = list => { const prev = cur; cur = list; if (alive) try { next(new QuerySnap(q, list, changes(prev, list))) } catch (x) { console.error(x) } };
   const emitDoc = data => { if (!alive) return; const s = new DocSnap(target, data); if (loaded && eq(curDoc, data)) return; curDoc = data; try { next(s) } catch (x) { console.error(x) } };
   async function load() {
     if (refetching) { again = true; return } refetching = true; clearTimeout(rt); rt = null;
     try {
-      if (isDoc) { const s = await getDoc1(target); loaded = true; emitDoc(s._d) }
+      if (isDoc) {
+        // 🛟 (v237) تغيير وصل لايف وإحنا لسه بنقرا: كان بيتجاهل (وشبكة الأمان بتعدّيه لأنه «وصل»)، فالمستند يفضل قديم.
+        // دلوقتي بنطبّقه بعد القراءة لو أحدث منها (المسح: لو القراءة لقت المستند، يبقى المسح حصل بعدها)
+        const s = await getDoc1(target); loaded = true; let d = s._d; const pe = pendDoc; pendDoc = null;
+        if (pe) { if (pe.eventType === "DELETE") { if (d != null) d = null } else if (pe.new && pe.new.data !== undefined && msOf(pe.new.updated_at) >= (s._u || 0)) d = pe.new.data }
+        emitDoc(d) }
       else { const docs = await runQ1(q); loaded = true; const b = pend; pend = []; let list = docs; for (const ev of b) list = apply(list, ev); emit(sortDocs(q, list)) }
       fails = 0; denied = false;
     } catch (e) {
@@ -350,7 +356,7 @@ export function onSnapshot(target, next, onErr) {
   }
   function onEv(ev) {
     if (!alive) return;
-    if (isDoc) { if (!loaded) return; emitDoc(ev.eventType === "DELETE" ? null : ev.new && ev.new.data); return }
+    if (isDoc) { if (!loaded) { pendDoc = ev; return } emitDoc(ev.eventType === "DELETE" ? null : ev.new && ev.new.data); return }
     if (!loaded) { pend.push(ev); return }
     // فيه limit: أسهل وأضمن نقرا تاني (القايمة ممكن تتزحزح)
     if (q.lim != null) { clearTimeout(timer); timer = setTimeout(load, 250); return }

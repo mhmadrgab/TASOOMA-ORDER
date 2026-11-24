@@ -1,5 +1,5 @@
 // صفحة الفرع: تأكيد الاستلام + التنبيهات + تثبيت التطبيق
-import {doc,updateDoc,withTimeout,failReason,FAIL_MSG} from "./fb.js";
+import {doc,getDoc,updateDoc,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {E,N} from "./cust.js";
 import {regSW} from "./notify.js";
 const g=id=>document.getElementById(id);
@@ -48,7 +48,10 @@ function openRcv(id){
   if(X.devOk&&!X.devOk()){X.toast("تأكيد الاستلام يتم من كمبيوتر الفرع المسجّل فقط. افتح المنصة من كمبيوتر الفرع","er");return}
   g("rc1").disabled=true;
   try{await withTimeout(updateDoc(doc(X.db,"requests",id),{st:"recv",rcv}),15000);if(X.ping)X.ping([id]);closeX();X.toast(rcv.ok?"تم تأكيد الاستلام ✅":"تم تسجيل الاستلام مع الملاحظات ✅")}
-  catch(e){const b1=g("rc1");if(b1)b1.disabled=false;/* (v185) النافذة قد تكون أُغلقت قبل وصول الرد: كان يرمي خطأ ولا تظهر رسالة الفشل */const why=await failReason(e);X.toast(why==="denied"?"غير مسموح. ربما غيّر المستودع حالة الطلب.":FAIL_MSG[why],"er")}
+  catch(e){
+   // 🛟 (v237) الاستلام ممكن يكون اتسجّل والرد اتأخر: لو الطلب بقى «تم الاستلام» نعتبره نجح (كان الضغط تاني بيقول «غير مسموح»)
+   try{const s=await withTimeout(getDoc(doc(X.db,"requests",id)),8000);if(s.exists()&&s.data().st==="recv"){if(X.ping)X.ping([id]);closeX();X.toast("تم تأكيد الاستلام ✅");return}}catch(x){}
+   const b1=g("rc1");if(b1)b1.disabled=false;/* (v185) النافذة قد تكون أُغلقت قبل وصول الرد: كان يرمي خطأ ولا تظهر رسالة الفشل */const why=await failReason(e);X.toast(why==="denied"?"غير مسموح. ربما غيّر المستودع حالة الطلب.":FAIL_MSG[why],"er")}
  };
 }
 export function initBranch(ctx){X=ctx;ui()}
