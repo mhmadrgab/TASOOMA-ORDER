@@ -318,7 +318,7 @@
 // وأول ما يقفلها مابتظهرش تاني على الجهاز ده (localStorage: tz_news). لرسالة جديدة بعدين: غيّر NEWS_ID والنص.
 (function(){
  if(!/(admin|index|driver)\.html$|\/$/.test(location.pathname))return;
- const NEWS_ID="custody-menu-2026-11-23";// (23 نوفمبر 2026، v220) كارت "عهدة الفروع + القائمة الجانبية". لكارت جديد بعدين: غيّر NEWS_ID والنص (T) والرسمة (HERO)
+ const NEWS_ID="daily-close-2026-11-24";// (24 نوفمبر 2026، v242) كارت "يومية الفروع" (كان custody-menu-2026-11-23). لكارت جديد بعدين: غيّر NEWS_ID والنص (T) والرسمة (HERO)
  const DRV_ID="calls-app-2026-11-17";// السائق: لا جديد له في هذا التحديث، فيبقى على الكارت السابق (لا يظهر له شيء)
  const APK_URL="https://github.com/mhmadrgab/TASOOMA-ORDER/releases/latest/download/tasooma-driver.apk",UA=navigator.userAgent,DROID=/android/i.test(UA),IOS=/iphone|ipad|ipod/i.test(UA),INAPP=!!window.TasoomaApp;
  try{localStorage.getItem("tz_news")}catch(e){return}// مفيش تخزين = مانعرضش (علشان ماتطلعش كل مرة)
@@ -333,20 +333,22 @@
   const P=location.pathname,ADM=/admin\.html$/.test(P),co=window.__tzCo===true&&ADM;let role=co?"c":/driver\.html$/.test(P)?"d":ADM?"a":"b";
    // (16 نوفمبر 2026) كارت خاص بمالك النظام (حساب مدير عليه co) بس: مفتاح تخزين مستقل، وبيظهر له بدل الكارت العام
    let KEY=co?"tz_news_co":"tz_news",ID=co?"coowner-2026-11-16":role==="d"?DRV_ID:NEWS_ID;
+   // (v242) مالك النظام اللي شاف كارت الترقية بيشوف الكارت العام زي أي موظف (كان مابيشوفش أي كارت جديد بعده)
+   if(co){let cs=null;try{cs=localStorage.getItem("tz_news_co")}catch(e){}if(cs==="coowner-2026-11-16"){role="a";KEY="tz_news";ID=NEWS_ID}}
    // 👑 (18 نوفمبر 2026، طلب محمد) كارت للأدمن ومالك النظام فقط (role "o"): جدول الصلاحيات. مفتاح مستقل tz_news_own، فلا يراه أي موظف أو فرع أو سائق.
    // الترتيب: مالك النظام الجديد يرى كارت الترقية أولاً ثم هذا في الفتحة التالية، والأدمن يراه قبل الكارت العام. لكارت إدارة جديد: غيّر OWN_ID ونص T.o.
    const OWN_ID="perms-2026-11-18",rd=k=>{try{return localStorage.getItem(k)}catch(e){return undefined}};
    if(ADM&&(co||window.__tzRoot===true)&&rd("tz_news_own")!==OWN_ID&&!(co&&rd("tz_news_co")!=="coowner-2026-11-16")){role="o";KEY="tz_news_own";ID=OWN_ID}
    let seen;try{seen=localStorage.getItem(KEY)}catch(e){return}if(seen===ID)return;
   const T={
-   b:{k:"تحديث جديد · العهدة",t:"عهدة الفرع أصبحت داخل المنصة",go:"افتح العهدة",sub:"cus",lv:"🧭 على الجوال: اضغط زر ☰ أعلى الصفحة لفتح القائمة.",
-    L:[["💼","عهدة الفرع","سجّل كل مصروف ببنده ومبلغه وصورة فاتورته، وتابع رصيدك وكشف حسابك في أي وقت."],
-       ["🔔","إشعار بكل خطوة","يصلك إشعار عندما يسلّمك المحاسب عهدة، وعندما يعتمد مصروفك أو يرفضه مع ذكر السبب."],
-       ["🧭","قائمة جانبية جديدة","كل الأقسام في قائمة واحدة على جانب الشاشة: طلب جديد، طلباتي، سجل الأوراق، العهدة، الهدايا، الصيانة، والمحادثات."]]},
-   a:{k:"تحديث جديد · عهدة الفروع",t:"عهدة الفروع أصبحت داخل المنصة",lv:"🧭 صفحة الفروع أصبحت بقائمة جانبية مثل لوحة المستودع.",
-    L:[["💼","عهدة الفروع","من القائمة: «عهدة الفروع» فيها رصيد كل فرع وكشف حسابه، وكل مصروف بصورة فاتورته."],
-       ["✅","للمحاسب والمدير المالي","تسليم العهدة للفرع، واعتماد المصروفات أو رفضها، وإقفال الفترة: للمحاسب صاحب صلاحية العهدة والمدير المالي فقط."],
-       ["🔔","إشعارات العهدة","يصل المحاسب إشعار بكل مصروف جديد من الفروع، ويصل الفرع إشعار عند التسليم والاعتماد والرفض."]]},
+   b:{k:"تحديث جديد · اليومية",t:"يومية الفرع أصبحت داخل المنصة",go:"افتح اليومية",sub:"dc",lv:"📵 لا حاجة بعد اليوم لإرسال صور سندات الشبكة على واتساب.",
+    L:[["🧾","سجّل يومية كل يوم","في آخر اليوم: الشبكة لكل جهاز من فاتورة الموازنة، والكاش في الدرج، ومبيعات السيستم، مع صور الموازنة والسندات."],
+       ["⚖️","الفرق يُحسب وحده","تعرف فوراً هل اليومية مطابقة أم فيها عجز أو زيادة، قبل أن ترسلها."],
+       ["🔔","المحاسب يراجع ويقفل","يصلك إشعار عند اعتماد اليومية، أو عند إرجاعها مع السبب لتصحّحها وتعيد إرسالها."]]},
+   a:{k:"تحديث جديد · يومية الفروع",t:"يومية الفروع أصبحت داخل المنصة",lv:"🔐 القسم يظهر لمن معه صلاحية «يومية الفروع» في جدول الصلاحيات، وللأدمن ومالك النظام.",
+    L:[["🧾","كل يوميات الفروع في مكان واحد","من القائمة: «يومية الفروع». لكل يومية الشبكة لكل جهاز والكاش ومبيعات السيستم والفرق، وصور الموازنة والسندات."],
+       ["✅","اعتماد وإقفال، أو إرجاع بسبب","المحاسب يعتمد اليومية فتُقفل، أو يرجعها للفرع بسبب يصله في إشعار. مع فلترة بالفرع والتاريخ والحالة، وتصدير إكسل."],
+       ["⚠️","من لم يرسل يومية أمس","تنبيه بأسماء الفروع التي لم ترسل يومية اليوم السابق."]]},
    c:{k:"ترقية حسابك",t:"أصبحت الآن مالك النظام",go:"افتح الإعدادات",
      L:[["👑","كل الصلاحيات بين يديك","الطلبات والعهدة والسيارات والموظفين والصيانة وأوامر الشراء والإعدادات، كلها متاحة لك الآن."],
         ["⚙️","الإعدادات في مكان واحد","تبويب ⚙ الإعدادات يجمع الصلاحيات والموظفين وحسابات الفروع والتقارير."],
@@ -360,6 +362,7 @@
        ["📱","حدّث التطبيق","بالنسخة الجديدة تصلك المكالمة كاتصال حقيقي يرنّ حتى والجوال مقفول."],
        ["🔔","رنّة تاسومة","رنّة خاصة بالمنصة لتعرف أن الاتصال للعمل."]]}
   }[role];
+  if(role==="a"&&window.__tzDc===true){T.go="افتح يومية الفروع";T.sub="dc"}// (v242) لمن يرى القسم فقط
   if(role==="d"){T.lv=IOS?"📱 تطبيق تاسومة متاح لأجهزة أندرويد حالياً. على الآيفون تصلك المكالمة إشعاراً فيه «رد» و«رفض».":"🔒 المكالمات مشفّرة بين الطرفين، ولا يسمعها أحد غيركما.";
    if(DROID&&!INAPP){T.go=role==="d"?"⬇️ حدّث التطبيق":"⬇️ ثبّت تطبيق تاسومة";T.url=APK_URL}
    else if(!DROID&&!IOS&&role==="a"){T.go="📋 انسخ رابط التطبيق للموظفين";T.copy=APK_URL}}
@@ -406,7 +409,7 @@
   const d=document.createElement("div");d.id="tz-news";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-labelledby","tz-news-t");
   d.innerHTML=`<div class="k"><div class="tn-hero"><span class="tn-dot tn-d1"></span><span class="tn-dot tn-d2"></span>
 <div class="tn-lgo"><img src="./icon-192.png" alt=""><span>تاسومة</span></div><span class="tn-nw">جديد</span><button class="tn-xb" type="button" data-n="x" aria-label="إغلاق">✕</button>
-<div class="tn-ps tn-bk"></div>${role==="o"?`<div class="tn-ps"><div class="tn-t"><b>جدول الصلاحيات</b><span>جديد</span></div>${[[1,1,0,1],[0,1,1,0],[1,0,1,1]].map((r,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-top:${i?7:11}px"><u style="display:block;height:7px;border-radius:9px;background:#e3d6e1;flex:1"></u>${r.map(x=>`<span style="display:block;width:15px;height:15px;border-radius:5px;flex:none;${x?"background:#8a5a83":"border:1.5px solid #cdbfca"}"></span>`).join("")}</div>`).join("")}</div>`:role==="c"?`<div class="tn-ps"><div class="tn-t"><b>مالك النظام</b><span>مفعّل</span></div><div style="font-size:46px;text-align:center;margin:8px 0 6px">👑</div><div class="tn-at"><b>📦 الطلبات</b><b>👥 الموظفين</b><b>⚙ الإعدادات</b></div></div>`:role!=="d"?`<div class="tn-ps"><div class="tn-t"><b>عهدة الفرع</b><span>الرصيد</span></div><div style="font-size:22px;font-weight:700;margin:9px 0 8px;direction:ltr;text-align:end">954.50 <small style="font-size:11px;font-weight:600;color:#74687a">ريال</small></div>${[["#6f7d45","معتمد"],["#6f7d45","معتمد"],["#e0a100","بانتظار"]].map(x=>`<div style="display:flex;align-items:center;gap:6px;margin-top:6px"><span style="display:block;width:8px;height:8px;border-radius:50%;background:${x[0]};flex:none"></span><u style="display:block;height:7px;border-radius:9px;background:#efe6ee;flex:1"></u><b style="font-size:9px;color:${x[0]}">${x[1]}</b></div>`).join("")}</div>`:`<div class="tn-ps" style="text-align:center"><div class="tn-t"><b>مكالمة واردة</b><span>تاسومة</span></div><div style="width:48px;height:48px;border-radius:50%;margin:12px auto 10px;background:linear-gradient(150deg,#c9a3c0,#8a5a83);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:21px">ت</div><div style="display:flex;justify-content:center;gap:26px"><span style="width:32px;height:32px;border-radius:50%;background:#e5372b;display:block"></span><span style="width:32px;height:32px;border-radius:50%;background:#34c759;display:block"></span></div></div>`}</div>
+<div class="tn-ps tn-bk"></div>${role==="o"?`<div class="tn-ps"><div class="tn-t"><b>جدول الصلاحيات</b><span>جديد</span></div>${[[1,1,0,1],[0,1,1,0],[1,0,1,1]].map((r,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-top:${i?7:11}px"><u style="display:block;height:7px;border-radius:9px;background:#e3d6e1;flex:1"></u>${r.map(x=>`<span style="display:block;width:15px;height:15px;border-radius:5px;flex:none;${x?"background:#8a5a83":"border:1.5px solid #cdbfca"}"></span>`).join("")}</div>`).join("")}</div>`:role==="c"?`<div class="tn-ps"><div class="tn-t"><b>مالك النظام</b><span>مفعّل</span></div><div style="font-size:46px;text-align:center;margin:8px 0 6px">👑</div><div class="tn-at"><b>📦 الطلبات</b><b>👥 الموظفين</b><b>⚙ الإعدادات</b></div></div>`:role!=="d"?`<div class="tn-ps"><div class="tn-t"><b>يومية الفرع</b><span>مطابقة</span></div>${[["الشبكة","3,250.75"],["الكاش","1,200"],["السيستم","4,450.75"]].map((x,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:${i?6:10}px;font-size:10px;color:#74687a"><span>${x[0]}</span><b style="direction:ltr;color:#231a25;font-size:11px">${x[1]}</b></div>`).join("")}<div style="display:flex;justify-content:space-between;margin-top:8px;background:#e5ecd0;color:#45512a;border-radius:8px;padding:5px 8px;font-size:10px;font-weight:700"><span>الفرق</span><span>مطابقة</span></div><div class="tn-at"><b>📎 صورتان</b><b>✅ معتمدة</b></div></div>`:`<div class="tn-ps" style="text-align:center"><div class="tn-t"><b>مكالمة واردة</b><span>تاسومة</span></div><div style="width:48px;height:48px;border-radius:50%;margin:12px auto 10px;background:linear-gradient(150deg,#c9a3c0,#8a5a83);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:21px">ت</div><div style="display:flex;justify-content:center;gap:26px"><span style="width:32px;height:32px;border-radius:50%;background:#e5372b;display:block"></span><span style="width:32px;height:32px;border-radius:50%;background:#34c759;display:block"></span></div></div>`}</div>
 <div class="tn-hd"><small>${T.k}</small><b id="tz-news-t">${T.t}</b></div>
 <div class="b"><ul>${T.L.map(x=>`<li><i>${x[0]}</i><div><b>${x[1]}</b><span>${x[2]}</span></div></li>`).join("")}</ul>
 <div class="tn-lv"><span style="display:inline;font-size:13px;color:inherit">${T.lv||"⚡ الطلبات والتغييرات الجديدة تصل لحظياً دون إعادة تحميل الصفحة."}</span></div></div>

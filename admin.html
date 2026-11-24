@@ -364,7 +364,7 @@ function start(){
  P=tmpPw;// 🔑 (18 نوفمبر 2026) كلمات المرور لا تُحفظ: P = ما أُنشئ أو تغيّر في فتحة الصفحة هذه فقط (fb.js tmpPw)
  const adm=ROLE.admin;
  if(adm||can("cus")||vw)initBCus({db,toast,mode:"wh",staff:ROLE.owner===true||ROLE.p.cus===true,ping:id=>ping(auth,[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 💼 (v218)
- if(ROLE.owner===true||ROLE.p.dc===true)initDay({db,toast,mode:"wh",staff:true,ping:id=>ping(auth,[],[],[],[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 🧾 (v241) يومية الفروع
+ window.__tzDc=ROLE.owner===true||ROLE.p.dc===true;if(window.__tzDc)initDay({db,toast,mode:"wh",staff:true,ping:id=>ping(auth,[],[],[],[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 🧾 (v241) يومية الفروع
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك فقط
  // 🎁 الهدايا والعينات: الاعتماد لمدير التسويق (p.gm) واللي المالك اداله "اعتماد الهدايا" (p.ga) بس — مش المدير بصفته مدير.
@@ -457,6 +457,7 @@ let sub="perm";try{const q=localStorage.getItem("st_sub");if(q==="perm"||q==="pm
 document.addEventListener("input",e=>{const t=e.target;if(t&&t.id==="brc")brF.c=t.value.replace(/\D/g,"").slice(0,3);else if(t&&t.id==="brn")brF.n=t.value});
 window.addEventListener("tz-news-go",e=>{const sb=e&&e.detail&&e.detail.sub;
  if(sb==="pm"&&ROLE.owner===true&&okTab("set")){tab="set";sub="pm";try{localStorage.setItem("st_sub","pm")}catch(x){}draw();return}// 👑 كارت الإدارة ← جدول الصلاحيات
+ if(sb==="dc"&&okTab("dc")){tab="dc";draw();return}// 🧾 (v242) كارت اليومية ← يومية الفروع
  if(ROLE.co&&okTab("set")){tab="set";draw()}});
 // أقسام الإعدادات: [المعرّف، الأيقونة، الاسم]. قسم جديد: أضفه هنا وفي سلسلة الشرط داخل setView (يظهر تلقائياً في القائمة الجانبية تحت «الإعدادات»)
 const setSubs=()=>{const S=[["perm","👥","الموظفون والحسابات"],["br","🏬","حسابات الفروع"],["rep","📊","التقارير والإشعارات"]].concat(ROLE.owner===true?[["cat","📦","كتالوج الأصناف"],["img","🖼","صور الأصناف"],["hl","📏","صحة المنصة"]]:[]);S.splice(1,0,["pm","🔐","جدول الصلاحيات"]);if(ROLE.owner===true)S.splice(2,0,["lk","🔒","الأقسام الخاصة"]);return S};
