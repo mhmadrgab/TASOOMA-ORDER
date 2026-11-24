@@ -38,7 +38,10 @@ export const backupNag=()=>late()?`<div class="bkn"><span>💾 ${N(META.at)?`آ�
 async function runAll(ctx){
   const c=ctx.db&&ctx.db.c;if(!c||!c.rpc)return false;
   const first=await withTimeout(c.rpc("backup_page",{p_after:"",p_max:4000000}),120000);
-  if(first.error||!first.data||!Array.isArray(first.data.rows))return false;// القواعد القديمة ← الطريقة القديمة
+  // (v240) الطريقة القديمة (ناقصة: من غير الهدايا والصيانة وأوامر الشراء...) بس لو الدالة نفسها مش موجودة (قواعد قديمة).
+  // أي خطأ تاني (نت، مهلة) = رسالة فشل، مش نسخة ناقصة تتسجّل كأنها كاملة وتخفي التنبيه
+  if(first.error){const m=String(first.error.code||"")+" "+String(first.error.message||"");if(/PGRST202|Could not find the function|does not exist/i.test(m))return false;throw first.error}
+  if(!first.data||!Array.isArray(first.data.rows))return false;
   if(!confirm("ستأخذ نسخة كاملة من كل بيانات المنصة (كل الأقسام والصور)، وستُحمَّل كملف على هذا الجهاز. قد تستغرق دقيقة أو أكثر.\n\nلا تشمل الدردشة الخاصة ولا كلمات المرور.\n\nهل تريد المتابعة؟"))return true;
   busy=true;ctx.toast("⏳ جاري تجهيز النسخة الاحتياطية...");
   try{
@@ -64,7 +67,7 @@ async function runAll(ctx){
 async function run(){
   if(busy||!X||!X.owner)return;
   const ctx=X;
-  try{if(await runAll(ctx))return}catch(e){busy=false}
+  try{if(await runAll(ctx))return}catch(e){busy=false;ctx.toast("تعذر أخذ النسخة. تأكد من الإنترنت وحاول مجدداً");return}
   if(!META){try{const s=await withTimeout(getDoc(doc(ctx.db,"meta","backup")),15000);META=s.exists()?s.data():{}}catch(e){return void ctx.toast("تعذر الاتصال. تأكد من الإنترنت وحاول مجدداً")}}
   const full=!N(META.at),from=full?0:N(META.at)-OVERLAP;
   if(!confirm(full?"ستأخذ نسخة كاملة من كل بيانات المنصة، وستُحمَّل كملف على هذا الجهاز. قد تستغرق دقيقة.\n\nهل تريد المتابعة؟"

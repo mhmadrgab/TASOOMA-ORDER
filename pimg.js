@@ -31,8 +31,11 @@ async function loadMeta(){
 }
 const has=code=>MAP.has(nk(code));
 // المصغّرات محفوظة على الجهاز (tz_pimgt) لحد ~1.5 مليون حرف، والقديم بيتشال
-function cacheGet(c,at){const o=readLs("tz_pimgt");const v=o&&o[c];return v&&N(v[0])===at?String(v[1]||""):""}
-function cachePut(c,at,t){clearTimeout(SAVE);SAVE=setTimeout(()=>{let o=readLs("tz_pimgt")||{};o[c]=[at,t];let s=JSON.stringify(o);
+// (v240) الكاش بيتقري من الجهاز مرة واحدة في الذاكرة (كان بيتقري ~1.5 مليون حرف مع كل صورة)، والحفظ بيكتب كل الصور الجديدة
+// (كان المؤقّت بيتلغي مع كل صورة فبتتحفظ آخر صورة بس، وكل الباقي يتنزّل تاني مع كل فتحة)
+let TC=null;const tc=()=>TC||(TC=readLs("tz_pimgt")||{});
+function cacheGet(c,at){const v=tc()[c];return v&&N(v[0])===at?String(v[1]||""):""}
+function cachePut(c,at,t){const o=tc();delete o[c];o[c]=[at,t];clearTimeout(SAVE);SAVE=setTimeout(()=>{let s=JSON.stringify(o);
  while(s.length>1500000){const k=Object.keys(o);if(k.length<2)break;k.slice(0,Math.ceil(k.length/3)).forEach(x=>{delete o[x]});s=JSON.stringify(o)}
  try{localStorage.setItem("tz_pimgt",s)}catch(e){}},400)}
 function thumb(code){
