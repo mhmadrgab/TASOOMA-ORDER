@@ -160,6 +160,7 @@ import {initAnn,stopAnn,annBtn} from "./ann.js";
 import {initShort,stopShort,shortView,weeklyCfgView} from "./short.js";
 import {initBCus,stopBCus,bcusView,bcusPend} from "./bcus.js";// 💼 (v218) عهدة الفروع
 import {initDay,stopDay,dcView,dcPend} from "./bday.js";// 🧾 (v241) يومية الفروع
+import {initMk,stopMk,mkView,mkCount,mkOpen,mkVisible} from "./mkt.js";// 📣 (v246) الحملات التسويقية
 import {initTasks,stopTasks,tkView,tkCount,tkOpen,tkStats} from "./tasks.js";// ✅ (v243) المهام والتذكيرات
 import {initSpace,stopSpace,spaceMount,spaceGo} from "./space.js";// 🗂 (v245) «مساحتي» مكان قسم المهام (نفس المعرّف tk)
 import {initStaff,view as staffView,permView,lockView,stop as stopStaff,syncDir,staffName,OWNER_NAME} from "./staff.js";
@@ -233,20 +234,22 @@ const TABS=[
  ["gift","🎁","الهدايا",()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift"),()=>giftPend(),"fin"],
  // 📊 (v173) تحليل المخزون من تقارير السيستم: للأدمن ومالك النظام فقط (والقواعد كذلك)
  ["stk","📊","تحليل المخزون",()=>ROLE.owner===true||ROLE.p.stk===true,null,"fin"],
+ ["mk","📣","الحملات التسويقية",()=>mkRole()||mkVisible(),()=>mkCount(),"com"],// 📣 (v246) مدير التسويق وفريقه والمالية والمتابع، ومن له مهمة في حملة
  ["chat","💬","الدردشة",()=>ROLE.owner===true||ROLE.p.nc!==true,()=>bcUnread(),"com"],
  ["set","⚙","الإعدادات",()=>ROLE.admin,null,"sys"],
  ["log","📜","السجل",()=>(ROLE.owner===true||ROLE.v===true)&&secOk("log"),null,"sys"]];
 // أول قسم يفتح لمن لا يرى الطلبات: نفس ترتيب الشريط القديم (حتى لا يتغيّر ما يراه أحد عند الدخول)
-const LAND=["req","dc","chat","fl","cus","wk","set","gift","mnt","po","rcv","log","sh","stk"];// (v241) dc صلاحية جديدة: لا تغيّر ما يفتح لأي دور قديم
+const LAND=["req","dc","chat","fl","cus","wk","set","gift","mnt","po","rcv","log","sh","stk","mk"];// (v241) dc صلاحية جديدة: لا تغيّر ما يفتح لأي دور قديم
 const landTab=()=>LAND.find(t=>okTab(t))||"req";
 // حساب المتابع: أزرار الحفظ والتعديل والحذف بتستخبى وبتتقفل (والقواعد في Firebase بتمنع أي كتابة أصلاً). العرض والطباعة والتقارير شغّالة
 const RO_SEL='[data-a]:not([data-a="print"]),[data-fl]:not([data-fl="trd"]):not([data-fl="tmap"]):not([data-fl="pmap"]):not([data-fl="mfit"]):not([data-fl="mwh"]):not([data-fl="mbig"]):not([data-fl="mfollow"]):not([data-fl="ohv"]):not([data-fl="ohx"]):not([data-fl="oilv"]):not([data-fl="rep"]):not([data-fl="mrep"]):not([data-fl="cancel"]),[data-cx]:not([data-cx="img"]):not([data-cx="ps"]):not([data-cx="stmt"]):not([data-cx="cancel"]),[data-wk]:not([data-wk="rep"]):not([data-wk="slip"]),[data-gf="ok"],[data-gf="no"],[data-gf="new"],[data-gf="edit"],[data-gf="del"],[data-wst],[data-asd],[data-asc],[data-bk],#bkall,[data-bkd],#bkd,#bkc';
 // 👁 (v222) القسم المفتوح «مشاهدة فقط» للمتابع إلا لو معه صلاحيته (TRW = صلاحيات كل قسم)
-const TRW={req:["req"],cus:["cus"],bcus:["cus"],fl:["fl"],gift:["gift","ga","req"],mnt:["mt"],po:["po","rcv"],rcv:["rcv"],stk:["stk"],dc:["dc"],chat:["_"],tk:["_"]};
+const TRW={req:["req"],cus:["cus"],bcus:["cus"],fl:["fl"],gift:["gift","ga","req"],mnt:["mt"],po:["po","rcv"],rcv:["rcv"],stk:["stk"],dc:["dc"],mk:["gm","mk","mf"],chat:["_"],tk:["_"]};
 const vwRO=t=>ROLE.v===true&&!(TRW[t]||[]).some(k=>k==="_"||ROLE.p[k]===true);
 const vwOn=k=>ROLE.v===true&&ROLE.p[k]!==true;// المتابع بلا صلاحية هذا القسم = مشاهدة فقط
 document.addEventListener("click",e=>{if(document.body.classList.contains("ro")&&e.target.closest(RO_SEL)){e.preventDefault();e.stopImmediatePropagation();toast("👁 حسابك للمتابعة فقط، وليس للتعديل")}},true);
 {const s=document.createElement("style");s.textContent=RO_SEL.split(",").map(x=>".ro "+x).join(",")+"{display:none!important}";document.head.appendChild(s)}
+const mkRole=()=>ROLE.owner===true||ROLE.v===true||ROLE.p.gm===true||ROLE.p.mk===true||ROLE.p.mf===true;// 📣 (v246) يرى كل الحملات
 const okTab=t=>{const x=TABS.find(a=>a[0]===t);return !!x&&x[3]()};
 let R=[],P={},B={},unsubs=[],tab="req",fs="all",fb="",fdf="",fdt="",first=true,openSet=new Set(),authed=false,tt;
 const toast=m=>{const t=g("toast");t.textContent=m;t.className="on";clearTimeout(tt);tt=setTimeout(()=>t.className="",3500)};
@@ -288,7 +291,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBCus();stopDay();stopTasks();stopSpace();stopPimg();stopErrand();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBCus();stopDay();stopMk();stopTasks();stopSpace();stopPimg();stopErrand();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -368,7 +371,7 @@ function start(){
  const adm=ROLE.admin;
  if(adm||can("cus")||vw)initBCus({db,toast,mode:"wh",staff:ROLE.owner===true||ROLE.p.cus===true,ping:id=>ping(auth,[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 💼 (v218)
  window.__tzDc=ROLE.owner===true||ROLE.p.dc===true;if(window.__tzDc)initDay({db,toast,mode:"wh",staff:true,ping:id=>ping(auth,[],[],[],[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 🧾 (v241) يومية الفروع
- initTasks({db,toast,owner:ROLE.owner===true,ping:ids=>ping(auth,[],[],[],[],[],[],[],[],[],[],ids),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,tab:()=>tab,redraw:draw});// ✅ (v243) المهام والتذكيرات
+ initMk({db,toast,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},mgr:ROLE.owner===true||(ROLE.p.gm===true&&ROLE.v!==true),team:ROLE.p.mk===true,fin:ROLE.owner===true||ROLE.p.mf===true,all:mkRole(),ro:ROLE.v===true&&ROLE.p.mk!==true&&ROLE.p.mf!==true,ping:l=>ping(auth,[],[],[],[],[],[],[],[],[],[],[],l),redraw:draw,show:()=>{if(tab!=="mk"&&okTab("mk")){tab="mk";draw()}}});/* 📣 (v246) الحملات التسويقية */initTasks({db,toast,owner:ROLE.owner===true,ping:ids=>ping(auth,[],[],[],[],[],[],[],[],[],[],ids),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,tab:()=>tab,redraw:draw});// ✅ (v243) المهام والتذكيرات
  initSpace({db,toast,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},nav:()=>navSync(),tk:{view:tkView,stats:tkStats,count:tkCount}});// 🗂 (v245) مساحتي
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك فقط
@@ -434,7 +437,8 @@ function start(){
  {const q=new URLSearchParams(location.search),rq=q.get("req"),tb=q.get("tab");
   if(tb&&okTab(tb))tab=tb;
   if(rq&&/^[A-Za-z0-9_-]{6,40}$/.test(rq)&&okTab("req")){tab="req";deepReq(rq)}
-  const tkq=q.get("tk");if(tkq&&okTab("tk")){tab="tk";spaceGo("tasks");tkOpen(tkq)}// ✅ (v243) إشعار مهمة ← يفتحها
+  const tkq=q.get("tk");if(tkq&&okTab("tk")){tab="tk";spaceGo("tasks");tkOpen(tkq)}
+   const mkq=q.get("mk");if(mkq&&/^[A-Za-z0-9_-]{1,64}$/.test(mkq)){mkOpen(mkq);if(okTab("mk"))tab="mk"}// 📣 (v246) إشعار حملة ← يفتحها// ✅ (v243) إشعار مهمة ← يفتحها
   if(rq||tb||tkq)try{history.replaceState(null,"",location.pathname)}catch(e){}}
  draw();
 }
@@ -549,7 +553,7 @@ function drawNow(){
  if(HT.getAttribute("data-tab")!==tab){HT.setAttribute("data-tab",tab);try{sessionStorage.setItem("tz_tab",tab)}catch(x){}}
  // (v184) تحليل المخزون مفتوح ومركَّب: لا نعيد بناء الصفحة مع كل تحديث لحظي (كان يُنزع المديول ويُعاد، فتُقفل القوائم المفتوحة ويطير المؤشر من الخانة أثناء الكتابة)
  const stkOn=(tab==="stk"&&g("stkhost")&&g("stkhost").firstElementChild&&g("stkhost").firstElementChild.id==="stk")||(tab==="tk"&&g("wshost")&&g("wshost").firstElementChild&&g("wshost").firstElementChild.id==="wsp");// 🗂 (v245) مساحتي كذلك
- if(!stkOn)g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="bcus"?bcusView():tab==="dc"?dcView():tab==="tk"?`<div id="wshost"></div>`:tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
+ if(!stkOn)g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="bcus"?bcusView():tab==="dc"?dcView():tab==="tk"?`<div id="wshost"></div>`:tab==="mk"?mkView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
  showSheet();
  if(tab==="chat")mountWh(g("bchost"));else hideWh();// الدردشة عنصر ثابت بيتحط في مكانه (الكتابة والتسجيل مايضيعوش)
  if(tab==="stk")stockMount(g("stkhost"));
@@ -783,7 +787,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)document.t
 const deny=async m=>{lastErr=m;stop();login(m);try{await signOut(auth)}catch(e){}};
 // صلاحيات الحساب من staff/{email}. المتابع (v) مالوش أي صلاحية تعديل حتى لو اتعلّم غلط
 // 👁 (v222) المتابع: يحتفظ بالصلاحيات التي يعلّمها له الأدمن أو مالك النظام (VWK) فيعمل في أقسامها، وباقي الأقسام مشاهدة فقط
-const VWK=["req","cus","fl","gift","mt","po","rcv","stk","ga","nc","dc"],vwP=p=>{const o={};VWK.forEach(k=>{if(p&&p[k]===true)o[k]=true});return o};
+const VWK=["req","cus","fl","gift","mt","po","rcv","stk","ga","nc","dc","mk","mf"],vwP=p=>{const o={};VWK.forEach(k=>{if(p&&p[k]===true)o[k]=true});return o};
 const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;window.__tzCo=co;window.__tzRoot=false;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,cw:!v&&s.cw===true,p:v?vwP(s.p):(s.p||{}),name:s.name||"",k:s.k||""}};
 async function enterStaff(u){
  const em=String(u.email||"").toLowerCase();

@@ -272,7 +272,7 @@
  addEventListener("online",upd);addEventListener("focus",upd);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)upd();tick()});
  // 2) هل ينفع نعمل ريفرش دلوقتي من غير ما نضيّع شغل؟
- const MOD="#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#zbx,#bciv,#anniv,#annm,#annp,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,.cm,.fm,.gfm,.mdl,.wkm,.ov";
+ const MOD="#mkm,#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#zbx,#bciv,#anniv,#annm,#annp,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,.cm,.fm,.gfm,.mdl,.wkm,.ov";
  const overlayOpen=()=>{if(document.getElementById("tz-news"))return true;try{return [...document.querySelectorAll(MOD)].some(e=>e.classList.contains("on")&&!e.classList.contains("is-closing"))}catch(x){return false}};
  const typing=()=>{const a=document.activeElement;if(!a)return false;const t=a.tagName;
   if(a.isContentEditable)return String(a.textContent||"").length>0;
@@ -457,7 +457,7 @@
 // مستثنى عن قصد: عارضات الصور (#zbx #bciv #anniv .ov) وخريطة التتبع: لا يُكتب فيها شيء، وقفلها بالضغط برّه طبيعي.
 // ⚠️ نافذة جديدة: أضف معرّفها هنا لو فيها نموذج. وتهتز اللوحة هزة خفيفة (tz-stay) ليعرف المستخدم أن الضغطة وصلت.
 (()=>{
- const HOLD="#tkm,#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#annm,#annp,#bcgm,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,#flm,#cmx,#gfm,.cm,.fm,.gfm,.mdl,.wkm,.xm";
+ const HOLD="#mkm,#tkm,#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#annm,#annp,#bcgm,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,#flm,#cmx,#gfm,.cm,.fm,.gfm,.mdl,.wkm,.xm";
  const stop=e=>{const t=e.target;if(!(t instanceof Element)||!t.matches(HOLD)||!t.classList.contains("on")&&getComputedStyle(t).display==="none")return;
   e.stopPropagation();e.stopImmediatePropagation();e.preventDefault();
   if(e.type!=="click")return;const p=t.firstElementChild;if(!p||document.documentElement.classList.contains("lite"))return;
