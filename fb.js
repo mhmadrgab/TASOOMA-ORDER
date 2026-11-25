@@ -125,16 +125,18 @@ export async function pushSave(db, info, tok, native) {
 }
 // ---------- سيرفر الإشعارات (Cloudflare) ----------
 export const PUSH_URL = "https://tasooma-push.tasooma.workers.dev";
-export async function ping(auth, ids, chats, trips, gifts, mnts, pos, cus, ers, oils, dcs) {
+export async function ping(auth, ids, chats, trips, gifts, mnts, pos, cus, ers, oils, dcs, tks) {
   try {
-    const u0 = a => [...new Set((a || []).filter(Boolean))]; ids = u0(ids); chats = u0(chats); trips = u0(trips); gifts = u0(gifts); mnts = u0(mnts); pos = u0(pos); cus = u0(cus); ers = u0(ers); oils = u0(oils); dcs = u0(dcs);// 🧾 (v241) dcs = يوميات الفروع · 🛢 (v232) oils = بلاغات تغيير الزيت · 💼 (v219) cus = حركات عهدة الفروع · 🧭 (v223) ers = المشاوير
+    const u0 = a => [...new Set((a || []).filter(Boolean))]; ids = u0(ids); chats = u0(chats); trips = u0(trips); gifts = u0(gifts); mnts = u0(mnts); pos = u0(pos); cus = u0(cus); ers = u0(ers); oils = u0(oils); dcs = u0(dcs);
+    // ✅ (v243) tks = المهام: "رقم" (إسناد/إنهاء) أو "رقم/رقم التعليق" (تعليق جديد)
+    tks = u0(tks); const tkc = tks.filter(x => String(x).includes("/")); tks = tks.filter(x => !String(x).includes("/"));// 🧾 (v241) dcs = يوميات الفروع · 🛢 (v232) oils = بلاغات تغيير الزيت · 💼 (v219) cus = حركات عهدة الفروع · 🧭 (v223) ers = المشاوير
     chats.filter(c => /^g_/.test(c)).forEach(c => multiPush(auth, "/grp", {gid: c.slice(2)})); chats = chats.filter(c => !/^g_/.test(c));
     // 📦 (18 نوفمبر 2026) مرحلة الحاوية (ميناء / متجهة / وصلت المستودع) تُذاع للمديرين والمحاسبين، والفروع عند الوصول. على دفعات، والسيرفر يمنع التكرار
     if (auth && auth.currentUser && !/@tasooma\.app$/i.test(String(auth.currentUser.email || ""))) pos.forEach(x => multiPush(auth, "/pobc", {id: x}));
-    if (!PUSH_URL || !(ids.length || chats.length || trips.length || gifts.length || mnts.length || pos.length || cus.length || ers.length || oils.length || dcs.length)) return;
+    if (!PUSH_URL || !(ids.length || chats.length || trips.length || gifts.length || mnts.length || pos.length || cus.length || ers.length || oils.length || dcs.length || tks.length || tkc.length)) return;
     const u = auth && auth.currentUser; if (!u) return;
     const t = await u.getIdToken();
-    const jobs = [...trips.map(x => ({trips: [x]})), ...ids.map(x => ({ids: [x]})), ...chats.map(x => ({chats: [x]})), ...gifts.map(x => ({gifts: [x]})), ...mnts.map(x => ({mnts: [x]})), ...pos.map(x => ({pos: [x]})), ...cus.map(x => ({cus: [x]})), ...ers.map(x => ({ers: [x]})), ...oils.map(x => ({oils: [x]})), ...dcs.map(x => ({dcs: [x]}))].slice(0, 200);// (v237) كان 40 وبيسيب الباقي بصمت (تعيين جماعي لأكتر من 40 طلب)؛ السيرفر يسمح 240 في الدقيقة للحساب
+    const jobs = [...trips.map(x => ({trips: [x]})), ...ids.map(x => ({ids: [x]})), ...chats.map(x => ({chats: [x]})), ...gifts.map(x => ({gifts: [x]})), ...mnts.map(x => ({mnts: [x]})), ...pos.map(x => ({pos: [x]})), ...cus.map(x => ({cus: [x]})), ...ers.map(x => ({ers: [x]})), ...oils.map(x => ({oils: [x]})), ...dcs.map(x => ({dcs: [x]})), ...tks.map(x => ({tks: [x]})), ...tkc.map(x => ({tkc: [x]}))].slice(0, 200);// (v237) كان 40 وبيسيب الباقي بصمت (تعيين جماعي لأكتر من 40 طلب)؛ السيرفر يسمح 240 في الدقيقة للحساب
     jobs.forEach((b, i) => setTimeout(() => fetch(PUSH_URL + "/notify", {method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + t}, body: JSON.stringify({ids: [], chats: [], trips: [], gifts: [], mnts: [], pos: [], cus: [], ers: [], oils: [], dcs: [], ...b}), keepalive: i < 40}).catch(() => {}), i < 40 ? 0 : (i - 39) * 60));// keepalive له حد حجم في المتصفح: لأول 40 بس، والباقي متباعد شوية
   } catch (e) {}
 }

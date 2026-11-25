@@ -457,7 +457,7 @@
 // مستثنى عن قصد: عارضات الصور (#zbx #bciv #anniv .ov) وخريطة التتبع: لا يُكتب فيها شيء، وقفلها بالضغط برّه طبيعي.
 // ⚠️ نافذة جديدة: أضف معرّفها هنا لو فيها نموذج. وتهتز اللوحة هزة خفيفة (tz-stay) ليعرف المستخدم أن الضغطة وصلت.
 (()=>{
- const HOLD="#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#annm,#annp,#bcgm,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,#flm,#cmx,#gfm,.cm,.fm,.gfm,.mdl,.wkm,.xm";
+ const HOLD="#tkm,#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#annm,#annp,#bcgm,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,#flm,#cmx,#gfm,.cm,.fm,.gfm,.mdl,.wkm,.xm";
  const stop=e=>{const t=e.target;if(!(t instanceof Element)||!t.matches(HOLD)||!t.classList.contains("on")&&getComputedStyle(t).display==="none")return;
   e.stopPropagation();e.stopImmediatePropagation();e.preventDefault();
   if(e.type!=="click")return;const p=t.firstElementChild;if(!p||document.documentElement.classList.contains("lite"))return;
