@@ -57,7 +57,7 @@ function shell(){return `<div class="ws-bar"><div class="ws-ttl"><b>مساحتي
 let LASTSEC="";
 function paint(force){
  if(!ROOT||!X)return;
- const seg=g("ws-seg");if(seg){const h=SECS.map(s=>`<button type="button" role="tab" data-ws="sec" data-v="${s[0]}" class="${S.sec===s[0]?"on":""}" aria-selected="${S.sec===s[0]}"><span>${s[1]}</span> ${s[2]}${s[0]==="tasks"&&X.tk&&X.tk.count()?` <i class="ws-n">${X.tk.count()}</i>`:""}</button>`).join("");if(seg.innerHTML!==h)seg.innerHTML=h}
+ const seg=g("ws-seg");if(seg){const h=SECS.map(s=>`<button type="button" role="tab" data-ws="sec" data-v="${s[0]}" class="${S.sec===s[0]?"on":""}" aria-selected="${S.sec===s[0]}"><span>${s[1]}</span> ${s[2]}${s[0]==="tasks"&&X.tk&&X.tk.count()?` <i class="ws-n">${X.tk.count()}</i>`:""}</button>`).join("");if(seg._h!==h){seg._h=h;seg.innerHTML=h}}
  svState();
  const b=g("ws-body");if(!b)return;
  if(ERR&&!(LD.f||LD.n||LD.m)){b.innerHTML=`<div class="ws-empty">تعذّرت قراءة مساحتك. ربما لم تتحدّث القواعد بعد</div>`;return}

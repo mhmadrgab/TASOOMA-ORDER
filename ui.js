@@ -551,3 +551,67 @@
 })();
 // 🔔 (v235) الضغط على الإشعار الصغير فوق (#toast) يقفله على طول
 document.addEventListener("click",function(e){var t=e.target&&e.target.closest?e.target.closest("#toast"):null;if(t)t.classList.remove("on")},true);
+// 🫧 (v247) كبسولة التنقّل: مؤشر واحد يتزحلق ويتمطّ بين عناصر كل شرائط التنقّل (الأقسام، التبويبات، المفاتيح، القائمة الجانبية).
+// العنصر <tz-g> بيتحط آخر الحاوية (مابيأثرش على أي CSS)، والحاوية اللي بتتعاد رسمتها بتبدأ من آخر مكان كان فيه المؤشر لو المستخدم ضغط فيها قبلها بلحظة.
+// مقفولة في html.lite (الشكل القديم)، ومع «تقليل الحركة» بتنقل من غير حركة. شريط جديد: سطر في T + (لو نوعه جديد) CSS في ui.css.
+(function(){
+ if(window.tzGlide)return;
+ var D=document,H=D.documentElement;
+ var T=[[".ws-seg","c"],[".tkx-seg","c"],[".g5-seg","c"],[".stk-seg","c"],[".po-tabs","c"],[".cl-sub","c"],[".mkp-sb","t"],[".g5-tabs","t"],[".stg-nav","s"],[".stk-tabs","s"],[".tkx-sl","r"],["#tzn-nav","d"],["#bnv","d"]];
+ var SIDE=".tzn-i,button.bnv-i";
+ var mm=function(q){try{return window.matchMedia?matchMedia(q):null}catch(e){return null}};
+ var RM=mm("(prefers-reduced-motion: reduce)"),FINE=mm("(hover:hover) and (pointer:fine)");
+ var MEM={},pend=0,live=[];
+ function off(){return H.classList.contains("lite")}
+ function still(){return !!(RM&&RM.matches)}
+ function its(c,k){if(k==="d")return c.querySelectorAll(SIDE);var o=[],ch=c.children;for(var i=0;i<ch.length;i++)if(ch[i].tagName==="BUTTON")o.push(ch[i]);return o}
+ function box(e,c,k){var x=0,y=0,n=e;while(n&&n!==c){x+=n.offsetLeft;y+=n.offsetTop;n=n.offsetParent}if(n!==c||!e.offsetWidth)return null;var b={x:x,y:y,w:e.offsetWidth,h:e.offsetHeight};
+  if(k==="t"&&b.h>36){var d=Math.round((b.h-34)/2);b.y+=d;b.h-=2*d}return b}
+ // (v247، بعد رأي محمد) حركة واحدة ناعمة من غير تمطّ: المكان بـ transform (أنعم من left/top)، والحجم بيتغيّر مع الحركة
+ function px(b){return {transform:"translate("+b.x+"px,"+b.y+"px)",width:b.w+"px",height:b.h+"px"}}
+ function setB(p,b){var k=px(b);p.style.transform=k.transform;p.style.width=k.width;p.style.height=k.height;p._b=b}
+ function now(p){if(!p._a)return p._b;var s=getComputedStyle(p),m=/matrix\(([^)]+)\)/.exec(s.transform||""),v=m?m[1].split(","):[];
+  return {x:parseFloat(v[4])||0,y:parseFloat(v[5])||0,w:parseFloat(s.width)||0,h:parseFloat(s.height)||0}}
+ function glide(p,b,anim,dur){var a=now(p);if(p._a){try{p._a.cancel()}catch(e){}p._a=null}setB(p,b);
+  if(!anim||!a||still()||!p.animate)return;
+  if(Math.abs(a.x-b.x)<1&&Math.abs(a.y-b.y)<1&&Math.abs(a.w-b.w)<1&&Math.abs(a.h-b.h)<1)return;
+  try{p._a=p.animate([px(a),px(b)],{duration:dur||280,easing:"cubic-bezier(0.22,1,0.36,1)"});p._a.onfinish=function(){p._a=null}}catch(e){p._a=null}}
+ function mk(c,cls){var e=D.createElement("tz-g");e.className=cls;e.setAttribute("aria-hidden","true");c.appendChild(e);return e}
+ // ظل الماوس: بيروح للعنصر اللي تحت الإيد على طول تقريباً (120ms)، ويختفي فوق العنصر المفتوح
+ function hov(e){var c=e.currentTarget,s=c._tzg;if(!s||!e.target.closest)return;var t=e.target.closest(s.k==="d"?SIDE:"button");if(!t||!c.contains(t)||(s.k!=="d"&&t.parentNode!==c))return;
+  var g=s.g;if(!g||g.parentNode!==c)g=s.g=mk(c,"h");
+  if(t===s.on||t.classList.contains("on")){g.classList.remove("in");return}
+  var b=box(t,c,s.k);if(!b)return;
+  if(!g.classList.contains("in")){if(g._a){try{g._a.cancel()}catch(x){}g._a=null}setB(g,b);g.classList.add("in")}else glide(g,b,true,120)}
+ function hl(e){var s=e.currentTarget._tzg;if(s&&s.g)s.g.classList.remove("in")}
+ function down(e){var s=e.currentTarget._tzg;if(s){var m=MEM[s.key]||(MEM[s.key]={});m.t=Date.now()}}
+ var RO=window.ResizeObserver?new ResizeObserver(function(){req()}):null;
+ function init(c,k,key){var s=c._tzg;if(!s){s=c._tzg={k:k};c.classList.add("tzg","tzg-"+k);if(getComputedStyle(c).position==="static")c.classList.add("tzg-rel");
+   if(k!=="r"&&FINE&&FINE.matches){c.addEventListener("pointerover",hov);c.addEventListener("pointerleave",hl)}
+   c.addEventListener("pointerdown",down);c.addEventListener("transitionend",function(e){if(e.target.tagName!=="TZ-G")req()});if(RO)try{RO.observe(c)}catch(e){}}
+  s.key=key;return s}
+ function sync(c){var s=c._tzg,l=its(c,s.k),on=null;for(var i=0;i<l.length;i++)if(l[i].classList.contains("on")){on=l[i];break}
+  var p=s.p;if(!p||p.parentNode!==c){p=s.p=mk(c,"p");p._b=null}
+  if(!on){p.classList.remove("in");s.on=null;return}
+  var b=box(on,c,s.k);if(!b)return;
+  if(s.k==="r"){var cc=getComputedStyle(on).getPropertyValue("--c");if(cc)p.style.setProperty("--c",cc)}
+  var m=MEM[s.key];
+  if(!p._b){if(m&&m.b&&m.t&&Date.now()-m.t<1500){setB(p,m.b);glide(p,b,true)}else setB(p,b)}
+  else if(on!==s.on){glide(p,b,true);if(s.g)s.g.classList.remove("in")}
+  else if(!p._a){var o=p._b;if(o.x!==b.x||o.y!==b.y||o.w!==b.w||o.h!==b.h)setB(p,b)}
+  p.classList.add("in");s.on=on;m=MEM[s.key]||(MEM[s.key]={});m.b=b}
+ function drop(c){var s=c._tzg;if(!s)return;c.classList.remove("tzg","tzg-"+s.k,"tzg-rel");if(s.p&&s.p.parentNode)s.p.remove();if(s.g&&s.g.parentNode)s.g.remove();
+  c.removeEventListener("pointerover",hov);c.removeEventListener("pointerleave",hl);c.removeEventListener("pointerdown",down);c._tzg=null}
+ function scan(){pend=0;if(!D.body)return;
+  if(off()){for(var z=0;z<live.length;z++)drop(live[z]);live=[];return}
+  var nl=[];for(var i=0;i<T.length;i++){var cs=D.querySelectorAll(T[i][0]);for(var j=0;j<cs.length;j++){var c=cs[j];init(c,T[i][1],T[i][0]+"#"+j+"|"+(c.getAttribute("aria-label")||c.id||""));try{sync(c)}catch(e){}nl.push(c)}}
+  live=nl}
+ function req(){if(pend)return;pend=1;(window.requestAnimationFrame||setTimeout)(scan);setTimeout(function(){if(pend)scan()},120)}
+ function only(m){if(m.type==="attributes")return m.target.tagName==="TZ-G";var a=m.addedNodes,r=m.removedNodes,i;for(i=0;i<a.length;i++)if(a[i].tagName!=="TZ-G")return false;for(i=0;i<r.length;i++)if(r[i].tagName!=="TZ-G")return false;return true}
+ function start(){if(!D.body)return setTimeout(start,50);
+  new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){var m=ms[i];if(m.type==="attributes"&&m.target!==H&&m.target.tagName!=="BUTTON"&&!(m.target.classList&&m.target.classList.contains("tzn-i")))continue;if(!only(m)){req();return}}}).observe(D.body,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]});
+  new MutationObserver(req).observe(H,{attributes:true,attributeFilter:["class"]});
+  window.addEventListener("resize",req);scan()}
+ start();
+ window.tzGlide={scan:scan,list:function(){return live.length}};
+})();
