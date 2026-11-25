@@ -230,6 +230,11 @@ export function stopTasks(){UN.forEach(f=>{try{f()}catch(e){}});UN=[];if(CMUN){t
 function paint(){if(!X)return;if(PEND&&LOADED){const id=PEND;PEND="";const t=all().find(x=>x.id===id);if(t)openTask(id);else X.toast("المهمة غير موجودة أو ليست من مهامك","er")}if(X.redraw)X.redraw();if(F&&F.id)liveForm()}
 // العدد في القائمة الجانبية: مهامي المتأخرة أو اللي موعدها النهارده
 export const tkCount=()=>{if(!X)return 0;const e=eod(Date.now());return all().filter(t=>t.st!=="done"&&mine(t)&&N(t.du)>0&&N(t.du)<=e).length};
+// 🗂 (v245) أرقام لمخططات «مساحتي»: مهامي (مسندة لي أو أنشأتها بلا مسؤول) والمهام التي أراها، والمنتهية آخر 30 يوماً
+export function tkStats(){
+ const z=()=>({todo:0,doing:0,done:0,late:0,today:0,pr:[0,0,0,0]});const R={mine:z(),all:z(),loaded:LOADED};if(!X)return R;const e=eod(Date.now());
+ all().forEach(t=>{[R.all].concat(mine(t)?[R.mine]:[]).forEach(o=>{o[t.st==="doing"?"doing":t.st==="done"?"done":"todo"]++;if(t.st!=="done"){if(isLate(t))o.late++;else if(N(t.du)>0&&N(t.du)<=e)o.today++;const p=Math.max(0,Math.min(3,N(t.pr)));o.pr[p]++}})});
+ return R}
 export function tkOpen(id){if(!X||!/^[A-Za-z0-9_-]{1,64}$/.test(String(id||"")))return;if(LOADED&&all().some(t=>t.id===id))openTask(id);else PEND=id}
 // ---------- العرض ----------
 function inList(t,l){

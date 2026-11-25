@@ -160,7 +160,8 @@ import {initAnn,stopAnn,annBtn} from "./ann.js";
 import {initShort,stopShort,shortView,weeklyCfgView} from "./short.js";
 import {initBCus,stopBCus,bcusView,bcusPend} from "./bcus.js";// 💼 (v218) عهدة الفروع
 import {initDay,stopDay,dcView,dcPend} from "./bday.js";// 🧾 (v241) يومية الفروع
-import {initTasks,stopTasks,tkView,tkCount,tkOpen} from "./tasks.js";// ✅ (v243) المهام والتذكيرات
+import {initTasks,stopTasks,tkView,tkCount,tkOpen,tkStats} from "./tasks.js";// ✅ (v243) المهام والتذكيرات
+import {initSpace,stopSpace,spaceMount,spaceGo} from "./space.js";// 🗂 (v245) «مساحتي» مكان قسم المهام (نفس المعرّف tk)
 import {initStaff,view as staffView,permView,lockView,stop as stopStaff,syncDir,staffName,OWNER_NAME} from "./staff.js";
 import {initProf,stopProf,chip as meChip} from "./prof.js";
 import {initAudit,view as logView,stopAudit} from "./audit.js";
@@ -223,7 +224,7 @@ const TABS=[
  ["fl","🚚","السيارات",()=>see("fl"),null,"ops"],
  ["mnt","🔧","الصيانة",()=>(ROLE.admin||can("mt")||ROLE.v===true)&&secOk("mt"),()=>mntCount(),"ops"],
  ["wk","👷","العمال",()=>ROLE.admin||ROLE.v===true,null,"ops"],
- ["tk","✅","المهام والتذكيرات",()=>true,()=>tkCount(),"ops"],// ✅ (v243) لكل حسابات المستودع والإدارة؛ كل واحد يرى مهامه (القواعد)
+ ["tk","🗂","مساحتي",()=>true,()=>tkCount(),"ops"],// 🗂 (v245) ملاحظات ومهام ودخل ومصروفات// ✅ (v243) لكل حسابات المستودع والإدارة؛ كل واحد يرى مهامه (القواعد)
  ["po","🚢","أوامر الشراء",()=>(ROLE.admin||ROLE.p.po===true||ROLE.p.rcv===true||ROLE.v===true)&&poFree(),()=>poCount(),"fin"],
  ["rcv","📦","استلام الحاويات",()=>rcvLim(),()=>poRcvCount(),"fin"],
  ["cus","💵","العهدة",()=>see("cus")&&secOk("cus"),null,"fin"],
@@ -287,7 +288,7 @@ function deepReq(id){
   tab="req";fs="all";fb="";fdf="";fdt="";openSet.add(id);openSet.delete("-"+id);draw();
   setTimeout(()=>{const d=document.querySelector(`details[data-id="${CSS.escape(id)}"]`),a=d&&d.closest("article");if(a){a.scrollIntoView({block:"center"});setTimeout(()=>a.scrollIntoView({block:"center"}),600);a.classList.add("tzflash");setTimeout(()=>a.classList.remove("tzflash"),3600)}},300)},500)}
 window.addEventListener("tz-open",e=>{const m=/^(?:rm|[nsqyrx])([A-Za-z0-9]{15,})$/.exec(String(e.detail&&e.detail.tag||""));if(m&&okTab("req"))deepReq(m[1])});
-function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBCus();stopDay();stopTasks();stopPimg();stopErrand();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
+function stop(){Object.keys(tmpPw).forEach(k=>delete tmpPw[k]);stopPwSelf();stopCall();stopHealth();stopGifts();stopMnt();stopPo();stopPoRcv();stopStock();stopAnn();stopShort();stopExtra();stopFleet();stopStaff();stopBCus();stopDay();stopTasks();stopSpace();stopPimg();stopErrand();stopWorkers();stopBChat();stopNotes();stopBackup();LOCK={};LOCKR=false;setAudit(null);stopProf();stopAudit();if(g("sf"))g("sf").remove();document.documentElement.classList.remove("tzn-open");document.documentElement.removeAttribute("data-tab");unsubs.forEach(f=>f());unsubs=[];authed=false;first=true;R=[];P={};B={};RQ={o:new Map(),r:new Map()};RQ1={o:true,r:true};seenReq=new Set();ALLREQ=false;unOld=null}
 // الطلبات: بدل ما نحمّل كل الطلبات من أول يوم، بنسمع لحاجتين بس:
 // (o) الطلبات المفتوحة مهما كان تاريخها، و(r) كل طلبات آخر 32 يوم (لوحة الأداء والنواقص والعمال محتاجين شهر).
 // توفير القراءات (نوفمبر 2026، القراءات وصلت 40 ألف من 50): كانت 60 يوم، وكل فتحة للوحة بتقرا كل طلب فيهم.
@@ -368,6 +369,7 @@ function start(){
  if(adm||can("cus")||vw)initBCus({db,toast,mode:"wh",staff:ROLE.owner===true||ROLE.p.cus===true,ping:id=>ping(auth,[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 💼 (v218)
  window.__tzDc=ROLE.owner===true||ROLE.p.dc===true;if(window.__tzDc)initDay({db,toast,mode:"wh",staff:true,ping:id=>ping(auth,[],[],[],[],[],[],[],[],[],[id]),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,redraw:draw});// 🧾 (v241) يومية الفروع
  initTasks({db,toast,owner:ROLE.owner===true,ping:ids=>ping(auth,[],[],[],[],[],[],[],[],[],[],ids),me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},branches:()=>BR,tab:()=>tab,redraw:draw});// ✅ (v243) المهام والتذكيرات
+ initSpace({db,toast,me:{e:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),n:String(ROLE.name||(ROLE.root?OWNER_NAME:"")||"").slice(0,60)},nav:()=>navSync(),tk:{view:tkView,stats:tkStats,count:tkCount}});// 🗂 (v245) مساحتي
  if(adm||can("cus")||vw)initExtra({db,toast,logo:LOGO1,BR,code,tab:()=>tab,redraw:draw,newReqs:()=>R.filter(r=>r.st==="new").length,cars:fleetCars,admin:adm,owner:ROLE.owner===true});
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك فقط
  // 🎁 الهدايا والعينات: الاعتماد لمدير التسويق (p.gm) واللي المالك اداله "اعتماد الهدايا" (p.ga) بس — مش المدير بصفته مدير.
@@ -432,7 +434,7 @@ function start(){
  {const q=new URLSearchParams(location.search),rq=q.get("req"),tb=q.get("tab");
   if(tb&&okTab(tb))tab=tb;
   if(rq&&/^[A-Za-z0-9_-]{6,40}$/.test(rq)&&okTab("req")){tab="req";deepReq(rq)}
-  const tkq=q.get("tk");if(tkq&&okTab("tk")){tab="tk";tkOpen(tkq)}// ✅ (v243) إشعار مهمة ← يفتحها
+  const tkq=q.get("tk");if(tkq&&okTab("tk")){tab="tk";spaceGo("tasks");tkOpen(tkq)}// ✅ (v243) إشعار مهمة ← يفتحها
   if(rq||tb||tkq)try{history.replaceState(null,"",location.pathname)}catch(e){}}
  draw();
 }
@@ -546,11 +548,12 @@ function drawNow(){
  fixSub();shell();navSync();topSync();
  if(HT.getAttribute("data-tab")!==tab){HT.setAttribute("data-tab",tab);try{sessionStorage.setItem("tz_tab",tab)}catch(x){}}
  // (v184) تحليل المخزون مفتوح ومركَّب: لا نعيد بناء الصفحة مع كل تحديث لحظي (كان يُنزع المديول ويُعاد، فتُقفل القوائم المفتوحة ويطير المؤشر من الخانة أثناء الكتابة)
- const stkOn=tab==="stk"&&g("stkhost")&&g("stkhost").firstElementChild&&g("stkhost").firstElementChild.id==="stk";
- if(!stkOn)g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="bcus"?bcusView():tab==="dc"?dcView():tab==="tk"?tkView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
+ const stkOn=(tab==="stk"&&g("stkhost")&&g("stkhost").firstElementChild&&g("stkhost").firstElementChild.id==="stk")||(tab==="tk"&&g("wshost")&&g("wshost").firstElementChild&&g("wshost").firstElementChild.id==="wsp");// 🗂 (v245) مساحتي كذلك
+ if(!stkOn)g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="bcus"?bcusView():tab==="dc"?dcView():tab==="tk"?`<div id="wshost"></div>`:tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
  showSheet();
  if(tab==="chat")mountWh(g("bchost"));else hideWh();// الدردشة عنصر ثابت بيتحط في مكانه (الكتابة والتسجيل مايضيعوش)
- if(tab==="stk")stockMount(g("stkhost"));// تحليل المخزون: عنصر ثابت كذلك
+ if(tab==="stk")stockMount(g("stkhost"));
+ if(tab==="tk")spaceMount(g("wshost"));// 🗂 (v245) مساحتي: عنصر ثابت (الكتابة في الملاحظة ماتضيعش مع التحديث اللحظي)// تحليل المخزون: عنصر ثابت كذلك
  wireButtons();document.getElementById("bell").hidden=!("Notification" in window);adminHdr();
  if(!stkOn){window.scrollTo(0,keep);restoreUi(ui)}
 }
