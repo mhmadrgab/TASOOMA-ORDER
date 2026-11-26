@@ -5420,4 +5420,6 @@ export default {
 "اتفاق":"deal(s)",
 "لا مهام.":"No tasks.",
 "مرتّبون بالأكثر تأخراً أولاً. اضغط على أي شخص لعرض مهامه. الأرقام لحملات الفلتر المختار فوق.":"Sorted by most overdue first. Tap a person to see their tasks. Numbers cover the campaigns in the filter above.",
+"✅ جاهز":"✅ Ready",
+"⏳ يُجهَّز":"⏳ Being prepared",
 };
