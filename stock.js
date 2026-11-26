@@ -68,7 +68,7 @@ function csvRows(txt,onRow){
 }
 const HMAP={code:["description2","الكود","كود","code","item code"],color:["attribute","اللون","لون","color"],size:["item_size","المقاس","مقاس","size"],store:["store name","store_name","الفرع","المخزن","store"],vendor:["vendor name","vendor_name","المورد","vendor"],
  rc:["rcvd_qty","received_qty","المستلم","received","rcvd qty","received qty","receive qty","receive_qty","rcv qty","rcv_qty","rec qty","qty received","voucher qty","vou qty","vou_qty","purchase qty","purchased qty","purchases","الكمية المستلمة","المشتريات","الاستلام"],sold:["sold_qty","المبيعات","مبيعات","sold"],on:["oh_qty","onhand qty","on hand qty","oh qty","onhand","الكمية","الرصيد"],
- yr:["date - year","year","السنة"],mo:["date - month","month","الشهر"],dy:["date - day","day","اليوم"],dt:["date","التاريخ","voucher date","vou date","vou_date","receive date","received date","rcvd date","rcvd_date","تاريخ الاستلام","تاريخ السند"]};
+ yr:["date - year","year","السنة"],mo:["date - month","month","الشهر"],dy:["date - day","day","اليوم"],dt:["date","التاريخ","voucher date","vou date","vou_date","receive date","received date","rcvd date","rcvd_date","تاريخ الاستلام","تاريخ السند","created_date","created date","post_date","post date"]};
 const MON={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,
  "يناير":1,"فبراير":2,"مارس":3,"أبريل":4,"ابريل":4,"مايو":5,"يونيو":6,"يوليو":7,"أغسطس":8,"اغسطس":8,"سبتمبر":9,"أكتوبر":10,"اكتوبر":10,"نوفمبر":11,"ديسمبر":12};
 const p2=n=>(n<10?"0":"")+n;
@@ -83,6 +83,8 @@ export function ingest(){
  const qn=v=>{const x=num(v);if(x!==x){R.nan++;return 0}return x};// خانة كمية غير رقمية تُعدّ (والملف يُرفض عند الحفظ)
  const ix=(arr,map,v)=>{let i=map.get(v);if(i===undefined){i=arr.length;arr.push(v);map.set(v,i)}return i};
  const head=row=>{const h={},low=row.map(c=>String(c).trim().toLowerCase());for(const f in HMAP){const i=low.findIndex(c=>HMAP[f].indexOf(c)>=0);if(i>=0)h[f]=i}
+  // (v253) أعمدة التاريخ بأي اسم تاريخ قبلها: «CREATED_DATE - Year» مثل «Date - Year»
+  for(const [f,s] of [["yr","year"],["mo","month"],["dy","day"]])if(h[f]===undefined){const i=low.findIndex(c=>c.indexOf(" - ")>0&&c.split(" - ").pop().trim()===s);if(i>=0)h[f]=i}
   // (v248) ملف المشتريات: الكود والمخزن والتاريخ والكمية المستلمة بلا عمود مبيعات
   const dated=h=>(h.mo!==undefined&&h.dy!==undefined)||h.dt!==undefined;
   return h.code!==undefined&&h.store!==undefined&&(h.sold!==undefined||(h.rc!==undefined&&dated(h)&&h.on===undefined))?h:null};
