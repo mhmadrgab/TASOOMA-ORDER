@@ -5462,4 +5462,10 @@ export default {
 "مرتّبون بالأكثر تأخراً أولاً. اضغط على أي شخص لعرض مهامه. الأرقام لحملات الفلتر المختار فوق.":"Sorted by most overdue first. Tap a person to see their tasks. Numbers cover the campaigns in the filter above.",
 "✅ جاهز":"✅ Ready",
 "⏳ يُجهَّز":"⏳ Being prepared",
+"📥 تصدير إكسل":"📥 Export to Excel",
+"📥 تصدير إكسل (مع UPC)":"📥 Export to Excel (with UPC)",
+"ملف إكسل بالأصناف وUPC لرفعه على سيستم الشركة":"Excel file with items and UPC for upload to the company system",
+"لا توجد أصناف في هذا الأمر":"This order has no items",
+"نُزّل الملف":"File downloaded",
+"سطر بلا UPC (ليس في كتالوج الأصناف أو اللون/المقاس مكتوب بشكل مختلف)":"lines without UPC (not in the item catalog, or the color/size is written differently)",
 };

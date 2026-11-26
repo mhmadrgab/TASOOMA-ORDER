@@ -7,7 +7,7 @@
 import {collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {multiPick,saveExtras,loadExtras,dropExtras} from "./att.js";
 import {zoomGallery} from "./zoom.js";
-import {catLoad,catNow,catCode,catColors,catSizes,catUpc,catColorKey,catCodes,catCheck} from "./cat.js";
+import {catLoad,catNow,catCode,catColors,catSizes,catUpc,catColorKey,catCodes,catCheck,catUpcOf,catName} from "./cat.js";
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
@@ -251,7 +251,7 @@ function card(r){
  if(open&&canRcv())ac+=`<button class="g" data-po="rcv" data-id="${E(r.id)}" type="button">✅ تأكيد الاستلام في المستودع</button>`;
  const sup=S.get(r.sup),ph=sup&&sup.ph?String(sup.ph).replace(/[^\d+]/g,""):"";
  if(ph)ac+=`<a href="tel:${E(ph)}">📞 المورد</a><a href="https://wa.me/${E(ph.replace(/^\+/,""))}" target="_blank" rel="noopener">💬 واتساب</a>`;
- if(Array.isArray(r.it)&&r.it.length)ac+=`<button data-po="items" data-id="${E(r.id)}" type="button">📋 الأصناف</button>`;
+ if(Array.isArray(r.it)&&r.it.length)ac+=`<button data-po="items" data-id="${E(r.id)}" type="button">📋 الأصناف</button><button data-po="xlsx" data-id="${E(r.id)}" type="button" title="ملف إكسل بالأصناف وUPC لرفعه على سيستم الشركة">📥 تصدير إكسل</button>`;
  ac+=`<button data-po="att" data-id="${E(r.id)}" type="button">📎 المرفقات</button>`;
  if(open&&canEdit())ac+=`<button class="r" data-po="cx" data-id="${E(r.id)}" type="button">إلغاء الأمر</button>`;
  if(X.owner)ac+=`<button class="r" data-po="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`;
@@ -624,6 +624,51 @@ async function itParse(){const t=g("po-itp");if(!t)return;
   else o={c:C[0],q:""};
   IT.push({c:String(o.c||"").slice(0,40),cl:String(o.cl||"").slice(0,40),z:String(o.z||"").slice(0,20),q:String(o.q||""),k:String(o.k||""),n:String(o.n||"").slice(0,100)});add++}
  t.value="";if(g("po-itpw"))g("po-itpw").hidden=true;ITO=true;itRender();X.toast(add?"أُضيف "+add+" سطر. راجع الكميات ثم احفظ":"لا يوجد أسطر")}
+/* 📥 (v261) تصدير أمر الشراء لإكسل (محمد: «مديري يصدّر أمر الشراء علشان يرفعه على سيستم الشركة، ويطلع معاه الـ UPC»):
+   ملف .xlsx حقيقي (مش csv: الإكسل بيحوّل الـ UPC الطويل لـ 6.29E+12 ويشيل الأصفار اللي على الشمال، فهنا كل UPC وكود خانة «نص»).
+   الورقة الأولى «Items» صف عناوين بأسماء أعمدة سيستم الشركة (UPC, DESCRIPTION2, ATTRIBUTE, ITEM_SIZE, QTY…) وسطر لكل صنف، والتانية «PO» بيانات الأمر.
+   الـ UPC من كتالوج الأصناف (cat.js catUpcOf: الكود+اللون+المقاس). من غير كتالوج أو صنف مش فيه = خانة فاضية + تنبيه بالعدد */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc32=u=>{let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0};
+function zipStore(files){// [{name, data:Uint8Array}] ← zip بدون ضغط
+ const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+ const u16=v=>[v&255,(v>>8)&255],u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+ files.forEach(f=>{const nm=enc.encode(f.name),d=f.data,c=crc32(d);
+  const lh=new Uint8Array([].concat(u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(0),u16(0),u32(c),u32(d.length),u32(d.length),u16(nm.length),u16(0)));
+  parts.push(lh,nm,d);
+  cen.push(new Uint8Array([].concat(u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(0),u16(0),u32(c),u32(d.length),u32(d.length),u16(nm.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off))),nm);
+  off+=lh.length+nm.length+d.length});
+ const cs=cen.reduce((s,a)=>s+a.length,0);
+ return new Blob(parts.concat(cen,[new Uint8Array([].concat(u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(cs),u32(off),u16(0)))]),{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})}
+const xe=s=>String(s==null?"":s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const colL=i=>{let s="";i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+// sheets: [{name, rows:[[قيمة...]], w:[عرض الأعمدة], rtl}] — الرقم (number) خانة رقم، وأي حاجة تانية نص. الصف الأول عريض
+function xlsxBlob(sheets){
+ const enc=new TextEncoder(),F=[],add=(n,s)=>F.push({name:n,data:enc.encode(s)});
+ add("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`);
+ add("_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+ add("xl/workbook.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${xe(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join("")}</sheets></workbook>`);
+ add("xl/_rels/workbook.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join("")}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
+ // الأنماط: 0 عادي، 1 عريض (العناوين)، 2 نص «@» (UPC والكود)
+ add("xl/styles.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>`);
+ sheets.forEach((s,i)=>{
+  const body=s.rows.map((r,ri)=>`<row r="${ri+1}">${r.map((v,ci)=>{const ref=colL(ci)+(ri+1);if(v===""||v==null)return "";
+   if(typeof v==="number"&&isFinite(v))return `<c r="${ref}"${ri===0?' s="1"':""}><v>${v}</v></c>`;
+   return `<c r="${ref}" t="inlineStr" s="${ri===0?1:2}"><is><t xml:space="preserve">${xe(v)}</t></is></c>`}).join("")}</row>`).join("");
+  const cols=s.w&&s.w.length?`<cols>${s.w.map((w,ci)=>`<col min="${ci+1}" max="${ci+1}" width="${w}" customWidth="1"/>`).join("")}</cols>`:"";
+  add(`xl/worksheets/sheet${i+1}.xml`,`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"${s.rtl?' rightToLeft="1"':""}><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>${cols}<sheetData>${body}</sheetData></worksheet>`)});
+ return zipStore(F)}
+async function poXlsx(id){
+ const r=A.get(id);if(!r||!Array.isArray(r.it)||!r.it.length){X.toast("لا توجد أصناف في هذا الأمر");return}
+ try{await catLoad(X.db,true)}catch(e){}// force: لو الكتالوج اترفع والصفحة مفتوحة ناخد الجديد (قراءة meta واحدة، والأجزاء من الكاش لو نفس النسخة)
+ const has=!!catNow();let miss=0;
+ const items=r.it.map(x=>{const u=has?catUpcOf(x.c,x.cl,x.z):"";if(!u)miss++;return [u,String(x.c||""),String(x.cl||""),String(x.z||""),N(x.q),catName(x.c)||"",x.k?N(x.k):"",String(x.n||"")]});
+ const tot=r.it.reduce((s,x)=>s+N(x.q),0);
+ const rows=[["UPC","DESCRIPTION2","ATTRIBUTE","ITEM_SIZE","QTY","Description1","CONTAINER","NOTES"]].concat(items);
+ const info=[["البيان","القيمة"],["رقم الأمر",String(r.no||"")],["المورد",String(r.supn||"")],["تاريخ الأمر",dstr(r.dt||r.ts)],["فاتورة المورد (PI)",String(r.ref||"")],["عدد الحاويات",N(r.cn)||1],["نوع الحاوية",String(r.ctype||"")],["ميناء الوصول",String(r.pod||"")],["وصف البضاعة",String(r.desc||"")],["عدد السطور",r.it.length],["إجمالي القطع",tot],["أنشأه",String(r.by&&r.by.n||"")],["سطور بلا UPC",miss],["تاريخ التصدير",today()]];
+ const b=xlsxBlob([{name:"Items",rows,w:[17,16,14,11,9,30,11,24]},{name:"PO",rows:info,w:[22,46],rtl:true}]);
+ const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=`${String(r.no||"PO").replace(/[^\w\-]+/g,"_")}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);
+ X.toast(!has?`⚠️ نُزّل الملف لكن بلا UPC: كتالوج الأصناف غير مرفوع (⚙ الإعدادات ← كتالوج الأصناف)`:miss?`📥 نُزّل الملف · ⚠️ ${miss} من ${r.it.length} سطر بلا UPC (ليس في كتالوج الأصناف أو اللون/المقاس مكتوب بشكل مختلف)`:`✅ نُزّل الملف: ${r.it.length} سطر · ${tot.toLocaleString("en-US")} قطعة، وكلها بـ UPC`,!has||miss?"er":undefined)}
 // 🔢 (v255) الإجمالي (محمد: «عايزين يظهر الإجمالي في أمر الشراء علشان نعرف العدد»): ملخّص فوق + إجمالي بعد كل كود + سطر الإجمالي آخر الجدول
 const fmt=n=>N(n).toLocaleString("en-US");
 function itSums(L){const by=new Map();L.forEach(x=>{const c=String(x.c||x.n||"—"),o=by.get(c)||{q:0,n:0,cl:new Set()};o.q+=N(x.q);o.n++;if(x.cl)o.cl.add(String(x.cl));by.set(c,o)});return {by,tot:L.reduce((s,x)=>s+N(x.q),0),cl:new Set(L.map(x=>String(x.c||"")+"\u0001"+String(x.cl||""))).size}}
@@ -635,7 +680,7 @@ function showItems(id){const r=A.get(id);if(!r||!Array.isArray(r.it)||!r.it.leng
  <div class="po-sum"><div><b>${fmt(tot)}</b><small>إجمالي القطع</small></div><div><b>${S.by.size}</b><small>كود</small></div><div><b>${S.cl}</b><small>لون</small></div><div><b>${L.length}</b><small>سطر</small></div></div>
  ${S.by.size>1?`<div class="po-bycode">${[...S.by].map(([c,o])=>`<span><bdi dir="ltr" data-notr>${E(c)}</bdi> <b>${fmt(o.q)}</b></span>`).join("")}</div>`:""}
  <div class="po-tw"><table class="po-t" style="min-width:0"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th>${hk?"<th>الحاوية</th>":""}${hn?"<th>ملاحظات</th>":""}</tr></thead><tbody>${body}</tbody></table></div>
- <div class="act"><button data-po="close" type="button">رجوع</button></div>`,"items")}
+ <div class="act"><button data-po="xlsx" data-id="${E(r.id)}" type="button">📥 تصدير إكسل (مع UPC)</button><button data-po="close" type="button">رجوع</button></div>`,"items")}
 document.addEventListener("input",e=>{if(!X)return;const t=e.target;if(!t||!t.closest)return;
  if(t.id==="po-cn"&&g("po-itb")){itRender();return}
  const row=t.closest("#po-itb tr");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(!IT[i])return;IT[i][t.dataset.f]=t.value;
@@ -664,7 +709,7 @@ document.addEventListener("keydown",e=>{if(!X||e.key!=="Enter")return;const t=e.
 document.addEventListener("click",e=>{
  if(!X)return;const t=e.target.closest&&e.target.closest("[data-po]");if(!t)return;
  const a=t.dataset.po,id=t.dataset.id;
- const RO=["fst","v","sups","att","gal","close","csv","supback","items"];
+ const RO=["fst","v","sups","att","gal","close","csv","supback","items","xlsx"];
  if(!canEdit()&&!canRcv()&&!X.owner&&!RO.includes(a))return;
  if(a==="close")return void closeM();
  if(a==="v"){V=t.dataset.v==="stats"?"stats":"list";if(X.redraw)X.redraw();return}
@@ -674,6 +719,7 @@ document.addEventListener("click",e=>{
  if(a==="att")return void showAtt(id);
  if(a==="gal")return void gallery(id);
  if(a==="items")return void showItems(id);
+ if(a==="xlsx")return void poXlsx(id);
  if(a==="supback"){if(SUPBACK==="form")return void backToForm("");return void supList()}
  if(a==="rcv"){if(canRcv())rcvForm(id);return}
  if(a==="rcvsave"){if(canRcv())rcvSave(id);return}

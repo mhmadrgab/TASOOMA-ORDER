@@ -17,14 +17,16 @@ let CAT=null,LOADING=null,X=null,PREV=null,BUSY=false,MSG="";
 function readCache(){try{const s=localStorage.getItem("tz_cat");if(!s)return null;const o=JSON.parse(s);return o&&Array.isArray(o.r)?o:null}catch(e){return null}}
 function writeCache(raw){try{localStorage.setItem("tz_cat",JSON.stringify(raw))}catch(e){}}
 function index(raw){
- const codes=new Map(),upc=new Map();
+ const codes=new Map(),upc=new Map(),ku=new Map();// ku (v261): الكود+اللون+المقاس ← أول UPC (لتصدير أمر الشراء)
  raw.r.forEach(a=>{const c=String(a[0]||""),cl=String(a[1]||""),z=String(a[2]||""),u=String(a[3]||"");if(!c)return;
+  if(u){const kk=kuKey(c,cl,z);if(!ku.has(kk))ku.set(kk,u)}
   const k=nk(c);let o=codes.get(k);if(!o){o={c,n:String(raw.nm&&raw.nm[c]||""),cols:new Map(),all:new Set()};codes.set(k,o)}
   if(cl){if(!o.cols.has(cl))o.cols.set(cl,new Set());if(z)o.cols.get(cl).add(z)}
   if(z)o.all.add(z);
   if(u)upc.set(u,{c,cl,z})});
- return {v:N(raw.v),at:N(raw.at),src:raw.src||"",by:raw.by||null,n:codes.size,rows:raw.r.length,codes,upc,raw};
+ return {v:N(raw.v),at:N(raw.at),src:raw.src||"",by:raw.by||null,n:codes.size,rows:raw.r.length,codes,upc,ku,raw};
 }
+function kuKey(c,cl,z){return nk(c)+"\u0001"+lc(cl)+"\u0001"+lc(z)}
 export const catNow=()=>CAT;
 // الورقة اليدوية (iframe): الكتالوج من الكاش اللي اللوحة نزّلته
 export function catFromCache(){const r=readCache();if(r&&(!CAT||N(CAT.v)!==N(r.v)))CAT=index(r);return CAT}
@@ -54,6 +56,9 @@ export const catColors=c=>{const o=catCode(c);return o?[...o.cols.keys()]:null};
 export const catSizes=(c,cl)=>{const o=catCode(c);return o?sizesFor(o,cl).sort(zSort):null};
 export const catUpc=u=>CAT?CAT.upc.get(String(u==null?"":u).trim())||null:null;
 export const catColorKey=(c,cl)=>colorKey(catCode(c),String(cl||"").trim());
+// (v261) 🔖 UPC صنف (كود، لون، مقاس) لتصدير أمر الشراء لسيستم الشركة. اللون والمقاس بدون فرق كابيتال ومسافات الأطراف. مش موجود = ""
+export const catUpcOf=(c,cl,z)=>{if(!CAT||!CAT.ku)return "";return CAT.ku.get(kuKey(String(c||"").trim(),String(cl||"").trim(),String(z||"").trim()))||""};
+export const catName=c=>{const o=catCode(c);return o?o.n:""};
 export const catCodes=()=>CAT?[...CAT.codes.values()].map(o=>[o.c,o.n]):[];
 // تحقق سطر: {k:مش موجود, c:اللون مش من ألوان الكود, z:المقاس مش من مقاساته}
 export function catCheck(k,cl,z){
