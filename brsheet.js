@@ -35,6 +35,8 @@ const OSH_CSS=`
 @media (max-width:560px){#osh .os-mt{grid-template-columns:repeat(2,minmax(0,1fr))}#osh .os-pp{padding:20px 16px}}
 #osh .os-mt div small{display:block;color:#6b5f6e;font-size:12px}#osh .os-mt div b{font-size:15px}
 #osh .os-tl{display:flex;gap:0;margin:4px 0 18px;overflow-x:auto;padding-bottom:4px}
+#osh .os-tl.t7 .os-s{min-width:78px}
+#osh .os-nx{margin:-8px 0 16px;padding:8px 12px;border-radius:10px;background:#f3ecf2;color:#4a2f47;font-size:13.5px;font-weight:700}
 #osh .os-tl .os-s{flex:1;min-width:92px;text-align:center;position:relative;font-size:12px;color:#8b7f8d;padding-top:22px}
 #osh .os-tl .os-s:before{content:"";position:absolute;top:6px;inset-inline-start:50%;width:100%;height:3px;background:#e7dfe6}
 #osh .os-tl .os-s:last-child:before{display:none}
@@ -100,6 +102,15 @@ function table(rows){
  return ed+`<table><thead><tr><th>الكود</th><th>اللون</th><th>المقاسات والكميات</th><th>الإجمالي</th></tr></thead><tbody>${h||`<tr><td colspan="4" style="text-align:center;color:#6b5f6e">لا توجد أصناف</td></tr>`}</tbody><tfoot><tr><td colspan="3">الإجمالي: ${codes} صنف</td><td class="q">${tot}</td></tr></tfoot></table>`;
 }
 function steps(r,ship){
+ // 🔄 (v258) التحويل بين الفروع (محمد: «الفرع اللي بيحوّل مابيعملش غير جاهز للسواق، وباقي المراحل؟»): «جاهز» عند الفرع المُرسِل = rdy (مش pdn)،
+ // ومرحلة «استلمه السائق من الفرع» (pk)، وسطر «الخطوة التالية» يقول مين عليه الدور
+ if(r.tr&&r.tr.fr){const fr=String(r.tr.frn||r.tr.fr).slice(0,40),go=["go","done","recv"].indexOf(r.st)>=0,dn=["done","recv"].indexOf(r.st)>=0,wh=r.br==="001";
+  const fc=String(r.tr.fr).slice(0,3);// الكود فقط في المراحل (7 مراحل بالاسم الطويل كانت تحتاج تمريراً)
+  const T=[["أُرسل الطلب",N(r.ts)],["بدأ التجهيز في "+fc,(r.st!=="new"||N(r.rdy))?1:0],["جاهز في "+fc,N(r.rdy)||(go?1:0)],["خرج السائق",N(r.dep)||(go?1:0)],["استلمه السائق من "+fc,N(r.pk)||(dn?1:0)],["تم التسليم",N(r.dlv)||(dn?1:0)],[wh?"استلمه المستودع":"استلمه الفرع",N(r.rcv&&r.rcv.at)||(r.st==="recv"?1:0)]];
+  let lt=-1;T.forEach((s,i)=>{if(s[1])lt=i});const drv=r.asg&&r.asg.drvn?String(r.asg.drvn).slice(0,40):"";
+  const nx=r.st==="recv"?"":r.st==="done"?(wh?"المستودع يؤكد الاستلام":"أكّد الاستلام من زر «استلمت الطلب»"):r.st==="go"?(N(r.pk)?`السائق${drv?" "+drv:""} في الطريق إليكم بالتحويل`:`السائق${drv?" "+drv:""} في طريقه لاستلامه من ${fr}`)
+   :!N(r.rdy)?`${fr} يجهّز الأصناف ثم يضغط «جاهزة للسائق»`:drv?`عُيّن السائق ${drv}، وسيستلمه من ${fr} عند خروجه`:`المستودع يعيّن سائقاً ليستلمه من ${fr}`;
+  return `<div class="os-tl t7">${T.map((s,i)=>`<div class="os-s ${s[1]?"ok":""} ${i===lt+1&&r.st!=="recv"?"cur":""}"><i></i><b>${E(s[0])}</b>${s[1]>1?`<small>${E(dt(s[1]))}</small>`:""}</div>`).join("")}</div>${nx?`<div class="os-nx">⏭ الخطوة التالية: ${E(nx)}</div>`:""}`}
  const S=[["أُرسل الطلب",N(r.ts)],["بدأ التجهيز",N(r.prep&&r.prep.at)||((r.st!=="new")?1:0)],["تم التجهيز",N(r.pdn)||(["go","done","recv"].indexOf(r.st)>=0?1:0)],
   [ship?"خرج إلى شركة الشحن":"خرج مع السائق",N(r.dep)||(["go","done","recv"].indexOf(r.st)>=0?1:0)],[ship?"سُلِّم لشركة الشحن":"تم التسليم",N(r.dlv)||(["done","recv"].indexOf(r.st)>=0?1:0)],[r.rcv&&r.rcv.bp&&r.rcv.bp.n?"استلمه "+String(r.rcv.bp.n).slice(0,40):"استلمه الفرع",N(r.rcv&&r.rcv.at)||(r.st==="recv"?1:0)]];
  let last=-1;S.forEach((s,i)=>{if(s[1])last=i});
