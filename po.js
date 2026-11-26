@@ -5,7 +5,7 @@
 // البيانات: po/{id} (الأمر + سجل المراحل h)، posup/{id} (الموردين)، poatt/{id}/x/2..10 (المرفقات، att.js).
 // القواعد: supabase/002_rules.sql (po_ok / po_rcv_ok / posup_ok). الإشعارات: ping(...,pos) ← السيرفر onPo.
 import {collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,withTimeout,failReason,FAIL_MSG} from "./fb.js";
-import {multiPick,saveExtras,loadExtras,dropExtras} from "./att.js";
+import {multiPick,saveExtras,loadExtras,dropExtras,PO_FILE_MAX} from "./att.js";
 import {zoomGallery} from "./zoom.js";
 import {catLoad,catNow,catCode,catColors,catSizes,catUpc,catColorKey,catCodes,catCheck,catUpcOf,catName} from "./cat.js";
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -128,6 +128,7 @@ const CSS=`
 #pom.on{display:block}
 #pom>.mk.wide{max-width:860px}
 #pom .it-tb input.catw{box-shadow:inset 0 0 0 2px #e8a317;background:color-mix(in srgb,#e8a317 12%,var(--field,#f2e9dd))}
+.po-acy{color:#4a5a24;font-weight:800}.po-acn{color:#9a4a3c;font-weight:700}[data-theme=dark] .po-acy{color:#c7d89a}[data-theme=dark] .po-acn{color:#f0a493}
 #pom .it-sum{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:8px 0 2px;padding:9px 12px;border-radius:10px;background:color-mix(in srgb,var(--acc,#8a5a83) 10%,transparent);border:1px solid color-mix(in srgb,var(--acc,#8a5a83) 30%,transparent);font-size:14px}
 .it-sum b{font-size:20px;font-variant-numeric:tabular-nums;color:var(--ink,#2a1d2c)}
 .po-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 10px}
@@ -236,6 +237,8 @@ function card(r){
  const ex=open?expect(r):null,sg=r.st==="wh"?segs(r):null;
  const tags=[`📦 ${Math.max(1,N(r.cn))} × ${E((CTYPE.find(x=>x[0]===r.ctype)||["",r.ctype||""])[1])}`];
  if(r.by&&r.by.n)tags.push(`👤 أنشأه: <b data-notr>${E(r.by.n)}</b>`);// (v257) مين عمل الأمر
+ // 📎 (v263) فيه مرفقات ولا لأ (العدد من ac، والأوامر القديمة اللي عليها att بس «يوجد مرفقات» لحد ما حد يفتح مرفقاتها)
+ tags.push(N(r.ac)?`<span class="po-acy">📎 ${N(r.ac)} ${N(r.ac)===1?"مرفق":"مرفقات"}</span>`:r.att&&r.ac==null?`<span class="po-acy">📎 يوجد مرفقات</span>`:`<span class="po-acn">📎 بلا مرفقات</span>`);
  if(N(r.val))tags.push(`💵 <bdi dir="ltr">${N(r.val).toLocaleString("en-US")} ${E(r.cur||"")}</bdi>`);
  if(r.inc)tags.push(`<bdi dir="ltr">${E(r.inc)}</bdi>`);
  if(r.pol&&r.pod)tags.push(`⚓ ${E(r.pol)} ← ${E(r.pod)}`);else if(r.pod)tags.push(`⚓ ميناء الوصول: ${E(r.pod)}`);else if(r.pol)tags.push(`⚓ ميناء التحميل: ${E(r.pol)}`);
@@ -252,7 +255,7 @@ function card(r){
  const sup=S.get(r.sup),ph=sup&&sup.ph?String(sup.ph).replace(/[^\d+]/g,""):"";
  if(ph)ac+=`<a href="tel:${E(ph)}">📞 المورد</a><a href="https://wa.me/${E(ph.replace(/^\+/,""))}" target="_blank" rel="noopener">💬 واتساب</a>`;
  if(Array.isArray(r.it)&&r.it.length)ac+=`<button data-po="items" data-id="${E(r.id)}" type="button">📋 الأصناف</button><button data-po="xlsx" data-id="${E(r.id)}" type="button" title="ملف إكسل بالأصناف وUPC لرفعه على سيستم الشركة">📥 تصدير إكسل</button>`;
- ac+=`<button data-po="att" data-id="${E(r.id)}" type="button">📎 المرفقات</button>`;
+ ac+=`<button data-po="att" data-id="${E(r.id)}" type="button">📎 المرفقات${N(r.ac)?` (${N(r.ac)})`:""}</button>`;
  if(open&&canEdit())ac+=`<button class="r" data-po="cx" data-id="${E(r.id)}" type="button">إلغاء الأمر</button>`;
  if(X.owner)ac+=`<button class="r" data-po="del" data-id="${E(r.id)}" type="button">🗑 حذف</button>`;
  const H=(Array.isArray(r.h)?r.h:[]).slice().sort((a,b)=>N(a.at)-N(b.at)||N(a.ts)-N(b.ts));
@@ -340,7 +343,7 @@ function form(id){
  <label>ملاحظة (اختياري)</label><textarea id="po-nt" maxlength="500">${E(o.note||"")}</textarea>
  ${r?"":`<label>مرفقات: فاتورة المورد أو صور (اختياري)</label><div id="po-mp"></div>`}
  <div class="act"><button class="p" data-po="save" ${r?`data-id="${E(r.id)}"`:""} type="button">${r?"حفظ التعديل":"إنشاء أمر الشراء"}</button><button data-po="close" type="button">رجوع</button></div>`,"form");
- if(!r)PK=multiPick(g("po-mp"),{w:1600,cap:280000,max:9,toast:X.toast});
+ if(!r)PK=multiPick(g("po-mp"),{w:1600,cap:280000,max:9,fmax:PO_FILE_MAX,toast:X.toast});
  itRender();
 }
 function readForm(){
@@ -381,7 +384,7 @@ async function save(id){
    h:[{s:"new",at:d.dt,ts,...who()}]});
   if(ATT.length)o.att=1;
   await withTimeout(setDoc(ref,o),20000);
-  let bad=0;if(ATT.length){btnBusy('[data-po="save"]',`⏳ رفع المرفقات (${ATT.length})...`);bad=await saveExtras(X.db,"poatt",ref.id,ATT,2)}
+  let bad=0;if(ATT.length){btnBusy('[data-po="save"]',`⏳ رفع المرفقات (${ATT.length})...`);bad=await saveExtras(X.db,"poatt",ref.id,ATT,2);await setAc(ref.id,ATT.length-bad)}
   busy=false;PDRAFT=null;if(X.ping)X.ping([ref.id]);
   X.toast(bad?`أُنشئ الأمر، لكن تعذّر رفع ${bad} من المرفقات`:"✅ أُنشئ أمر الشراء "+o.no,bad?"er":undefined);closeM();
  }catch(e){
@@ -430,7 +433,7 @@ function rcvForm(id){const r=A.get(id);if(!r)return;RCVOK=true;
  <label>ملاحظة</label><textarea id="po-rn" maxlength="500" placeholder="مثلاً: كرتونتان تالفتان، أو نقص في الكمية"></textarea>
  <label>صور الاستلام (اختياري)</label><div id="po-rp"></div>
  <div class="act"><button class="g" data-po="rcvsave" data-id="${E(id)}" type="button">تأكيد الاستلام</button><button data-po="close" type="button">رجوع</button></div>`,"rcv");
- PK=multiPick(g("po-rp"),{w:1600,cap:280000,max:9,toast:X.toast});
+ PK=multiPick(g("po-rp"),{w:1600,cap:280000,max:9,fmax:PO_FILE_MAX,toast:X.toast});
  g("po-rk").onclick=e=>{const b=e.target.closest("[data-k]");if(!b)return;RCVOK=b.dataset.k==="1";g("po-rk").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))};
 }
 async function rcvSave(id){const r=A.get(id);if(!r||busy)return;if(PK&&PK.busy()){X.toast("انتظر حتى تنتهي الصور");return}
@@ -441,7 +444,7 @@ async function rcvSave(id){const r=A.get(id);if(!r||busy)return;if(PK&&PK.busy()
  const ATT=PK?PK.imgs().concat(PK.files()):[];
  busy=true;btnBusy('[data-po="rcvsave"]',"⏳ جاري الحفظ...");
  try{await withTimeout(updateDoc(doc(X.db,"po",id),{st:"wh",rcv,upd:Date.now(),...(ATT.length?{att:1}:{})}),15000);
-  if(ATT.length){const ex=await loadExtras(X.db,"poatt",id),st=ex.length?Math.max(...ex.map(x=>x.k))+1:2;const bad=await saveExtras(X.db,"poatt",id,ATT,st);if(bad)X.toast(`سُجّل الاستلام، لكن تعذّر رفع ${bad} من الصور`,"er")}
+  if(ATT.length){const ex=await loadExtras(X.db,"poatt",id),st=ex.length?Math.max(...ex.map(x=>x.k))+1:2;const bad=await saveExtras(X.db,"poatt",id,ATT,st);await setAc(id,ex.length+ATT.length-bad);if(bad)X.toast(`سُجّل الاستلام، لكن تعذّر رفع ${bad} من الصور`,"er")}
   busy=false;if(X.ping)X.ping([id]);const s=segs({...r,rcv});X.toast(`✅ استُلم في المستودع${s.total!=null?` · مدة الوصول: ${Math.round(s.total)} يوم`:""}`);closeM()}
  catch(x){busy=false;btnBusy('[data-po="rcvsave"]',"");err(x)}
 }
@@ -456,20 +459,24 @@ async function del(id){const r=A.get(id);if(!r)return;
  if(!confirm(`حذف أمر الشراء ${r.no} نهائياً مع مرفقاته؟ لا يمكن استعادته.`))return;
  try{await dropExtras(X.db,"poatt",id);await withTimeout(deleteDoc(doc(X.db,"po",id)),15000);X.toast("حُذف أمر الشراء")}catch(x){err(x)}}
 // المرفقات: عرض + إضافة (مسؤول المشتريات طول ما الأمر مفتوح، واللي بيستلم)
+// 📎 (v263) عدد المرفقات على الأمر (ac) علشان الكارت يبيّن «في مرفقات ولا لأ» من غير ما ينزّلها. الخطأ مايوقفش حاجة
+async function setAc(id,n){n=Math.max(0,Math.min(10,Math.round(N(n))));const r=A.get(id);if(r&&N(r.ac)===n&&r.ac!=null&&(r.att||!n))return;try{await updateDoc(doc(X.db,"po",id),Object.assign({ac:n},n?{att:1}:{}))}catch(e){}}
 async function showAtt(id){const r=A.get(id);if(!r)return;
  let L=[];try{L=await loadExtras(X.db,"poatt",id)}catch(e){}
  const add=(isOpen(r)&&(canEdit()||canRcv()))||X.owner;
  openM(`<h3>📎 المرفقات · <bdi dir="ltr">${E(r.no)}</bdi></h3>
  ${L.length?`<div class="act" style="margin:0 0 6px"><button class="p" data-po="gal" data-id="${E(id)}" type="button">🖼 عرض المرفقات (${L.length})</button></div>`:`<p style="color:var(--mut)">لا توجد مرفقات بعد.</p>`}
  ${add&&L.length<9?`<label>إضافة مرفقات (فاتورة، بوليصة، شهادة منشأ، صور)</label><div id="po-ap"></div><div class="act"><button class="p" data-po="attsave" data-id="${E(id)}" type="button">رفع</button><button data-po="close" type="button">إغلاق</button></div>`:`<div class="act"><button data-po="close" type="button">إغلاق</button></div>`}`,"att");
- if(add&&L.length<9)PK=multiPick(g("po-ap"),{w:1600,cap:280000,max:9-L.length,toast:X.toast});
+ if(add&&L.length<9)PK=multiPick(g("po-ap"),{w:1600,cap:280000,max:9-L.length,fmax:PO_FILE_MAX,toast:X.toast});
+ // 📎 (v263) العدد على الأمر يطابق المرفقات الفعلية (يصلّح الأوامر القديمة ولو مرفق اتحذف)
+ if(N(r.ac)!==L.length&&(canEdit()||canRcv()||X.owner)&&r.st!=="x")setAc(id,L.length);
  showAtt.L=L;
 }
 async function attSave(id){if(busy)return;if(!PK){closeM();return}if(PK.busy()){X.toast("انتظر حتى تنتهي الصور والملفات");return}
  const ATT=PK.imgs().concat(PK.files());if(!ATT.length){X.toast("اختر صورة أو ملفاً واحداً على الأقل");return}
  busy=true;btnBusy('[data-po="attsave"]',"⏳ جاري الرفع...");
  try{const ex=await loadExtras(X.db,"poatt",id),st=ex.length?Math.max(...ex.map(x=>x.k))+1:2;const bad=await saveExtras(X.db,"poatt",id,ATT,st);
-  const r=A.get(id);if(r&&!r.att&&ATT.length>bad&&isOpen(r)&&canEdit())try{await updateDoc(doc(X.db,"po",id),{att:1})}catch(e){}
+  await setAc(id,ex.length+ATT.length-bad);
   busy=false;X.toast(bad?`تعذّر رفع ${bad} من المرفقات`:"✅ رُفعت المرفقات",bad?"er":undefined);showAtt(id)}
  catch(x){busy=false;err(x)}}
 function gallery(id){const r=A.get(id),L=showAtt.L||[];if(!L.length)return;

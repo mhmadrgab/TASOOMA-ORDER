@@ -7,7 +7,7 @@
 // القائمة ليست لحظية (دالة لا سماع): تتحدّث عند فتح التبويب، وكل 3 دقائق والتبويب ظاهر، وبزر «تحديث».
 import {doc,updateDoc,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {E} from "./cust.js";
-import {multiPick,saveExtras} from "./att.js";
+import {multiPick,saveExtras,PO_FILE_MAX} from "./att.js";
 const N=x=>Number.isFinite(+x)?+x:0;
 const g=id=>document.getElementById(id);
 const DAY=864e5;
@@ -79,7 +79,7 @@ function rcvForm(id){const r=L.find(x=>x.id===id);if(!r||!X)return;css();RK=true
  ${slots?`<label>صور الاستلام (اختياري)</label><div id="prc-rp"></div>`:""}
  <div class="act"><button class="g" data-prc="save" data-id="${E(id)}" type="button">تأكيد الاستلام</button><button data-prc="close" type="button">رجوع</button></div></div>`;
  m.className="on";
- PK=slots?multiPick(g("prc-rp"),{w:1600,cap:280000,max:Math.min(9,slots),toast:X.toast}):null;
+ PK=slots?multiPick(g("prc-rp"),{w:1600,cap:280000,max:Math.min(9,slots),fmax:PO_FILE_MAX,toast:X.toast}):null;
  g("prc-rk").onclick=e=>{const b=e.target.closest("[data-k]");if(!b)return;RK=b.dataset.k==="1";g("prc-rk").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))};
 }
 async function rcvSave(id){const r=L.find(x=>x.id===id);if(!r||!X||busy)return;if(PK&&PK.busy()){X.toast("انتظر حتى تنتهي الصور");return}
@@ -90,7 +90,7 @@ async function rcvSave(id){const r=L.find(x=>x.id===id);if(!r||!X||busy)return;i
  const ATT=PK?PK.imgs().concat(PK.files()):[],btn=document.querySelector('[data-prc="save"]');
  busy=true;if(btn){btn.disabled=true;btn.textContent="⏳ جاري الحفظ..."}
  try{await withTimeout(updateDoc(doc(X.db,"po",id),{st:"wh",rcv,upd:Date.now(),...(ATT.length?{att:1}:{})}),15000);
-  if(ATT.length){const bad=await saveExtras(X.db,"poatt",id,ATT,Math.max(1,N(r.ax))+1);if(bad)X.toast(`سُجّل الاستلام، لكن تعذّر رفع ${bad} من الصور`,"er")}
+  if(ATT.length){const bad=await saveExtras(X.db,"poatt",id,ATT,Math.max(1,N(r.ax))+1);/* 📎 (v263) العدد التقريبي (ax = آخر رقم موجود)، ويتصلّح أول ما حد يفتح المرفقات من أوامر الشراء */try{const n=Math.min(10,(N(r.ax)>=2?N(r.ax)-1:0)+ATT.length-bad);if(n>0)await updateDoc(doc(X.db,"po",id),{ac:n,att:1})}catch(e){}if(bad)X.toast(`سُجّل الاستلام، لكن تعذّر رفع ${bad} من الصور`,"er")}
   busy=false;if(X.ping)X.ping([id]);X.toast("✅ استُلم في المستودع");OPEN.delete(id);closeM();load(true)}
  catch(x){busy=false;if(btn){btn.disabled=false;btn.textContent="تأكيد الاستلام"}
   const w=await failReason(x);if(X)X.toast(w==="denied"?"غير مسموح. ربما استُلمت الحاوية بالفعل أو تغيّر الإذن. حدّث القائمة":FAIL_MSG[w],"er");if(w==="denied")load(true)}

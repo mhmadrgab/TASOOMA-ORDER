@@ -16,6 +16,10 @@ import {shrink} from "./cust.js";
 export const MAXI=10;
 export const FILE_MAX=3*1024*1024;// 3 ميجا: نفس الرقم في القواعد (file_max) وفي السيرفر (رابط السائق الخارجي)
 export const PDF_MAX=FILE_MAX;
+// 📎 (v263) أوامر الشراء فقط: 15 ميجا للملف (محمد). القواعد نفس الرقم (file_max_po). باقي المرفقات 3 ميجا زي ما هي
+export const PO_FILE_MAX=15*1024*1024;
+export const fileMaxOf=col=>col==="poatt"?PO_FILE_MAX:FILE_MAX;
+export const mbText=n=>Math.round((+n||0)/1048576)+" ميجا";
 export const FILE_CH=900000;// حروف base64 في الجزء الواحد (من مضاعفات 4، فكل جزء base64 صالح وحده)
 export const FILE_EXT=["pdf","xlsx","xls","csv","docx","doc","pptx","ppt","txt","zip","rar"];
 // أنواع MIME أيضاً (تطبيق الأندرويد يختار بالنوع لا بالامتداد)
@@ -65,12 +69,12 @@ export function parseRef(s){const m=REF.exec(String(s||""));return m?{col:m[1],i
 const partDoc=(db,r,j)=>doc(db,r.col,r.id,r.sub+"f",r.k+"_"+j);
 // ---------- قراءة ملف من الجهاز ----------
 // بيرجّع {fl:1, nm, sz, b64}. الأخطاء: big (أكبر من الحد) · type (نوع غير مسموح) · notpdf (اسمه PDF وليس PDF) · empty · read
-export function readFile(f){
+export function readFile(f,mx){
  return new Promise((ok,no)=>{
   if(!f)return no(new Error("read"));
   const nm=fileName(f.name);if(!nm)return no(new Error("type"));
   if(!(f.size>0))return no(new Error("empty"));
-  if(f.size>FILE_MAX)return no(new Error("big"));
+  if(f.size>(mx||FILE_MAX))return no(new Error("big"));
   const r=new FileReader();r.onerror=()=>no(new Error("read"));
   r.onload=()=>{const s=String(r.result||""),i=s.indexOf(","),b=i>0?s.slice(i+1):"";
    if(!b||!/^[A-Za-z0-9+/]+={0,2}$/.test(b))return no(new Error("read"));
@@ -104,8 +108,8 @@ export async function putParts(mk,b64,tries,onProg){
 }
 const b64Bytes=s=>{const bin=atob(s),u=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);return u};
 // تنزيل الأجزاء وتجميعها: بيرجّع {u8, b64} أو يرمي خطأ (gone = جزء ناقص · bad = محتوى غير صالح أو حجم لا يطابق)
-export async function getParts(mk,pn,sz,onProg){
- pn=+pn||0;sz=+sz||0;if(pn<1||pn>filePn(FILE_MAX)||sz<1||sz>FILE_MAX)throw new Error("bad");
+export async function getParts(mk,pn,sz,onProg,mx){
+ mx=mx||FILE_MAX;pn=+pn||0;sz=+sz||0;if(pn<1||pn>filePn(mx)||sz<1||sz>mx)throw new Error("bad");
  const u8=new Uint8Array(sz),B=[];let at=0;
  for(let j=1;j<=pn;j++){
   const s=await getDoc(mk(j));if(!s.exists())throw new Error("gone");
@@ -147,7 +151,7 @@ const FC=new Map();// آخر 3 ملفات نُزّلت (علشان «فتح» ث
 export async function fetchRef(db,ref,onProg){
  const r=parseRef(ref);if(!r||!db)throw new Error("bad");
  const c=FC.get(ref);if(c&&c.db===db)return c.v;// (نفس الاتصال فقط: لا يُسلَّم ملف نزّله حساب آخر)
- const v=await getParts(j=>partDoc(db,r,j),r.pn,r.sz,onProg);
+ const v=await getParts(j=>partDoc(db,r,j),r.pn,r.sz,onProg,fileMaxOf(r.col));
  FC.set(ref,{db,v});if(FC.size>3)FC.delete(FC.keys().next().value);
  return v;
 }
@@ -163,7 +167,7 @@ export function openPdf(data,nm){
 // opts: max (عدد المرفقات)، w (أقصى عرض للصورة)، cap (أقصى حجم للصورة)، add (نص زرار الإضافة)، pdf (يقبل ملفات، افتراضياً آه)، onChange
 export function multiPick(el,opts={}){
  css();
- const max=Math.max(1,Math.min(MAXI,opts.max||MAXI)),w=opts.w||1400,cap=opts.cap||230000,id="mpf"+(++SEQ),pdfOk=opts.pdf!==false;
+ const max=Math.max(1,Math.min(MAXI,opts.max||MAXI)),w=opts.w||1400,cap=opts.cap||230000,id="mpf"+(++SEQ),pdfOk=opts.pdf!==false,fmax=opts.fmax||FILE_MAX;
  let L=[],F=[],wait=0;
  const n=()=>L.length+F.length;
  const paint=()=>{
@@ -172,7 +176,7 @@ export function multiPick(el,opts={}){
   <div class="mp">${L.map((s,i)=>`<div class="mt"><img src="${s}" alt="" data-zoom data-zt="صورة ${i+1}"><b>${i+1}</b><button type="button" data-mx="${i}" aria-label="حذف الصورة ${i+1}" title="حذف">×</button></div>`).join("")}
   ${F.map((f,i)=>`<div class="mt pdf"><i>📄</i><span data-notr><bdi>${E(f.nm)}</bdi></span><small data-notr>${E(fileLabel(f.nm))} · ${kb(f.sz||0)}</small><button type="button" data-fx="${i}" aria-label="حذف الملف" title="حذف">×</button></div>`).join("")}
   ${room?(wait?`<div class="ma wait"><i>⏳</i>جاري التجهيز (${wait})...</div>`:`<label class="ma cam" for="${id}c"><i>📷</i>تصوير</label><label class="ma" for="${id}"><i>📎</i>${E(opts.add||(pdfOk?"صور أو ملفات":(n()?"إضافة صورة أخرى":"إضافة صور")))}</label>`):""}</div>
-  <div class="mp-h">${n()?`${n()} من ${max}`:`يمكنك إضافة حتى ${max}${pdfOk?" (صور، أو ملفات PDF وإكسل ووورد حتى 3 ميجا للملف)":" صور"}`}</div>`;
+  <div class="mp-h">${n()?`${n()} من ${max}`:`يمكنك إضافة حتى ${max}${pdfOk?" (صور، أو ملفات PDF وإكسل ووورد حتى "+mbText(fmax)+" للملف)":" صور"}`}</div>`;
   el.querySelectorAll("[data-mx]").forEach(b=>b.onclick=e=>{e.preventDefault();L.splice(+b.dataset.mx,1);paint();if(opts.onChange)opts.onChange(L.slice())});
   el.querySelectorAll("[data-fx]").forEach(b=>b.onclick=e=>{e.preventDefault();F.splice(+b.dataset.fx,1);paint()});
   el.querySelectorAll('input[type="file"]').forEach(inp=>inp.onchange=async()=>{
@@ -180,12 +184,12 @@ export function multiPick(el,opts={}){
    const skipped=all.length>fs.length;
    wait+=fs.length;paint();let bad=0,big=0,typ=0;
    for(const f of fs){
-    try{if(isImgFile(f))L.push(await shrink(f,w,cap));else{if(!pdfOk)throw new Error("type");F.push(await readFile(f))}}
+    try{if(isImgFile(f))L.push(await shrink(f,w,cap));else{if(!pdfOk)throw new Error("type");F.push(await readFile(f,fmax))}}
     catch(e){const m=e&&e.message;if(m==="big"&&!isImgFile(f))big++;else if(m==="type")typ++;else bad++}
     wait--;paint();
    }
    if(opts.onChange)opts.onChange(L.slice());
-   if(opts.toast&&(bad||big||typ||skipped))opts.toast(big?`ملف أكبر من 3 ميجا (${big})، صغّره ثم أعد المحاولة`:typ?`نوع غير مسموح (${typ}). المسموح: صور، PDF، إكسل، وورد، باوربوينت، نص، ملف مضغوط`:bad?`تعذّر تجهيز ${bad} من الملفات (ملف غير صالح)`:`الحد الأقصى ${max}`,"er");
+   if(opts.toast&&(bad||big||typ||skipped))opts.toast(big?`ملف أكبر من ${mbText(fmax)} (${big})، صغّره ثم أعد المحاولة`:typ?`نوع غير مسموح (${typ}). المسموح: صور، PDF، إكسل، وورد، باوربوينت، نص، ملف مضغوط`:bad?`تعذّر تجهيز ${bad} من الملفات (ملف غير صالح)`:`الحد الأقصى ${max}`,"er");
   });
  };
  paint();
@@ -234,7 +238,7 @@ export async function loadExtras(db,col,id){
 // حذف مرفق كامل بمسار رأسه (المالك): أجزاء الملف أولاً ثم الرأس. ref = مرجع الملف لو معروف (وإلا نقرأ الرأس لنعرف عدد الأجزاء)
 export async function dropAtt(db,path,ref){
  const p=String(path).split("/");let r=parseRef(ref);
- if(!r&&p.length===4){try{const s=await getDoc(doc(db,...p));const v=s.exists()?s.data()||{}:{};if(v.fl===1&&+v.pn>=1)r={col:p[0],id:p[1],sub:p[2],k:+p[3],pn:Math.min(+v.pn,filePn(FILE_MAX))}}catch(e){}}
+ if(!r&&p.length===4){try{const s=await getDoc(doc(db,...p));const v=s.exists()?s.data()||{}:{};if(v.fl===1&&+v.pn>=1)r={col:p[0],id:p[1],sub:p[2],k:+p[3],pn:Math.min(+v.pn,filePn(fileMaxOf(p[0])))}}catch(e){}}
  if(r)for(let j=1;j<=r.pn;j++)await deleteDoc(partDoc(db,r,j));
  await deleteDoc(doc(db,...p));
 }

@@ -5468,4 +5468,7 @@ export default {
 "لا توجد أصناف في هذا الأمر":"This order has no items",
 "نُزّل الملف":"File downloaded",
 "سطر بلا UPC (ليس في كتالوج الأصناف أو اللون/المقاس مكتوب بشكل مختلف)":"lines without UPC (not in the item catalog, or the color/size is written differently)",
+"مرفقات":"attachments",
+"يوجد مرفقات":"Has attachments",
+"بلا مرفقات":"No attachments",
 };
