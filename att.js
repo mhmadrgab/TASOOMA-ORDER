@@ -217,7 +217,7 @@ export async function saveExtras(db,col,id,extra,start=2){
 }
 // مستند مرفق ← عنصر للعرض: {k, src, path, pdf?, file?, nm?, sz?, n?, at?} (src = الصورة، أو الـ PDF القديم، أو مرجع الملف tzf:)
 export function attItem(col,id,sub,did,v){
- v=v||{};const k=+did,path=`${col}/${id}/${sub}/${did}`,who=typeof v.n==="string"?{n:v.n,at:+v.at||0}:{};
+ v=v||{};const k=+did,path=`${col}/${id}/${sub}/${did}`,who=typeof v.n==="string"?Object.assign({n:v.n,at:+v.at||0},typeof v.e==="string"?{e:v.e}:{}):{};// e (v264) = بريد اللي رفع
  if(v.fl===1&&typeof v.nm==="string"&&+v.pn>=1&&+v.sz>=1){const src=fileRef(col,id,sub,k,+v.pn,+v.sz);return isFileRef(src)?Object.assign({k,src,file:true,nm:v.nm,sz:+v.sz,path},who):null}
  if(isPdfData(v.pdf))return Object.assign({k,src:v.pdf,pdf:true,nm:v.nm||"",path},who);
  if(typeof v.img==="string"&&/^data:image\//.test(v.img))return Object.assign({k,src:v.img,path},who);

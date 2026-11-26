@@ -53,6 +53,9 @@ const CSS=`
 .gs-acc:empty{display:none}.gs-acc{margin:14px 0 0;border:1.5px dashed var(--line);border-radius:14px;padding:12px 14px}
 .gs-ah{display:flex;align-items:center;gap:8px;margin-bottom:8px}.gs-ah b{font-size:15px}.gs-ah small{color:var(--mut);font-size:12.5px}
 .gs-ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-bottom:10px}
+.gs-ai{position:relative;display:grid}.gs-ai>button[data-gf="accimg"]{width:100%}
+.gs-ag .gs-adel{position:absolute;top:5px;inset-inline-end:5px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(160,40,30,.9);color:#fff;font-size:14px;line-height:30px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.gs-ag .gs-adel:hover{background:#a0281e}
 .gs-ag button{border:1px solid var(--line);background:var(--field,#f2e9dd);border-radius:12px;padding:0;overflow:hidden;cursor:zoom-in;font:inherit;color:var(--mut);text-align:center}
 .gs-ag img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.gs-ag .gs-pdf{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;aspect-ratio:1;font-size:30px;background:#fbf3f2}.gs-ag .gs-pdf small{font-size:11px;padding:0 6px;word-break:break-all;color:var(--ink)}.gs-ag span{display:block;font-size:11px;line-height:1.35;padding:4px 4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gf-set{margin-top:8px;background:#eef4fb;color:#1c4f86;border-radius:10px;padding:8px 12px;font-size:13.5px;line-height:1.8}.gf-set small{color:#4a6a90}
@@ -588,7 +591,7 @@ async function loadAcc(id,open){
  const el=here();if(!el)return;ACCL=L;const can=canAcc();
  if(!can&&!L.length&&!bad){el.innerHTML="";ACC=null;return}
  el.innerHTML=`<div class="gs-ah"><b>📎 مرفقات المحاسب</b>${L.length?`<small>(${L.length}/10)</small>`:""}</div>${bad?'<div class="m">تعذّر تحميل المرفقات</div>':""}
- ${L.length?`<div class="gs-ag">${L.map((x,i)=>`<button type="button" data-gf="accimg" data-id="${E(id)}" data-i="${i}">${x.pdf||x.file?`<span class="gs-pdf">📄<small data-notr>${E(x.nm||"PDF")}</small></span>`:`<img src="${x.src}" alt="">`}<span data-notr><bdi>${E(x.n||"")}</bdi><br>${hm(x.at)}</span></button>`).join("")}</div>`:""}
+ ${L.length?`<div class="gs-ag">${L.map((x,i)=>`<div class="gs-ai"><button type="button" data-gf="accimg" data-id="${E(id)}" data-i="${i}">${x.pdf||x.file?`<span class="gs-pdf">📄<small data-notr>${E(x.nm||"PDF")}</small></span>`:`<img src="${x.src}" alt="">`}<span data-notr><bdi>${E(x.n||"")}</bdi><br>${hm(x.at)}</span></button>${accCanDel(x,id)?`<button type="button" class="gs-adel" data-gf="accdel" data-id="${E(id)}" data-i="${i}" title="حذف هذا المرفق" aria-label="حذف هذا المرفق">🗑</button>`:""}</div>`).join("")}</div>`:""}
  ${can&&!bad&&L.length<10?(open?`<div id="gfaccp"></div><div class="gf-act" style="margin-top:8px"><button class="bt g" data-gf="accsave" data-id="${E(id)}" type="button">💾 حفظ المرفقات</button><button class="bt" data-gf="accx" data-id="${E(id)}" type="button">إلغاء</button></div>`
   :`<button class="bt s" data-gf="accadd" data-id="${E(id)}" type="button">📎 إرفاق صور أو ملفات</button>${L.length?"":'<div class="m" style="margin-top:6px">أرفق صوراً أو ملفات من جهازك لهذا السند (لا يغيّر أي شيء في الهدية).</div>'}`):""}`;
  ACC=open&&g("gfaccp")?multiPick(g("gfaccp"),{max:10-L.length,w:1400,cap:230000,toast:X.toast,add:"صور أو ملفات"}):null;
@@ -599,12 +602,22 @@ async function accSave(id){
  const btn=document.querySelector('[data-gf="accsave"]');if(btn){btn.disabled=true;btn.textContent="⏳ جاري الرفع..."}
  const start=ACCL.reduce((m,x)=>Math.max(m,x.k),0)+1,nm=String(X.me.n||X.me.e||"").slice(0,60);let ok=0,bad=0,denied=false;
  for(let k=0;k<IMS.length;k++){const n=start+k;if(n>10){bad+=IMS.length-k;break}
-  try{await withTimeout(putAtt(X.db,"giftimg",id,"a",n,IMS[k],{n:nm,at:Date.now()}),150000);ok++}// الملف: أجزاؤه في af ثم رأسه في a
+  try{await withTimeout(putAtt(X.db,"giftimg",id,"a",n,IMS[k],{n:nm,at:Date.now(),e:meE()}),150000);ok++}/* (v264) e = بريد اللي رفع: علشان يقدر يمسحه */// الملف: أجزاؤه في af ثم رأسه في a
   catch(e){bad++;if((await failReason(e))==="denied")denied=true}}
  if(!bad)X.toast("📎 تم إرفاق المرفقات ✅");
  else X.toast(denied&&!ok?"غير مسموح. ربما القواعد (Rules) لم تتحدّث بعد":"تعذّر رفع بعض المرفقات، حاول مرة أخرى","er");
  loadAcc(id,false);
 }
+// 🗑 (v264) المحاسب يمسح مرفقه الغلط (محمد): اللي رفعه (e = بريده) طول ما الهدية لسه ماتسوّتش، أو خلال 24 ساعة من الرفع بعدها. المالك أي وقت.
+// المرفقات القديمة (قبل v264) من غير e = المالك بس. نفس الشرط في القواعد (giftimg/{id}/a)
+const ACC_DAY=864e5;
+function accCanDel(x,id){if(!x)return false;if(X.owner)return true;if(!canAcc()||!x.e||String(x.e).toLowerCase()!==meE())return false;
+ const r=all().find(y=>y.id===id)||BL.find(y=>y.id===id);return !!r&&(r.st!=="set"||Date.now()-(+x.at||0)<=ACC_DAY)}
+async function accDel(id,i){const x=ACCL[i];if(!x||!accCanDel(x,id))return;
+ if(!confirm(`حذف هذا المرفق${x.nm?" ("+x.nm+")":""} نهائياً؟`))return;
+ try{await withTimeout(dropAtt(X.db,x.path,x.file?x.src:""),60000);X.toast("🗑 حُذف المرفق")}
+ catch(e){X.toast((await failReason(e))==="denied"?"غير مسموح بحذف هذا المرفق (ربما مرّ أكثر من 24 ساعة على تسوية الهدية)":"تعذّر الحذف، حاول مرة أخرى","er")}
+ loadAcc(id,false)}
 async function dropAcc(id){try{const A=await loadAtts(X.db,"giftimg",id,"a");for(const x of A){try{await dropAtt(X.db,x.path,x.file?x.src:"")}catch(e){}}}catch(e){}}
 function printGift(id){
  const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);if(!r)return;
@@ -701,6 +714,7 @@ async function click(e){
  if(a==="img")return void showImg(id);
  if(a==="accadd"||a==="accx")return void loadAcc(id,a==="accadd");
  if(a==="accsave")return void accSave(id);
+ if(a==="accdel")return void accDel(id,+t.dataset.i||0);
  if(a==="accimg"){const r=all().find(x=>x.id===id)||BL.find(x=>x.id===id);zoomGallery(ACCL.map(x=>({src:x.src,nm:x.nm,del:`doc:giftimg/${id}/a/${x.k}`})),`مرفقات المحاسب · ${r?r.no:""}`,+t.dataset.i||0);
   // لما الصورة تتقفل (أو المالك يمسح واحدة) نحدّث المرفقات في السند
   const zb=g("zbx");if(zb)new MutationObserver((_,o)=>{if(!zb.className){o.disconnect();loadAcc(id,false)}}).observe(zb,{attributes:true,attributeFilter:["class"]});return}

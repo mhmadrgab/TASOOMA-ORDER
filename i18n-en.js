@@ -5471,4 +5471,8 @@ export default {
 "مرفقات":"attachments",
 "يوجد مرفقات":"Has attachments",
 "بلا مرفقات":"No attachments",
+"حذف هذا المرفق":"Delete this attachment",
+"🗑 حُذف المرفق":"🗑 Attachment deleted",
+"غير مسموح بحذف هذا المرفق (ربما مرّ أكثر من 24 ساعة على تسوية الهدية)":"Not allowed to delete this attachment (maybe more than 24 hours passed after the gift was settled)",
+"تعذّر الحذف، حاول مرة أخرى":"Could not delete, try again",
 };
