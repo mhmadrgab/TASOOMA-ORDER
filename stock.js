@@ -1456,7 +1456,10 @@ function dLoad(){if(DS)return DS;let o=null;try{o=JSON.parse(localStorage.getIte
 const rid20=()=>{const A="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789",u=crypto.getRandomValues(new Uint8Array(20));let s="";for(let i=0;i<20;i++)s+=A[u[i]%A.length];return s};
 const hsh=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return String(h)};
 export function distOrders(live,cols){
- const o=[];for(const c of cols){const rows=[];let pcs=0;for(const x of live){const v=N(x.r.vals[c.c]);if(!(v>0))continue;const q=Math.round(v*x.r.pc);if(q<=0)continue;
+ const o=[];for(const c of cols){const rows=[];let pcs=0;for(const x of live){const v=N(x.r.vals[c.c]);if(!(v>0))continue;
+   // (v265) مجموعة كرتون: سطر لكل مقاس = الكراتين × حبات المقاس في الكرتون
+   if(x.r.sizes){for(const s of x.r.sizes){const q=Math.round(v*s.a);if(q>0){rows.push({k:String(x.l.c).trim().slice(0,40),c:String(x.l.cl||"").slice(0,40),z:String(s.z||"").slice(0,20),q,n:fq(v)+" كرتون"});pcs+=q}}continue}
+   const q=Math.round(v*x.r.pc);if(q<=0)continue;
    rows.push({k:String(x.l.c).trim().slice(0,40),c:String(x.l.cl||"").slice(0,40),z:String(x.l.z||"").slice(0,20),q,n:x.r.md==="c"?fq(v)+" كرتون":""});pcs+=q}
   if(rows.length)o.push({c:c.c,nm:c.nm,rows,pcs,h:hsh(rows.map(r=>[r.k,r.c,r.z,r.q].join("~")).join("|"))})}
  return o;
@@ -1520,10 +1523,25 @@ export function parseList(text){
   const q=num(r[qi]);if(!code||!/[0-9A-Za-z]/.test(code)||!(q>0))continue;lc=code;ll=cl;
   const z=zi>=0?String(r[zi]||"").trim().slice(0,20):"";if(z&&zs.indexOf(z)<0)zs.push(z);
   if(nti>=0){const nt=String(r[nti]||"").trim();if(nt&&!out.notes[code])out.notes[code]=nt.slice(0,100)}
-  const k=code+"\u0001"+cl+"\u0001"+z,x=at.get(k);if(x)x.q=Math.round((x.q+q)*100)/100;else{const o={c:code.slice(0,40),cl:cl.slice(0,40),z,q:Math.round(q*100)/100};at.set(k,o);out.lines.push(o)}
+  const cn=cti>=0?num(r[cti]):0;// (v265) كراتين هذا السطر (كرتون المقاس الواحد): للتوزيع بالكرتون
+  const k=code+"\u0001"+cl+"\u0001"+z,x=at.get(k);if(x){x.q=Math.round((x.q+q)*100)/100;if(cn>0)x.cn=Math.round(((x.cn||0)+cn)*100)/100}else{const o={c:code.slice(0,40),cl:cl.slice(0,40),z,q:Math.round(q*100)/100};if(cn>0)o.cn=Math.round(cn*100)/100;at.set(k,o);out.lines.push(o)}
   const ck=code+"|"+cl;if(!seenC.has(ck)){seenC.add(ck);out.colors++}
-  if(cti>=0){const c=num(r[cti]);if(c>0)out.ctn[ck]=(out.ctn[ck]||0)+c}}
+  if(cn>0)out.ctn[ck]=(out.ctn[ck]||0)+cn}
  out.sizes=zs;out.ok=out.lines.length>0;return out;
+}
+/* (v265) 📦 التوزيع بالكرتون (محمد: «بيحسب للفرع بالحبة بس… لو في كرتون 12 بيحسبه تقريباً 13»): البيان فيه عدد الكراتين، والكرتون مشكَّل مقاسات
+   (مثلاً 2+3+3+2+1+1 = 12 حبة). «مجموعة كرتون» = سطور بالحبة لها نفس الكرتون: (1) البيان بالعرض: كل (كود، لون) وكراتينه من عمود «الكمية بالكرتون» (ctn)،
+   (2) البيان بالطول: كل سطر له كراتينه (cn) = كرتون مقاس واحد. a = حبات المقاس في الكرتون الواحد = الكمية ÷ الكراتين، ولازم تطلع عدداً صحيحاً لكل مقاس،
+   وإلا المجموعة تتوزّع بالحبة (والسبب يظهر). الناتج: [{k, c, cl, n (الكراتين), pc (حبات الكرتون), items:[{i (رقم السطر), z, a}], ok, why}] */
+export function cartonGroups(lines,ctn){
+ ctn=ctn||{};const G=[],M=new Map(),isInt=v=>Math.abs(v-Math.round(v))<1e-6;
+ (lines||[]).forEach((l,i)=>{if(!l||l.md!=="p"||!String(l.c||"").trim()||!(N(l.ct)>0))return;const c=String(l.c).trim(),cl=String(l.cl||"").trim();
+  if(N(l.cn)>0){G.push({k:"s"+i,c,cl,n:N(l.cn),items:[{i,z:String(l.z||"").trim(),q:N(l.ct)}]});return}
+  const k=c+"|"+cl,n=N(ctn[k]);if(!(n>0))return;let g=M.get(k);if(!g){g={k:"w"+i,c,cl,n,items:[]};M.set(k,g);G.push(g)}g.items.push({i,z:String(l.z||"").trim(),q:N(l.ct)})});
+ for(const g of G){g.ok=isInt(g.n)&&g.n>=1;g.why=g.ok?"":"عدد الكراتين ليس رقماً صحيحاً";let pc=0;
+  for(const it of g.items){it.a=it.q/g.n;if(!isInt(it.a)&&g.ok){g.ok=false;g.why="كمية المقاس "+(it.z||"—")+" ("+fq(it.q)+") لا تنقسم على "+fq(g.n)+" كرتون"}it.a=Math.round(it.a*1e6)/1e6;pc+=it.a}
+  g.pc=Math.round(pc*1e6)/1e6}
+ return G;
 }
 let DWK={rows:[],cols:[]},DWC=new Map(),BRX=null;// خريطة خانات البيان، كاش أوزان الفروع، وتصدير «بيان الفرع»
 const dPcs=l=>{const ct=Math.max(0,N(l.ct)),pk=Math.max(0,N(l.pk));return pk>0?ct*pk:ct};
@@ -1539,7 +1557,10 @@ function dWideTable(S){
 }
 // «بيان الفرع»: ما يأخذه فرع واحد (أو المستودع، أو الحاوية كلها) بنفس شكل البيان، بالحبة
 function dBranchCard(live,cols){
- const pl=live.filter(x=>x.l.md==="p"&&String(x.l.z||"").trim()!=="");if(!pl.length){BRX=null;return ""}
+ const pl=[];for(const x of live){// (v265) مجموعة الكرتون تتفك لمقاساتها (كل مقاس = الكراتين × حباته في الكرتون)
+  if(x.r.sizes){for(const s of x.r.sizes){if(!String(s.z||"").trim())continue;const vals={};for(const c of cols)vals[c.c]=N(x.r.vals[c.c])*s.a;pl.push({l:{c:x.l.c,cl:x.l.cl,z:s.z,md:"p"},r:{total:x.r.total*s.a,wh:x.r.wh*s.a,vals,pc:1}})}continue}
+  if(x.l.md==="p"&&String(x.l.z||"").trim()!=="")pl.push(x)}
+ if(!pl.length){BRX=null;return ""}
  const opts=cols.map(c=>[c.c,c.nm+(c.route?" ("+c.route+")":"")]).concat([["__wh","المستودع (الباقي)"],["__all","الحاوية كلها"]]);let cur=UI.dbr||"";if(!opts.some(o=>o[0]===cur))cur=opts[0][0];
  const val=x=>cur==="__all"?x.r.total*x.r.pc:cur==="__wh"?x.r.wh*x.r.pc:N(x.r.vals[cur])*x.r.pc,RK=[],RM=new Map(),ZS=[];
  pl.forEach(x=>{const k=x.l.c+"\u0001"+(x.l.cl||"");let r=RM.get(k);if(!r){r={c:String(x.l.c),cl:String(x.l.cl||""),m:{}};RM.set(k,r);RK.push(r)}const z=String(x.l.z).trim();if(ZS.indexOf(z)<0)ZS.push(z);r.m[z]=(r.m[z]||0)+val(x)});ZS.sort((a,b)=>zk(a)-zk(b)||(a<b?-1:1));
@@ -1566,6 +1587,17 @@ function dLine(i,l,cols,P){
  for(const c of cols){let v=c.on?A.on:(A.a[c.c]||0);const k=i+"|"+c.c;if(DS.ov[k]!==undefined&&DS.ov[k]!==null&&DS.ov[k]!==""){v=Math.max(0,N(DS.ov[k]));ovn++}vals[c.c]=v;sum+=v}
  return {total,step,md,pk,vals,wh:Math.round((total-sum)*1e6)/1e6,src,ovn,pc:md==="c"?(pk>0?pk:1):1};
 }
+// (v265) توزيع مجموعة كرتون: الكراتين كاملة (أو أنصاف لو كل مقاس عدده زوجي) بنفس أوزان الفروع ومستوياتها وأقل/أقصى نصيب «بالكرتون»،
+// ثم نصيب الفرع من كل مقاس = كراتينه × حبات المقاس في الكرتون. sizes = [{z, a}] للطلبات وبيان الفرع
+function dGroup(g,cols,P){
+ const R=DS.rules,l0=DS.lines[g.items[0].i]||{},half=N(R.cs)===0.5&&g.items.every(it=>Math.abs(it.a/2-Math.round(it.a/2))<1e-6),step=half?0.5:1;
+ const ref=String(l0.ref||"").trim(),wk=[g.c,ref,R.mode,P?P.from+"~"+P.to:""].join("|");let W=R.mode==="eq"?{m:new Map(),src:"eq"}:DWC.get(wk);if(!W){W=distWeights(DATA,CFG,{code:g.c,ref,period:P,mode:R.mode});DWC.set(wk,W)}
+ const bc=cols.filter(c=>!c.on),on=cols.find(c=>c.on);
+ let brs=bc.map(c=>({id:c.c,w:(R.mode==="eq"?1:Math.max(0.0001,c.ti>=0?W.m.get(c.ti)||0:0))*c.lv})),src=W.src;if(!brs.some(b=>b.w>0)){brs=bc.map(c=>({id:c.c,w:c.lv}));src="eq"}
+ const A=distribute(g.n,step,brs,{on:R.on,wh:R.wh,min:R.cmin,max:R.cmax,hasOnline:!!on&&on.lv>0}),vals={},xi="g"+g.items[0].i;let sum=0,ovn=0;
+ for(const c of cols){let v=c.on?A.on:(A.a[c.c]||0);const k=xi+"|"+c.c;if(DS.ov[k]!==undefined&&DS.ov[k]!==null&&DS.ov[k]!==""){v=Math.max(0,N(DS.ov[k]));ovn++}vals[c.c]=v;sum+=v}
+ return {total:g.n,step,md:"c",pk:g.pc,vals,wh:Math.round((g.n-sum)*1e6)/1e6,src,ovn,pc:g.pc,sizes:g.items.map(it=>({z:it.z,a:it.a})),grp:1};
+}
 function vDist(){
  const S=dLoad(),R=S.rules,P=period(),cols=dCols(),on=cols.find(c=>c.on),br=cols.filter(c=>!c.on);DWC=new Map();
  const nP=S.lines.filter(l=>l.md==="p"&&String(l.c||"").trim()).length,wide=UI.dvw!=="l"&&nP>0,nC=S.lines.filter(l=>l.md!=="p"&&String(l.c||"").trim()).length;
@@ -1586,7 +1618,16 @@ function vDist(){
  ${on?`<div class="stk-lvg"><b>الأونلاين</b><label><span data-notr>${E(on.nm)}</span><select data-dv="${E(on.c)}" id="dv-${E(on.c)}"><option value="1"${on.lv>0?" selected":""}>يأخذ نسبته</option><option value="0"${on.lv<=0?" selected":""}>مستبعد</option></select></label></div>`:""}
  ${routes.map(g=>`<div class="stk-lvg"><b${g.r?" data-notr":""}>${g.r?E(g.r):"الرياض"}</b>${g.l.map(c=>`<label><span data-notr>${E(c.nm)}</span><select data-dv="${E(c.c)}" id="dv-${E(c.c)}">${DLV.map(x=>`<option value="${x[0]}"${c.lv===x[0]?" selected":""}>${x[1]}</option>`).join("")}</select></label>`).join("")}</div>`).join("")}
  <div class="stk-act" style="margin:10px 0 0"><button class="bt" type="button" data-sk="ddef">↺ القواعد الافتراضية</button></div></div>`:"";
- const live=[];S.lines.forEach((l,i)=>{if(String(l.c||"").trim()&&N(l.ct)>0)live.push({i,l,r:dLine(i,l,cols,P)})});
+ // (v265) بالكرتون (الافتراضي لو البيان فيه كراتين) أو بالحبة. بالكرتون: صف لكل (كود، لون) بكراتينه، والسطور اللي مالهاش كرتون صالح تفضل بالحبة
+ const GR=cartonGroups(S.lines,S.ctn),okG=GR.filter(g=>g.ok),badG=GR.filter(g=>!g.ok),unit=R.unit==="p"||!okG.length?"p":"c",gAt=new Map(),cov=new Set();
+ if(unit==="c")okG.forEach(g=>{gAt.set(g.items[0].i,g);g.items.forEach(it=>cov.add(it.i))});
+ const zr=g=>{const z=g.items.map(it=>it.z).filter(Boolean);return z.length>1?z[0]+"–"+z[z.length-1]:z[0]||""};
+ const live=[];S.lines.forEach((l,i)=>{if(!String(l.c||"").trim()||!(N(l.ct)>0))return;
+  if(cov.has(i)){const g=gAt.get(i);if(g)live.push({i:"g"+i,l:{c:g.c,cl:g.cl,z:zr(g),ct:g.n,md:"c",ref:l.ref},r:dGroup(g,cols,P)});return}
+  live.push({i,l,r:dLine(i,l,cols,P)})});
+ const useg=GR.length?`<div class="stk-card" style="margin:0 0 12px"><h3>📦 طريقة التوزيع على الفروع</h3><div class="stk-seg" role="tablist" style="margin:0 0 8px"><button type="button" data-sk="dunit" data-v="c" class="${unit==="c"?"on":""}"${okG.length?"":" disabled"}>بالكرتون</button><button type="button" data-sk="dunit" data-v="p" class="${unit==="p"?"on":""}">بالحبة</button></div>
+  <p class="stk-src" style="margin:0">${unit==="c"?`كل فرع يأخذ <b>كراتين كاملة</b>${N(R.cs)===0.5?" (أو نصف كرتون لو التشكيلة تسمح)":""}، ومقاسات الفرع = كراتينه × تشكيلة الكرتون (${fq(okG.length)} ${okG.length===1?"لون":"ألوان"} بالكرتون). أقل وأقصى نصيب من «التوزيع بالكرتون» في القواعد.`:`كل مقاس يتوزّع لوحده بالحبة، فنصيب الفرع قد لا يساوي كراتين كاملة (مثلاً 13 حبة بدل كرتون 12).${okG.length?" اختر «بالكرتون» ليأخذ كل فرع كراتين كاملة.":""}`}</p>
+  ${badG.length?`<div class="stk-rep w" style="margin:8px 0 0">⚠️ ${fq(badG.length)} ${badG.length===1?"لون يتوزّع":"ألوان تتوزّع"} بالحبة لأن التشكيلة لا تنقسم على الكراتين: ${badG.slice(0,4).map(g=>`<span data-notr dir="ltr">${E(g.c+" "+g.cl)}</span> (${E(g.why)})`).join("، ")}${badG.length>4?"…":""}</div>`:""}</div>`:"";
  if(!live.length){LASTX=null;return inp+rules+em("اكتب أصناف الحاوية في الأعلى (الكود وعدد الكراتين على الأقل) ليظهر التوزيع.<br>الأونلاين يأخذ "+fq(R.on)+"% من كل كمية، و"+fq(R.wh)+"% تبقى في المستودع، والباقي على الفروع حسب مبيعاتها. غيّر ذلك من «⚙ قواعد التوزيع».")}
  let tP=0,oP=0,bP=0,wP=0,ovn=0,neg=0;const colP={};for(const x of live){const r=x.r;tP+=r.total*r.pc;wP+=r.wh*r.pc;ovn+=r.ovn;if(r.wh<-1e-9)neg++;for(const c of cols){const p=r.vals[c.c]*r.pc;colP[c.c]=(colP[c.c]||0)+p;if(c.on)oP+=p;else bP+=p}}
  const SRC={ref:"وزن الفروع: مبيعات الكود المشابه",code:"وزن الفروع: مبيعات الكود نفسه",all:"وزن الفروع: مبيعات الفرع كلها",eq:"وزن الفروع: بالتساوي"};
@@ -1597,7 +1638,7 @@ function vDist(){
  ${live.map(x=>{const l=x.l,r=x.r;return `<tr><td class="s"><b data-notr dir="ltr">${E(l.c)}</b><i data-notr>${E([l.cl,l.z].filter(Boolean).join(" · ")||"—")}</i><i>${SRC[r.src]||""}${r.src==="ref"?` <span data-notr dir="ltr">${E(l.ref)}</span>`:""}</i></td><td class="t"><b>${fq(r.total)}</b><i>${r.md==="c"?"كرتون":"حبة"}${r.md==="c"&&r.pk?" · "+fq(r.total*r.pk)+" حبة":""}</i></td>${on?cell(x,on):""}${br.map(c=>cell(x,c)).join("")}<td class="wh${r.wh<-1e-9?" need":""}"><b>${fq(r.wh)}</b></td></tr>`}).join("")}
  <tr class="tot"><td class="s">الإجمالي بالحبة</td><td>${fq(tP)}</td>${on?`<td>${fq(colP[on.c]||0)}</td>`:""}${br.map(c=>`<td>${fq(colP[c.c]||0)}</td>`).join("")}<td>${fq(wP)}</td></tr></tbody></table></div>
  <p class="stk-src" style="margin:8px 4px 0">كل خانة تُعدَّل باليد (تظهر بحد بنفسجي)، والمستودع يأخذ الباقي تلقائياً. الأرقام بوحدة السطر (كرتون أو حبة)، وسطر الإجمالي بالحبة.</p></div>`;
- return inp+rules+gapNote(P)+`<div class="stk-tiles">${T.join("")}</div>${neg?`<div class="stk-rep r">⚠️ ${fq(neg)} سطر وُزِّع فيه أكثر من كميته (المستودع بالسالب). راجِع الخانات المعدَّلة باليد.</div>`:""}
+ return inp+rules+gapNote(P)+useg+`<div class="stk-tiles">${T.join("")}</div>${neg?`<div class="stk-rep r">⚠️ ${fq(neg)} سطر وُزِّع فيه أكثر من كميته (المستودع بالسالب). راجِع الخانات المعدَّلة باليد.</div>`:""}
  <div class="stk-act">${ovn?`<button class="bt" type="button" data-sk="dovx">↺ إلغاء تعديلات اليد (${fq(ovn)})</button>`:""}<button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button>${X&&X.dispatch?`<button class="bt p" type="button" data-sk="dsn"${neg?" disabled":""}>📤 حوّل التوزيع إلى طلبات للفروع</button>`:""}</div>${X&&X.dispatch&&UI.dsn&&!neg?dSendCard(live,cols):""}${grid}`+dBranchCard(live,cols);
 }
 // بطاقة المراجعة قبل إنشاء الطلبات: فرعاً فرعاً، وما أُنشئ من قبل بنفس الكميات لا يُنشأ مرة أخرى
@@ -2387,13 +2428,15 @@ function wire(){
   else if(a==="dpaste"){UI.dp=!UI.dp;paint(false);const el=g("stk-dpt");if(el)try{el.focus()}catch(x){}}
   else if(a==="dpok"){const el=g("stk-dpt"),S=dLoad();if(!el)return;let n=0;
    // (v198) بيان بالعرض (المقاسات أعمدة): كل خانة = سطر بالحبة. تعديلات اليد تُلغى لأن ترقيم السطور يتغيّر
-   const ST=parseStatement(el.value);if(ST.ok){S.lines=S.lines.filter(l=>String(l.c||"").trim()||N(l.ct)>0);S.ov={};S.ctn=Object.assign(S.ctn&&typeof S.ctn==="object"?S.ctn:{},ST.ctn);let add=0;for(const x of ST.lines){if(S.lines.length>=DMAX)break;const o=S.lines.find(l=>l.md==="p"&&String(l.c).trim()===x.c&&String(l.cl||"").trim()===x.cl&&String(l.z||"").trim()===x.z);if(o)o.ct=x.q;else S.lines.push({c:x.c,cl:x.cl,z:x.z,ct:x.q,pk:"",md:"p",ref:""});add++}
+   // (v265) والبيان بالطول (سطر لكل مقاس وكراتينه: بيان الشال) كمان: كراتين السطر في cn
+   const ST0=parseList(el.value),ST=ST0.ok?ST0:parseStatement(el.value);if(ST.ok){S.lines=S.lines.filter(l=>String(l.c||"").trim()||N(l.ct)>0);S.ov={};if(!ST.tall)S.ctn=Object.assign(S.ctn&&typeof S.ctn==="object"?S.ctn:{},ST.ctn);let add=0;for(const x of ST.lines){if(S.lines.length>=DMAX)break;const o=S.lines.find(l=>l.md==="p"&&String(l.c).trim()===x.c&&String(l.cl||"").trim()===x.cl&&String(l.z||"").trim()===x.z);if(o){o.ct=x.q;if(x.cn)o.cn=x.cn;else delete o.cn}else{const nl={c:x.c,cl:x.cl,z:x.z,ct:x.q,pk:"",md:"p",ref:""};if(x.cn)nl.cn=x.cn;S.lines.push(nl)}add++}
     while(S.lines.length<3)S.lines.push(dBlank());UI.dp=false;UI.dvw="w";dSave();paint(false);if(X.toast)X.toast("قُرئ البيان: "+ST.colors+" لون × "+ST.sizes.length+" مقاس = "+add+" خانة"+(add<ST.lines.length?" (الباقي تجاوز الحد "+DMAX+")":""));return}
    S.lines=S.lines.filter(l=>String(l.c||"").trim()||N(l.ct)>0);
    String(el.value||"").split(/\r?\n/).forEach(row=>{const p=row.split(row.indexOf("\t")>=0?"\t":/[,;،]/).map(s=>String(s).trim());if(!p[0]||S.lines.length>=DMAX)return;const ct=N(arDig(p[3]||"")),pk=N(arDig(p[4]||""));if(!(ct>0)&&!/\d/.test(p[0]))return;/* سطر عناوين */S.lines.push({c:p[0].slice(0,40),cl:(p[1]||"").slice(0,40),z:(p[2]||"").slice(0,20),ct:ct>0?ct:"",pk:pk>0?pk:"",md:"c",ref:""});n++});
    while(S.lines.length<3)S.lines.push(dBlank());UI.dp=false;dSave();paint(false);if(X.toast)X.toast(n?"أُضيف "+n+" سطر":"لم أجد صفوفاً صالحة")}
   else if(a==="dro"){UI.dro=!UI.dro;paint(false)}
   else if(a==="dvw"){UI.dvw=t.dataset.v==="l"?"l":"w";paint(false)}
+  else if(a==="dunit"){const S=dLoad();S.rules.unit=t.dataset.v==="p"?"p":"c";S.ov={};dSave();paint(false)}// (v265) بالكرتون / بالحبة (تعديلات اليد تُلغى لأن الوحدة اتغيّرت)
   else if(a==="prnb"||a==="xlsb"){if(!BRX){if(X.toast)X.toast("لا بيان للطباعة");return}const o=LASTX;LASTX=BRX;try{if(a==="prnb")printX();else csv()}finally{LASTX=o}}
   else if(a==="ddef"){const S=dLoad();S.rules=Object.assign({},DDEF,{lv:{}});S.ov={};dSave();paint(false)}
   else if(a==="dovx"){dLoad().ov={};dSave();paint(false)}
