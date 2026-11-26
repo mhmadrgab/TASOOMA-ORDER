@@ -5391,4 +5391,5 @@ export default {
 "كرتون":"cartons",
 "إجمالي القطع":"Total pieces",
 "إجمالي الكود":"Code total",
+"انسخ البيان من إكسل كما هو من صف العناوين (المقاسات أعمدة، أو سطر لكل مقاس فيه عمودا «المقاس» و«الكمية») والصقه هنا، أو سطراً لكل صنف: الكود، اللون، المقاس، الكمية، رقم الحاوية (اختياري)":"Copy the statement from Excel as is, starting from the header row (sizes as columns, or one line per size with «Size» and «Quantity» columns) and paste it here, or one line per item: code, color, size, quantity, container number (optional)",
 };

@@ -1477,6 +1477,30 @@ export function parseStatement(text){
   if(any){out.colors++;if(cti>=0){const c=num(r[cti]);if(c>0)out.ctn[code+"|"+cl]=c}}}
  out.sizes=zc.map(j=>String(H[j]).trim());out.ok=out.lines.length>0;return out;
 }
+/* (v256) 📋 البيان بالطول: سطر لكل مقاس (الكود · اللون · المقاس · الكمية بالحبة · الكمية بالكرتون · ملاحظات)، وخانتا الكود واللون مدموجتان لأسفل
+   (بيان الشال الشتوي). يُعرف بصف عناوين فيه «المقاس» و«الكمية» معاً (البيان بالعرض لا عمود «مقاس» فيه، فلا يختلطان). نفس شكل ناتج parseStatement */
+export function parseList(text){
+ const rows=String(text||"").split(/\r?\n/).map(r=>r.split("\t").map(x=>arDig(String(x)).trim())).filter(r=>r.some(Boolean)),out={ok:false,lines:[],sizes:[],colors:0,ctn:{},title:"",notes:{},tall:true};
+ const kw=(x,re)=>re.test(normAr(x)),isCode=x=>kw(x,/^(الكود|كود|code|item code|الموديل|موديل|model|item|الصنف)$/i),isCol=x=>kw(x,/^(اللون|لون|color|colour|الالوان)$/i),isSz=x=>kw(x,/^(المقاس|مقاس|المقاسات|size|sizes)$/i);
+ const isCtn=x=>kw(x,/كا?رتون|carton|ctn/i),isPcs=x=>kw(x,/حب|قطع|pcs|pieces?|units?/i),isQty=x=>kw(x,/كميه|كمية|العدد|qty|quantity/i);
+ let hi=-1;for(let i=0;i<rows.length&&i<12;i++){const r=rows[i];if(r.some(isCode)&&r.some(isSz)&&r.some(x=>isQty(x)||isPcs(x))){hi=i;break}}
+ if(hi<0)return out;const H=rows[hi],ci=H.findIndex(isCode),li=H.findIndex(isCol),zi=H.findIndex(isSz),cti=H.findIndex(isCtn),nti=H.findIndex(x=>kw(x,/ملاحظ|note|remark/i));
+ // عمود الكمية: «بالحبة» أولاً، وإلا أول عمود كمية ليس كرتوناً (لا نأخذ الكراتين ككمية)
+ let qi=H.findIndex(x=>isPcs(x)&&!isCtn(x));if(qi<0)qi=H.findIndex(x=>isQty(x)&&!isCtn(x));if(qi<0)return out;
+ for(let i=0;i<hi;i++){const f=rows[i].filter(Boolean);if(f.length===1&&!out.title)out.title=f[0].slice(0,200)}
+ let lc="",ll="";const at=new Map(),seenC=new Set(),zs=[];
+ for(let i=hi+1;i<rows.length;i++){const r=rows[i];
+  if(r.some(x=>kw(x,/^(الاجمالي|الاجمالى|اجمالي|المجموع|total|grand total)$/i)))continue;
+  let code=String(r[ci]||"").trim();const own=!!code;if(!code)code=lc;// خانة الكود مدموجة: تأخذ الكود الذي فوقها
+  let cl=li>=0?String(r[li]||"").trim():"";if(!cl&&!own)cl=ll;// اللون كذلك، ما دام الكود نفسه (كود جديد بلا لون = بلا لون)
+  const q=num(r[qi]);if(!code||!/[0-9A-Za-z]/.test(code)||!(q>0))continue;lc=code;ll=cl;
+  const z=zi>=0?String(r[zi]||"").trim().slice(0,20):"";if(z&&zs.indexOf(z)<0)zs.push(z);
+  if(nti>=0){const nt=String(r[nti]||"").trim();if(nt&&!out.notes[code])out.notes[code]=nt.slice(0,100)}
+  const k=code+"\u0001"+cl+"\u0001"+z,x=at.get(k);if(x)x.q=Math.round((x.q+q)*100)/100;else{const o={c:code.slice(0,40),cl:cl.slice(0,40),z,q:Math.round(q*100)/100};at.set(k,o);out.lines.push(o)}
+  const ck=code+"|"+cl;if(!seenC.has(ck)){seenC.add(ck);out.colors++}
+  if(cti>=0){const c=num(r[cti]);if(c>0)out.ctn[ck]=(out.ctn[ck]||0)+c}}
+ out.sizes=zs;out.ok=out.lines.length>0;return out;
+}
 let DWK={rows:[],cols:[]},DWC=new Map(),BRX=null;// خريطة خانات البيان، كاش أوزان الفروع، وتصدير «بيان الفرع»
 const dPcs=l=>{const ct=Math.max(0,N(l.ct)),pk=Math.max(0,N(l.pk));return pk>0?ct*pk:ct};
 // صفوف (كود، لون) وأعمدة المقاسات من سطور «بالحبة»

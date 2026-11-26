@@ -327,7 +327,7 @@ function form(id){
  <div class="it"><button type="button" class="it-tg" data-po="ittog" aria-expanded="false" aria-controls="po-itbx"><span>📦 إضافة أصناف</span><small id="po-itt"></small><i class="ar">▾</i></button>
  <div class="it-bx" id="po-itbx" hidden><div class="it-tw"><table class="it-tb"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th><th class="it-kh">الحاوية</th><th>ملاحظات</th><th></th></tr></thead><tbody id="po-itb"></tbody></table><datalist id="po-dk"></datalist><datalist id="po-dc"></datalist><datalist id="po-dz"></datalist></div>
  <div class="it-h"><button type="button" data-po="itadd">＋ سطر</button><button type="button" data-po="itfile">📥 من ملف إكسل</button><button type="button" data-po="itpaste">📋 لصق من إكسل</button><button type="button" data-po="itclr">مسح الأصناف</button><input type="file" id="po-itf" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden></div>
- <div class="it-p" id="po-itpw" hidden><label>انسخ البيان من إكسل كما هو (الكود واللون والمقاسات أعمدة) والصقه هنا، أو سطراً لكل صنف: الكود، اللون، المقاس، الكمية، رقم الحاوية (اختياري)</label><textarea id="po-itp" placeholder="A1023&#9;أسود&#9;42&#9;120&#9;1"></textarea><button type="button" data-po="itparse">إضافة الأسطر</button></div></div></div>
+ <div class="it-p" id="po-itpw" hidden><label>انسخ البيان من إكسل كما هو من صف العناوين (المقاسات أعمدة، أو سطر لكل مقاس فيه عمودا «المقاس» و«الكمية») والصقه هنا، أو سطراً لكل صنف: الكود، اللون، المقاس، الكمية، رقم الحاوية (اختياري)</label><textarea id="po-itp" placeholder="A1023&#9;أسود&#9;42&#9;120&#9;1"></textarea><button type="button" data-po="itparse">إضافة الأسطر</button></div></div></div>
  <div class="row"><div><label>قيمة الأمر (اختياري)</label><input id="po-val" inputmode="decimal" dir="ltr" value="${N(o.val)?E(o.val):""}"></div>
  <div><label>العملة</label><select id="po-cur">${CUR.map(c=>`<option ${o.cur===c?"selected":""}>${c}</option>`).join("")}</select></div></div>
  <div class="row"><div><label>شرط التسليم (Incoterm)</label><select id="po-inc"><option value="">—</option>${INC.map(c=>`<option ${o.inc===c?"selected":""}>${c}</option>`).join("")}</select></div>
@@ -589,6 +589,8 @@ function itRead(cn){const out=[];for(let i=0;i<IT.length;i++){const x=IT[i];if(i
    صف لكل (كود، لون) وعمود لكل مقاس، وعنوان فوق، وملاحظات لكل كود، وسطر إجمالي. القراءة بنفس قارئ «توزيع حاوية» (stock.js parseStatement)
    والملف يُقرأ على الجهاز فقط (stock.js بيتحمّل عند الحاجة). كل خانة = سطر صنف (كود، لون، مقاس، كمية)، وملاحظة الكود على أول سطر منه */
 let STK=null;const stk=()=>STK||(STK=import("./stock.js"));
+// (v256) شكلان للبيان: بالطول (سطر لكل مقاس، فيه عمودا «المقاس» و«الكمية»: بيان الشال) ثم بالعرض (المقاسات أعمدة: بيان النعال)
+const xlStOf=(S,t)=>{const a=S.parseList?S.parseList(t):null;if(a&&a.ok)return a;const b=S.parseStatement(t);return b.ok?b:null};
 function itStatement(st,src){
  const L=st.lines.map((x,i)=>({c:x.c,cl:x.cl||"",z:x.z||"",q:String(x.q),k:"",n:""}));const seen=new Set();
  L.forEach(x=>{if(!seen.has(x.c)){seen.add(x.c);if(st.notes&&st.notes[x.c])x.n=String(st.notes[x.c]).slice(0,100)}});
@@ -603,14 +605,14 @@ function itStatement(st,src){
 async function itFile(f){
  if(!f)return;if(f.size>8e6){X.toast("الملف كبير جداً. البيان عادةً أقل من 1 ميجا","er");return}
  if(/\.xls$/i.test(f.name)){X.toast("هذا ملف إكسل قديم (.xls). افتحه في إكسل واحفظه بصيغة .xlsx ثم ارفعه، أو انسخ البيان والصقه","er");return}
- try{const S=await stk(),T=await S.sheetTexts(f);let st=null;for(const t of T){const s=S.parseStatement(t);if(s.ok){st=s;break}}
+ try{const S=await stk(),T=await S.sheetTexts(f);let st=null;for(const t of T){const s=xlStOf(S,t);if(s){st=s;break}}
   if(st){itStatement(st,"الملف");return}
   // ليس بياناً بالعرض: نجرّب الأعمدة (الكود، اللون، المقاس، الكمية) عبر نفس لصق الجدول
   const t=g("po-itp");if(t&&T[0]){t.value=T[0].split("\n").filter(l=>/\d/.test(l)&&!/(الكود|code|اجمال|الأجمال|total)/i.test(l)).join("\n");if(t.value.trim()){itParse();return}}
   X.toast("لم أجد أصنافاً في الملف. المطلوب: الكود واللون ثم المقاسات أعمدة (مثل بيان الحاوية)، أو أعمدة الكود واللون والمقاس والكمية","er")}
  catch(e){X.toast(e&&e.message==="notzip"?"تعذّرت قراءة الملف. تأكد أنه ملف إكسل .xlsx":"تعذّرت قراءة الملف على هذا الجهاز","er")}}
 async function itParse(){const t=g("po-itp");if(!t)return;
- if(t.value.indexOf("\t")>=0){try{const S=await stk(),st=S.parseStatement(t.value);if(st.ok){if(itStatement(st,"البيان")){t.value="";if(g("po-itpw"))g("po-itpw").hidden=true}return}}catch(e){}}
+ if(t.value.indexOf("\t")>=0){try{const S=await stk(),st=xlStOf(S,t.value);if(st){if(itStatement(st,"البيان")){t.value="";if(g("po-itpw"))g("po-itpw").hidden=true}return}}catch(e){}}
  const lines=t.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);let add=0;
  IT=IT.filter(x=>!itEmpty(x));
  const isN=s=>/^[\d٠-٩۰-۹,]+$/.test(String(s||"").trim());
