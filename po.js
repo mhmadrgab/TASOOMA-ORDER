@@ -202,7 +202,7 @@ export const poCount=()=>{if(!X)return 0;const L=[...A.values()];
 export function poView(){
  if(!X)return "";
  const L=all();
- const head=`<div class="po-h"><h2>🚢 أوامر الشراء والحاويات</h2><div class="po-hb">${canEdit()?`<button class="bt p" data-po="new" type="button">➕ أمر شراء جديد</button>`:""}<button class="bt" data-po="sups" type="button">🏭 الموردون (${S.size})</button></div></div>
+ const head=`<div class="po-h"><h2>🚢 أوامر الشراء والحاويات</h2><div class="po-hb">${canEdit()?`<button class="bt p" data-po="new" type="button">➕ أمر شراء جديد</button><button class="bt" data-po="newxl" type="button" title="بيان الأصناف من إكسل (المقاسات أعمدة، أو كود ولون ومقاس وكمية)">📥 أمر شراء من ملف إكسل</button>`:""}<button class="bt" data-po="sups" type="button">🏭 الموردون (${S.size})</button></div></div>
  <div class="po-tabs" role="tablist"><button type="button" role="tab" data-po="v" data-v="list" class="${V==="list"?"on":""}">📋 الأوامر</button><button type="button" role="tab" data-po="v" data-v="stats" class="${V==="stats"?"on":""}">📊 مدة الوصول لكل مورد</button></div>`;
  return head+(V==="stats"?statsView(L):listView(L));
 }
@@ -315,8 +315,8 @@ function form(id){
  <div><label>نوع الحاوية</label><select id="po-ct">${CTYPE.map(([k,l])=>`<option value="${k}" ${o.ctype===k?"selected":""}>${l}</option>`).join("")}</select></div></div>
  <div class="it"><button type="button" class="it-tg" data-po="ittog" aria-expanded="false" aria-controls="po-itbx"><span>📦 إضافة أصناف</span><small id="po-itt"></small><i class="ar">▾</i></button>
  <div class="it-bx" id="po-itbx" hidden><div class="it-tw"><table class="it-tb"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th><th class="it-kh">الحاوية</th><th>ملاحظات</th><th></th></tr></thead><tbody id="po-itb"></tbody></table><datalist id="po-dk"></datalist><datalist id="po-dc"></datalist><datalist id="po-dz"></datalist></div>
- <div class="it-h"><button type="button" data-po="itadd">＋ سطر</button><button type="button" data-po="itpaste">📋 لصق من إكسل</button><button type="button" data-po="itclr">مسح الأصناف</button></div>
- <div class="it-p" id="po-itpw" hidden><label>كل سطر صنف: الكود، اللون، المقاس، الكمية، رقم الحاوية (اختياري). انسخ الأعمدة من إكسل والصقها هنا</label><textarea id="po-itp" placeholder="A1023&#9;أسود&#9;42&#9;120&#9;1"></textarea><button type="button" data-po="itparse">إضافة الأسطر</button></div></div></div>
+ <div class="it-h"><button type="button" data-po="itadd">＋ سطر</button><button type="button" data-po="itfile">📥 من ملف إكسل</button><button type="button" data-po="itpaste">📋 لصق من إكسل</button><button type="button" data-po="itclr">مسح الأصناف</button><input type="file" id="po-itf" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden></div>
+ <div class="it-p" id="po-itpw" hidden><label>انسخ البيان من إكسل كما هو (الكود واللون والمقاسات أعمدة) والصقه هنا، أو سطراً لكل صنف: الكود، اللون، المقاس، الكمية، رقم الحاوية (اختياري)</label><textarea id="po-itp" placeholder="A1023&#9;أسود&#9;42&#9;120&#9;1"></textarea><button type="button" data-po="itparse">إضافة الأسطر</button></div></div></div>
  <div class="row"><div><label>قيمة الأمر (اختياري)</label><input id="po-val" inputmode="decimal" dir="ltr" value="${N(o.val)?E(o.val):""}"></div>
  <div><label>العملة</label><select id="po-cur">${CUR.map(c=>`<option ${o.cur===c?"selected":""}>${c}</option>`).join("")}</select></div></div>
  <div class="row"><div><label>شرط التسليم (Incoterm)</label><select id="po-inc"><option value="">—</option>${INC.map(c=>`<option ${o.inc===c?"selected":""}>${c}</option>`).join("")}</select></div>
@@ -571,7 +571,33 @@ function itRead(cn){const out=[];for(let i=0;i<IT.length;i++){const x=IT[i];if(i
   out.push(o)}
  if(out.length>MAXIT){X.toast("الحد الأقصى "+MAXIT+" صنف في الأمر الواحد");return false}
  return out}
-function itParse(){const t=g("po-itp");if(!t)return;const lines=t.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);let add=0;
+/* 📥 (v251) بيان الحاوية من إكسل (محمد: «أي حد ليه صلاحية أوامر الشراء ياخد كوبي من ملف زي ده ويتحول لأمر شراء»):
+   صف لكل (كود، لون) وعمود لكل مقاس، وعنوان فوق، وملاحظات لكل كود، وسطر إجمالي. القراءة بنفس قارئ «توزيع حاوية» (stock.js parseStatement)
+   والملف يُقرأ على الجهاز فقط (stock.js بيتحمّل عند الحاجة). كل خانة = سطر صنف (كود، لون، مقاس، كمية)، وملاحظة الكود على أول سطر منه */
+let STK=null;const stk=()=>STK||(STK=import("./stock.js"));
+function itStatement(st,src){
+ const L=st.lines.map((x,i)=>({c:x.c,cl:x.cl||"",z:x.z||"",q:String(x.q),k:"",n:""}));const seen=new Set();
+ L.forEach(x=>{if(!seen.has(x.c)){seen.add(x.c);if(st.notes&&st.notes[x.c])x.n=String(st.notes[x.c]).slice(0,100)}});
+ const old=IT.filter(x=>!itEmpty(x));
+ if(old.length+L.length>MAXIT){X.toast(`البيان فيه ${L.length} سطراً (كل لون × مقاس سطر)، والحد ${MAXIT} سطر في الأمر الواحد${old.length?" مع الأصناف المكتوبة":""}. قسّمه على أمرين`,"er");return false}
+ if(old.length&&!confirm(`في الأمر ${old.length} صنف مكتوب بالفعل.\nOK = أضف أصناف البيان بعدها\nإلغاء = لا تضف شيئاً`))return false;
+ IT=old.concat(L);ITO=true;itRender();
+ const q=L.reduce((s,x)=>s+N(x.q),0),codes=seen.size,ctn=Object.keys(st.ctn||{}).reduce((s,k)=>s+N(st.ctn[k]),0);
+ const ds=g("po-ds");if(ds&&!ds.value.trim())ds.value=`${st.title?st.title+" · ":""}${codes} كود · ${q.toLocaleString("en-US")} قطعة${ctn?" · "+ctn.toLocaleString("en-US")+" كرتون":""}`.slice(0,1000);
+ X.toast(`✅ أُضيف ${L.length} سطراً من ${src}: ${codes} كود · ${st.colors} لون · ${q.toLocaleString("en-US")} قطعة${ctn?" · "+ctn.toLocaleString("en-US")+" كرتون":""}. راجع ثم احفظ`);
+ return true}
+async function itFile(f){
+ if(!f)return;if(f.size>8e6){X.toast("الملف كبير جداً. البيان عادةً أقل من 1 ميجا","er");return}
+ if(/\.xls$/i.test(f.name)){X.toast("هذا ملف إكسل قديم (.xls). افتحه في إكسل واحفظه بصيغة .xlsx ثم ارفعه، أو انسخ البيان والصقه","er");return}
+ try{const S=await stk(),T=await S.sheetTexts(f);let st=null;for(const t of T){const s=S.parseStatement(t);if(s.ok){st=s;break}}
+  if(st){itStatement(st,"الملف");return}
+  // ليس بياناً بالعرض: نجرّب الأعمدة (الكود، اللون، المقاس، الكمية) عبر نفس لصق الجدول
+  const t=g("po-itp");if(t&&T[0]){t.value=T[0].split("\n").filter(l=>/\d/.test(l)&&!/(الكود|code|اجمال|الأجمال|total)/i.test(l)).join("\n");if(t.value.trim()){itParse();return}}
+  X.toast("لم أجد أصنافاً في الملف. المطلوب: الكود واللون ثم المقاسات أعمدة (مثل بيان الحاوية)، أو أعمدة الكود واللون والمقاس والكمية","er")}
+ catch(e){X.toast(e&&e.message==="notzip"?"تعذّرت قراءة الملف. تأكد أنه ملف إكسل .xlsx":"تعذّرت قراءة الملف على هذا الجهاز","er")}}
+async function itParse(){const t=g("po-itp");if(!t)return;
+ if(t.value.indexOf("\t")>=0){try{const S=await stk(),st=S.parseStatement(t.value);if(st.ok){if(itStatement(st,"البيان")){t.value="";if(g("po-itpw"))g("po-itpw").hidden=true}return}}catch(e){}}
+ const lines=t.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);let add=0;
  IT=IT.filter(x=>!itEmpty(x));
  const isN=s=>/^[\d٠-٩۰-۹,]+$/.test(String(s||"").trim());
  for(const ln of lines){if(IT.length>=MAXIT)break;const C=ln.split(/\t|;|,|،/).map(s=>s.trim());let o;
@@ -594,7 +620,9 @@ document.addEventListener("input",e=>{if(!X)return;const t=e.target;if(!t||!t.cl
  // الكتابة في آخر سطر: سطر فاضي جديد تحته (من غير ما نرسم الجدول من الأول علشان التركيز مايضيعش)
  if(i===IT.length-1&&!itEmpty(IT[i])&&IT.length<MAXIT){IT.push({c:"",cl:"",z:"",q:"",k:"",n:""});row.insertAdjacentHTML("afterend",itRow(IT[IT.length-1],IT.length-1,itCn()))}
  itTot()});
-document.addEventListener("change",e=>{if(!X)return;const t=e.target;if(!t||!t.closest)return;const row=t.closest("#po-itb tr");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(!IT[i])return;
+document.addEventListener("change",e=>{if(!X)return;const t=e.target;if(!t||!t.closest)return;
+ if(t.id==="po-itf"){if(canEdit()&&t.files&&t.files[0])itFile(t.files[0]);return}
+ const row=t.closest("#po-itb tr");if(!row||!t.dataset.f)return;const i=+row.dataset.i;if(!IT[i])return;
  if(t.tagName==="SELECT"){IT[i][t.dataset.f]=t.value;itTot();return}
  if(t.dataset.f==="c"||t.dataset.f==="cl"){itAuto(i,t.dataset.f);itTot();itMarkLater()}});
 // التركيز على اللون/المقاس: اختيارات الكود ده بس (كود مش في السيستم ← القايمة العامة)
@@ -634,6 +662,8 @@ document.addEventListener("click",e=>{
  if(a==="itclr"){if(IT.some(x=>!itEmpty(x))&&!confirm("مسح كل الأصناف المكتوبة في هذا الأمر؟"))return;IT=[];itRender();return}
  if(a==="itpaste"){const w=g("po-itpw");if(w){w.hidden=!w.hidden;if(!w.hidden)g("po-itp").focus()}return}
  if(a==="itparse")return void itParse();
+ if(a==="itfile"){const f=g("po-itf");if(f){f.value="";f.click()}return}
+ if(a==="newxl"){form();const f=g("po-itf");if(f){f.value="";f.click()}return}// 📥 (v251) أمر شراء جديد من بيان إكسل
  if(a==="new")return void form();
  if(a==="edit")return void form(id);
  if(a==="save")return void save(id);

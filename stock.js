@@ -129,6 +129,16 @@ export async function readFile(file,onProg){
  for(const f of sheets){const I=ingest(),fd=rowFeeder(I.row,shared);await streamText(Z.open(f),x=>fd.push(x),n=>{if(onProg)onProg(f.usz?Math.min(1,n/f.usz):0)});const R=I.done();if(R.ok)return R}
  return {ok:false};
 }
+// (v251) 📥 ملف إكسل/csv ← نص كل ورقة بأعمدة مفصولة بتاب (يستعمله أمر الشراء لقراءة «البيان» بـ parseStatement)
+export async function sheetTexts(file){
+ const name=String(file.name||""),buf=await file.arrayBuffer(),cl=v=>String(v==null?"":v).replace(/[\t\r\n]+/g," ");
+ if(/\.(csv|txt)$/i.test(name)){let t=new TextDecoder("utf-8").decode(buf);if(t.charCodeAt(0)===0xFEFF)t=t.slice(1);const L=[];csvRows(t,r=>L.push(r.map(cl).join("\t")));return [L.join("\n")]}
+ const Z=zipDir(buf);let shared=null;const sf=Z.F.find(f=>f.name==="xl/sharedStrings.xml");
+ if(sf){let t="";await streamText(Z.open(sf),x=>{t+=x});shared=[];const re=/<(?:\w+:)?si>([\s\S]*?)<\/(?:\w+:)?si>/g;let m;while((m=re.exec(t))){let v="",q;RT.lastIndex=0;while((q=RT.exec(m[1])))v+=dec(q[1]);shared.push(v)}}
+ const num=n=>+((/(\d+)\.xml$/.exec(n)||[0,0])[1]),sheets=Z.F.filter(f=>/^xl\/worksheets\/[^\/]+\.xml$/.test(f.name)).sort((a,b)=>num(a.name)-num(b.name)).slice(0,6),out=[];
+ for(const f of sheets){if(f.usz>8e6)continue;const L=[],fd=rowFeeder(r=>L.push(r.map(cl).join("\t")),shared);await streamText(Z.open(f),x=>fd.push(x));out.push(L.join("\n"))}
+ return out;
+}
 
 /* ============ 2) الضغط والتخزين ============ */
 const b64=u8=>{let s="";for(let i=0;i<u8.length;i+=32768)s+=String.fromCharCode.apply(null,u8.subarray(i,i+32768));return btoa(s)};
@@ -1450,16 +1460,19 @@ export function parseStatement(text){
  let hi=-1;for(let i=0;i<rows.length&&i<12;i++){const r=rows[i],sz=r.filter(stSize);if(sz.length<2)continue;if(r.some(isCodeH)||r.some(isColH)){hi=i;break}
   // بلا عناوين نصية: صف مقاساته أرقام متصاعدة (40، 41، 42…) هو صف العناوين
   const nums=sz.map(x=>parseFloat(String(x).replace(",","."))).filter(x=>x===x);if(nums.length>=3&&nums.every((v,j)=>!j||v>nums[j-1])&&nums[nums.length-1]-nums[0]<=40){hi=i;break}}
- if(hi<0)return out;const H=rows[hi];let ci=H.findIndex(isCodeH),li=H.findIndex(isColH);const zc=[];let cti=-1;
- H.forEach((h,j)=>{if(j===ci||j===li)return;if(stSize(h)&&!isTot(h))zc.push(j);else if(kw(h,/كا?رتون|carton/i))cti=j});
+ if(hi<0)return out;const H=rows[hi];let ci=H.findIndex(isCodeH),li=H.findIndex(isColH);const zc=[];let cti=-1,nti=-1;
+ // (v251) عنوان البيان (سطر بخانة واحدة فوق العناوين) والملاحظات لكل كود (عمود «ملاحظات»، خانته مدموجة على ألوان الكود)
+ out.title="";out.notes={};for(let i=0;i<hi;i++){const f=rows[i].filter(Boolean);if(f.length===1&&!out.title)out.title=f[0].slice(0,200)}
+ H.forEach((h,j)=>{if(j===ci||j===li)return;if(stSize(h)&&!isTot(h))zc.push(j);else if(kw(h,/كا?رتون|carton/i))cti=j;else if(nti<0&&kw(h,/ملاحظ|note|remark/i))nti=j});
  if(zc.length<2)return out;
  // بلا عنوان للكود أو اللون: أول عمودين ليسا مقاساً ولا إجمالياً
- const free=[];H.forEach((h,j)=>{if(zc.indexOf(j)<0&&j!==cti&&!isTot(h))free.push(j)});if(ci<0)ci=free.find(j=>j!==li);if(ci===undefined||ci<0)return out;if(li<0){const c2=free.find(j=>j!==ci);li=c2===undefined?-1:c2}
+ const free=[];H.forEach((h,j)=>{if(zc.indexOf(j)<0&&j!==cti&&j!==nti&&!isTot(h))free.push(j)});if(ci<0)ci=free.find(j=>j!==li);if(ci===undefined||ci<0)return out;if(li<0){const c2=free.find(j=>j!==ci);li=c2===undefined?-1:c2}
  let last="";const seen=new Set();
  for(let i=hi+1;i<rows.length;i++){const r=rows[i];let code=String(r[ci]||"").trim();const cl=li>=0?String(r[li]||"").trim():"";
   if(r.some(x=>kw(x,/^(الاجمالي|الاجمالى|اجمالي|المجموع|total|grand total)$/i)))continue;
   if(!code){if(!last||!zc.some(j=>num(r[j])>0))continue;code=last}// خانة كود مدموجة: تأخذ الكود الذي فوقها
   if(!/[0-9A-Za-z]/.test(code))continue;last=code;let any=false;
+  if(nti>=0){const nt=String(r[nti]||"").trim();if(nt&&!out.notes[code])out.notes[code]=nt.slice(0,100)}
   for(const j of zc){const q=num(r[j]);if(!(q>0))continue;const z=String(H[j]).trim(),k=code+"\u0001"+cl+"\u0001"+z;if(seen.has(k))continue;seen.add(k);out.lines.push({c:code.slice(0,40),cl:cl.slice(0,40),z:z.slice(0,20),q:Math.round(q*100)/100});any=true}
   if(any){out.colors++;if(cti>=0){const c=num(r[cti]);if(c>0)out.ctn[code+"|"+cl]=c}}}
  out.sizes=zc.map(j=>String(H[j]).trim());out.ok=out.lines.length>0;return out;
