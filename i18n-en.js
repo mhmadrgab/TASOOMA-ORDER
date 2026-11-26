@@ -5389,4 +5389,6 @@ export default {
 "تعذّرت قراءة الملف على هذا الجهاز":"Could not read the file on this device",
 "راجع ثم احفظ":"review, then save",
 "كرتون":"cartons",
+"إجمالي القطع":"Total pieces",
+"إجمالي الكود":"Code total",
 };

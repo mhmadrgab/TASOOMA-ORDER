@@ -128,7 +128,18 @@ const CSS=`
 #pom.on{display:block}
 #pom>.mk.wide{max-width:860px}
 #pom .it-tb input.catw{box-shadow:inset 0 0 0 2px #e8a317;background:color-mix(in srgb,#e8a317 12%,var(--field,#f2e9dd))}
-#pom .it-w{margin-top:8px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,#e8a317 14%,transparent);font-size:13px;line-height:1.6}#pom .it-w[hidden]{display:none}
+#pom .it-sum{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:8px 0 2px;padding:9px 12px;border-radius:10px;background:color-mix(in srgb,var(--acc,#8a5a83) 10%,transparent);border:1px solid color-mix(in srgb,var(--acc,#8a5a83) 30%,transparent);font-size:14px}
+.it-sum b{font-size:20px;font-variant-numeric:tabular-nums;color:var(--ink,#2a1d2c)}
+.po-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 10px}
+.po-sum>div{background:color-mix(in srgb,var(--acc,#8a5a83) 9%,transparent);border-radius:10px;padding:8px 6px;text-align:center}
+.po-sum b{display:block;font-size:20px;font-variant-numeric:tabular-nums}.po-sum small{color:var(--mut,#7a6a72);font-size:12px}
+.po-sum>div:first-child{background:color-mix(in srgb,var(--acc,#8a5a83) 20%,transparent)}
+.po-bycode{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}.po-bycode span{border:1px solid color-mix(in srgb,var(--acc,#8a5a83) 30%,transparent);border-radius:99px;padding:3px 10px;font-size:13px}
+.po-bycode b{font-variant-numeric:tabular-nums}
+.po-t tr.po-st td{background:color-mix(in srgb,var(--acc,#8a5a83) 7%,transparent);font-weight:700;font-size:13px}
+.po-t tr.po-gt td{background:color-mix(in srgb,var(--acc,#8a5a83) 16%,transparent);font-weight:800;font-size:15px;border-top:2px solid var(--acc,#8a5a83)}
+@media (max-width:480px){.po-sum{grid-template-columns:repeat(2,1fr)}}
+.it-w{margin-top:8px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,#e8a317 14%,transparent);font-size:13px;line-height:1.6}#pom .it-w[hidden]{display:none}
 #pom>.mk{max-width:600px;margin:4vh auto;transition:max-width .25s ease;background:var(--card);color:var(--ink);border-radius:20px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
 #pom h3{margin:0 0 12px;font-size:19px}
 #pom label{display:block;font-size:13.5px;color:var(--mut);margin:12px 0 5px}
@@ -561,7 +572,10 @@ function itRender(){const b=g("po-itb");if(!b)return;const cn=itCn();itPad();if(
  const bx=g("po-itbx"),tg=document.querySelector('[data-po="ittog"]');if(bx)bx.hidden=!ITO;if(tg)tg.setAttribute("aria-expanded",ITO?"true":"false");
  const mk=b.closest(".mk");if(mk)mk.classList.toggle("wide",ITO);
  itTot();itMark()}
-function itTot(){const t=g("po-itt");if(!t)return;const L=IT.filter(x=>!itEmpty(x)),q=L.reduce((s,x)=>s+Math.round(N(toEn(x.q))),0);t.textContent=L.length?`${L.length} صنف · إجمالي ${q.toLocaleString("en-US")} قطعة`:(ITO?"اكتب الأصناف في الجدول":"اضغط لكتابة الأصناف")}
+function itTot(){const t=g("po-itt");if(!t)return;const L=IT.filter(x=>!itEmpty(x)),q=L.reduce((s,x)=>s+Math.round(N(toEn(x.q))),0);t.textContent=L.length?`${L.length} صنف · إجمالي ${q.toLocaleString("en-US")} قطعة`:(ITO?"اكتب الأصناف في الجدول":"اضغط لكتابة الأصناف")
+ // 🔢 (v255) الإجمالي تحت الجدول مباشرة (مع 100 سطر كان الرقم فوق بعيداً)
+ const tw=document.querySelector("#po-itbx .it-tw");if(!tw)return;let s=g("po-its");if(!s){s=document.createElement("div");s.id="po-its";s.className="it-sum";s.setAttribute("aria-live","polite");tw.insertAdjacentElement("afterend",s)}
+ const codes=new Set(L.map(x=>String(x.c||"").trim().toUpperCase()).filter(Boolean)).size;s.hidden=!L.length;s.innerHTML=L.length?`<span>الإجمالي</span><b>${q.toLocaleString("en-US")}</b><span>قطعة · ${codes} كود · ${L.length} سطر</span>`:""}
 function itRead(cn){const out=[];for(let i=0;i<IT.length;i++){const x=IT[i];if(itEmpty(x))continue;
   const c=String(x.c||"").trim().slice(0,40),cl=String(x.cl||"").trim().slice(0,40),z=String(x.z||"").trim().slice(0,20),n=String(x.n||"").trim().slice(0,100),qs=toEn(x.q).replace(/,/g,"").trim();
   if(!c&&!n){ITO=true;itRender();X.toast("السطر رقم "+(i+1)+" في الأصناف: اكتب الكود");return false}
@@ -607,9 +621,17 @@ async function itParse(){const t=g("po-itp");if(!t)return;
   else o={c:C[0],q:""};
   IT.push({c:String(o.c||"").slice(0,40),cl:String(o.cl||"").slice(0,40),z:String(o.z||"").slice(0,20),q:String(o.q||""),k:String(o.k||""),n:String(o.n||"").slice(0,100)});add++}
  t.value="";if(g("po-itpw"))g("po-itpw").hidden=true;ITO=true;itRender();X.toast(add?"أُضيف "+add+" سطر. راجع الكميات ثم احفظ":"لا يوجد أسطر")}
-function showItems(id){const r=A.get(id);if(!r||!Array.isArray(r.it)||!r.it.length)return;const L=r.it,tot=L.reduce((s,x)=>s+N(x.q),0),hk=L.some(x=>x.k),hn=L.some(x=>x.n);
- openM(`<h3>📋 أصناف الأمر</h3><p style="margin:0 0 10px;color:var(--mut)"><bdi dir="ltr">${E(r.no)}</bdi> · 🏭 <bdi data-notr>${E(r.supn)}</bdi> · ${L.length} صنف · ${tot.toLocaleString("en-US")} قطعة</p>
- <div class="po-tw"><table class="po-t" style="min-width:0"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th>${hk?"<th>الحاوية</th>":""}${hn?"<th>ملاحظات</th>":""}</tr></thead><tbody>${L.map((x,i)=>`<tr><td>${i+1}</td><td><bdi dir="ltr" data-notr>${E(x.c||"")}</bdi></td><td data-notr>${E(x.cl||"")}</td><td><bdi dir="ltr" data-notr>${E(x.z||"")}</bdi></td><td class="n">${N(x.q).toLocaleString("en-US")}</td>${hk?`<td>${x.k?E(x.k):""}</td>`:""}${hn?`<td style="white-space:normal" data-notr>${E(x.n||"")}</td>`:""}</tr>`).join("")}</tbody></table></div>
+// 🔢 (v255) الإجمالي (محمد: «عايزين يظهر الإجمالي في أمر الشراء علشان نعرف العدد»): ملخّص فوق + إجمالي بعد كل كود + سطر الإجمالي آخر الجدول
+const fmt=n=>N(n).toLocaleString("en-US");
+function itSums(L){const by=new Map();L.forEach(x=>{const c=String(x.c||x.n||"—"),o=by.get(c)||{q:0,n:0,cl:new Set()};o.q+=N(x.q);o.n++;if(x.cl)o.cl.add(String(x.cl));by.set(c,o)});return {by,tot:L.reduce((s,x)=>s+N(x.q),0),cl:new Set(L.map(x=>String(x.c||"")+"\u0001"+String(x.cl||""))).size}}
+function showItems(id){const r=A.get(id);if(!r||!Array.isArray(r.it)||!r.it.length)return;const L=r.it,hk=L.some(x=>x.k),hn=L.some(x=>x.n),S=itSums(L),tot=S.tot,nc=4+(hk?1:0)+(hn?1:0);
+ let body="";L.forEach((x,i)=>{body+=`<tr><td>${i+1}</td><td><bdi dir="ltr" data-notr>${E(x.c||"")}</bdi></td><td data-notr>${E(x.cl||"")}</td><td><bdi dir="ltr" data-notr>${E(x.z||"")}</bdi></td><td class="n">${fmt(x.q)}</td>${hk?`<td>${x.k?E(x.k):""}</td>`:""}${hn?`<td style="white-space:normal" data-notr>${E(x.n||"")}</td>`:""}</tr>`;
+  const c=String(x.c||x.n||"—"),nx=L[i+1],o=S.by.get(c);if(S.by.size>1&&o&&o.n>1&&(!nx||String(nx.c||nx.n||"—")!==c))body+=`<tr class="po-st"><td></td><td colspan="${nc-2}">إجمالي الكود <bdi dir="ltr" data-notr>${E(c)}</bdi>${o.cl.size>1?` · ${o.cl.size} لون`:""}</td><td class="n">${fmt(o.q)}</td>${hk||hn?`<td colspan="${(hk?1:0)+(hn?1:0)}"></td>`:""}</tr>`});
+ body+=`<tr class="po-gt"><td></td><td colspan="${nc-2}">الإجمالي</td><td class="n">${fmt(tot)}</td>${hk||hn?`<td colspan="${(hk?1:0)+(hn?1:0)}"></td>`:""}</tr>`;
+ openM(`<h3>📋 أصناف الأمر</h3><p style="margin:0 0 10px;color:var(--mut)"><bdi dir="ltr">${E(r.no)}</bdi> · 🏭 <bdi data-notr>${E(r.supn)}</bdi></p>
+ <div class="po-sum"><div><b>${fmt(tot)}</b><small>إجمالي القطع</small></div><div><b>${S.by.size}</b><small>كود</small></div><div><b>${S.cl}</b><small>لون</small></div><div><b>${L.length}</b><small>سطر</small></div></div>
+ ${S.by.size>1?`<div class="po-bycode">${[...S.by].map(([c,o])=>`<span><bdi dir="ltr" data-notr>${E(c)}</bdi> <b>${fmt(o.q)}</b></span>`).join("")}</div>`:""}
+ <div class="po-tw"><table class="po-t" style="min-width:0"><thead><tr><th>#</th><th>الكود</th><th>اللون</th><th>المقاس</th><th>الكمية</th>${hk?"<th>الحاوية</th>":""}${hn?"<th>ملاحظات</th>":""}</tr></thead><tbody>${body}</tbody></table></div>
  <div class="act"><button data-po="close" type="button">رجوع</button></div>`,"items")}
 document.addEventListener("input",e=>{if(!X)return;const t=e.target;if(!t||!t.closest)return;
  if(t.id==="po-cn"&&g("po-itb")){itRender();return}
