@@ -199,9 +199,10 @@ const css=()=>{if(!g("tkx-css")){const s=document.createElement("style");s.id="t
 const me=()=>X&&X.me?X.me.e:"";
 const asOf=t=>(Array.isArray(t.as)?t.as:[]).map(e=>String(e).toLowerCase());
 const mine=t=>{const a=asOf(t);return a.indexOf(me())>=0||(!a.length&&String(t.by&&t.by.e||"").toLowerCase()===me())};
-const canSee=t=>X.owner||String(t.by&&t.by.e||"").toLowerCase()===me()||asOf(t).indexOf(me())>=0||t.tm===true;
-const canEdit=t=>!t||X.owner||String(t.by&&t.by.e||"").toLowerCase()===me();
-const canAct=t=>canEdit(t)||asOf(t).indexOf(me())>=0||t.tm===true;
+// 🔒 (v247) خاصة: من أنشأها ومن أُسندت إليه فقط (حتى الأدمن ومالك النظام لا يرون مهام غيرهم)
+const canSee=t=>String(t.by&&t.by.e||"").toLowerCase()===me()||asOf(t).indexOf(me())>=0;
+const canEdit=t=>!t||String(t.by&&t.by.e||"").toLowerCase()===me();
+const canAct=t=>canEdit(t)||asOf(t).indexOf(me())>=0;
 const nameOf=e=>{e=String(e||"").toLowerCase();if(e===me())return X.me.n||"أنا";const d=DIR.get(e);return d?d.n:e.split("@")[0]};
 const ini=s=>{s=String(s||"").trim();return s?s.charAt(0):"؟"};
 function all(){const m=new Map();DNE.forEach((v,k)=>m.set(k,v));OPN.forEach((v,k)=>m.set(k,v));return [...m.values()].filter(canSee)}
@@ -230,7 +231,7 @@ export function stopTasks(){UN.forEach(f=>{try{f()}catch(e){}});UN=[];if(CMUN){t
 function paint(){if(!X)return;if(PEND&&LOADED){const id=PEND;PEND="";const t=all().find(x=>x.id===id);if(t)openTask(id);else X.toast("المهمة غير موجودة أو ليست من مهامك","er")}if(X.redraw)X.redraw();if(F&&F.id)liveForm()}
 // العدد في القائمة الجانبية: مهامي المتأخرة أو اللي موعدها النهارده
 export const tkCount=()=>{if(!X)return 0;const e=eod(Date.now());return all().filter(t=>t.st!=="done"&&mine(t)&&N(t.du)>0&&N(t.du)<=e).length};
-// 🗂 (v245) أرقام لمخططات «مساحتي»: مهامي (مسندة لي أو أنشأتها بلا مسؤول) والمهام التي أراها، والمنتهية آخر 30 يوماً
+// (v245) أرقام لمخططات المهام: مهامي (مسندة لي أو أنشأتها بلا مسؤول) والمهام التي أراها، والمنتهية آخر 30 يوماً
 export function tkStats(){
  const z=()=>({todo:0,doing:0,done:0,late:0,today:0,pr:[0,0,0,0]});const R={mine:z(),all:z(),loaded:LOADED};if(!X)return R;const e=eod(Date.now());
  all().forEach(t=>{[R.all].concat(mine(t)?[R.mine]:[]).forEach(o=>{o[t.st==="doing"?"doing":t.st==="done"?"done":"todo"]++;if(t.st!=="done"){if(isLate(t))o.late++;else if(N(t.du)>0&&N(t.du)<=e)o.today++;const p=Math.max(0,Math.min(3,N(t.pr)));o.pr[p]++}})});
@@ -391,7 +392,7 @@ function drawForm(){
  <div class="sx">
   <div><label class="k">👥 المسؤولون</label><div class="v" id="tkf-as"></div></div>
   ${ed?`<div><label class="k"></label><div class="v"><select id="tkf-asadd" aria-label="أضف مسؤولاً"><option value="">＋ أضف مسؤولاً…</option>${dirL.map(p=>`<option value="${E(p.e)}">${E(p.n)}</option>`).join("")}</select>
-   <label class="ck"><input type="checkbox" id="tkf-team"${F.tm?" checked":""}> يراها الفريق كله</label><p class="h">المهمة يراها من أنشأها والمسؤولون عنها والأدمن ومالك النظام، أو كل الموظفين لو اخترت «يراها الفريق كله».</p></div></div>`:""}
+   <p class="h">🔒 المهمة لك وحدك، ولا يراها غيرك إلا من تُسندها إليه.</p></div></div>`:""}
   <div><label class="k">🏷 الوسوم</label><div class="v"><input id="tkf-tg" list="tkf-tgl" placeholder="مثال: موردين، جرد (افصل بفاصلة)" value="${E(F.tg.join("، "))}"${dis} style="flex:1"><datalist id="tkf-tgl">${tags.map(x=>`<option value="${E(x)}">`).join("")}</datalist></div></div>
   <div><label class="k">🔗 ربط</label><div class="v"><select id="tkf-lk"${dis}>${LNK.map(([k,n])=>`<option value="${k}"${(F.ln?F.ln.k:"")===k?" selected":""}>${n}</option>`).join("")}</select>
    <input id="tkf-lv" list="tkf-lvl" maxlength="40" placeholder="${F.ln&&F.ln.k==="br"?"اختر الفرع":"رقم الطلب أو أمر الشراء"}" value="${E(F.ln?(F.ln.l||F.ln.v):"")}"${dis}${F.ln?"":' style="display:none"'}><datalist id="tkf-lvl">${brs.map(b=>`<option value="${E(b)}">`).join("")}</datalist></div></div>
@@ -412,7 +413,7 @@ function drawParts(){
  const st=g("tkf-st");if(st)st.innerHTML=STS.map(([k,n])=>`<button type="button" class="pp${F.st===k?" on":""}" data-tkf="st" data-v="${k}"${ac?"":" disabled"}>${n}</button>`).join("");
  const pr=g("tkf-pr");if(pr)pr.innerHTML=PRS.map(([k,n])=>`<button type="button" class="pp p${k}${F.pr===k?" on":""}" data-tkf="pr" data-v="${k}"${ed?"":" disabled"}>${k?"!".repeat(k)+" ":""}${n}</button>`).join("");
  const rm=g("tkf-rm");if(rm)rm.innerHTML=F.du?RMS.map(([k,n])=>`<button type="button" class="pp${F.rm.indexOf(k)>=0?" on":""}" data-tkf="rm" data-v="${k}"${ed?"":" disabled"}>${n}</button>`).join("")+`<p class="h">حتى 3 تذكيرات، تصل على موبايل المسؤولين (أو موبايلك لو بلا مسؤول). الدقة حتى 5 دقائق.</p>`:`<p class="h">حدّد موعداً أولاً لتضيف تذكيراً</p>`;
- const as=g("tkf-as");if(as)as.innerHTML=(F.as.length?F.as.map(e=>`<span class="who"><span data-notr>${E(nameOf(e))}</span>${ed?`<button type="button" data-tkf="asx" data-v="${E(e)}" aria-label="إزالة">×</button>`:""}</span>`).join(""):`<span class="h" style="width:auto">بلا مسؤول (لك أنت)</span>`)+(F.tm?`<span class="who">👥 الفريق كله يراها</span>`:"");
+ const as=g("tkf-as");if(as)as.innerHTML=(F.as.length?F.as.map(e=>`<span class="who"><span data-notr>${E(nameOf(e))}</span>${ed?`<button type="button" data-tkf="asx" data-v="${E(e)}" aria-label="إزالة">×</button>`:""}</span>`).join(""):`<span class="h" style="width:auto">بلا مسؤول (لك أنت)</span>`);
  const sa=g("tkf-asadd");if(sa)[...sa.options].forEach(o=>{if(o.value)o.hidden=F.as.indexOf(o.value)>=0});
  const cl=g("tkf-cl");if(cl){const k=F.cl.filter(c=>c.k).length;cl.innerHTML=(F.cl.length?`<div class="clb"><div class="tkbar"><i style="width:${Math.round(k/F.cl.length*100)}%"></i></div><small class="h">${k} من ${F.cl.length}</small></div>`:"")+
   F.cl.map((c,i)=>`<div class="tkcl${c.k?" k":""}"><input type="checkbox" data-tkc="k" data-i="${i}"${c.k?" checked":""}${ac?"":" disabled"} aria-label="تم"><input type="text" data-tkc="t" data-i="${i}" maxlength="200" value="${E(c.t)}"${ed?"":" disabled"}>${ed?`<button type="button" data-tkf="clx" data-i="${i}" aria-label="حذف البند">×</button>`:""}</div>`).join("")+
@@ -443,7 +444,7 @@ async function saveForm(){
  const now=Date.now(),id=t?t.id:gid();let d,ids=[];
  if(ed){
   d={t:F.t,by:t?t.by:{e:X.me.e,n:X.me.n||X.me.e.split("@")[0]},ts:t?t.ts:now,as:F.as.slice(0,10),pr:F.pr,st:F.st};
-  if(t)d.upd=now;if(F.d)d.d=F.d;if(F.tm)d.tm=true;
+  if(t)d.upd=now;if(F.d)d.d=F.d;
   if(F.du){d.du=F.du;if(F.ad)d.ad=true;if(F.rm.length)d.rm=F.rm.slice(0,3);if(F.rp)d.rp=F.rp}
   if(F.tg.length)d.tg=F.tg;if(F.cl.length)d.cl=F.cl.slice(0,40);if(F.ln)d.ln=F.ln;
   if(F.st==="done"){d.dn=t&&t.st==="done"&&t.dn?t.dn:stamp();d.dt=t&&t.st==="done"&&t.dt?t.dt:now}

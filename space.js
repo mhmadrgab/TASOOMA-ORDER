@@ -52,7 +52,7 @@ const onVis=()=>{if(document.hidden)flush()};
 
 // ---------- الهيكل ----------
 const SECS=[["home","🏠","نظرة عامة"],["notes","📝","الملاحظات"],["tasks","✅","المهام"],["money","💰","الدخل والمصروفات"]];
-function shell(){return `<div class="ws-bar"><div class="ws-ttl"><b>مساحتي</b><span>ملاحظاتك ومهامك وحساباتك في مكان واحد، تُحفظ تلقائياً</span></div><span class="ws-sv" id="ws-sv" aria-live="polite"></span></div>
+function shell(){return `<div class="ws-bar"><div class="ws-ttl"><b>المهام والتذكيرات</b><span>🔒 كل ما هنا لك وحدك، ولا يراه غيرك إلا من تُسند إليه مهمة · يُحفظ تلقائياً</span></div><span class="ws-sv" id="ws-sv" aria-live="polite"></span></div>
 <nav class="ws-seg" id="ws-seg" role="tablist"></nav><div class="ws-body" id="ws-body"></div>`}
 let LASTSEC="";
 function paint(force){
@@ -60,7 +60,7 @@ function paint(force){
  const seg=g("ws-seg");if(seg){const h=SECS.map(s=>`<button type="button" role="tab" data-ws="sec" data-v="${s[0]}" class="${S.sec===s[0]?"on":""}" aria-selected="${S.sec===s[0]}"><span>${s[1]}</span> ${s[2]}${s[0]==="tasks"&&X.tk&&X.tk.count()?` <i class="ws-n">${X.tk.count()}</i>`:""}</button>`).join("");if(seg._h!==h){seg._h=h;seg.innerHTML=h}}
  svState();
  const b=g("ws-body");if(!b)return;
- if(ERR&&!(LD.f||LD.n||LD.m)){b.innerHTML=`<div class="ws-empty">تعذّرت قراءة مساحتك. ربما لم تتحدّث القواعد بعد</div>`;return}
+ if(ERR&&!(LD.f||LD.n||LD.m)){b.innerHTML=`<div class="ws-empty">تعذّرت القراءة. ربما لم تتحدّث القواعد بعد</div>`;return}
  const sec=S.sec;if(sec!==LASTSEC){force=true;LASTSEC=sec}
  if(sec==="home")keepUi(b,()=>{b.innerHTML=homeView()});
  else if(sec==="notes")notesPaint(b,force);
@@ -186,7 +186,7 @@ function tasksView(){const st=X.tk?X.tk.stats():null;if(!st)return "";const m=st
  const prp=o=>[{k:"3",l:"عالية",v:o.pr[3],c:"#b03a2e"},{k:"2",l:"متوسطة",v:o.pr[2],c:"#b36b1e"},{k:"1",l:"منخفضة",v:o.pr[1],c:"#6f7d45"},{k:"0",l:"بلا أولوية",v:o.pr[0],c:"#b8a9b6"}];
  return `<div class="ws-tch">
   <section class="ws-card"><header><h3>مهامي</h3></header>${chart("t-mine",taskParts(m),{b:pct(m.done,tm)+"%",s:"نسبة الإنجاز"},{empty:"لا مهام لك بعد"})}</section>
-  <section class="ws-card"><header><h3>كل المهام التي أراها</h3></header>${chart("t-all",taskParts(a),{b:pct(a.done,ta)+"%",s:"نسبة الإنجاز"},{empty:"لا مهام بعد"})}</section>
+  <section class="ws-card"><header><h3>أنشأتُها أو أُسندت إليّ</h3></header>${chart("t-all",taskParts(a),{b:pct(a.done,ta)+"%",s:"نسبة الإنجاز"},{empty:"لا مهام بعد"})}</section>
   <section class="ws-card"><header><h3>المفتوح حسب الأولوية</h3></header>${chart("t-pr",prp(m),{b:String(m.todo+m.doing),s:"مفتوحة لي"},{empty:"لا مهام مفتوحة"})}</section>
  </div><p class="ws-h ws-tn">المخططات تتحدّث فور إضافة مهمة أو إنهائها · المنتهية تُحسب عن آخر 30 يوماً</p>
  <div class="ws-tk">${X.tk.view()}</div>`}

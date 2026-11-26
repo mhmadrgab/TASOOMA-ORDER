@@ -225,7 +225,7 @@ const TABS=[
  ["fl","🚚","السيارات",()=>see("fl"),null,"ops"],
  ["mnt","🔧","الصيانة",()=>(ROLE.admin||can("mt")||ROLE.v===true)&&secOk("mt"),()=>mntCount(),"ops"],
  ["wk","👷","العمال",()=>ROLE.admin||ROLE.v===true,null,"ops"],
- ["tk","🗂","مساحتي",()=>true,()=>tkCount(),"ops"],// 🗂 (v245) ملاحظات ومهام ودخل ومصروفات// ✅ (v243) لكل حسابات المستودع والإدارة؛ كل واحد يرى مهامه (القواعد)
+ ["tk","✅","المهام والتذكيرات",()=>true,()=>tkCount(),"ops"],// 🗂 (v245) ملاحظات ومهام ودخل ومصروفات// ✅ (v243) لكل حسابات المستودع والإدارة؛ كل واحد يرى مهامه (القواعد)
  ["po","🚢","أوامر الشراء",()=>(ROLE.admin||ROLE.p.po===true||ROLE.p.rcv===true||ROLE.v===true)&&poFree(),()=>poCount(),"fin"],
  ["rcv","📦","استلام الحاويات",()=>rcvLim(),()=>poRcvCount(),"fin"],
  ["cus","💵","العهدة",()=>see("cus")&&secOk("cus"),null,"fin"],

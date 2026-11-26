@@ -5306,4 +5306,11 @@ export default {
 "اسم المؤثر وحسابه وعدد متابعيه، والمطلوب منه والمبلغ المتفق عليه، ونتائج النشر، و":"The influencer's name, handle and follower count, the deliverables and agreed amount, publishing results, and ",
 "بيانات التحويل البنكي":"bank transfer details",
 "(رقم الآيبان واسم صاحب الحساب والبنك). غرضها اعتماد الاتفاق وتحويل المبلغ. بيانات التحويل يطّلع عليها مدير التسويق ومن له صلاحية تحويلات المؤثرين (المالية) ومن سجّل الاتفاق فقط، ولا تدخل سجل العمليات.":"(IBAN, account holder and bank). Used to approve the deal and pay it. Transfer details are visible only to the marketing manager, those with the influencer-transfers permission (finance), and whoever recorded the deal, and they are not written to the activity log.",
+/* v248 (26 نوفمبر 2026): المهام خاصة */
+"🔒 كل ما هنا لك وحدك، ولا يراه غيرك إلا من تُسند إليه مهمة · يُحفظ تلقائياً":"🔒 Everything here is yours alone; others only see a task you assign to them · saved automatically",
+"أنشأتُها أو أُسندت إليّ":"Created by me or assigned to me",
+"تعذّرت القراءة. ربما لم تتحدّث القواعد بعد":"Couldn't load. The rules may not be updated yet",
+"🔒 المهمة لك وحدك، ولا يراها غيرك إلا من تُسندها إليه.":"🔒 This task is yours alone; only the people you assign it to can see it.",
+"ملاحظات ومجلدات وحسابات قسم «المهام والتذكيرات» الشخصية، والمهام نفسها لا يراها إلا من أنشأها ومن أُسندت إليه":"personal notes, folders and money records in “Tasks & reminders”; each task is visible only to its creator and assignees",
+"الإصدار 1.9 · يسري من 26 نوفمبر 2026":"Version 1.9 · effective 26 November 2026",
 };
