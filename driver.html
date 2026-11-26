@@ -129,7 +129,7 @@ const toast=(m,er)=>{const t=g("toast");t.textContent=m;t.className="on"+(er?" e
 const ERR=c=>({"auth/invalid-credential":"اسم المستخدم أو كلمة المرور غير صحيحة","auth/user-disabled":"الحساب معطّل. تواصل مع المستودع.","auth/too-many-requests":"محاولات كثيرة، انتظر قليلاً","auth/network-request-failed":"لا يوجد اتصال بالإنترنت","auth/invalid-email":"اسم المستخدم غير صحيح"}[c]||"تعذر الدخول، حاول مجدداً.");
 const active=()=>TR.find(t=>t.st==="active");
 // مواقع الأماكن المحفوظة يدوياً (لو لم يتعلّمها geo/main من الرحلات بعد)
-const plcInto=()=>{PLC.forEach(p=>{const c=codeOf(p&&p.n);if(c&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lng)&&!GEO.br[c])GEO.br[c]={lat:+p.lat,lng:+p.lng}})};
+const plcInto=()=>{if(GEO.wh&&!GEO.br["001"])GEO.br["001"]=GEO.wh;/* 🏭 (v248) تحويل من فرع إلى المستودع (001) = مكان المستودع */PLC.forEach(p=>{const c=codeOf(p&&p.n);if(c&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lng)&&!GEO.br[c])GEO.br[c]={lat:+p.lat,lng:+p.lng}})};
 // لما الحفظ يفشل نقول السبب الحقيقي (الحد اليومي لـ Firebase / لا يوجد نت / بطء)
 const fail=async(e,deny)=>{const w=await failReason(e);toast(w==="denied"?deny:FAIL_MSG[w],"er")};
 // ---------- موقع لحظي (عند الضغط فقط، من غير تتبع في الخلفية) ----------

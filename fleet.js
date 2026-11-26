@@ -141,7 +141,7 @@ function pairs(list=TR){const m={};list.filter(t=>t.st==="done").forEach(t=>{let
  const o={};Object.entries(m).forEach(([k,v])=>o[k]=Math.max(1,Math.round(v.reduce((a,b)=>a+b,0)/v.length/6e4)));return o}
 // المسافة بخط مستقيم × 1.3 (تقريب للطريق الفعلي)
 const kmBetween=(a,b)=>{if(!a||!b||!Number.isFinite(+a.lat)||!Number.isFinite(+b.lat))return null;const R=6371,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lng-a.lng),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))*1.3};
-const geoPt=c=>c==="WH"?(GEOD&&GEOD.wh)||null:(GEOD&&GEOD.br&&GEOD.br[c])||(X&&X.place?X.place(c):null)||null;// (v223) مكان المشوار: المتعلَّم من الرحلات، وإلا المحفوظ يدوياً
+const geoPt=c=>c==="WH"||c==="001"?/* 🏭 (v248) تحويل إلى المستودع */(GEOD&&GEOD.wh)||null:(GEOD&&GEOD.br&&GEOD.br[c])||(X&&X.place?X.place(c):null)||null;// (v223) مكان المشوار: المتعلَّم من الرحلات، وإلا المحفوظ يدوياً
 // 📍 (12 نوفمبر 2026) تسليم من مكان بعيد عن الفرع: لما السواق يدوس "سلّمت" المنصة بتسجّل مكانه (s.lat/s.lng).
 // لو أبعد من FAR_KM عن مكان الفرع المعروف (geo/main)، بنعلّم التسليم ده (ممكن تسليم وهمي، أو الـ GPS كان ضعيف).
 // مكان الفرع هنا = الوسيط (median) لأماكن **باقي** التسليمات لنفس الفرع (من غير التسليم اللي بنفحصه)، مش متوسط geo/main:

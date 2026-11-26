@@ -5340,4 +5340,13 @@ export default {
 "جاري تحميل الملف…":"Loading the file…",
 "جاري رفع الملف":"Uploading file",
 "جزء":"part",
+"🏭 المستودع (تحويل من فرع إليه)":"🏭 Warehouse (transfer from a branch to it)",
+"ورقة تحويل من فرع إلى المستودع":"Transfer sheet from a branch to the warehouse",
+"استلمه المستودع":"Received by the warehouse",
+"المستودع أكّد الاستلام":"The warehouse confirmed receipt",
+"سُجّل الاستلام بملاحظة":"Receipt recorded with a note",
+"سُجّل استلام المستودع":"Warehouse receipt recorded",
+"لا يمكن تأكيد استلام هذا الطلب":"This order's receipt cannot be confirmed",
+"تم إرسال التحويل: من فرع":"Transfer sent: from branch",
+"🔄 أرسل التحويل للفرع المُرسِل":"🔄 Send the transfer to the sending branch",
 };

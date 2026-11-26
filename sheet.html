@@ -267,10 +267,12 @@ let st=lib.sheets.find(x=>x.id===lib.cur)||lib.sheets[lib.sheets.length-1];
 if(!st){const old=null;st=mk(old);if(old&&old.rows)Object.assign(st,{dt:old.dt||st.dt,dr:old.dr||"",rows:old.rows})}
 lib.cur=st.id;
 const save=()=>{st.ts=Date.now();lib.cur=st.id;try{localStorage.setItem(LK,JSON.stringify(lib))}catch(e){}hist()};
+var WHB="001-المستودع";const toNm=b=>b===WHB?"المستودع":b;
+function whSync(){const o=document.getElementById("whopt");if(!o)return;const tr=st.ty==="tr";o.hidden=!tr;o.disabled=!tr;if(!tr&&st.br===WHB){st.br=BR[0];$("#br").value=st.br;try{localStorage.setItem(LK,JSON.stringify(lib))}catch(e){}}}
 function route(){
- const tr=st.ty==="tr",fr=tr?(st.fr||BR[0]):"المستودع الرئيسي";
- $(".hd h1").textContent=tr?"ورقة تحويل بين الفروع":"ورقة تحميل النواقص";
- $("#route").innerHTML=`<div class="rc"><small>من</small><b><bdi>${E(fr)}</bdi></b></div><div class="ra">←</div><div class="rc to"><small>إلى</small><b><bdi>${E(st.br)}</bdi></b></div>${tr&&st.fr===st.br?'<div class="rw">نفس الفرع!</div>':""}`;
+ const tr=st.ty==="tr",fr=tr?(st.fr||BR[0]):"المستودع الرئيسي";whSync();
+ $(".hd h1").textContent=tr?(st.br===WHB?"ورقة تحويل من فرع إلى المستودع":"ورقة تحويل بين الفروع"):"ورقة تحميل النواقص";
+ $("#route").innerHTML=`<div class="rc"><small>من</small><b><bdi>${E(fr)}</bdi></b></div><div class="ra">←</div><div class="rc to"><small>إلى</small><b><bdi>${E(toNm(st.br))}</bdi></b></div>${tr&&st.fr===st.br?'<div class="rw">نفس الفرع!</div>':""}`;
  document.body.dataset.ty=tr?"tr":"load";
  document.querySelectorAll(".sg span")[0].textContent=tr?"المُسلِّم (من الفرع)":"أمين المستودع";
  $("#frw").style.display=tr?"":"none";
@@ -317,7 +319,8 @@ function draw(focus){
  totals();
  if(focus){const el=document.querySelector(`input[data-i="${focus[0]}"][data-k="${focus[1]}"]`);if(el)el.focus()}
 }
-const setBr=()=>{const h=BR.map(b=>`<option>${E(b)}</option>`).join("");$("#br").innerHTML=h;$("#fr").innerHTML=h};setBr();
+// 🏭 (v248) التحويل من فرع إلى المستودع: «المستودع» آخر خيار في «إلى» (يظهر في التحويل فقط). الرقم 001 ليس فرعاً
+const setBr=()=>{const h=BR.map(b=>`<option>${E(b)}</option>`).join("");$("#br").innerHTML=h+`<option value="${WHB}" id="whopt">🏭 المستودع (تحويل من فرع إليه)</option>`;$("#fr").innerHTML=h;whSync()};setBr();
 addEventListener("storage",e=>{if(e.key!=="tz_brx")return;try{brxApply(JSON.parse(e.newValue||"[]"));const a=$("#br").value,f=$("#fr").value;setBr();if(a)$("#br").value=a;if(f)$("#fr").value=f}catch(x){}});
 $("#br").value=st.br;$("#dt").value=st.dt;$("#dr").value=st.dr||"";
 ["br","dt","dr","ty","fr"].forEach(id=>$("#"+id).addEventListener("input",e=>{st[id]=e.target.value;save();totals()}));
@@ -436,11 +439,11 @@ function toqUI(){
  const b=$("#tr2"),q=$("#toq");if(!INADM||!b||!q)return;
  // الزرار ظاهر دايماً: لو الورقة المفتوحة اتبعتت قبل كده بيقول كده وبيبقى "ابدأ ورقة جديدة" (علشان ماتتبعتش مرتين)
  const tr=st.ty==="tr";b.hidden=false;q.hidden=!st.sent;b.classList.toggle("sent",!!st.sent);
- if(st.sent)q.innerHTML=st.sentFr?`✅ تم إرسال التحويل: من فرع <bdi dir="ltr">${E(st.sentFr)}</bdi> ← فرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> (رقم <bdi dir="ltr">${E(st.sent)}</bdi>)<small>وصل الفرعين إشعار. تابعه من تبويب "الطلبات" (فلتر 🔄 تحويلات)، وعيّن السائق من "السيارات". لتحويل آخر اضغط "+ ورقة جديدة".</small>`
+ if(st.sent)q.innerHTML=st.sentFr?`✅ تم إرسال التحويل: من فرع <bdi dir="ltr">${E(st.sentFr)}</bdi> ← ${(st.sentBr||st.br)===WHB?"المستودع":`فرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi>`} (رقم <bdi dir="ltr">${E(st.sent)}</bdi>)<small>وصل الفرعين إشعار. تابعه من تبويب "الطلبات" (فلتر 🔄 تحويلات)، وعيّن السائق من "السيارات". لتحويل آخر اضغط "+ ورقة جديدة".</small>`
   :`✅ هذه الورقة أُرسلت إلى فرع <bdi dir="ltr">${E(st.sentBr||st.br)}</bdi> كطلب رقم <bdi dir="ltr">${E(st.sent)}</bdi><small>تابعه من تبويب "الطلبات" كأي طلب. أي تعديل بعد ذلك من زر ✏️ تعديل على الطلب. لطلب آخر اضغط "+ ورقة جديدة".</small>`;
  // نفس الأصناف لفرع مجدداً (من غير ما تكتبها مجدداً)
  if(st.sent)q.insertAdjacentHTML("beforeend",`<button id="tr3" type="button" style="display:block;margin-top:8px;font:inherit;font-weight:700;border:0;border-radius:10px;padding:9px 14px;background:#2a1d2c;color:#fff;cursor:pointer">📋 أرسل نفس الأصناف لفرع آخر</button>`);
- b.disabled=toqBusy;b.textContent=toqBusy?"⏳ جاري الإرسال...":st.sent?`✅ هذه الورقة أُرسلت (${st.sent}) · اضغط هنا لورقة جديدة`:tr?"🔄 أرسل التحويل للفرعين":"📤 أرسلها طلباً للفرع";
+ b.disabled=toqBusy;b.textContent=toqBusy?"⏳ جاري الإرسال...":st.sent?`✅ هذه الورقة أُرسلت (${st.sent}) · اضغط هنا لورقة جديدة`:tr?(st.br===WHB?"🔄 أرسل التحويل للفرع المُرسِل":"🔄 أرسل التحويل للفرعين"):"📤 أرسلها طلباً للفرع";
 }
 const rid20=()=>{const a="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";return [...crypto.getRandomValues(new Uint32Array(20))].map(x=>a[x%a.length]).join("")};
 $("#tr2").addEventListener("click",()=>{
@@ -455,7 +458,8 @@ $("#tr2").addEventListener("click",()=>{
  // نسخة من ورقة اتبعتت: لو لا يزال على نفس الفرع اللي اتبعتله نسأل الأول (علشان مايوصلوش طلب مكرر)
  if(st.copyOf&&st.copyOf===st.br+"|"+fr&&!confirm(`هذه الأصناف أُرسلت سابقاً لفرع ${st.br}${tr?" من "+fr:""}.\nهل غيّرت الفرع من الأعلى؟ إن أردت إرسالها لنفس الفرع مجدداً اضغط OK.`))return;
  const tail=`${codes} صنف · ${pcs} قطعة${half?`\nتنبيه: ${half} سطر فيه كود دون كمية ولن يُرسل`:""}`;
- if(!confirm(tr?`تحويل من فرع ${fr} ← لفرع ${st.br}\n${tail}\n\n• فرع ${fr} سيصله إشعار بأن المستودع يطلب منه هذه الأصناف ليبدأ تجهيزها\n• فرع ${st.br} سيصله إشعار بأن هناك تحويلاً متجهاً إليه\n• بعد ذلك تعيّن سائقاً من "السيارات" ليستلم من ${fr} ويسلّم إلى ${st.br}\n\nهل تريد المتابعة؟`
+ if(tr&&st.br===WHB){if(!confirm(`تحويل من فرع ${fr} ← إلى المستودع\n${tail}\n\n• فرع ${fr} سيصله إشعار بأن المستودع يطلب منه هذه الأصناف ليبدأ تجهيزها\n• بعد ذلك تعيّن سائقاً من "السيارات" ليستلم من ${fr} ويسلّم إلى المستودع\n• عند الوصول يؤكد المستودع الاستلام من "الطلبات"\n\nهل تريد المتابعة؟`))return}
+ else if(!confirm(tr?`تحويل من فرع ${fr} ← لفرع ${st.br}\n${tail}\n\n• فرع ${fr} سيصله إشعار بأن المستودع يطلب منه هذه الأصناف ليبدأ تجهيزها\n• فرع ${st.br} سيصله إشعار بأن هناك تحويلاً متجهاً إليه\n• بعد ذلك تعيّن سائقاً من "السيارات" ليستلم من ${fr} ويسلّم إلى ${st.br}\n\nهل تريد المتابعة؟`
    :`سيتم إنشاء طلب باسم فرع ${st.br}\n${tail}\n\nسيصل الفرع إشعار بأن المستودع أنشأ له طلباً، وسيظهر الطلب في "الطلبات" لتجهّزه وترسله مع سائق عادي.\n\nهل تريد المتابعة؟`))return;
  // فرع مختلف (أو نوع مختلف) = طلب مختلف
  const key=st.br+"|"+fr;
