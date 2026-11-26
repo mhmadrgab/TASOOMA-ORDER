@@ -74,6 +74,7 @@ const CSS=`
 .mkp-ring .c b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}.mkp-ring .c small{font-size:10.5px;color:var(--mut)}
 .mkp-ring circle{transition:stroke-dasharray .7s cubic-bezier(.16,1,.3,1)}
 .mkp-ft{display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--mut)}.mkp-ft span{display:inline-flex;gap:4px;align-items:center}.mkp-ft .bad{color:var(--mk-r);font-weight:700}.mkp-ft .warn{color:var(--mk-w);font-weight:700}
+.mkp-tm-p{all:unset;box-sizing:border-box;cursor:pointer;display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%}.mkp-tm-p:focus-visible{outline:2px solid var(--acc,#8a5a83);border-radius:10px}
 .mkp-e{margin:14px 0;padding:26px 14px;border:1px dashed var(--line);border-radius:16px;text-align:center;color:var(--mut)}
 .mkp-e b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
 /* الجدول الزمني */
@@ -241,9 +242,9 @@ export function mkView(){
  const reqH=req.length?`<div class="mkp-act"><h3>📥 مطلوب منك (${req.length})</h3>${req.join("")}</div>`:"";
  const F=[["act","الجارية والمخططة"],["live","جارية"],["plan","مخطط لها"],["done","منتهية"],["x","ملغاة"],["all","الكل"]];
  const vis=L.filter(c=>S.f==="all"||(S.f==="act"?(c.st==="live"||c.st==="plan"):c.st===S.f)).sort((a,b)=>(a.st==="live"?0:a.st==="plan"?1:2)-(b.st==="live"?0:b.st==="plan"?1:2)||String(a.from).localeCompare(String(b.from)));
- const fl=`<div class="mkp-fl">${F.map(f=>`<button type="button" class="b sm${S.f===f[0]?" on":""}" data-mkq="f" data-mkf="${f[0]}">${f[1]}</button>`).join("")}<span class="sp"></span><button type="button" class="b sm${S.vw==="cards"?" on":""}" data-mkq="vw" data-mkv="cards">▦ بطاقات</button><button type="button" class="b sm${S.vw==="time"?" on":""}" data-mkq="vw" data-mkv="time">📅 جدول زمني</button></div>`;
+ const fl=`<div class="mkp-fl">${F.map(f=>`<button type="button" class="b sm${S.f===f[0]?" on":""}" data-mkq="f" data-mkf="${f[0]}">${f[1]}</button>`).join("")}<span class="sp"></span><button type="button" class="b sm${S.vw==="cards"?" on":""}" data-mkq="vw" data-mkv="cards">▦ بطاقات</button><button type="button" class="b sm${S.vw==="time"?" on":""}" data-mkq="vw" data-mkv="time">📅 جدول زمني</button>${all?`<button type="button" class="b sm${S.vw==="team"?" on":""}" data-mkq="vw" data-mkv="team">👥 متابعة الفريق</button>`:""}</div>`;
  const body=!LOADED?`<div class="mkp-e">جاري التحميل…</div>`:!L.length?`<div class="mkp-e"><b>لا توجد حملات بعد</b>${can.mgr()?"ابدأ بإنشاء أول حملة: الهدف والميزانية والمدة والقنوات، ثم وزّع المهام على الفريق.":"ستظهر هنا الحملات التي أنت ضمن فريقها."}${can.mgr()?`<div style="margin-top:12px"><button type="button" class="b p" data-mkq="new">➕ حملة جديدة</button></div>`:""}</div>`
-  :!vis.length?`<div class="mkp-e">لا توجد حملات بهذا الفلتر</div>`:S.vw==="time"?timeline(vis):`<div class="mkp-g">${vis.map(card).join("")}</div>`;
+  :S.vw==="team"&&all?teamView(vis):!vis.length?`<div class="mkp-e">لا توجد حملات بهذا الفلتر</div>`:S.vw==="time"?timeline(vis):`<div class="mkp-g">${vis.map(card).join("")}</div>`;
  return `<div class="pan mkp"><div class="mkp-h"><h2>📣 الحملات التسويقية</h2>${can.mgr()?`<button type="button" class="b p" data-mkq="new">➕ حملة جديدة</button>`:""}</div>${tiles}${reqH}${L.length?fl:""}${body}
  ${all?"":`<p class="mkp-note">تظهر لك الحملات التي أنت ضمن فريقها ومهامك فيها.</p>`}</div>`;
 }
@@ -268,6 +269,23 @@ function timeline(L){
  return `<div class="mkp-tm"><div class="ax">${ms.map(m=>`<span style="inset-inline-start:${pos(m)}%">${MN[+m.slice(5,7)-1]}</span>`).join("")}</div>
  ${L.map(c=>{const l=pos(c.from),w=Math.max(1.2,pos(addD(c.to,1))-l),col=CLR[N(c.cl)%CLR.length]||CLR[0];return `<div class="rw"><div class="rn" data-notr title="${E(c.n)}">${E(c.n)}</div><div class="tr"><span class="now" style="inset-inline-start:${pos(t)}%" aria-hidden="true"></span><button type="button" class="bx${c.st==="x"?" x":""}" style="--cc:${col};inset-inline-start:${l}%;width:${w}%" data-mkq="open" data-mki="${E(c.id)}" title="${E(c.n)} · ${E(dmy(c.from))} ← ${E(dmy(c.to))}">${E(CST[c.st]||"")}</button></div></div>`}).join("")}
  <p class="mkp-note">الخط الأحمر = اليوم. اضغط أي حملة لفتحها.</p></div>`;
+}
+// 👥 (v254) متابعة الفريق: كل موظف ومهامه في حملات الفلتر الحالي (المفتوحة، المتأخرة، المنجزة) واتفاقات المؤثرين اللي سجّلها
+function teamView(vis){
+ const ids=new Set(vis.map(c=>c.id)),t=today(),wk=addD(t,7),P=new Map();
+ const get=e=>{e=String(e||"").toLowerCase();if(!P.has(e))P.set(e,{e,L:[],od:0,dn:0,op:0,soon:0,dl:0,dp:0});return P.get(e)};
+ T.forEach(x=>{if(!ids.has(x.c))return;const p=get(x.as);p.L.push(x);if(x.st==="done")p.dn++;else{p.op++;if(x.du&&x.du<t)p.od++;else if(x.du&&x.du<=wk)p.soon++}});
+ D.forEach(d=>{if(!ids.has(d.c)||!d.by)return;const p=get(d.by.e);p.dl++;if(d.st==="pend")p.dp++});
+ const L=[...P.values()].filter(p=>p.e).sort((a,b)=>b.od-a.od||b.op-a.op||String(nameOf(a.e)).localeCompare(String(nameOf(b.e)),"ar"));
+ if(!L.length)return `<div class="mkp-e"><b>لا مهام بعد في هذه الحملات</b>عند إسناد المهام ستظهر هنا متابعة كل عضو في الفريق.</div>`;
+ const tot=L.reduce((a,p)=>({op:a.op+p.op,od:a.od+p.od,dn:a.dn+p.dn}),{op:0,od:0,dn:0});
+ return `<div class="mkp-tl" style="grid-template-columns:repeat(4,minmax(0,1fr))"><div><small>أعضاء لهم مهام</small><b>${L.length}</b></div><div class="w"><small>مهام مفتوحة</small><b>${tot.op}</b></div><div class="${tot.od?"r":"k"}"><small>متأخرة عن موعدها</small><b>${tot.od}</b></div><div class="k"><small>منجزة</small><b>${tot.dn}</b><em>${pct(tot.dn,tot.dn+tot.op)}% من الكل</em></div></div>
+ <div class="mkp-tk">${L.map(p=>{const n=p.L.length,pc=pct(p.dn,n),open=S.tp===p.e,camps=[...new Set(p.L.map(x=>x.c))].map(cn);
+  const rows=open?p.L.slice().sort((a,b)=>(a.st==="done"?1:0)-(b.st==="done"?1:0)||String(a.du||"9").localeCompare(String(b.du||"9"))).map(x=>taskAct(x,true)).join(""):"";
+  return `<div class="mkp-bx" style="margin:0"><button type="button" class="mkp-tm-p" data-mkq="tp" data-mki="${E(p.e)}" aria-expanded="${open}"><span style="display:flex;gap:10px;align-items:center;min-width:0;flex:1">${av(p.e)}<span style="min-width:0"><b data-notr style="display:block">${E(nameOf(p.e))}</b><small style="color:var(--mut);font-size:12px">${camps.length} حملة · <bdi data-notr>${E(camps.slice(0,3).join("، "))}</bdi>${camps.length>3?"…":""}</small></span></span>
+  <span class="mkp-ft" style="flex:0 1 auto"><span>✅ ${p.dn}/${n}</span>${p.op?`<span class="warn">${p.op} مفتوحة</span>`:""}${p.od?`<span class="bad">⏰ ${p.od} متأخرة</span>`:""}${p.soon?`<span>📅 ${p.soon} خلال أسبوع</span>`:""}${p.dl?`<span>🤝 ${p.dl} اتفاق${p.dp?` · ${p.dp} بانتظار الاعتماد`:""}</span>`:""}</span></button>
+  <div class="mkp-bar ${p.od?"r":"k"}" style="margin-top:8px"><i style="width:${pc}%"></i></div>${open?`<div style="margin-top:10px">${rows||`<p class="off" style="font-size:13px">لا مهام.</p>`}</div>`:""}</div>`}).join("")}</div>
+ <p class="mkp-note">مرتّبون بالأكثر تأخراً أولاً. اضغط على أي شخص لعرض مهامه. الأرقام لحملات الفلتر المختار فوق.</p>`;
 }
 function taskAct(x,withC){
  const t=today(),od=x.st!=="done"&&x.du&&x.du<t,r=rl(x.r),m=me(),mine=x.as===m,mgr=can.mgr();
@@ -536,7 +554,7 @@ function printRep(c){
 function onClick(e){
  if(!X)return;const ck=e.target.closest("[data-mkq]");if(!ck)return;if(!ck.closest(".mkp,#mkm"))return;
  const a=ck.dataset.mkq,i=ck.dataset.mki,c=C.get(S.c);
- if(a==="new"){campForm(null);return}if(a==="f"){S.f=ck.dataset.mkf;X.redraw();return}if(a==="vw"){S.vw=ck.dataset.mkv;X.redraw();return}
+ if(a==="new"){campForm(null);return}if(a==="f"){S.f=ck.dataset.mkf;X.redraw();return}if(a==="vw"){S.vw=ck.dataset.mkv;X.redraw();return}if(a==="tp"){S.tp=S.tp===i?"":i;X.redraw();return}
  if(a==="open"){S.c=i;S.sub=ck.dataset.mks||"ov";window.scrollTo(0,0);X.redraw();return}if(a==="back"){S.c="";X.redraw();return}if(a==="sub"){S.sub=ck.dataset.mks;X.redraw();return}
  if(a==="mx"){closeM();return}if(a==="kadd"){const k=g("mk-kps");if(k&&k.children.length<8)k.insertAdjacentHTML("beforeend",kpRow({k:"views",t:""}));return}if(a==="krm"){const r=ck.closest("[data-kr]");if(r)r.remove();return}
  if(a==="csave"){campSave();return}if(a==="cedit"&&c){campForm(c);return}if(a==="cst"){campSt(ck.dataset.mks);return}if(a==="cdel"){campDel();return}if(a==="prn"&&c){printRep(c);return}

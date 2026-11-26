@@ -219,7 +219,8 @@ const see=k=>can(k)||ROLE.v===true;
 // شات الفروع: الرقم الأحمر = عدد الفروع اللي باعتة رسايل لم تُقرأ بعد
 // 🧭 (v172، 18 نوفمبر 2026، طلب محمد: «قائمة زي الـ ERP المحترف») القائمة الجانبية بمجموعات.
 // كل قسم = [المعرّف، الأيقونة، الاسم، شرط الظهور (كما كان بالضبط)، دالة العدّاد أو null، المجموعة]. قسم جديد: أضف سطراً هنا وفرعاً في drawNow.
-const NAV_G=[["ops","التشغيل"],["fin","المشتريات والمالية"],["com","التواصل"],["sys","النظام"]];
+const NAV_G=[["ops","التشغيل"],["fin","المشتريات والمالية"],["mkt","التسويق"],["com","التواصل"],["sys","النظام"]];
+const navGrp=a=>typeof a[5]==="function"?a[5]():a[5];// (v254) مجموعة القسم قد تتغيّر بالدور
 const TABS=[
  ["req","📦","الطلبات",()=>see("req"),null,"ops"],
  ["sh","📝","ورقة يدوية",()=>can("req"),null,"ops"],
@@ -232,16 +233,16 @@ const TABS=[
  ["cus","💵","العهدة",()=>see("cus")&&secOk("cus"),null,"fin"],
  ["bcus","💼","عهدة الفروع",()=>see("cus")&&secOk("cus"),()=>ROLE.owner===true||ROLE.p.cus===true?bcusPend():0,"fin"],// (v218) عهدة الفروع · (v219) العدد لمن يراجع فقط: المحاسب والمالك
  ["dc","🧾","يومية الفروع",()=>ROLE.owner===true||ROLE.p.dc===true,()=>dcPend(),"fin"],// 🧾 (v241) يومية الفروع: المحاسب (p.dc) والأدمن ومالك النظام
- ["gift","🎁","الهدايا",()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift"),()=>giftPend(),"fin"],
+ ["gift","🎁","الهدايا",()=>(see("req")||see("gift")||can("gm")||can("ga"))&&secOk("gift"),()=>giftPend(),()=>ROLE.p.gm===true&&ROLE.owner!==true&&!ROLE.admin?"mkt":"fin"],// (v254) عند مدير التسويق تحت «التسويق»
  // 📊 (v173) تحليل المخزون من تقارير السيستم: للأدمن ومالك النظام فقط (والقواعد كذلك)
  ["stk","📊","تحليل المخزون",()=>ROLE.owner===true||ROLE.p.stk===true,null,"fin"],
- ["mk","📣","الحملات التسويقية",()=>mkRole()||mkVisible(),()=>mkCount(),"com"],// 📣 (v246) مدير التسويق وفريقه والمالية والمتابع، ومن له مهمة في حملة
+ ["mk","📣","الحملات التسويقية",()=>mkRole()||mkVisible(),()=>mkCount(),"mkt"],// 📣 (v246) مدير التسويق وفريقه والمالية والمتابع، ومن له مهمة في حملة
  ["chat","💬","الدردشة",()=>ROLE.owner===true||ROLE.p.nc!==true,()=>bcUnread(),"com"],
  ["set","⚙","الإعدادات",()=>ROLE.admin,null,"sys"],
  ["log","📜","السجل",()=>(ROLE.owner===true||ROLE.v===true)&&secOk("log"),null,"sys"]];
 // أول قسم يفتح لمن لا يرى الطلبات: نفس ترتيب الشريط القديم (حتى لا يتغيّر ما يراه أحد عند الدخول)
 const LAND=["req","dc","chat","fl","cus","wk","set","gift","mnt","po","rcv","log","sh","stk","mk"];// (v241) dc صلاحية جديدة: لا تغيّر ما يفتح لأي دور قديم
-const landTab=()=>LAND.find(t=>okTab(t))||"req";
+const landTab=()=>ROLE.p.gm===true&&ROLE.owner!==true&&!ROLE.admin&&okTab("mk")?"mk":LAND.find(t=>okTab(t))||"req";// (v254) مدير التسويق يفتح على الحملات
 // حساب المتابع: أزرار الحفظ والتعديل والحذف بتستخبى وبتتقفل (والقواعد في Firebase بتمنع أي كتابة أصلاً). العرض والطباعة والتقارير شغّالة
 const RO_SEL='[data-a]:not([data-a="print"]),[data-fl]:not([data-fl="trd"]):not([data-fl="tmap"]):not([data-fl="pmap"]):not([data-fl="mfit"]):not([data-fl="mwh"]):not([data-fl="mbig"]):not([data-fl="mfollow"]):not([data-fl="ohv"]):not([data-fl="ohx"]):not([data-fl="oilv"]):not([data-fl="rep"]):not([data-fl="mrep"]):not([data-fl="cancel"]),[data-cx]:not([data-cx="img"]):not([data-cx="ps"]):not([data-cx="stmt"]):not([data-cx="cancel"]),[data-wk]:not([data-wk="rep"]):not([data-wk="slip"]),[data-gf="ok"],[data-gf="no"],[data-gf="new"],[data-gf="edit"],[data-gf="del"],[data-wst],[data-asd],[data-asc],[data-bk],#bkall,[data-bkd],#bkd,#bkc';
 // 👁 (v222) القسم المفتوح «مشاهدة فقط» للمتابع إلا لو معه صلاحيته (TRW = صلاحيات كل قسم)
@@ -378,7 +379,7 @@ function start(){
  initZoom({db,toast,owner:()=>ROLE.owner===true});// الصور بتفتح كبيرة، والحذف للمالك فقط
  // 🎁 الهدايا والعينات: الاعتماد لمدير التسويق (p.gm) واللي المالك اداله "اعتماد الهدايا" (p.ga) بس — مش المدير بصفته مدير.
  // المستودع (المديرين وصلاحية الطلبات) بيسجّل هدايا المستودع وبتروح بانتظار الاعتماد. المحاسب (gift) والمتابع بيشوفوا ويطلّعوا تقارير
- if((adm||can("req")||can("gift")||can("gm")||can("ga")||vw)&&secOk("gift"))initGifts({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},approver:ROLE.p.gm===true||ROLE.p.ga===true,
+ if((adm||can("req")||can("gift")||can("gm")||can("ga")||vw)&&secOk("gift"))initGifts({db,toast,mode:"wh",me:{e:me,get n(){return ROLE.name||me}},approver:ROLE.p.gm===true||ROLE.p.ga===true,noSample:ROLE.p.gm===true&&ROLE.owner!==true&&!ROLE.admin,/* (v254) مدير التسويق: الهدايا فقط */
   // المحاسب (gift) من غير تسجيل ولا اعتماد: بيشوف المعتمد بس ويسوّيه بمرجع السند في السيستم. المديرين كمان يقدروا يسوّوا
   acc:!adm&&!vw&&can("gift")&&ROLE.p.gm!==true&&ROLE.p.ga!==true,/* (15 نوفمبر 2026) حتى لو معاه صلاحية الطلبات: بيشوف المعتمد بس (+ اللي سجّله بنفسه) */settler:(adm||can("gift"))&&!vwOn("gift"),noNew:!(adm||can("req")),view:vw&&!ROLE.p.gift&&!ROLE.p.ga&&!ROLE.p.req,owner:()=>ROLE.owner===true,branches:BR,redraw:draw,tab:()=>tab,
   ping:ids=>ping(auth,[],[],[],ids),badge:()=>navSync()});
@@ -509,7 +510,7 @@ const cntTxt=n=>n?(n>99?"99+":String(n)):"";
 const whoLbl=()=>ROLE.v===true?(Object.keys(ROLE.p).some(k=>k!=="nc")?"👁 متابع":"👁 متابعة فقط"):ROLE.root?"الأدمن":ROLE.owner?"مالك النظام":ROLE.admin?"مدير":E(ROLE.name||"محاسب");
 function navHtml(){
  const vis=TABS.filter(a=>a[3]()),S=ROLE.admin?setSubs():[];
- return NAV_G.map(G=>{const L=vis.filter(a=>a[5]===G[0]);if(!L.length)return "";
+ return NAV_G.map(G=>{const L=vis.filter(a=>navGrp(a)===G[0]);if(!L.length)return "";
   return `<div class="tzn-g" role="group" aria-label="${G[1]}"><div class="tzn-gl"><span>${G[1]}</span></div>${L.map(a=>{const c=cntTxt(navCnt(a)),on=tab===a[0];
    return `<button type="button" class="tzn-i${on?" on":""}" data-t="${a[0]}"${on?' aria-current="page"':""}><span class="tzn-ic" aria-hidden="true">${a[1]}</span><span class="tzn-tx">${a[2]}</span>${c?`<b class="tzn-n" data-notr data-tzn="nav:${a[0]}">${c}</b>`:""}</button>${a[0]==="set"&&S.length?`<div class="tzn-sub"><div>${S.map(x=>`<button type="button" class="${sub===x[0]?"on":""}" data-ss="${x[0]}">${x[2]}</button>`).join("")}</div></div>`:""}${a[0]==="stk"&&stockTabs().length?`<div class="tzn-sub"><div>${stockTabs().map(x=>`<button type="button" class="${stockTab()===x[0]?"on":""}" data-stk="${x[0]}">${x[2]}</button>`).join("")}</div></div>`:""}`}).join("")}</div>`}).join("");/* (v226) أقسام تحليل المخزون تحت المديول */
 }
@@ -532,7 +533,7 @@ function navSeen(){const k=tab+"|"+(tab==="set"?sub:"");if(k===NAVT)return;NAVT=
  setTimeout(()=>{const r=b.getBoundingClientRect(),q=n.getBoundingClientRect();if(!r.height)return;if(r.top<q.top+6)n.scrollTop-=q.top+6-r.top;else if(r.bottom>q.bottom-26)n.scrollTop+=r.bottom-q.bottom+26},tab==="set"?280:0)}
 // الشريط العلوي: المجموعة ← عنوان القسم المفتوح، والأدوات كل واحدة في خانتها (تُعاد كتابتها فقط لو تغيّر نصها)
 function topSync(){
- const a=TABS.find(x=>x[0]===tab)||TABS[0],gl=(NAV_G.find(G=>G[0]===a[5])||["",""])[1],sx=tab==="set"?setSubs().find(x=>x[0]===sub):null;
+ const a=TABS.find(x=>x[0]===tab)||TABS[0],gl=(NAV_G.find(G=>G[0]===navGrp(a))||["",""])[1],sx=tab==="set"?setSubs().find(x=>x[0]===sub):null;
  const h=`<div class="tzt-cr"><span>${gl}</span>${sx?`<i></i><span>${a[2]}</span>`:""}</div><h1><span class="tzt-hi" aria-hidden="true">${sx?sx[1]:a[1]}</span><span class="tzt-ht">${sx?sx[2]:a[2]}</span>${vwRO(tab)?`<em class="tzt-ro">متابعة فقط</em>`:""}</h1>`;
  if(h!==TOPH){TOPH=h;const el=g("tzt-ti");if(el)el.innerHTML=h}
  const slot=(id,html)=>{if(SL[id]!==html){SL[id]=html;const el=g(id);if(el)el.innerHTML=html}};

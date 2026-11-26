@@ -5406,4 +5406,18 @@ export default {
 "أكّد الاستلام من زر «استلمت الطلب»":"Confirm receipt with the «I received the order» button",
 "المستودع يؤكد الاستلام":"The warehouse confirms receipt",
 "عُيّن السائق":"Driver assigned:",
+/* v259 (26 نوفمبر 2026): التسويق ومتابعة الفريق */
+"التسويق":"Marketing",
+"متابعة الفريق":"Team follow-up",
+"لا مهام بعد في هذه الحملات":"No tasks yet in these campaigns",
+"عند إسناد المهام ستظهر هنا متابعة كل عضو في الفريق.":"Once tasks are assigned, each team member's progress appears here.",
+"أعضاء لهم مهام":"Members with tasks",
+"مهام مفتوحة":"Open tasks",
+"متأخرة عن موعدها":"Overdue",
+"منجزة":"Done",
+"من الكل":"of all",
+"خلال أسبوع":"due within a week",
+"اتفاق":"deal(s)",
+"لا مهام.":"No tasks.",
+"مرتّبون بالأكثر تأخراً أولاً. اضغط على أي شخص لعرض مهامه. الأرقام لحملات الفلتر المختار فوق.":"Sorted by most overdue first. Tap a person to see their tasks. Numbers cover the campaigns in the filter above.",
 };

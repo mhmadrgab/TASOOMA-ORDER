@@ -219,7 +219,8 @@ html.lite .g5 *{animation:none!important}
  :where([data-theme=dark]) .gs-rep{background:#40191a;color:#f1a5a0}:where([data-theme=dark]) .gs-set{background:#14243a}
 
 `;
-const all=()=>{const m=new Map([...OLD,...MINE,...L,...LS,...PEND]);return [...m.values()]};
+const noS=r=>!(X&&X.noSample&&isSample(r));// 📣 (v254) مدير التسويق: الهدايا فقط بلا العينات
+const all=()=>{const m=new Map([...OLD,...MINE,...L,...LS,...PEND]);return [...m.values()].filter(noS)};
 // ✏️ (15 نوفمبر 2026) "سجّلتها أنا": اللي سجّل الهدية يلاقيها بسرعة ويعدّلها طول ما هي لسه بانتظار الاعتماد (القواعد بتسمح بده بس)
 const byMe=r=>!!r&&String(r.by&&r.by.e||"").toLowerCase()===meE();
 const canEditMine=r=>!!X&&!X.view&&!!r&&r.st==="pend"&&byMe(r)&&(X.mode==="branch"?r.br===X.code:(r.br==="WH"&&!X.noNew));
@@ -257,7 +258,7 @@ export function initGifts(ctx){
  if(!window.__gfc){window.__gfc=1;document.addEventListener("click",click);document.addEventListener("change",change);document.addEventListener("input",input)}
 }
 export function stopGifts(){un.forEach(f=>f());un=[];KIND="";KINDu=false;SEC="";SECu=false;ANIM=true;SHOWN=30;SUMOPEN=false;if(bun){bun();bun=null}BL=[];{const b=g("gfbtn");if(b)b.remove()}L=new Map();LS=new Map();PEND=new Map();OLD=new Map();MINE=new Map();MON=new Set();F.mine=false;closeM()}
-export const pendingCount=()=>PEND.size;
+export const pendingCount=()=>[...PEND.values()].filter(noS).length;
 // للتقرير الأسبوعي (short.js): الهدايا من تاريخ معيّن، والصافي
 export const giftsSince=t=>all().filter(r=>N(r.ts)>=t);
 export const giftNet=r=>net(r);
@@ -358,8 +359,9 @@ const doneToday=s=>A().filter(r=>{const d=kOk(r)&&SD[s].done(r);return !!d&&Stri
 // أول فتحة: النوع والمرحلة اللي فيهم شغل ليك. بعد ما المستخدم يختار بنفسه مانغيّرش عليه، ومانسيبش مرحلة فتحناها حتى لو خلصت (بتقول "أنهيت كل شيء")
 function pick(){
  if(!KIND){let k="";try{k=localStorage.getItem("gf_kind")||""}catch(e){}KIND=k==="s"?"s":"g"}
+ if(X&&X.noSample)KIND="g";
  const o=KIND==="s"?"g":"s";
- if(!KINDu&&!SECu&&(SEC===""||SEC==="log")&&!kMine(KIND)&&kMine(o)){KIND=o;SEC=""}
+ if(!(X&&X.noSample)&&!KINDu&&!SECu&&(SEC===""||SEC==="log")&&!kMine(KIND)&&kMine(o)){KIND=o;SEC=""}
  const ss=secsOf(KIND);if(ss.indexOf(SEC)<0)SEC="";
  if(!SECu&&(SEC===""||SEC==="log"))SEC=ss.find(s=>s!=="log"&&qMine(KIND,s)>0)||"log";
 }
@@ -430,7 +432,7 @@ export function giftsView(){
   const seg=(k,t)=>{const m=kMine(k),o=kOpen(k);return `<button type="button" role="tab" aria-selected="${KIND===k}" class="${KIND===k?"on":""}${m?" has":""}" data-gf="kind" data-id="${k}"><span class="ic" data-noico>${KIC[k]}</span><span class="tx"><b>${t}</b><small>${m?`${m} بانتظار إجرائك`:o?`${o} قيد المتابعة`:"لا جديد"}</small></span></button>`};
   const tab=s=>{const n=s==="log"?0:qList(KIND,s).length,m=qMine(KIND,s);return `<button type="button" role="tab" aria-selected="${SEC===s}" class="${SEC===s?"on":""}${m?" mine":""}" data-gf="sec" data-id="${s}">${SD[s].ic} ${SD[s].t}${s==="log"?"":`<i class="${n?"":"z"}">${n}</i>`}</button>`};
   const out=`<div class="g5${ANIM?" anim":""}">
-  <div class="g5-top"><div class="g5-seg" role="tablist" aria-label="النوع">${seg("g","الهدايا")}${seg("s","العينات")}</div>${!X.noNew&&!X.view?`<button class="bt p g5-new" data-gf="new" type="button">${KIND==="s"?"＋ تسجيل عينة":"＋ تسجيل هدية"}</button>`:""}</div>
+  <div class="g5-top">${X.noSample?`<div class="g5-seg" role="tablist" aria-label="النوع">${seg("g","الهدايا")}</div>`:`<div class="g5-seg" role="tablist" aria-label="النوع">${seg("g","الهدايا")}${seg("s","العينات")}</div>`}${!X.noNew&&!X.view?`<button class="bt p g5-new" data-gf="new" type="button">${KIND==="s"?"＋ تسجيل عينة":"＋ تسجيل هدية"}</button>`:""}</div>
   <div class="g5-card"><div class="g5-tabs" role="tablist">${secsOf(KIND).map(tab).join("")}</div>
   <div class="g5-body${SWAP?" swap":""}">${SEC==="log"?logHtml():queueHtml()}</div></div></div>`;
   ANIM=false;SWAP=false;
@@ -461,11 +463,11 @@ let GDRAFT=null;
 const rowHtml=(x={})=>`<div class="gf-row"><input data-r="k" placeholder="الكود" dir="ltr" maxlength="40" value="${E(x.k||"")}"><input data-r="c" placeholder="اللون" maxlength="40" value="${E(x.c||"")}"><input data-r="z" placeholder="المقاس" maxlength="20" value="${E(x.z||"")}"><input data-r="q" placeholder="العدد" inputmode="numeric" value="${x.q?E(x.q):""}"><button type="button" data-gf="rmrow" title="احذف السطر">✕</button></div>`;
 function form(r){
  edit=r||null;img="";imgBusy=false;
- FK=r?kindOf(r):(X.mode!=="branch"&&KIND==="s"?"s":"g");// النوع: من الهدية نفسها عند التعديل، وإلا من القسم المفتوح في اللوحة
+ FK=r?kindOf(r):(X.mode!=="branch"&&KIND==="s"&&!X.noSample?"s":"g");// النوع: من الهدية نفسها عند التعديل، وإلا من القسم المفتوح في اللوحة
  const wl=GWHY.concat(r&&r.why&&r.why!=="عينة"&&GWHY.indexOf(r.why)<0?[r.why]:[]);
  const wh=X.mode!=="branch",autoName=wh?String(X.me.n||X.me.e||""):String(X.brn||X.code||"");
  openM(`<h3>${r?"✏️ تعديل":"🎁 تسجيل"} هدية / عينة</h3><div style="color:var(--mut);font-size:13.5px">${r?`<bdi dir="ltr">${E(r.no)}</bdi> · ${E(r.brn||brName(r.br))}`:wh?"من المستودع — ستُرسل إلى مدير التسويق ليعتمدها":"من "+E(X.brn)+" — ستُرسل إلى مدير التسويق ليعتمدها"}</div>
- <div class="g5-seg sm" id="gfkind" role="tablist" aria-label="النوع">${[["g","هدية","تُعطى للعميل"],["s","عينة","للتجربة وقد ترجع"]].map(([k,t,d])=>`<button type="button" role="tab" aria-selected="${FK===k}" class="${FK===k?"on":""}" data-gf="fkind" data-id="${k}"><span class="ic" data-noico>${KIC[k]}</span><span class="tx"><b>${t}</b><small>${d}</small></span></button>`).join("")}</div>
+ <div class="g5-seg sm" id="gfkind" role="tablist" aria-label="النوع"${X.noSample?" hidden":""}>${[["g","هدية","تُعطى للعميل"],["s","عينة","للتجربة وقد ترجع"]].map(([k,t,d])=>`<button type="button" role="tab" aria-selected="${FK===k}" class="${FK===k?"on":""}" data-gf="fkind" data-id="${k}"><span class="ic" data-noico>${KIC[k]}</span><span class="tx"><b>${t}</b><small>${d}</small></span></button>`).join("")}</div>
  <label>الأصناف</label><div class="gf-rows" id="gfrows">${(r&&Array.isArray(r.rows)&&r.rows.length?r.rows:[{}]).map(rowHtml).join("")}</div>
  <button class="bt s" data-gf="addrow" type="button" style="margin-top:6px;width:auto">➕ صنف</button>
  <div class="gf-2"><div><label>اسم المستلم *</label><input id="gfn" maxlength="60" value="${E(r&&r.to&&r.to.n||"")}" placeholder="مثلاً: أ. محمد علي"></div>
@@ -682,9 +684,9 @@ function csv(){
 async function click(e){
  const t=e.target.closest("[data-gf]");if(!t||!X)return;const a=t.dataset.gf,id=t.dataset.id;
  if(a==="noop")return;
- if(a==="kind"){if(id!=="g"&&id!=="s")return;if(KIND!==id){KIND=id;SEC="";SECu=false;F.q="";F.st="";F.why="";F.mine=false;SHOWN=30;SUMOPEN=false;SWAP=true}KINDu=true;try{localStorage.setItem("gf_kind",id)}catch(e){}X.redraw();return}
+ if(a==="kind"){if(id!=="g"&&id!=="s")return;if(X.noSample&&id==="s")return;if(KIND!==id){KIND=id;SEC="";SECu=false;F.q="";F.st="";F.why="";F.mine=false;SHOWN=30;SUMOPEN=false;SWAP=true}KINDu=true;try{localStorage.setItem("gf_kind",id)}catch(e){}X.redraw();return}
  if(a==="sec"){if(!SD[id])return;if(SEC!==id){SEC=id;F.q="";SHOWN=30;SWAP=true}SECu=true;X.redraw();return}
- if(a==="fkind"){FK=id==="s"?"s":"g";document.querySelectorAll("#gfkind button").forEach(b=>{const on=b.dataset.id===FK;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)});const w=g("gfwbox"),x=g("gfsbox");if(w)w.hidden=FK==="s";if(x)x.hidden=FK!=="s";return}
+ if(a==="fkind"){FK=id==="s"&&!X.noSample?"s":"g";document.querySelectorAll("#gfkind button").forEach(b=>{const on=b.dataset.id===FK;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)});const w=g("gfwbox"),x=g("gfsbox");if(w)w.hidden=FK==="s";if(x)x.hidden=FK!=="s";return}
  if(a==="per"){F.mine=false;if(id==="c")PER="c";else setPer(id);SHOWN=30;ensureRange().then(()=>X.redraw());return}
  if(a==="fclr"){if(id==="st"||id==="all")F.st="";if(id==="br"||id==="all")F.br="";if(id==="why"||id==="all")F.why="";if(id==="per"||id==="all")setPer("m0");SHOWN=30;ensureRange().then(()=>X.redraw());return}
  if(a==="mine"){F.mine=!F.mine;SHOWN=30;X.redraw();return}
