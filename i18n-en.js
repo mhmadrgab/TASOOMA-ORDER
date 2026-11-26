@@ -5374,4 +5374,8 @@ export default {
 "يُستخدم ليُستثنى من «الراكد» ما استلمه الفرع خلال آخر":"Used to exclude from “Slow-moving” what a branch received in the last",
 "يوماً. كل ملف يستبدل استلام أيام فترته فقط ولا يلمس المبيعات.":"days. Each file replaces the receipts of its own days only and does not touch sales.",
 "اختر ملف الكميات وملف التاريخ وملف المشتريات معاً (أو اسحبها هنا). المنصة تتعرّف على كل ملف من أعمدته وتربط بينها.":"Choose the quantities, dated and purchases files together (or drag them here). The platform recognises each file by its columns and links them.",
+/* v252 (26 نوفمبر 2026): ملف المشتريات في تحليل المخزون */
+"قطعة) لأنه صنف جديد: استلمه المستودع أو الفرع خلال آخر":"pcs) because they are new items: the warehouse or the branch received them in the last",
+"من ملف المشتريات: صنف (كود ولون ومقاس) استلمه المستودع من المورد أو استلمه الفرع خلال هذا العدد من الأيام لا يظهر في «الراكد» في أي فرع حتى لو لم يبع بعد. صفر = بلا استثناء.":"From the purchases file: an item (code, colour and size) the warehouse received from the supplier, or the branch received, within this many days does not show in “Slow-moving” in any branch even if it has not sold yet. Zero = no exception.",
+"يُستخدم ليُستثنى من «الراكد» في كل الفروع ما استلمه المستودع (أو الفرع) خلال آخر":"Used to exclude from “Slow-moving” in all branches what the warehouse (or the branch) received in the last",
 };

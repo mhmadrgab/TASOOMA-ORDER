@@ -295,7 +295,7 @@ export function stale(D,C,o){
  const RV=o.rcv===undefined?ENV.rcv:o.rcv;let fr=0,frq=0;
  for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(!a)continue;if(q&&D.k[ki][0].toLowerCase().indexOf(q)<0)continue;
   for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti)||(fs!==undefined&&ti!==fs)||(fv!==-2&&!vHit(D,ki,ti,a[j+3],fv)))continue;if(a[j+1]<mn)continue;const sold=soldOf(P,ki,ti,a[j+2]);if(sold>0)continue;
-   if(RV&&RV.has(ki*1000+ti)){fr++;frq+=a[j+1];continue}// (v248) استلمه حديثاً
+   if(RV&&(RV.has(ki*1000+ti)||(wh!==undefined&&RV.has(ki*1000+wh)))){fr++;frq+=a[j+1];continue}// (v251) استلمه الفرع حديثاً، أو (v252) استلمه المستودع حديثاً من المورد: بضاعة جديدة تُوزَّع على كل الفروع
    out.push({ki,ti,vi:a[j+3],on:a[j+1],sold})}}
  out.sort((p,r)=>r.on-p.on);out.fresh=fr;out.freshQ=frq;return out;
 }
@@ -1789,7 +1789,7 @@ function staleRcvNote(L){
  const f=freshOf(CFG);if(!f)return "";const RR=rcvRange(),rm=rcvMonths();
  if(!rm.length)return `<div class="stk-rep w">لم يُرفع ملف مشتريات بعد، فقد يظهر هنا صنف وصل الفرع حديثاً ولم يأخذ وقته ليُباع. ارفع ملف المشتريات من «الملفات» ليُستثنى ما استُلم خلال آخر <b data-notr>${fmt(f)}</b> يوماً.</div>`;
  const c=RR?months(RR.from,RR.to).filter(ym=>!(META.d[ym]&&Array.isArray(META.d[ym].rv)&&META.d[ym].rv.length)):[];
- return `<div class="stk-rep${c.length?" w":""}">📥 استُبعد <b data-notr>${fmt(L.fresh||0)}</b> سطراً (<b data-notr>${fmt(L.freshQ||0)}</b> قطعة) لأن الفرع استلمه خلال آخر <b data-notr>${fmt(f)}</b> يوماً (من ملف المشتريات)${c.length?`. ⚠️ ملف المشتريات لا يغطي: <b data-notr dir="ltr">${E(c.join("، "))}</b>`:""}.</div>`;
+ return `<div class="stk-rep${c.length?" w":""}">📥 استُبعد <b data-notr>${fmt(L.fresh||0)}</b> سطراً (<b data-notr>${fmt(L.freshQ||0)}</b> قطعة) لأنه صنف جديد: استلمه المستودع أو الفرع خلال آخر <b data-notr>${fmt(f)}</b> يوماً (من ملف المشتريات)${c.length?`. ⚠️ ملف المشتريات لا يغطي: <b data-notr dir="ltr">${E(c.join("، "))}</b>`:""}.</div>`;
 }
 function vStale(){
  const P=period(),L=focL(stale(DATA,CFG,{store:UI.st,vendor:UI.vn,min:UI.son,period:P,q:UI.q}),l=>DATA.k[l.ki][0],l=>vnOf(l.vi));
@@ -1839,7 +1839,7 @@ function vUp(){
  <div class="stk-card"><h3>📅 ملف التاريخ</h3>${yms.length?`<p>${yms.length} شهر محفوظ · ${fmt(dsold)} قطعة مباعة${q?` · يغطي <b>${cov}%</b> من مبيعات ملف الكميات`:""}</p>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه السنة والشهر واليوم بلا كمية.</p>`}
  <div class="stk-mo">${need.map(ym=>d[ym]?`<span data-notr title="${fmt(d[ym].n)} · ${N(d[ym].dmin)}–${N(d[ym].dmax)}">${ym} ✓</span>`:`<span class="x" data-notr>${ym}</span>`).join("")}</div>
  <p style="margin-top:10px">Power BI يقطع التصدير عند 150 ألف سطر. نزّل ملف التاريخ على فترات (شهر أو شهرين) وارفعها كلها مرة واحدة للتأسيس، ثم يكفي كل يوم ملف الشهر الحالي: كل ملف يستبدل أيام فترته فقط.</p></div>
- ${(()=>{const rm=rcvMonths(),tq=rm.reduce((s,ym)=>s+N(d[ym].rq),0);return `<div class="stk-card"><h3>📥 ملف المشتريات</h3>${rm.length?`<p>${rm.length} شهر · ${fmt(tq)} قطعة مستلمة</p><div class="stk-mo">${rm.map(ym=>`<span data-notr title="${E(d[ym].rv.map(x=>x[0]+"–"+x[1]).join(", "))}">${ym} ✓</span>`).join("")}</div>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه الكود واللون والمقاس والمخزن و<b data-notr>RCVD_QTY</b> (الكمية المستلمة) والتاريخ، بلا مبيعات.</p>`}<p style="margin-top:10px">يُستخدم ليُستثنى من «الراكد» ما استلمه الفرع خلال آخر ${fmt(freshOf(CFG))} يوماً. كل ملف يستبدل استلام أيام فترته فقط ولا يلمس المبيعات.</p></div>`})()}</div>${chk}`;
+ ${(()=>{const rm=rcvMonths(),tq=rm.reduce((s,ym)=>s+N(d[ym].rq),0);return `<div class="stk-card"><h3>📥 ملف المشتريات</h3>${rm.length?`<p>${rm.length} شهر · ${fmt(tq)} قطعة مستلمة</p><div class="stk-mo">${rm.map(ym=>`<span data-notr title="${E(d[ym].rv.map(x=>x[0]+"–"+x[1]).join(", "))}">${ym} ✓</span>`).join("")}</div>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه الكود واللون والمقاس والمخزن و<b data-notr>RCVD_QTY</b> (الكمية المستلمة) والتاريخ، بلا مبيعات.</p>`}<p style="margin-top:10px">يُستخدم ليُستثنى من «الراكد» في كل الفروع ما استلمه المستودع (أو الفرع) خلال آخر ${fmt(freshOf(CFG))} يوماً. كل ملف يستبدل استلام أيام فترته فقط ولا يلمس المبيعات.</p></div>`})()}</div>${chk}`;
 }
 function vCfg(){
  const row=(k,t,s,mn)=>`<div class="f"><div><b>${t}</b><small>${s}</small></div><input type="number" min="${mn}" max="9999" data-cf="${k}" id="stk-c-${k}" value="${E(CFG[k])}"></div>`;
@@ -1849,7 +1849,7 @@ function vCfg(){
  ${row("slow","الفرع «لا يبيع» لو مبيعاته لا تزيد على","يُسحب فقط من فرع مبيعاته من الصنف في الفترة لا تزيد على هذا الرقم (صفر = لم يبع شيئاً).",0)}
  ${row("stale","حد الراكد","الصنف راكد في الفرع لو رصيده هذا الرقم أو أكثر ولم يبع.",1)}
  <div class="f"><div><b>أيام التغطية</b><small>الكمية المقترحة للفرع = ما يكفيه هذا العدد من الأيام بمعدل بيعه للصنف، ولا تقل عن حد النواقص، ولا تزيد على رصيد المستودع. صفر = إكمال الحد فقط (كما كان).</small></div><input type="number" min="0" max="365" data-cv="1" id="stk-c-cov" value="${covOf(CFG)}"></div>
- <div class="f"><div><b>الصنف المستلم حديثاً ليس راكداً (يوماً)</b><small>من ملف المشتريات: صنف استلمه الفرع خلال هذا العدد من الأيام لا يظهر في «الراكد» حتى لو لم يبع بعد. صفر = بلا استثناء.</small></div><input type="number" min="0" max="365" data-frs="1" id="stk-c-fr" value="${freshOf(CFG)}"></div>
+ <div class="f"><div><b>الصنف المستلم حديثاً ليس راكداً (يوماً)</b><small>من ملف المشتريات: صنف (كود ولون ومقاس) استلمه المستودع من المورد أو استلمه الفرع خلال هذا العدد من الأيام لا يظهر في «الراكد» في أي فرع حتى لو لم يبع بعد. صفر = بلا استثناء.</small></div><input type="number" min="0" max="365" data-frs="1" id="stk-c-fr" value="${freshOf(CFG)}"></div>
  <div class="f"><div><b>ترتيب أولوية الأكواد في النواقص</b><small>الأكواد التي تبدأ بهذه الأرقام تظهر أولاً بهذا الترتيب داخل كل فرع في «نواقص الفروع» و«خطة اليوم»، ثم باقي الأكواد. افصل بينها بفاصلة. اتركها فارغة للترتيب العادي بالكود.</small></div><input type="text" data-pr="1" id="stk-c-pri" dir="ltr" autocomplete="off" maxlength="300" value="${E(priList(CFG).join(", "))}" style="max-width:340px;height:42px"></div>
  <div class="f"><div><b>مخزن المستودع</b><small>المخزن الذي تُحسب منه النواقص.</small></div><select data-cf="wh" id="stk-c-wh" style="height:42px;max-width:220px">${DATA.st.slice().sort().map(s=>`<option data-notr${s===CFG.wh?" selected":""}>${E(s)}</option>`).join("")}</select></div>
  <div class="f"><div><b>مخازن خارج التحليل</b><small>لا تظهر في النواقص ولا يُسحب منها ولا يُرسل إليها.</small><div class="stk-chk" style="margin-top:8px">${DATA.st.filter(s=>s!==CFG.wh).sort().map(s=>`<label data-notr><input type="checkbox" data-cx="${E(s)}"${(CFG.ex||[]).indexOf(s)>=0?" checked":""}>${E(s)}</label>`).join("")}</div></div></div>
