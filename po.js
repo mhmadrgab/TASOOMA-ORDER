@@ -235,6 +235,7 @@ function card(r){
  const s=stOf(r.st),i=SI[r.st],c=ctyOf(r.cty),m=tl(r),age=days(Date.now()-N(r.dt||r.ts)),open=isOpen(r);
  const ex=open?expect(r):null,sg=r.st==="wh"?segs(r):null;
  const tags=[`📦 ${Math.max(1,N(r.cn))} × ${E((CTYPE.find(x=>x[0]===r.ctype)||["",r.ctype||""])[1])}`];
+ if(r.by&&r.by.n)tags.push(`👤 أنشأه: <b data-notr>${E(r.by.n)}</b>`);// (v257) مين عمل الأمر
  if(N(r.val))tags.push(`💵 <bdi dir="ltr">${N(r.val).toLocaleString("en-US")} ${E(r.cur||"")}</bdi>`);
  if(r.inc)tags.push(`<bdi dir="ltr">${E(r.inc)}</bdi>`);
  if(r.pol&&r.pod)tags.push(`⚓ ${E(r.pol)} ← ${E(r.pod)}`);else if(r.pod)tags.push(`⚓ ميناء الوصول: ${E(r.pod)}`);else if(r.pol)tags.push(`⚓ ميناء التحميل: ${E(r.pol)}`);
