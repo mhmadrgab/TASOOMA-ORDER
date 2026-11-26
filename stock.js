@@ -67,8 +67,8 @@ function csvRows(txt,onRow){
  if(cur||row.length){row.push(cur);onRow(row)}
 }
 const HMAP={code:["description2","الكود","كود","code","item code"],color:["attribute","اللون","لون","color"],size:["item_size","المقاس","مقاس","size"],store:["store name","store_name","الفرع","المخزن","store"],vendor:["vendor name","vendor_name","المورد","vendor"],
- rc:["rcvd_qty","received_qty","المستلم","received"],sold:["sold_qty","المبيعات","مبيعات","sold"],on:["oh_qty","onhand qty","on hand qty","oh qty","onhand","الكمية","الرصيد"],
- yr:["date - year","year","السنة"],mo:["date - month","month","الشهر"],dy:["date - day","day","اليوم"],dt:["date","التاريخ"]};
+ rc:["rcvd_qty","received_qty","المستلم","received","rcvd qty","received qty","receive qty","receive_qty","rcv qty","rcv_qty","rec qty","qty received","voucher qty","vou qty","vou_qty","purchase qty","purchased qty","purchases","الكمية المستلمة","المشتريات","الاستلام"],sold:["sold_qty","المبيعات","مبيعات","sold"],on:["oh_qty","onhand qty","on hand qty","oh qty","onhand","الكمية","الرصيد"],
+ yr:["date - year","year","السنة"],mo:["date - month","month","الشهر"],dy:["date - day","day","اليوم"],dt:["date","التاريخ","voucher date","vou date","vou_date","receive date","received date","rcvd date","rcvd_date","تاريخ الاستلام","تاريخ السند"]};
 const MON={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,
  "يناير":1,"فبراير":2,"مارس":3,"أبريل":4,"ابريل":4,"مايو":5,"يونيو":6,"يوليو":7,"أغسطس":8,"اغسطس":8,"سبتمبر":9,"أكتوبر":10,"اكتوبر":10,"نوفمبر":11,"ديسمبر":12};
 const p2=n=>(n<10?"0":"")+n;
@@ -83,10 +83,12 @@ export function ingest(){
  const qn=v=>{const x=num(v);if(x!==x){R.nan++;return 0}return x};// خانة كمية غير رقمية تُعدّ (والملف يُرفض عند الحفظ)
  const ix=(arr,map,v)=>{let i=map.get(v);if(i===undefined){i=arr.length;arr.push(v);map.set(v,i)}return i};
  const head=row=>{const h={},low=row.map(c=>String(c).trim().toLowerCase());for(const f in HMAP){const i=low.findIndex(c=>HMAP[f].indexOf(c)>=0);if(i>=0)h[f]=i}
-  return h.code!==undefined&&h.store!==undefined&&h.sold!==undefined?h:null};
+  // (v248) ملف المشتريات: الكود والمخزن والتاريخ والكمية المستلمة بلا عمود مبيعات
+  const dated=h=>(h.mo!==undefined&&h.dy!==undefined)||h.dt!==undefined;
+  return h.code!==undefined&&h.store!==undefined&&(h.sold!==undefined||(h.rc!==undefined&&dated(h)&&h.on===undefined))?h:null};
  function row(r){
   if(!r.length)return;
-  if(!H){H=head(r);if(H)type=H.on!==undefined&&H.mo===undefined&&H.dt===undefined?"q":(H.mo!==undefined&&H.dy!==undefined)||H.dt!==undefined?"d":"";return}
+  if(!H){H=head(r);if(H){const dt=(H.mo!==undefined&&H.dy!==undefined)||H.dt!==undefined;type=H.sold===undefined?"r":H.on!==undefined&&H.mo===undefined&&H.dt===undefined?"q":dt?"d":""}return}
   const c0=String(r[0]||"");
   if(r.length<=2&&c0.length>12){// ذيل Power BI
    if(/exceeded the allowed volume/i.test(c0))R.trunc=true;
@@ -94,20 +96,22 @@ export function ingest(){
    if(m){const y=s=>s.length===2?2000+(+s):+s;R.from=y(m[3])+"-"+p2(MON[m[2].toLowerCase()]||1)+"-"+p2(+m[1]);R.to=y(m[6])+"-"+p2(MON[m[5].toLowerCase()]||1)+"-"+p2(+m[4])}
    return}
   const code=String(r[H.code]||"").trim(),store=String(r[H.store]||"").trim();
-  if(!store){if(/^total$/i.test(code)){const a=num(r[H.sold]);if(a===a)tot.sold=a;if(H.on!==undefined){const b=num(r[H.on]);if(b===b)tot.on=b}if(H.rc!==undefined)tot.rc=N(r[H.rc])}else if(code)R.bad++;return}
+  if(!store){if(/^total$/i.test(code)){const a=H.sold!==undefined?num(r[H.sold]):NaN;if(a===a)tot.sold=a;if(H.on!==undefined){const b=num(r[H.on]);if(b===b)tot.on=b}if(H.rc!==undefined)tot.rc=N(r[H.rc])}else if(code)R.bad++;return}
   if(!code){R.bad++;return}
   // السطر يُراجَع كله قبل أن يدخل في أي مجموع: سطر تاريخه غير مفهوم لا يُحسب (فيظهر الفرق أمام سطر الإجمالي ويُرفض الملف)
   let y=0,mo=0,dy=0;
-  if(type==="d"){if(H.dt!==undefined&&H.mo===undefined){const d=dateOf(r[H.dt]);if(!d){R.bad++;return}y=d[0];mo=d[1];dy=d[2]}else{y=H.yr!==undefined?N(r[H.yr]):new Date().getFullYear();mo=moNum(r[H.mo]);dy=N(r[H.dy])}
+  if(type==="d"||type==="r"){if(H.dt!==undefined&&H.mo===undefined){const d=dateOf(r[H.dt]);if(!d){R.bad++;return}y=d[0];mo=d[1];dy=d[2]}else{y=H.yr!==undefined?N(r[H.yr]):new Date().getFullYear();mo=moNum(r[H.mo]);dy=N(r[H.dy])}
    if(!mo||y<2000||y>2100||dy<1||dy!==Math.floor(dy)||dy>new Date(y,mo,0).getDate()){R.bad++;return}}
-  const sold=qn(r[H.sold]),rc=H.rc!==undefined?(type==="q"?qn(r[H.rc]):N(r[H.rc])):0,cl=H.color!==undefined?String(r[H.color]||"").trim():"",z=H.size!==undefined?String(r[H.size]||"").trim():"";
+  const sold=H.sold!==undefined?qn(r[H.sold]):0,rc=H.rc!==undefined?(type==="q"||type==="r"?qn(r[H.rc]):N(r[H.rc])):0;
+  if(type==="r"&&!rc)return;// سطر مشتريات كميته صفر: لا معنى له
+  const cl=H.color!==undefined?String(r[H.color]||"").trim():"",z=H.size!==undefined?String(r[H.size]||"").trim():"";
   const key=code+SEP+cl+SEP+z;let kk=ki.get(key);
   const vi=H.vendor!==undefined?ix(vn,vni,String(r[H.vendor]||"").trim()):-1;
   if(kk===undefined){kk=k.length;k.push([code,cl,z,vi]);ki.set(key,kk)}
   const ti=ix(st,sti,store);n++;sum.sold+=sold;sum.rc+=rc;
   // الخانة الرابعة = مورد هذا السطر (v174): في التقرير 21 صنفاً مكتوب لها موردان في فروع مختلفة، فالمورد يُحفظ لكل (صنف، فرع) لا للصنف. (كانت «المستلم»، وهو عمود غير صالح)
   if(type==="q"){const on=qn(r[H.on]);sum.on+=on;if(rc){const rk=kk*1000+ti;rq.set(rk,(rq.get(rk)||0)+rc);rcC.add(code)}let a=q.get(kk);if(!a){a=[];q.set(kk,a)}let j=0;for(;j<a.length;j+=4)if(a[j]===ti)break;if(j<a.length){a[j+1]+=on;a[j+2]+=sold;R.dup++;if(vi!==a[j+3])vs.push(kk,ti,vi,on,sold)}else a.push(ti,on,sold,vi)}// سطر ثانٍ لنفس (صنف، فرع) بمورد آخر: يُجمع في الرصيد، ونصيب المورد الثاني يُحفظ في vs
-  else if(type==="d"){const ym=y+"-"+p2(mo);(mon[ym]||(mon[ym]=[])).push(kk,ti,dy,sold,rc);days.add(ym+"-"+p2(dy))}
+  else if(type==="d"||type==="r"){const ym=y+"-"+p2(mo);(mon[ym]||(mon[ym]=[])).push(kk,ti,dy,type==="r"?0:sold,rc);days.add(ym+"-"+p2(dy))}
  }
  // rcOk: عمود المستلم يُعتمد فقط لو فيه استلام لعشرين كوداً فأكثر (تقرير قديم كان فيه كود واحد برقم مكرر على كل الفروع: لا يُعتمد)
  return {row,done:()=>Object.assign(R,{ok:!!H&&!!type,type,n,st,vn,k,q,vs,mon,days:[...days].sort(),sum,tot,rq,rcn:rcC.size,rcOk:type==="q"&&rcC.size>=20})};
@@ -177,8 +181,12 @@ const vHit=(D,ki,ti,vi,fv)=>{if(vi===fv)return true;const sp=D.vx?D.vx.get(ki*10
 const exSet=(C,D)=>{const s=new Set();(C.ex||[]).forEach(n=>{const i=D.sti.get(n);if(i!==undefined)s.add(i)});return s};
 const soldOf=(P,ki,ti,snap)=>P?(P.get(ki*1000+ti)||0):snap;
 /* (v205) سياق التشغيل للنواقص والتحويلات: tr = ما في الطريق (Map صنف*1000+مخزن ← +وارد/−صادر، من طلبات أُنشئت بعد ملف الأرصدة)، nd = مخازن لا تستقبل تحويلاً (ليست فروعاً في المنصة) */
-let ENV={tr:null,nd:null,days:0};
-export function setEnv(e){ENV={tr:e&&e.tr?e.tr:null,nd:e&&e.nd?e.nd:null,days:e&&e.days>0?e.days:0}}
+let ENV={tr:null,nd:null,days:0,rcv:null};
+export function setEnv(e){ENV={tr:e&&e.tr?e.tr:null,nd:e&&e.nd?e.nd:null,days:e&&e.days>0?e.days:0,rcv:e&&e.rcv?e.rcv:null}}
+/* 📥 (v248) المشتريات: صنف استلمه الفرع خلال آخر N يوماً ليس راكداً (لم يأخذ وقته ليُباع). N من «القواعد»، صفر = بلا استثناء */
+export const freshOf=C=>{for(const o of (C&&C.ov)||[])if(o&&o.t==="fr")return Math.max(0,Math.min(365,N(o.min)));return 60};
+// (صنف*1000+فرع) ← آخر يوم استلام (YYYY-MM-DD) من سطور المشتريات المحمّلة بين from و to
+export function rcvMap(D,from,to){const m=new Map();for(const ym in D.d){if(ym+"-31"<from||ym+"-01">to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){if(!(r[i+4]>0))continue;const d=ymd(ym,r[i+2]);if(d<from||d>to)continue;const k=r[i]*1000+r[i+1],o=m.get(k);if(!o||d>o.d)m.set(k,{d,q:(o?o.q:0)+r[i+4]});else o.q+=r[i+4]}}return m}
 /* (v209) الكمية المطلوبة للفرع = ما يكفيه cov يوماً من بيعه (ولا تقل عن حد النواقص). cov من القواعد (عنصر {t:"cov",min} داخل ov، الافتراضي 14، صفر = إكمال الحد فقط).
    تعمل فقط حين يُعرف عدد أيام المبيعات (days): من النداء، أو طول الفترة، أو setEnv({days}) لمبيعات «من أول السنة». بلا أيام = إكمال الحد كما كان. */
 export const covOf=C=>{for(const o of (C&&C.ov)||[])if(o&&o.t==="cov")return Math.max(0,Math.min(365,N(o.min)));return 14};
@@ -284,9 +292,12 @@ export function pubData(D,C){
 // راكد: رصيد الفرع ≥ الحد ولم يبع في الفترة
 export function stale(D,C,o){
  o=o||{};const wh=D.sti.get(C.wh),ex=exSet(C,D),out=[],P=o.period?soldMap(D,o.period.from,o.period.to):null,fs=o.store?D.sti.get(o.store):undefined,fv=o.vendor?D.vn.indexOf(o.vendor):-2,mn=Math.max(1,N(o.min==null||o.min===""?C.stale:o.min)),q=String(o.q||"").trim().toLowerCase();
+ const RV=o.rcv===undefined?ENV.rcv:o.rcv;let fr=0,frq=0;
  for(let ki=0;ki<D.q.length;ki++){const a=D.q[ki];if(!a)continue;if(q&&D.k[ki][0].toLowerCase().indexOf(q)<0)continue;
-  for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti)||(fs!==undefined&&ti!==fs)||(fv!==-2&&!vHit(D,ki,ti,a[j+3],fv)))continue;if(a[j+1]<mn)continue;const sold=soldOf(P,ki,ti,a[j+2]);if(sold>0)continue;out.push({ki,ti,vi:a[j+3],on:a[j+1],sold})}}
- return out.sort((p,r)=>r.on-p.on);
+  for(let j=0;j<a.length;j+=4){const ti=a[j];if(ti===wh||ex.has(ti)||(fs!==undefined&&ti!==fs)||(fv!==-2&&!vHit(D,ki,ti,a[j+3],fv)))continue;if(a[j+1]<mn)continue;const sold=soldOf(P,ki,ti,a[j+2]);if(sold>0)continue;
+   if(RV&&RV.has(ki*1000+ti)){fr++;frq+=a[j+1];continue}// (v248) استلمه حديثاً
+   out.push({ki,ti,vi:a[j+3],on:a[j+1],sold})}}
+ out.sort((p,r)=>r.on-p.on);out.fresh=fr;out.freshQ=frq;return out;
 }
 // تحليل صنف: كل ألوان ومقاسات الكود × كل المخازن (رصيد ومبيعات)
 export function matrix(D,C,code,period){
@@ -301,13 +312,13 @@ export function matrix(D,C,code,period){
 export function salesQuery(D,o){
  const ids=new Set((D.code.get(String(o.code||"").trim())||[]).filter(ki=>(!o.cl||D.k[ki][1]===o.cl)&&(!o.z||D.k[ki][2]===o.z))),fs=o.store?D.sti.get(o.store):undefined,byDay={},bySt={},byK={};let total=0,ret=0;
  if(!ids.size)return null;
- for(const ym in D.d){if(ym+"-31"<o.from||ym+"-01">o.to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){if(!ids.has(r[i]))continue;if(fs!==undefined&&r[i+1]!==fs)continue;const d=ymd(ym,r[i+2]);if(d<o.from||d>o.to)continue;const n=r[i+3];
+ for(const ym in D.d){if(ym+"-31"<o.from||ym+"-01">o.to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){if(!ids.has(r[i]))continue;if(fs!==undefined&&r[i+1]!==fs)continue;const d=ymd(ym,r[i+2]);if(d<o.from||d>o.to)continue;const n=r[i+3];if(!n)continue;
    total+=n;if(n<0)ret-=n;byDay[d]=(byDay[d]||0)+n;bySt[r[i+1]]=(bySt[r[i+1]]||0)+n;byK[r[i]]=(byK[r[i]]||0)+n}}
  return {total,ret,byDay,bySt,byK};
 }
 /* ---- (v174) بطاقات «اسأل»: كل رقم هنا جمع مباشر من صفوف الملفين، بلا تقدير ---- */
 // يمرّ على صفوف ملفات التاريخ داخل الفترة: fn(صنف، فرع، اليوم، الكمية)
-const scan=(D,from,to,fn)=>{for(const ym in D.d){if(ym+"-31"<from||ym+"-01">to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){const d=ymd(ym,r[i+2]);if(d<from||d>to)continue;fn(r[i],r[i+1],d,r[i+3])}}};
+const scan=(D,from,to,fn)=>{for(const ym in D.d){if(ym+"-31"<from||ym+"-01">to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){if(!r[i+3])continue;const d=ymd(ym,r[i+2]);if(d<from||d>to)continue;fn(r[i],r[i+1],d,r[i+3])}}};// (v248) سطور المشتريات (مبيعها صفر) لا تُحسب أيام بيع
 // بطاقة فرع: عنده كم، باع كم، نواقصه وراكده وما نفد وهو يبيع، أعلى الأصناف مبيعاً، وترتيبه بين الفروع.
 // المبيعات: من ملف الكميات (من أول السنة) أو من ملفات التاريخ لو حُدّدت فترة {from,to}
 export function storeCard(D,C,store,period){
@@ -801,7 +812,7 @@ export const cvAdd=(list,a,b)=>{const L=(list||[]).filter(r=>Array.isArray(r)&&r
 // تغطية ملفات التاريخ لفترة: الشهور الناقصة كلها، والأيام الناقصة داخل شهر مرفوع. approx = شهر رُفع قبل v174 (بلا مدى محفوظ) فيُقدَّر من أول وآخر يوم فيه بيع
 export function coverage(M,P){
  const out={mon:[],days:[],approx:false,ok:true};if(!P)return out;const d=M&&M.d?M.d:{};
- for(const ym of months(P.from,P.to)){const a=P.from.slice(0,7)===ym?+P.from.slice(8):1,b=P.to.slice(0,7)===ym?+P.to.slice(8):dim(ym),x=d[ym];if(!x){out.mon.push(ym);continue}
+ for(const ym of months(P.from,P.to)){const a=P.from.slice(0,7)===ym?+P.from.slice(8):1,b=P.to.slice(0,7)===ym?+P.to.slice(8):dim(ym),x=d[ym];if(!x||(Array.isArray(x.cv)&&!x.cv.length)){out.mon.push(ym);continue}// (v248) شهر فيه مشتريات فقط = مبيعاته لم تُرفع
   let cv=x.cv;if(!Array.isArray(cv)||!cv.length){cv=[[N(x.dmin)||1,N(x.dmax)||dim(ym)]];out.approx=true}
   let c=a;for(const r of cvAdd(cv,0,0)){if(r[1]<c)continue;if(r[0]>b)break;if(r[0]>c)out.days.push([ymd(ym,c),ymd(ym,Math.min(b,r[0]-1))]);c=Math.max(c,r[1]+1);if(c>b)break}
   if(c<=b)out.days.push([ymd(ym,c),ymd(ym,b)])}
@@ -853,19 +864,50 @@ async function saveD(R){
  for(const ym of all){
   // القديم الباقي من الشهر (أيام خارج فترة الملف)
   if(META&&META.d&&META.d[ym]&&!DATA.d[ym]){const z=await getParts(fb,"d"+ym,Math.max(1,N(META.d[ym].parts)));if(z)loadMonth(DATA,ym,JSON.parse(await gun(z)))}
-  const old=DATA.d[ym]||[],keep=[];for(let i=0;i<old.length;i+=5)if(!inR(ymd(ym,old[i+2]))||!sg.has(old[i+1]))keep.push(old[i],old[i+1],old[i+2],old[i+3],old[i+4]);
-  loadMonth(DATA,ym,{st:R.st,k:R.k,r:R.mon[ym]||[]},keep);
-  const r=DATA.d[ym];let sold=0,dmin=32,dmax=0;for(let i=0;i<r.length;i+=5){sold+=r[i+3];if(r[i+2]<dmin)dmin=r[i+2];if(r[i+2]>dmax)dmax=r[i+2]}
+  // (v248) لو الشهر فيه ملف مشتريات (rv): المشتريات تبقى كما هي، وعمود الاستلام في ملف التاريخ يُتجاهل حتى لا يتكرر
+  const pm0=META&&META.d&&META.d[ym],hasRv=!!(pm0&&Array.isArray(pm0.rv)&&pm0.rv.length);
+  const old=DATA.d[ym]||[],keep=[];for(let i=0;i<old.length;i+=5){if(!inR(ymd(ym,old[i+2]))||!sg.has(old[i+1]))keep.push(old[i],old[i+1],old[i+2],old[i+3],old[i+4]);else if(hasRv&&old[i+4])keep.push(old[i],old[i+1],old[i+2],0,old[i+4])}
+  const inc=R.mon[ym]||[],inc2=[];for(let i=0;i<inc.length;i+=5){if(!inc[i+3]&&(hasRv||!inc[i+4]))continue;inc2.push(inc[i],inc[i+1],inc[i+2],inc[i+3],hasRv?0:inc[i+4])}
+  loadMonth(DATA,ym,{st:R.st,k:R.k,r:inc2},keep);
+  const r=DATA.d[ym];let sold=0,dmin=32,dmax=0;for(let i=0;i<r.length;i+=5){sold+=r[i+3];if(!r[i+3])continue;if(r[i+2]<dmin)dmin=r[i+2];if(r[i+2]>dmax)dmax=r[i+2]}if(dmin>dmax){dmin=0;dmax=0}
   // الأيام التي يغطيها ما رُفع لهذا الشهر (من فترة ذيل الملف؛ وبلا ذيل: من أول يوم إلى آخر يوم فيه)، مدموجة مع ما سبق
   let ca,cb;if(R.from){ca=from.slice(0,7)===ym?+from.slice(8):1;cb=to.slice(0,7)===ym?+to.slice(8):dim(ym)}else{const ds=R.days.filter(d=>d.slice(0,7)===ym);ca=ds.length?+ds[0].slice(8):0;cb=ds.length?+ds[ds.length-1].slice(8):0}
-  const pm=META&&META.d&&META.d[ym],cv=cvAdd(pm?(Array.isArray(pm.cv)&&pm.cv.length?pm.cv:[[N(pm.dmin)||1,N(pm.dmax)||1]]):[],ca,cb);
+  const pm=META&&META.d&&META.d[ym],cv=cvAdd(pm?(Array.isArray(pm.cv)?pm.cv:[[N(pm.dmin)||1,N(pm.dmax)||1]]):[],ca,cb);
   const b=fb.writeBatch(X.db),oldP=META&&META.d&&META.d[ym]?Math.max(1,N(META.d[ym].parts)):0;
   if(!r.length){for(let i=0;i<oldP;i++)b.delete(fb.doc(X.db,"stk",i?"d"+ym+"_"+i:"d"+ym));delete meta.d[ym];delete DATA.d[ym]}
   else{const P=parts(await gz(JSON.stringify(monthDoc(DATA,ym))));if(P.length>10)throw new Error("big");P.forEach((p,i)=>b.set(fb.doc(X.db,"stk",i?"d"+ym+"_"+i:"d"+ym),{v:1,z:p,at:Date.now()}));for(let i=P.length;i<oldP;i++)b.delete(fb.doc(X.db,"stk","d"+ym+"_"+i));
-   meta.d[ym]={n:r.length/5,parts:P.length,sold,dmin,dmax,cv,at:Date.now()}}
+   meta.d[ym]=Object.assign({n:r.length/5,parts:P.length,sold,dmin,dmax,cv,at:Date.now()},hasRv?{rv:pm0.rv,rq:N(pm0.rq)}:{})}
   meta.at=Date.now();meta.by=by();b.set(fb.doc(X.db,"stk","meta"),meta);await b.commit();META=Object.assign({},meta)}
  SOLDC={};LASTD=all;return all.length;
 }
+/* 📥 (v248) ملف المشتريات (الاستلام من المورد بالتاريخ، من Power BI يدوياً حتى يتم الربط بالسيستم):
+   يُحفظ في نفس مستندات الشهر (الخانة الخامسة = المستلم) فلا يحتاج قواعد جديدة. يستبدل استلام أيام فترته في مخازن الملف فقط،
+   ولا يلمس المبيعات. meta.d[ym].rv = الأيام التي يغطيها ملف مشتريات، rq = مجموع المستلم في الشهر. */
+async function saveR(R){
+ const fb=await FB(),touched=Object.keys(R.mon).sort();if(!touched.length)return 0;
+ const from=R.from||R.days[0],to=R.to?addDays(R.to,-1):R.days[R.days.length-1],inR=R.from?(d=>d>=from&&d<=to):(set=>d=>set.has(d))(new Set(R.days));
+ const all=R.from?months(from,to):touched,meta=Object.assign({v:1,d:{}},META||{});meta.d=Object.assign({},meta.d);if(!DATA)DATA=newData();
+ const sg=new Set(R.st.map(x=>dIx(DATA,DATA.st,DATA.sti,x)));
+ for(const ym of all){
+  if(META&&META.d&&META.d[ym]&&!DATA.d[ym]){const z=await getParts(fb,"d"+ym,Math.max(1,N(META.d[ym].parts)));if(z)loadMonth(DATA,ym,JSON.parse(await gun(z)))}
+  const old=DATA.d[ym]||[],keep=[];
+  for(let i=0;i<old.length;i+=5){const own=inR(ymd(ym,old[i+2]))&&sg.has(old[i+1]);if(!own){keep.push(old[i],old[i+1],old[i+2],old[i+3],old[i+4]);continue}
+   if(old[i+3])keep.push(old[i],old[i+1],old[i+2],old[i+3],0)}// المبيعات تبقى، واستلامها القديم يُستبدل
+  loadMonth(DATA,ym,{st:R.st,k:R.k,r:R.mon[ym]||[]},keep);
+  const r=DATA.d[ym];let sold=0,rq=0,dmin=32,dmax=0;for(let i=0;i<r.length;i+=5){sold+=r[i+3];rq+=r[i+4];if(!r[i+3])continue;if(r[i+2]<dmin)dmin=r[i+2];if(r[i+2]>dmax)dmax=r[i+2]}if(dmin>dmax){dmin=0;dmax=0}
+  let ca,cb;if(R.from){ca=from.slice(0,7)===ym?+from.slice(8):1;cb=to.slice(0,7)===ym?+to.slice(8):dim(ym)}else{const ds=R.days.filter(d=>d.slice(0,7)===ym);ca=ds.length?+ds[0].slice(8):0;cb=ds.length?+ds[ds.length-1].slice(8):0}
+  const pm=META&&META.d&&META.d[ym],rv=cvAdd(pm&&Array.isArray(pm.rv)?pm.rv:[],ca,cb);
+  const b=fb.writeBatch(X.db),oldP=pm?Math.max(1,N(pm.parts)):0;
+  if(!r.length){for(let i=0;i<oldP;i++)b.delete(fb.doc(X.db,"stk",i?"d"+ym+"_"+i:"d"+ym));delete meta.d[ym];delete DATA.d[ym]}
+  else{const P=parts(await gz(JSON.stringify(monthDoc(DATA,ym))));if(P.length>10)throw new Error("big");P.forEach((p,i)=>b.set(fb.doc(X.db,"stk",i?"d"+ym+"_"+i:"d"+ym),{v:1,z:p,at:Date.now()}));for(let i=P.length;i<oldP;i++)b.delete(fb.doc(X.db,"stk","d"+ym+"_"+i));
+   // شهر بلا ملف مبيعات: cv فارغة (coverage تعتبره غير مرفوع)
+   meta.d[ym]=Object.assign({},pm||{},{n:r.length/5,parts:P.length,sold,dmin:pm?N(pm.dmin)||dmin:dmin,dmax:pm?N(pm.dmax)||dmax:dmax,cv:pm&&Array.isArray(pm.cv)?pm.cv:pm?[[N(pm.dmin)||1,N(pm.dmax)||1]]:[],rv,rq,at:Date.now()})}
+  meta.at=Date.now();meta.by=by();b.set(fb.doc(X.db,"stk","meta"),meta);await b.commit();META=Object.assign({},meta)}
+ SOLDC={};ENVK="";LASTD=all;return all.length;
+}
+const rcvMonths=()=>Object.keys(META&&META.d||{}).filter(ym=>Array.isArray(META.d[ym].rv)&&META.d[ym].rv.length).sort();
+// مدى ملفات المشتريات المطلوب للراكد: آخر N يوماً حتى يوم ملف الأرصدة
+const rcvRange=()=>{const f=freshOf(CFG);if(!f||!rcvMonths().length||!(META&&META.q))return null;const e=qEnd(),t=today();return {from:addDays(e,-(f-1)),to:t>e?t:e}};// حتى اليوم: استلام بعد ملف الأرصدة يُحسب كذلك
 let LASTD=[];// (v234) الشهور اللي آخر ملف تاريخ لمسها (لجداول قاعدة البيانات)
 // 📤 (v179) النشر للفروع (stkpub): الأجزاء والفروع أولاً ثم meta (الفرع يقرأ meta ويتجاهل أي جزء رقمه مختلف = نشر لم يكتمل)
 let PUB=null,PUBBUSY=false;
@@ -925,7 +967,17 @@ async function onFiles(files){
  let TQ=false;const TY=new Set();// 🗄 (v234) اللي اتحفظ ← جداول قاعدة البيانات مرة واحدة بعد كل الملفات
  for(const f of [...files]){const nm=String(f.name||"ملف");
   try{BUSY="جاري قراءة "+nm+"…";paint();let last=0;const R=await readFile(f,p=>{const pc=Math.round(p*100);if(pc-last>=4){last=pc;const e=g("stk-pg");if(e)e.textContent=pc+"%"}});
-   if(!R.ok){REP.push({kind:"r",f:nm,t:"لم نتعرّف على أعمدة هذا الملف. المطلوب: DESCRIPTION2 و Store Name و SOLD_QTY، ومعها OH_QTY (ملف الكميات) أو أعمدة التاريخ (ملف التاريخ)."});continue}
+   if(!R.ok){REP.push({kind:"r",f:nm,t:"لم نتعرّف على أعمدة هذا الملف. المطلوب: DESCRIPTION2 و Store Name، ومعها SOLD_QTY و OH_QTY (ملف الكميات)، أو SOLD_QTY وأعمدة التاريخ (ملف التاريخ)، أو RCVD_QTY وأعمدة التاريخ (ملف المشتريات)."});continue}
+   // 📥 (v248) ملف المشتريات
+   if(R.type==="r"){
+    if(R.nan){REP.push({kind:"r",f:nm,t:"في ملف المشتريات "+R.nan+" خانة كمية ليست رقماً، فلم يُحفظ."});continue}
+    if(R.trunc){REP.push({kind:"r",f:nm,t:"ملف المشتريات مقطوع من Power BI عند 150 ألف سطر، فلم يُحفظ. نزّله على فترات أقصر (شهر أو شهرين في كل ملف) وارفعها كلها."});continue}
+    if(R.tot.rc!==undefined&&!near(R.tot.rc,R.sum.rc)){REP.push({kind:"r",f:nm,t:"مجموع الصفوف لا يطابق سطر الإجمالي في ملف المشتريات (المستلم "+R.sum.rc+" والإجمالي "+R.tot.rc+")، فلم يُحفظ. أعد تنزيل التقرير."});continue}
+    if(!R.n){REP.push({kind:"w",f:nm,t:"ملف المشتريات ليس فيه أي كمية مستلمة."});continue}
+    if(R.tot.rc===undefined)REP.push({kind:"w",f:nm,t:"لا يوجد سطر إجمالي في ملف المشتريات، فلم تُراجَع مجاميعه."});
+    BUSY="جاري حفظ المشتريات…";paint();const n=await saveR(R);LASTD.forEach(ym=>TY.add(ym));
+    REP.push({kind:"g",f:nm,t:"ملف المشتريات: "+R.n+" سطر · "+R.days.length+" يوماً"+(R.from?" · الفترة من "+R.from+" إلى "+addDays(R.to,-1):"")+" · "+n+" شهر محدَّث · المستلم "+R.sum.rc+(R.tot.rc!==undefined?" · المجموع مطابق لسطر الإجمالي":"")});
+    if(R.bad)REP.push({kind:"w",f:nm,t:R.bad+" سطر تُرك لنقص الكود أو التاريخ."});continue}
    const chk=R.tot.sold!==undefined?" · المجموع مطابق لسطر الإجمالي":"";
    // 🛡 (v174) لا يُحفظ ملف فيه خانة كمية غير رقمية، ولا ملف مجموع صفوفه يخالف سطر الإجمالي (المقطوع له رسالته الخاصة تحت)
    if(R.nan){REP.push({kind:"r",f:nm,t:"في الملف "+R.nan+" خانة كمية ليست رقماً، فلم يُحفظ. تأكد أن أعمدة الكميات أرقام ثم أعد تنزيل التقرير."});continue}
@@ -1207,9 +1259,10 @@ let TRL=[];// آخر تحويلات معروضة (غير المُنشأ لها �
 let ENVK="",WAY=null,OUTR=new Map();
 function envSync(){
  const since=META&&META.q?N(META.q.at):0,R=X&&X.reqs?X.reqs():null;let mx=0,cn=0;if(R)for(const r of R){if(r&&N(r.ts)>since){cn++;if(N(r.ts)>mx)mx=N(r.ts)}}
- const dy=pDays(null),k=since+"|"+cn+"|"+mx+"|"+(R?R.length:-1)+"|"+DATA.st.length+"|"+CFG.wh+"|"+dy;if(k===ENVK)return;ENVK=k;
+ const RR=rcvRange(),rl=RR?months(RR.from,RR.to).filter(ym=>DATA.d[ym]).join(","):"";
+ const dy=pDays(null),k=since+"|"+cn+"|"+mx+"|"+(R?R.length:-1)+"|"+DATA.st.length+"|"+CFG.wh+"|"+dy+"|"+(RR?RR.from:"")+"|"+rl;if(k===ENVK)return;ENVK=k;
  const nd=new Set();if(X&&X.branches)DATA.st.forEach((nm,ti)=>{if(!isBr(nm))nd.add(ti)});
- const T=R&&since&&cn?transitMap(DATA,R,since,CFG.wh):null;setEnv({tr:T&&T.pcs?T.m:null,nd,days:dy});WAY=T&&T.pcs?{n:T.n,pcs:T.pcs}:null;HOMEC=null;
+ const T=R&&since&&cn?transitMap(DATA,R,since,CFG.wh):null;setEnv({tr:T&&T.pcs?T.m:null,nd,days:dy,rcv:RR?rcvMap(DATA,RR.from,RR.to):null});WAY=T&&T.pcs?{n:T.n,pcs:T.pcs}:null;HOMEC=null;
 }
 const priNote=PL=>PL&&PL.length?'<p class="stk-src" style="margin:0 4px 10px">ترتيب الأكواد في كل فرع: <b data-notr>'+PL.map(x=>"<bdi>"+E(x)+"</bdi>").join(" ← ")+'</b> ثم باقي الأكواد'+(X&&!X.ro?" (يُغيَّر من «القواعد»)":"")+".</p>":"";
 const covNote=()=>{const c=covOf(CFG);return c>0?' <span data-notr dir="rtl">الكمية المقترحة تكفي الفرع '+fmt(c)+" يوماً من بيعه للصنف (تتغيّر من «القواعد»)، والمستودع يكمل الحد لكل الفروع أولاً ثم يوزّع الباقي بنسبة الحاجة.</span>":""};
@@ -1731,11 +1784,19 @@ function vSales(){
  ${ks.length>1?`<h3 style="margin-top:14px">حسب اللون والمقاس</h3><table class="stk-t"><tbody>${ks.slice(0,40).map(k=>`<tr><td data-notr>${E(DATA.k[k][1]||"—")} · ${E(DATA.k[k][2]||"—")}</td><td class="n"><b>${R.byK[k]}</b></td></tr>`).join("")}</tbody></table>`:""}</div>
  <div class="stk-card"><h3>يوماً بيوم</h3>${days.length?days.map(d=>`<div class="stk-day"><span data-notr>${d}</span><i class="${R.byDay[d]<0?"m":""}" style="width:${Math.round(Math.abs(R.byDay[d])/mx*62)}%"></i><b>${R.byDay[d]}</b></div>`).join(""):`<p>لا مبيعات في الفترة.</p>`}</div></div>`;
 }
+// (v248) سطر يشرح أثر ملف المشتريات على الراكد
+function staleRcvNote(L){
+ const f=freshOf(CFG);if(!f)return "";const RR=rcvRange(),rm=rcvMonths();
+ if(!rm.length)return `<div class="stk-rep w">لم يُرفع ملف مشتريات بعد، فقد يظهر هنا صنف وصل الفرع حديثاً ولم يأخذ وقته ليُباع. ارفع ملف المشتريات من «الملفات» ليُستثنى ما استُلم خلال آخر <b data-notr>${fmt(f)}</b> يوماً.</div>`;
+ const c=RR?months(RR.from,RR.to).filter(ym=>!(META.d[ym]&&Array.isArray(META.d[ym].rv)&&META.d[ym].rv.length)):[];
+ return `<div class="stk-rep${c.length?" w":""}">📥 استُبعد <b data-notr>${fmt(L.fresh||0)}</b> سطراً (<b data-notr>${fmt(L.freshQ||0)}</b> قطعة) لأن الفرع استلمه خلال آخر <b data-notr>${fmt(f)}</b> يوماً (من ملف المشتريات)${c.length?`. ⚠️ ملف المشتريات لا يغطي: <b data-notr dir="ltr">${E(c.join("، "))}</b>`:""}.</div>`;
+}
 function vStale(){
  const P=period(),L=focL(stale(DATA,CFG,{store:UI.st,vendor:UI.vn,min:UI.son,period:P,q:UI.q}),l=>DATA.k[l.ki][0],l=>vnOf(l.vi));
  LASTX={name:"الراكد",head:["الفرع","الكود","اللون","المقاس","المورد","الرصيد","المبيعات"],rows:()=>L.map(l=>{const x=DATA.k[l.ki];return [DATA.st[l.ti],x[0],x[1],x[2],l.vi>=0?DATA.vn[l.vi]:"",l.on,l.sold]})};
  return focBar()+`<div class="stk-bar"><label>الفرع<select data-sf="st" id="stk-st">${opt(stores(1),UI.st,"كل الفروع")}</select></label><label>المورد<select data-sf="vn" id="stk-vn">${opt(vendors(),UI.vn,"كل الموردين")}</select></label><label>بحث بالكود<input type="search" data-sf="q" id="stk-q" value="${E(UI.q)}" placeholder="مثلاً 13016" dir="ltr"></label><label>الرصيد من<input type="number" min="1" max="9999" data-sf="son" id="stk-son" value="${E(UI.son)}" placeholder="${E(CFG.stale)}"></label>${perSel()}<span class="sp"></span>${fclr("st,vn,q,son")}<button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>${gapNote(P)}
  <div class="stk-sum"><span><b>${fmt(L.length)}</b>سطر راكد</span><span><b>${fmt(L.reduce((s,l)=>s+l.on,0))}</b>قطعة</span></div>
+ ${staleRcvNote(L)}
  ${L.length?`<div class="stk-pan"><div class="tw"><table class="stk-t"><thead><tr>${UI.st?"":"<th>الفرع</th>"}<th>الكود</th><th>اللون</th><th class="n">المقاس</th><th class="n">الرصيد</th><th class="n">المبيعات</th></tr></thead><tbody>${L.slice(0,UI.lim).map(l=>`<tr${foCls(l)}>${UI.st?"":`<td>${sn(l.ti)}</td>`}${kCells(l.ki)}<td class="n"><b>${l.on}</b></td><td class="n">${l.sold}</td></tr>`).join("")}</tbody></table></div>${more(L.length)}</div>`:`<div class="stk-pan"><div class="stk-em">لا أصناف راكدة بهذه الشروط.</div></div>`}`;
 }
 // (v174) فحص المطابقة: يحمّل شهور السنة ثم يقارن مبيعات الأيام بمبيعات ملف الكميات لكل (صنف، فرع)
@@ -1771,13 +1832,14 @@ function vUp(){
  const pub=has?`<div class="stk-card"><h3>📤 النشر للفروع</h3><p>تشاهد الفروع وهي تكتب ورقة النواقص هل الصنف «متوفر» أو «كمية قليلة» أو «غير متوفر» في المستودع (بلا أرقام)، ولكل فرع «طلب مقترح» بالأصناف التي رصيده منها أقل من الحد وكانت تُباع عنده. يُنشر تلقائياً مع كل ملف كميات ومع حفظ القواعد.</p>
  <div class="stk-day"><span style="width:auto;flex:1;direction:rtl">آخر نشر</span><b data-notr>${PUB&&PUB.at?E(new Date(N(PUB.at)).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})):"لم يُنشر بعد"}</b></div>
  <button class="bt p" type="button" data-sk="pub" style="margin-top:8px">📤 انشر للفروع الآن</button></div>`:"";
- const drop=X.ro?`<div class="stk-rep">صلاحيتك في هذا القسم للمشاهدة والتحليل. رفع الملفات والنشر للفروع وتعديل القواعد للأدمن ومالك النظام.</div>`:pub+tabCard()+`<label class="stk-drop" id="stk-drop"><input type="file" id="stk-file" accept=".xlsx,.csv" multiple><b>⬆️ ارفع ملفات اليوم</b><small>اختر ملف الكميات وملف التاريخ معاً (أو اسحبهما هنا). المنصة تتعرّف على كل ملف من أعمدته وتربط بينهما.</small></label>`;
+ const drop=X.ro?`<div class="stk-rep">صلاحيتك في هذا القسم للمشاهدة والتحليل. رفع الملفات والنشر للفروع وتعديل القواعد للأدمن ومالك النظام.</div>`:pub+tabCard()+`<label class="stk-drop" id="stk-drop"><input type="file" id="stk-file" accept=".xlsx,.csv" multiple><b>⬆️ ارفع ملفات اليوم</b><small>اختر ملف الكميات وملف التاريخ وملف المشتريات معاً (أو اسحبها هنا). المنصة تتعرّف على كل ملف من أعمدته وتربط بينها.</small></label>`;
  return `${drop}
  ${REP.map(r=>`<div class="stk-rep ${r.kind==="g"?"g":r.kind==="w"?"w":"r"}">${r.f?`<b data-notr>${E(r.f)}</b> — `:""}${E(r.t)}</div>`).join("")}
  <div class="stk-up"><div class="stk-card"><h3>📦 ملف الكميات</h3>${q?`<p>آخر رفع: <b data-notr dir="ltr">${dts(q.at)}</b>${q.src?` · <span data-notr>${E(q.src)}</span>`:""}</p><p>${fmt(q.rows)} سطر · ${fmt(q.skus)} صنف (كود ولون ومقاس)</p><p>الرصيد ${fmt(q.on)} قطعة · المبيعات ${fmt(q.sold)} قطعة${q.from?` · من <span data-notr dir="ltr">${E(q.from)}</span> إلى <span data-notr dir="ltr">${E(addDays(q.to,-1))}</span>`:""}</p>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه <b data-notr>OH_QTY</b> (الكمية) بلا تاريخ.</p>`}</div>
  <div class="stk-card"><h3>📅 ملف التاريخ</h3>${yms.length?`<p>${yms.length} شهر محفوظ · ${fmt(dsold)} قطعة مباعة${q?` · يغطي <b>${cov}%</b> من مبيعات ملف الكميات`:""}</p>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه السنة والشهر واليوم بلا كمية.</p>`}
  <div class="stk-mo">${need.map(ym=>d[ym]?`<span data-notr title="${fmt(d[ym].n)} · ${N(d[ym].dmin)}–${N(d[ym].dmax)}">${ym} ✓</span>`:`<span class="x" data-notr>${ym}</span>`).join("")}</div>
- <p style="margin-top:10px">Power BI يقطع التصدير عند 150 ألف سطر. نزّل ملف التاريخ على فترات (شهر أو شهرين) وارفعها كلها مرة واحدة للتأسيس، ثم يكفي كل يوم ملف الشهر الحالي: كل ملف يستبدل أيام فترته فقط.</p></div></div>${chk}`;
+ <p style="margin-top:10px">Power BI يقطع التصدير عند 150 ألف سطر. نزّل ملف التاريخ على فترات (شهر أو شهرين) وارفعها كلها مرة واحدة للتأسيس، ثم يكفي كل يوم ملف الشهر الحالي: كل ملف يستبدل أيام فترته فقط.</p></div>
+ ${(()=>{const rm=rcvMonths(),tq=rm.reduce((s,ym)=>s+N(d[ym].rq),0);return `<div class="stk-card"><h3>📥 ملف المشتريات</h3>${rm.length?`<p>${rm.length} شهر · ${fmt(tq)} قطعة مستلمة</p><div class="stk-mo">${rm.map(ym=>`<span data-notr title="${E(d[ym].rv.map(x=>x[0]+"–"+x[1]).join(", "))}">${ym} ✓</span>`).join("")}</div>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه الكود واللون والمقاس والمخزن و<b data-notr>RCVD_QTY</b> (الكمية المستلمة) والتاريخ، بلا مبيعات.</p>`}<p style="margin-top:10px">يُستخدم ليُستثنى من «الراكد» ما استلمه الفرع خلال آخر ${fmt(freshOf(CFG))} يوماً. كل ملف يستبدل استلام أيام فترته فقط ولا يلمس المبيعات.</p></div>`})()}</div>${chk}`;
 }
 function vCfg(){
  const row=(k,t,s,mn)=>`<div class="f"><div><b>${t}</b><small>${s}</small></div><input type="number" min="${mn}" max="9999" data-cf="${k}" id="stk-c-${k}" value="${E(CFG[k])}"></div>`;
@@ -1787,11 +1849,12 @@ function vCfg(){
  ${row("slow","الفرع «لا يبيع» لو مبيعاته لا تزيد على","يُسحب فقط من فرع مبيعاته من الصنف في الفترة لا تزيد على هذا الرقم (صفر = لم يبع شيئاً).",0)}
  ${row("stale","حد الراكد","الصنف راكد في الفرع لو رصيده هذا الرقم أو أكثر ولم يبع.",1)}
  <div class="f"><div><b>أيام التغطية</b><small>الكمية المقترحة للفرع = ما يكفيه هذا العدد من الأيام بمعدل بيعه للصنف، ولا تقل عن حد النواقص، ولا تزيد على رصيد المستودع. صفر = إكمال الحد فقط (كما كان).</small></div><input type="number" min="0" max="365" data-cv="1" id="stk-c-cov" value="${covOf(CFG)}"></div>
+ <div class="f"><div><b>الصنف المستلم حديثاً ليس راكداً (يوماً)</b><small>من ملف المشتريات: صنف استلمه الفرع خلال هذا العدد من الأيام لا يظهر في «الراكد» حتى لو لم يبع بعد. صفر = بلا استثناء.</small></div><input type="number" min="0" max="365" data-frs="1" id="stk-c-fr" value="${freshOf(CFG)}"></div>
  <div class="f"><div><b>ترتيب أولوية الأكواد في النواقص</b><small>الأكواد التي تبدأ بهذه الأرقام تظهر أولاً بهذا الترتيب داخل كل فرع في «نواقص الفروع» و«خطة اليوم»، ثم باقي الأكواد. افصل بينها بفاصلة. اتركها فارغة للترتيب العادي بالكود.</small></div><input type="text" data-pr="1" id="stk-c-pri" dir="ltr" autocomplete="off" maxlength="300" value="${E(priList(CFG).join(", "))}" style="max-width:340px;height:42px"></div>
  <div class="f"><div><b>مخزن المستودع</b><small>المخزن الذي تُحسب منه النواقص.</small></div><select data-cf="wh" id="stk-c-wh" style="height:42px;max-width:220px">${DATA.st.slice().sort().map(s=>`<option data-notr${s===CFG.wh?" selected":""}>${E(s)}</option>`).join("")}</select></div>
  <div class="f"><div><b>مخازن خارج التحليل</b><small>لا تظهر في النواقص ولا يُسحب منها ولا يُرسل إليها.</small><div class="stk-chk" style="margin-top:8px">${DATA.st.filter(s=>s!==CFG.wh).sort().map(s=>`<label data-notr><input type="checkbox" data-cx="${E(s)}"${(CFG.ex||[]).indexOf(s)>=0?" checked":""}>${E(s)}</label>`).join("")}</div></div></div>
  <div class="f"><div><b>حدود خاصة</b><small>حد نواقص مختلف لمورد أو لكود بعينه (مثلاً 20 لمورد معيّن). الكود يغلب المورد.</small>
- <div style="margin-top:8px">${(CFG.ov||[]).map((o,i)=>o.t==="a"||o.t==="cov"||o.t==="pri"?"":`<div class="stk-day"><span style="width:auto" data-notr>${o.t==="c"?"كود":"مورد"}: ${E(o.k)}</span><b>أقل من ${N(o.min)}</b><button class="bt s" type="button" data-sk="ovx" data-i="${i}">حذف</button></div>`).join("")||`<small>لا حدود خاصة.</small>`}</div>
+ <div style="margin-top:8px">${(CFG.ov||[]).map((o,i)=>o.t==="a"||o.t==="cov"||o.t==="pri"||o.t==="fr"?"":`<div class="stk-day"><span style="width:auto" data-notr>${o.t==="c"?"كود":"مورد"}: ${E(o.k)}</span><b>أقل من ${N(o.min)}</b><button class="bt s" type="button" data-sk="ovx" data-i="${i}">حذف</button></div>`).join("")||`<small>لا حدود خاصة.</small>`}</div>
  <div class="stk-bar" style="margin-top:10px;border:0;padding:0;background:none"><label>النوع<select id="stk-ot"><option value="v">مورد</option><option value="c">كود</option></select></label><label>المورد<select id="stk-ov">${opt(vendors(),"","اختر المورد")}</select></label><label>أو الكود<input type="text" id="stk-oc" list="stk-codes2" dir="ltr" autocomplete="off"></label><label>الحد<input type="number" id="stk-om" min="1" max="9999" value="20"></label><button class="bt" type="button" data-sk="ova">إضافة</button></div><datalist id="stk-codes2">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist></div></div>
  <div class="f"><div><b>أسماء الفروع في «اسأل»</b><small>الاسم الذي تكتبه في السؤال ليُفهم أنه هذا المخزن (مثلاً «النخيل»). رقم الفرع واسمه الإنجليزي وأشهر الأسماء العربية مفهومة من غير إضافة. الاسم الذي تضيفه يغلب المعروف.</small>
  <div style="margin-top:8px">${(CFG.ov||[]).map((o,i)=>o.t!=="a"?"":`<div class="stk-day"><span style="width:auto;direction:rtl" data-notr>${E(o.k)}</span><b data-notr dir="ltr">${E(o.s)}</b><button class="bt s" type="button" data-sk="ovx" data-i="${i}">حذف</button></div>`).join("")||`<small>لم تُضف أسماء.</small>`}</div>
@@ -2138,6 +2201,8 @@ function paint(keepFocus){
  const homeNeed=()=>{const p=period(),e=qEnd(),f0=prevYm(e.slice(0,7))+"-01",f6=addDays(e,-59),b=dHas()?{from:f0<f6?f0:f6,to:e}:null;return p&&b?{from:p.from<b.from?p.from:b.from,to:p.to>b.to?p.to:b.to}:p||b};
  const P=UI.tab==="home"?homeNeed():UI.tab==="item"?itemNeed():UI.tab==="ask"?askNeed():UI.tab==="sales"?(UI.from&&UI.to&&UI.from<=UI.to&&UI.code?{from:UI.from,to:UI.to}:null):(UI.tab==="up"||UI.tab==="cfg"?null:period());
  if(P&&!BUSY&&META&&META.d&&DATA&&months(P.from,P.to).some(ym=>META.d[ym]&&!DATA.d[ym]&&!MFAIL[ym]))needMonths(P.from,P.to);
+ // (v248) شهور المشتريات اللازمة لاستثناء المستلم حديثاً من الراكد
+ else if(!BUSY&&DATA&&DATA.has&&UI.tab!=="up"&&UI.tab!=="cfg"){const RR=rcvRange();if(RR&&months(RR.from,RR.to).some(ym=>META.d[ym]&&!DATA.d[ym]&&!MFAIL[ym]))needMonths(RR.from,RR.to)}
 }
 const later=()=>{clearTimeout(PT);PT=setTimeout(()=>paint(),260)};
 function csv(){
@@ -2286,6 +2351,7 @@ function wire(){
   const k=t.dataset.sf;if(k){UI[k]=t.type==="checkbox"?(t.checked?1:0):t.value;UI.lim=200;if(k==="code"){UI.cl="";UI.sz=""}if(k==="cl")UI.sz="";return true}
   if(t.dataset.hck){const o=chkLoad(),k=String(t.dataset.hck).slice(0,20);if(t.checked)o[k]=1;else delete o[k];chkSave(o);return true}
   if(t.dataset.pr){const v=priParse(t.value).join(",");CFG.ov=(CFG.ov||[]).filter(o=>!(o&&o.t==="pri")).concat([{t:"pri",k:"pri",s:v}]);t.value=priParse(v).join(", ");return false}
+  if(t.dataset.frs){const v=Math.max(0,Math.min(365,Math.round(N(t.value))));CFG.ov=(CFG.ov||[]).filter(o=>!(o&&o.t==="fr")).concat([{t:"fr",k:"fr",min:v}]);ENVK="";HOMEC=null;return false}
   if(t.dataset.cv){const v=Math.max(0,Math.min(365,Math.round(N(t.value))));CFG.ov=(CFG.ov||[]).filter(o=>!(o&&o.t==="cov")).concat([{t:"cov",k:"cov",min:v}]);HOMEC=null;return false}
   if(t.dataset.cf){const c=t.dataset.cf;CFG[c]=c==="wh"?t.value:Math.max(0,Math.min(9999,N(t.value)));return false}
   if(t.dataset.cx!==undefined){const s=new Set(CFG.ex||[]);if(t.checked)s.add(t.dataset.cx);else s.delete(t.dataset.cx);CFG.ex=[...s];return false}return false};
