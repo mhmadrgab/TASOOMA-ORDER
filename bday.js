@@ -6,7 +6,6 @@
 //   dcimg/{فرع}_{YYYY-MM-DD}_{1..10} = {img}. القواعد في 002_rules.sql (v241)، والإشعارات onDc في السيرفر.
 import {collection,doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,withTimeout,failReason,FAIL_MSG} from "./fb.js";
 import {zoomOpen} from "./zoom.js";
-import {scanDoc} from "./scan.js";// 📄 (v244) المسح الضوئي بالكاميرا
 import {openBytes} from "./att.js";// (v244) فتح/تنزيل مرفق PDF
 const E=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 const N=v=>Number.isFinite(+v)?+v:0;
@@ -183,10 +182,9 @@ function dayForm(r,dflt){
  <div><label for="dc-r">المرتجع — اختياري</label><input id="dc-r" type="text" inputmode="decimal" dir="ltr" value="${r&&r.ret?E(r.ret):""}" placeholder="0.00"></div></div>
  <div class="sum" id="dc-sum"></div>
  <label for="dc-n">ملاحظات (اختياري، مثلاً سبب الفرق)</label><textarea id="dc-n" rows="2" maxlength="400">${r?E(r.note||""):""}</textarea>
- <label>مرفقات الموازنة والسندات ${r?"(أضف مرفقات جديدة فقط لو تريد استبدال الحالية: "+N(r.ni)+")":"(إجباري، حتى "+MAXI+")"}</label>
- <button type="button" class="b p" data-dc="att" aria-expanded="false" aria-controls="dc-ach">📎 إضافة مرفق</button>
- <div class="ach" id="dc-ach" hidden><button type="button" data-dc="scan"><b>📄 مسح ضوئي بالكاميرا</b><small>الأوضح: تُقصّ الورقة وتُفرد وتصبح خلفيتها بيضاء</small></button><button type="button" data-dc="pick"><b>🖼 صورة من الجهاز</b><small>صورة محفوظة على الجوال أو الكمبيوتر</small></button><button type="button" data-dc="pdf"><b>📑 ملف PDF</b><small>حتى 850 كيلوبايت للملف</small></button></div>
- <input id="dc-f" type="file" accept="image/*" multiple hidden><input id="dc-p" type="file" accept="application/pdf,.pdf" multiple hidden>
+ <label>ملفات PDF للموازنة والسندات ${r?"(أضف ملفات جديدة فقط لو تريد استبدال الحالية: "+N(r.ni)+")":"(إجباري، حتى "+MAXI+" ملفات، كل ملف حتى 3 ميجا)"}</label>
+ <button type="button" class="b p" data-dc="pdf">📑 إضافة ملف PDF</button>
+ <input id="dc-p" type="file" accept="application/pdf,.pdf" multiple hidden>
  <div class="th" id="dc-th"></div><div class="pg" id="dc-pg" aria-live="polite"></div>
  <div class="row"><button type="button" class="b" data-dc="mx">إلغاء</button><button type="button" class="b p" data-dc="${r?"esave":"save"}" data-i="${r?E(r.id):""}">${r&&r.st==="back"?"حفظ وإعادة الإرسال":"حفظ وإرسال للمحاسب"}</button></div>`,"form");
  sumPaint();const f=m.querySelector(r?"[data-na]":"#dc-d");if(f)setTimeout(()=>{try{f.focus()}catch(e){}},60);
@@ -200,27 +198,29 @@ function readForm(){
 }
 function sumPaint(){const s=g("dc-sum");if(!s)return;const f=readForm().v,c=dcCalc({net:f.net,cash:N(f.cash),oth:N(f.oth),sys:N(f.sys),ret:N(f.ret)});
  s.innerHTML=`<div><span>الشبكة</span><b>${money(c.net)}</b></div><div><span>المحصّل (شبكة + كاش + أخرى)</span><b>${money(c.got)}</b></div><div><span>صافي السيستم (المبيعات − المرتجع)</span><b>${money(c.want)}</b></div><div class="df ${diffCls(c.diff)}"><span>الفرق</span><b>${diffTxt(c.diff)}</b></div>`}
-// (v244) المرفق: {k:"img", f: صورة أو مسح ضوئي} أو {k:"pdf", d: data URL, nm}
-const pdfTile=nm=>`<span class="pdf"><b>📄 PDF</b><small data-notr>${E(nm||"")}</small></span>`;
-function thumbs(){const t=g("dc-th");if(!t)return;t.innerHTML=IMGS.map((x,k)=>`<button type="button" data-dc="irm" data-k="${k}" title="إزالة المرفق">${x.k==="pdf"?pdfTile(x.nm):`<img alt="" data-k="${k}">`}<i>${k+1} ×</i></button>`).join("");
- IMGS.forEach((x,k)=>{if(x.k==="pdf")return;const im=t.querySelector(`img[data-k="${k}"]`);if(im){const u=URL.createObjectURL(x.f);im.onload=()=>URL.revokeObjectURL(u);im.src=u}})}
+// (v249، محمد: «المرفقات في اليوميات PDF فقط») المرفق = {k:"pdf", d: data URL, nm, sz}. الصور القديمة تُعرض كما هي.
+const pdfTile=(nm,sz)=>`<span class="pdf"><b>📄 PDF</b><small data-notr>${E(nm||"")}</small>${sz?`<small dir="ltr">${sz<104858?Math.max(1,Math.round(sz/1024))+" KB":(sz/1048576).toFixed(1)+" MB"}</small>`:""}</span>`;
+function thumbs(){const t=g("dc-th");if(!t)return;t.innerHTML=IMGS.map((x,k)=>`<button type="button" data-dc="irm" data-k="${k}" title="إزالة الملف">${pdfTile(x.nm,x.sz)}<i>${k+1} ×</i></button>`).join("")}
 const fnm=s=>String(s||"").replace(/[<>"'&\\/:*?|\u0000-\u001f\u007f‎‏‪-‮⁦-⁩]/g,"").trim().slice(0,80);
-const PDF_CH=1150000;// حد حروف base64 (حارس المستند 1.2 ميجا) ≈ 850 كيلوبايت
+const PDF_ONE=1150000,PDF_PART=1100000,PDF_MAX=3145728;// مستند واحد لحد 1.15 مليون حرف، وإلا أجزاء 1.1 مليون (حتى 4)، والملف حتى 3 ميجا
 function addPdfs(files){
  const L=[].slice.call(files||[]);let bad=0,big=0;
- Promise.all(L.map(f=>new Promise(ok=>{if(!/\.pdf$/i.test(f.name)&&f.type!=="application/pdf"){bad++;return ok(null)}
+ Promise.all(L.map(f=>new Promise(ok=>{if(!/\.pdf$/i.test(f.name)&&f.type!=="application/pdf"){bad++;return ok(null)}if(f.size>PDF_MAX){big++;return ok(null)}
   const rd=new FileReader();rd.onload=()=>{const d=String(rd.result||"").replace(/^data:[^;,]*;base64,/,"data:application/pdf;base64,");
-   if(d.indexOf("data:application/pdf;base64,JVBERi0")!==0){bad++;return ok(null)}if(d.length>PDF_CH){big++;return ok(null)}ok({k:"pdf",d,nm:fnm(f.name)||"ملف.pdf"})};
+   if(d.indexOf("data:application/pdf;base64,JVBERi0")!==0){bad++;return ok(null)}ok({k:"pdf",d,nm:fnm(f.name)||"ملف.pdf",sz:f.size})};
   rd.onerror=()=>{bad++;ok(null)};rd.readAsDataURL(f)}))).then(R=>{
-  const b0=IMGS.length;R.filter(Boolean).forEach(x=>IMGS.push(x));if(IMGS.length>MAXI){IMGS=IMGS.slice(0,MAXI);X.toast("الحد "+MAXI+" مرفقات","er")}
-  if(big)X.toast("ملف PDF أكبر من 850 كيلوبايت. صغّره أو استخدم المسح الضوئي","er");else if(bad)X.toast("الملف ليس PDF صالحاً","er");
+  const b0=IMGS.length;R.filter(Boolean).forEach(x=>IMGS.push(x));if(IMGS.length>MAXI){IMGS=IMGS.slice(0,MAXI);X.toast("الحد "+MAXI+" ملفات","er")}
+  if(big)X.toast("ملف PDF أكبر من 3 ميجا. صغّره ثم أرفقه","er");else if(bad)X.toast("الملف ليس PDF صالحاً","er");
   if(IMGS.length!==b0)thumbs()})}
-// الصورة: JPEG حتى 1600 بكسل وأقل من 1.2 مليون حرف (نفس عهدة الفروع)
-function shrink(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(u);let w=im.naturalWidth,h=im.naturalHeight,k=Math.min(1,1600/Math.max(w,h));
- const cv=document.createElement("canvas");let q=.82,d="";for(let t=0;t<6;t++){cv.width=Math.max(1,Math.round(w*k));cv.height=Math.max(1,Math.round(h*k));const x=cv.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);x.drawImage(im,0,0,cv.width,cv.height);d=cv.toDataURL("image/jpeg",q);if(d.length<=1150000)break;q-=.12;k*=.8}
- d.length<=1150000&&/^data:image\/jpeg;base64,/.test(d)?ok(d):no(new Error("big"))};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error("img"))};im.src=u})}
-async function upImgs(id){const P=g("dc-pg");for(let k=0;k<IMGS.length;k++){if(P)P.textContent=`جاري رفع المرفق ${k+1} من ${IMGS.length}…`;const x=IMGS[k];
- const body=x.k==="pdf"?{pdf:x.d,nm:x.nm}:{img:await shrink(x.f)};await withTimeout(setDoc(doc(X.db,"dcimg",id+"_"+(k+1)),body),30000)}if(P)P.textContent=""}
+// الرفع: الملف الصغير مستند واحد، والكبير أجزاء أولاً ثم الرأس {nm, pn, sz}. ترجع عدد الأجزاء لكل ملف (0 = مستند واحد)
+async function upImgs(id){const P=g("dc-pg"),out=[];for(let k=0;k<IMGS.length;k++){const x=IMGS[k],nm=`جاري رفع الملف ${k+1} من ${IMGS.length}`;
+  if(x.d.length<=PDF_ONE){if(P)P.textContent=nm+"…";await withTimeout(setDoc(doc(X.db,"dcimg",id+"_"+(k+1)),{pdf:x.d,nm:x.nm}),30000);out.push(0);continue}
+  const b=x.d.slice(x.d.indexOf(",")+1),pn=Math.ceil(b.length/PDF_PART);
+  for(let j=1;j<=pn;j++){if(P)P.textContent=`${nm} (جزء ${j} من ${pn})…`;await withTimeout(setDoc(doc(X.db,"dcimg",id+"_"+(k+1)+"p"+j),{d:b.slice((j-1)*PDF_PART,j*PDF_PART)}),45000)}
+  await withTimeout(setDoc(doc(X.db,"dcimg",id+"_"+(k+1)),{nm:x.nm,pn,sz:x.sz}),30000);out.push(pn)}
+ if(P)P.textContent="";return out}
+// بعد التعديل: امسح أجزاء قديمة لم تعد مستخدمة (ملف استُبدل بأصغر، أو ملفات زادت عن العدد الجديد)
+function cleanParts(id,keep,n0){const J=[];for(let k=1;k<=Math.max(n0,keep.length);k++)for(let j=(keep[k-1]||0)+1;j<=4;j++)J.push(deleteDoc(doc(X.db,"dcimg",id+"_"+k+"p"+j)).catch(()=>{}));return Promise.all(J)}
 async function fail(e){const w=await failReason(e);X.toast(w==="denied"?"غير مسموح. ربما أُقفلت اليومية أو لم تتحدّث القواعد بعد":FAIL_MSG[w]||"تعذّر الحفظ","er")}
 function check(v,isNew){
  if(isNew&&(!/^\d{4}-\d{2}-\d{2}$/.test(v.dt)||v.dt>today()||v.dt<dayAgo(60))){X.toast("اختر تاريخ اليومية (ليس في المستقبل)","er");return false}
@@ -255,9 +255,11 @@ function viewForm(id,keep){
 const ICACHE=new Map();
 async function loadImgs(id,n,upd){IMGK=id+":"+n+":"+upd;
  for(let k=1;k<=n;k++){const key=id+"_"+k+"@"+upd;let d=ICACHE.get(key);
-  if(!d){try{const s=await getDoc(doc(X.db,"dcimg",id+"_"+k)),v=s.exists()?s.data():null;d=v&&v.pdf?{pdf:String(v.pdf),nm:String(v.nm||"")}:v&&v.img?{img:String(v.img)}:null;if(d){if(ICACHE.size>40)ICACHE.delete(ICACHE.keys().next().value);ICACHE.set(key,d)}}catch(e){d=null}}
-  if(OPEN!==id)return;const b=document.querySelector(`#dc-imgs [data-k="${k}"]`);if(b)b.innerHTML=d&&d.pdf?`${pdfTile(d.nm)}<i>${k}</i>`:d?`<img alt="صورة ${k}" src="${E(d.img)}"><i>${k}</i>`:`<span class="ld">غير موجودة</span><i>${k}</i>`}}
-function openPdf(d){try{const b64=d.pdf.split(",")[1]||"",bin=atob(b64),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);openBytes(u8,d.nm||"yomia.pdf",X.toast,b64)}catch(e){X.toast("تعذّر فتح الملف","er")}}
+  if(!d){try{const s=await getDoc(doc(X.db,"dcimg",id+"_"+k)),v=s.exists()?s.data():null;d=v&&v.pdf?{pdf:String(v.pdf),nm:String(v.nm||"")}:v&&v.pn?{pn:+v.pn,nm:String(v.nm||""),sz:+v.sz||0}:v&&v.img?{img:String(v.img)}:null;if(d){if(ICACHE.size>40)ICACHE.delete(ICACHE.keys().next().value);ICACHE.set(key,d)}}catch(e){d=null}}
+  if(OPEN!==id)return;const b=document.querySelector(`#dc-imgs [data-k="${k}"]`);if(b)b.innerHTML=d&&(d.pdf||d.pn)?`${pdfTile(d.nm,d.sz)}<i>${k}</i>`:d?`<img alt="صورة ${k}" src="${E(d.img)}"><i>${k}</i>`:`<span class="ld">غير موجودة</span><i>${k}</i>`}}
+// (v249) فتح PDF: مستند واحد، أو تجميع الأجزاء p1..pn ثم التأكد أن أوله %PDF- (openBytes يتأكد)
+async function openPdf(d,base){try{let b64="";if(d.pn){X.toast("جاري تحميل الملف…");for(let j=1;j<=d.pn;j++){const s=await getDoc(doc(X.db,"dcimg",base+"p"+j));if(!s.exists())throw new Error("part");b64+=String(s.data().d||"")}}else b64=d.pdf.split(",")[1]||"";
+ const bin=atob(b64),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);openBytes(u8,d.nm||"yomia.pdf",X.toast,b64)}catch(e){X.toast("تعذّر فتح الملف","er")}}
 function csv(){
  const L=filtered(),q=v=>{let s=String(v==null?"":v);if(/^[=+\-@]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};
  const rows=[["الفرع","التاريخ","اليوم","أجهزة الشبكة","الشبكة","الكاش","مدفوعات أخرى","المحصّل","مبيعات السيستم","المرتجع","صافي السيستم","الفرق","الحالة","سجّلها","راجعها","سبب الإرجاع","ملاحظة الفرع","عدد الصور"]].concat(L.map(r=>{const c=dcCalc(r);
@@ -276,11 +278,8 @@ async function onClick(e){
  if(a==="nadd"){const w=g("dc-net");if(w&&w.querySelectorAll("[data-nr]").length<MAXN){const k=w.querySelectorAll("[data-nr]").length+1;w.insertAdjacentHTML("beforeend",netRow("جهاز "+k,"",k));const f=w.lastElementChild.querySelector("[data-na]");if(f)f.focus()}else X.toast("الحد "+MAXN+" أجهزة","er");return}
  if(a==="nrm"){const row=t.closest("[data-nr]");if(row)row.remove();sumPaint();return}
  if(a==="irm"){IMGS.splice(+t.dataset.k,1);thumbs();return}
- if(a==="img"){const d=r?ICACHE.get(id+"_"+t.dataset.k+"@"+N(r.upd)):null;if(d&&d.pdf){openPdf(d);return}const b=t.querySelector("img");if(b&&b.src)zoomOpen(b.src,"يومية "+(r?brName(r.br)+" "+dmy(r.dt):""));return}
- if(a==="att"){const c=g("dc-ach");if(c){c.hidden=!c.hidden;t.setAttribute("aria-expanded",String(!c.hidden))}return}
- if(a==="pick"||a==="pdf"){const c=g("dc-ach");if(c)c.hidden=true;const i=g(a==="pdf"?"dc-p":"dc-f");if(i)i.click();return}
- if(a==="scan"){const c=g("dc-ach");if(c)c.hidden=true;if(IMGS.length>=MAXI){X.toast("الحد "+MAXI+" مرفقات","er");return}
-  scanDoc({toast:X.toast}).then(bs=>{if(!X||!g("dc-th"))return;(bs||[]).forEach(b=>IMGS.push({k:"img",f:b}));if(IMGS.length>MAXI){IMGS=IMGS.slice(0,MAXI);X.toast("الحد "+MAXI+" مرفقات","er")}thumbs()});return}
+ if(a==="img"){const d=r?ICACHE.get(id+"_"+t.dataset.k+"@"+N(r.upd)):null;if(d&&(d.pdf||d.pn)){openPdf(d,id+"_"+t.dataset.k);return}const b=t.querySelector("img");if(b&&b.src)zoomOpen(b.src,"يومية "+(r?brName(r.br)+" "+dmy(r.dt):""));return}
+ if(a==="pdf"){if(IMGS.length>=MAXI){X.toast("الحد "+MAXI+" ملفات","er");return}const i=g("dc-p");if(i)i.click();return}
  if(a==="q"){quick(t.dataset.q);if(X.redraw)X.redraw();return}
  if(a==="st"){F.st=F.st===t.dataset.s?"":t.dataset.s;if(F.st&&F.st!=="ok"){F.from="";F.to="";F.q=""}if(X.redraw)X.redraw();return}
  if(a==="csv"){csv();return}
@@ -288,7 +287,7 @@ async function onClick(e){
  if(a==="save"||a==="esave"){
   const {v,bad}=readForm();if(bad){X.toast("اكتب المبالغ أرقاماً فقط","er");return}
   const isNew=a==="save";if(!check(v,isNew))return;
-  if(isNew&&!IMGS.length){X.toast("صور فاتورة الموازنة والسندات إجبارية","er");return}
+  if(isNew&&!IMGS.length){X.toast("ملف PDF للموازنة والسندات إجباري","er");return}
   BUSY=true;t.disabled=true;
   try{
    if(isNew){const did=X.code+"_"+v.dt;
@@ -298,11 +297,12 @@ async function onClick(e){
     try{localStorage.setItem(devKey(),JSON.stringify(v.net.map(x=>x.n).slice(0,MAXN)))}catch(x){}
     closeM();X.toast("✅ أُرسلت اليومية للمحاسب");pg(did)}
    else if(r){const n0=N(r.ni);let ni=n0;
-    if(IMGS.length){await upImgs(id);ni=IMGS.length}
+    let keep=[];if(IMGS.length){keep=await upImgs(id);ni=IMGS.length}
     await withTimeout(updateDoc(doc(X.db,"dclose",id),Object.assign(body(v,r),{ni,upd:Date.now(),st:"pend"})),20000);
     for(let k=ni+1;k<=n0;k++){try{await deleteDoc(doc(X.db,"dcimg",id+"_"+k))}catch(x){}}
+    if(IMGS.length||n0>ni)await cleanParts(id,keep,n0);
     const was=r.st;closeM();X.toast(was==="back"?"✅ أُعيد إرسال اليومية للمحاسب":"✅ عُدّلت اليومية");if(was==="back")pg(id)}
-  }catch(x){BUSY=false;t.disabled=false;const P=g("dc-pg");if(P)P.textContent="";if(x&&/big|img/.test(x.message))X.toast("تعذّر تجهيز إحدى الصور. جرّب صورة أخرى","er");else fail(x)}
+  }catch(x){BUSY=false;t.disabled=false;const P=g("dc-pg");if(P)P.textContent="";fail(x)}
   return}
  if((a==="ok"||a==="back")&&r&&canAct()){
   let note="";if(a==="back"){note=String(g("dc-rn")&&g("dc-rn").value||"").trim().slice(0,300);if(note.length<2){X.toast("اكتب سبب الإرجاع ليصل للفرع","er");const f=g("dc-rn");if(f)f.focus();return}}
@@ -315,8 +315,6 @@ async function onClick(e){
 }
 function onChange(e){
  const t=e.target;if(!X||!t)return;
- if(t.id==="dc-f"){const fs=[].slice.call(t.files||[]).filter(f=>/^image\//.test(f.type)||/\.(jpe?g|png|heic|webp)$/i.test(f.name));
-  const b0=IMGS.length;IMGS=IMGS.concat(fs.map(f=>({k:"img",f}))).slice(0,MAXI);if(b0+fs.length>MAXI||(t.files||[]).length>fs.length)X.toast("الصور فقط، حتى "+MAXI+" مرفقات","er");t.value="";thumbs();return}
  if(t.id==="dc-p"){addPdfs(t.files);t.value="";return}
  if(t.matches&&t.matches("[data-dcf]")){const k=t.dataset.dcf;F[k]=String(t.value||"");if(k==="from"||k==="to")F.q="";if(F.from&&F.to&&F.from>F.to){const z=F.from;F.from=F.to;F.to=z}if(X.redraw)X.redraw()}
 }
