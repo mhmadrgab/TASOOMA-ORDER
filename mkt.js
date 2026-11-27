@@ -18,7 +18,7 @@ export {CH, ibanOk, ibanNorm} from "./mkt-core.js";
 const g = id => document.getElementById(id);
 let X = null, ROOT = null, TOP = null, BODY = null, ON = false, LOADED = false, BUSY = false, UN = [], PEND = null, WD = new Map(), SEEN = {}, RT = 0, DRAG = "";
 const RAW = new Map(), M = {C: new Map(), T: new Map(), D: new Map(), X: new Map(), P: new Map()}, IBC = new Map();
-const S = {pg: "home", c: "", v: "", f: "act", lay: "cards", q: "", cm: "", who: "", wr: "", tm: "", pq: "", pf: "all", pv: "deals"};
+const S = {pg: "home", c: "", v: "", f: "act", lay: "cards", q: "", cm: "", who: "", wr: "", tm: "", pq: "", pf: "all", pv: "deals", iq: "", if: "all"};
 const DR = {k: "", id: "", tab: "cm", cm: [], cmOk: false, at: [], atOk: false, up: 0, un: null, busy: false, back: null};
 const SKEY = "tz_mk_ui", SEENK = () => "tz_mk_seen_" + me();
 const me = () => X && X.me ? String(X.me.e || "").toLowerCase() : "";
@@ -190,6 +190,8 @@ async function tWrite(id, fn, okMsg, note) {
 const tReset = (x, st, drop, extra) => { const n = Object.assign({}, x, {st, upd: Date.now()}, extra || {}); delete n.id; drop.forEach(k => delete n[k]); return setDoc(tRef(x.id), n) };
 function tgo(id, act) {
   const x = M.T.get(id); if (!x) return; const can = taskCan(x, role(), me());
+  if (x.pid && ["submit", "finish", "approve", "return"].indexOf(act) >= 0) { const dl = dealOfTask(id); if (dl) { toast("هذه المهمة مرتبطة باتفاق مؤثر: القرار من صفحة الاتفاق"); return openDrawer("d", dl.id) }
+    const c0 = M.C.get(x.c); if (c0 && (can.mine || role().mgr)) return dealForm(c0, null, {pid: x.pid, tk: id}); return }
   if (act === "start") return tWrite(id, () => updateDoc(tRef(id), {st: "doing", upd: Date.now()}), "", false);
   if (act === "submit") return tWrite(id, () => updateDoc(tRef(id), {st: "rev", sb: stampMe(), upd: Date.now()}), "📤 أُرسل لمدير التسويق للاعتماد");
   if (act === "recall") return tWrite(id, () => updateDoc(tRef(id), {st: "doing", upd: Date.now()}), "سُحب الإرسال", false);
@@ -257,6 +259,9 @@ function taskForm(c, x, pre) {
   <label class="lb" for="mk-tt">المهمة</label><input id="mk-tt" maxlength="140" value="${x ? E(x.t) : ""}" placeholder="مثال: تصوير مجموعة الشتاء">
   <div class="g2"><div><label class="lb" for="mk-tr">مسار العمل</label><select id="mk-tr">${RL.map(r => `<option value="${r[0]}"${r0 === r[0] ? " selected" : ""}>${r[2]}</option>`).join("")}</select></div>
   <div><label class="lb" for="mk-ta">المسؤول</label><select id="mk-ta">${asOpts(c, x ? x.as : (S.who || ""))}</select></div></div>
+  <div id="mk-tpw"${r0 === "inf" ? "" : ' style="display:none"'}><label class="lb" for="mk-tpid">المؤثر (مشهور أو شركة دعاية)</label><select id="mk-tpid"${x && dealOfTask(x.id) ? " disabled" : ""}><option value="">— بدون تحديد الآن —</option>${partyList().map(p => `<option value="${E(p.id)}"${x && x.pid === p.id ? " selected" : ""}>${E(p.n)} · ${PTY[p.ty] || ""}</option>`).join("")}<option value="+">＋ إضافة مؤثر جديد</option></select>
+  <div class="g2" id="mk-tpnw" style="display:none"><div><label class="lb" for="mk-tpn">اسم المؤثر الجديد</label><input id="mk-tpn" maxlength="60"></div><div><label class="lb" for="mk-tpt">النوع</label><select id="mk-tpt"><option value="p">مشهور (شخص)</option><option value="c">شركة دعاية</option></select></div></div>
+  <div class="ibh" id="mk-tph" aria-live="polite">${x && dealOfTask(x.id) ? "سُجّل اتفاق لهذه المهمة، فلا يتغيّر المؤثر." : "عند اختيار المؤثر: المسؤول يسجّل الاتفاق والآيبان من المهمة نفسها، وبعد اعتمادك يُخصم المبلغ من ميزانية الحملة."}</div></div>
   <div class="g3"><div><label class="lb" for="mk-ts">البداية (اختياري)</label><input id="mk-ts" type="date" value="${E(x ? x.sd || "" : "")}"></div><div><label class="lb" for="mk-td">الموعد النهائي</label><input id="mk-td" type="date" value="${E(x ? x.du || "" : pre.du || addD(t, 3))}"></div>
   <div><label class="lb" for="mk-tp">الأولوية</label><select id="mk-tp">${PRI.map((p, i) => `<option value="${i}"${N(x && x.pr) === i ? " selected" : ""}>${p}</option>`).join("")}</select></div></div>
   <label class="ck"><input type="checkbox" id="mk-rq"${rq ? " checked" : ""}${x && x.st === "rev" ? " disabled" : ""}><span><b>يحتاج اعتمادك قبل الإنهاء</b><small>المسؤول يرسل العمل ومرفقاته للمراجعة، وأنت تعتمده أو تعيده بملاحظة.</small></span></label>
@@ -267,15 +272,20 @@ function taskForm(c, x, pre) {
 }
 async function taskSave(tid) {
   if (BUSY) return; const mm = g("mkm"), c = M.C.get(mm.dataset.mki); if (!c) return; const old = tid ? M.T.get(tid) : null;
-  const t = String(g("mk-tt").value || "").trim(), r = g("mk-tr").value, du = g("mk-td").value, sd = g("mk-ts").value, as = g("mk-ta").value, nt = String(g("mk-tn").value || "").trim().slice(0, 2000), pr = +g("mk-tp").value || 0, rq = g("mk-rq").checked;
+  const r = g("mk-tr").value, du = g("mk-td").value, sd = g("mk-ts").value, as = g("mk-ta").value, nt = String(g("mk-tn").value || "").trim().slice(0, 2000), pr = +g("mk-tp").value || 0, rq = g("mk-rq").checked;
+  let t = String(g("mk-tt").value || "").trim(), pid = "", pnew = null; const clean = v => String(v || "").trim().replace(/[<>"'&\\]/g, "");
+  if (r === "inf") { const sv = g("mk-tpid").value;
+    if (sv === "+") { const pn = clean(g("mk-tpn").value).slice(0, 60); if (pn.length < 2) return errM("اكتب اسم المؤثر الجديد"); const ex = partyByName(pn); if (ex) return errM("هذا الاسم مسجّل من قبل باسم «" + ex + "». اختره من القائمة."); pid = await partyKey(pn); if (M.P.has(pid)) return errM("هذا الاسم مسجّل من قبل. اختره من القائمة."); pnew = {n: pn, ty: g("mk-tpt").value === "c" ? "c" : "p", by: {e: me(), n: myN()}, ts: Date.now()} }
+    else if (sv) { if (!M.P.has(sv)) return errM("اختر المؤثر من القائمة"); pid = sv }
+    if (pid && t.length < 2) t = "التعاقد مع " + (pnew ? pnew.n : M.P.get(pid).n) }
   if (t.length < 2) return errM("اكتب المهمة"); if (!as) return errM("اختر المسؤول"); if (sd && du && sd > du) return errM("البداية بعد الموعد النهائي");
   const lines = String(g("mk-tc").value || "").split(/\n/).map(s => s.trim().slice(0, 120)).filter(Boolean).slice(0, 20), ocl = old && Array.isArray(old.cl) ? old.cl : [], cl = lines.map(s => { const o = ocl.find(k => k.t === s); return {t: s, k: !!(o && o.k)} });
   const d = old ? Object.assign({}, old) : {c: c.id, st: mm.dataset.mkst === "doing" ? "doing" : "todo", by: {e: me(), n: myN()}, ts: Date.now()}; delete d.id;
   d.t = t.slice(0, 140); d.r = r; d.as = as; const setOr = (k, v) => { if (v) d[k] = v; else delete d[k] };
-  setOr("du", du); setOr("sd", sd); setOr("nt", nt); setOr("cl", cl.length ? cl : null); setOr("pr", pr); if (rq) d.rq = true; else delete d.rq; if (old) d.upd = Date.now();
-  if (old && old.st === "rev" && !rq) return errM("المهمة الآن بانتظار الاعتماد: اعتمدها أو أعدها أولاً");
+  setOr("du", du); setOr("sd", sd); setOr("nt", nt); setOr("cl", cl.length ? cl : null); setOr("pr", pr); setOr("pid", pid); if (rq || pid) d.rq = true; else delete d.rq; if (old) d.upd = Date.now();
+  if (old && old.st === "rev" && !rq && !pid) return errM("المهمة الآن بانتظار الاعتماد: اعتمدها أو أعدها أولاً");
   const id = tid || nid(), tm = Array.isArray(c.tm) ? c.tm.slice() : []; BUSY = true;
-  try { const b = writeBatch(X.db); if (tm.indexOf(as) < 0) { tm.push(as); b.update(doc(X.db, "mkc", c.id), {tm, upd: Date.now()}) } b.set(tRef(id), d); await withTimeout(b.commit());
+  try { const b = writeBatch(X.db); if (tm.indexOf(as) < 0) { tm.push(as); b.update(doc(X.db, "mkc", c.id), {tm, upd: Date.now()}) } if (pnew) b.set(doc(X.db, "mkp", pid), pnew); b.set(tRef(id), d); await withTimeout(b.commit());
     closeM(); toast(old ? "✅ حُفظت المهمة" : "✅ أُسندت المهمة ووصل إشعار للمسؤول"); pg(["t:" + id]) } catch (e) { BUSY = false; errM(errTxt(e)) }
 }
 function tplForm(c) {
@@ -304,8 +314,9 @@ function resForm(x) { modal(`<h3>🔗 رابط أو ملاحظة التسليم<
 async function resSave(id) { const v = String(g("mk-rs").value || "").trim().slice(0, 500), x = M.T.get(id); if (!x) return; try { if (v) await withTimeout(updateDoc(tRef(id), {rs: v, upd: Date.now()})); else { const n = Object.assign({}, x); delete n.id; delete n.rs; n.upd = Date.now(); await withTimeout(setDoc(tRef(id), n)) } closeM(); toast("✅ حُفظت") } catch (e) { errM(errTxt(e)) } }
 // اتفاق المؤثر + الآيبان
 const loadIb = async id => { try { const s = await withTimeout(getDoc(doc(X.db, "mkdi", id)), 10000); return s.exists() ? s.data() : null } catch (e) { return null } };
-async function dealForm(c, d) {
-  const ib = d ? await loadIb(d.id) : null;
+const dealOfTask = tid => Array.from(M.D.values()).filter(d => d.tk === tid).sort((a, b) => N(b.ts) - N(a.ts))[0] || null;
+async function dealForm(c, d, pre) {
+  pre = pre || {}; const ib = d ? await loadIb(d.id) : null;
   modal(`<h3>${d ? (d.st === "no" ? "تصحيح الاتفاق وإعادة إرساله" : "تعديل الاتفاق") : "اتفاق جديد مع مؤثر"}</h3><p class="sub">حملة «<bdi data-notr>${E(c.n)}</bdi>» · يُرسل لمدير التسويق للاعتماد، ثم للمالية للتحويل.</p>
   ${d && d.st === "no" && d.ap && d.ap.note ? `<div class="ms-ins"><div class="bad" data-notr>سبب الرفض: ${E(d.ap.note)}</div></div>` : ""}
   ${d ? "" : `<label class="lb" for="mk-dpid">المشهور أو شركة الدعاية</label><select id="mk-dpid"><option value="">— اختر من المسجّلين —</option>${partyList().map(p => `<option value="${E(p.id)}">${E(p.n)} · ${PTY[p.ty] || ""}</option>`).join("")}<option value="+">＋ جهة جديدة لم تُسجَّل من قبل</option></select><div class="ibh" id="mk-dph" aria-live="polite"></div>`}
@@ -318,7 +329,8 @@ async function dealForm(c, d) {
   <label class="lb" for="mk-ib">الآيبان (IBAN)</label><input id="mk-ib" maxlength="42" dir="ltr" class="ms-ib0" autocomplete="off" value="${ib ? E(ibanFmt(ib.ib)) : ""}" placeholder="SA00 0000 0000 0000 0000 0000"><div class="ibh" id="mk-ibh" aria-live="polite"></div>
   <div class="g2"><div><label class="lb" for="mk-an">اسم صاحب الحساب كما في البنك</label><input id="mk-an" maxlength="80" value="${ib ? E(ib.an) : ""}"></div><div><label class="lb" for="mk-bn">البنك (اختياري)</label><input id="mk-bn" maxlength="40" value="${ib ? E(ib.bn || "") : ""}"></div></div>
   <p class="sub">بعد الحفظ يمكنك إرفاق العقد من صفحة الاتفاق.</p>${foot(["dsave", d ? d.id : ""], d ? (d.st === "no" ? "إعادة الإرسال للاعتماد" : "حفظ") : "إرسال للاعتماد")}`, "deal", c.id);
-  ibHint(); focusL(d ? "mk-dn" : "mk-dpid");
+  ibHint(); g("mkm").dataset.tk = d ? d.tk || "" : pre.tk || "";
+  if (!d && pre.pid && M.P.has(pre.pid)) { const sel = g("mk-dpid"); sel.value = pre.pid; sel.disabled = true; partyPick(); focusL("mk-dl") } else focusL(d ? "mk-dn" : "mk-dpid");
 }
 function ibHint() { const i = g("mk-ib"), h = g("mk-ibh"); if (!i || !h) return; const v = ibanNorm(i.value); if (!v) { h.className = "ibh"; h.textContent = ""; return }
   if (ibanOk(v)) { h.className = "ibh ok"; h.textContent = "✓ آيبان صحيح" + (v.slice(0, 2) === "SA" ? " (سعودي)" : "") } else { h.className = "ibh bad"; h.textContent = v.slice(0, 2) === "SA" && v.length < 24 ? "الآيبان السعودي 24 حرفاً (المكتوب " + v.length + ")" : "الآيبان غير صحيح، راجع الأرقام" } }
@@ -326,6 +338,24 @@ function ibHint() { const i = g("mk-ib"), h = g("mk-ibh"); if (!i || !h) return;
 const partyList = () => Array.from(M.P.entries()).map(x => ({id: x[0], n: x[1].n, ty: x[1].ty})).sort((a, b) => String(a.n).localeCompare(String(b.n), "ar"));
 const partyByName = n => { const k = normName(n); if (!k) return null; const r = partyList().find(p => normName(p.n) === k); if (r) return r.n; const d = Array.from(M.D.values()).find(x => normName(x.n) === k); return d ? d.n : null };
 function dnHint() { const i = g("mk-dn"), h = g("mk-dnh"), sel = g("mk-dpid"); if (!i || !h || !sel || sel.value !== "+") return; const ex = partyByName(i.value); h.className = ex ? "ibh bad" : "ibh"; h.textContent = ex ? "هذا الاسم مسجّل من قبل باسم «" + ex + "». اختره من القائمة بدل إضافته من جديد." : "" }
+function partyForm(p, id) {
+  modal(`<h3>${p ? "تعديل بيانات المؤثر" : "إضافة مؤثر"}</h3><p class="sub">يُسجَّل مرة واحدة ثم يُختار في أي حملة. الاسم لا يتكرر.</p>
+  <div class="g2"><div><label class="lb" for="mk-pn">الاسم</label><input id="mk-pn" maxlength="60" value="${p ? E(p.n) : ""}"${p ? " readonly" : ""}><div class="ibh" id="mk-pnh" aria-live="polite"></div></div>
+  <div><label class="lb" for="mk-pty">النوع</label><select id="mk-pty"><option value="p"${p && p.ty === "c" ? "" : " selected"}>مشهور (شخص)</option><option value="c"${p && p.ty === "c" ? " selected" : ""}>شركة دعاية</option></select></div>
+  <div><label class="lb" for="mk-ppf">المنصة الأساسية (اختياري)</label><select id="mk-ppf"><option value="">—</option>${PF.map(x => `<option value="${x[0]}"${p && p.pf === x[0] ? " selected" : ""}>${x[1]}</option>`).join("")}</select></div>
+  <div><label class="lb" for="mk-pph">الحساب (اختياري)</label><input id="mk-pph" maxlength="60" dir="ltr" value="${p ? E(p.h || "") : ""}" placeholder="@name"></div>
+  <div><label class="lb" for="mk-ppn">جوال التواصل (اختياري)</label><input id="mk-ppn" maxlength="20" dir="ltr" inputmode="tel" value="${p ? E(p.ph || "") : ""}"></div></div>
+  ${foot(["psave", id || ""], p ? "حفظ" : "إضافة المؤثر")}`, "party", ""); focusL(p ? "mk-pph" : "mk-pn");
+}
+async function partySave(id) {
+  if (BUSY) return; const old = id ? M.P.get(id) : null, clean = v => String(v || "").trim().replace(/[<>"'&\\]/g, "");
+  const n = old ? old.n : clean(g("mk-pn").value).slice(0, 60), ty = g("mk-pty").value === "c" ? "c" : "p", pf = g("mk-ppf").value, h = clean(g("mk-pph").value).slice(0, 60), ph = clean(g("mk-ppn").value).slice(0, 20);
+  if (n.length < 2) return errM("اكتب اسم المؤثر"); let pid = id;
+  if (!old) { const ex = partyByName(n); if (ex) return errM("هذا الاسم مسجّل من قبل باسم «" + ex + "»."); pid = await partyKey(n); if (M.P.has(pid)) return errM("هذا الاسم مسجّل من قبل.") }
+  const d = {n, ty, by: old ? old.by : {e: me(), n: myN()}, ts: old ? old.ts : Date.now()}; if (pf) d.pf = pf; if (h) d.h = h; if (ph) d.ph = ph; if (old) d.upd = Date.now(); BUSY = true;
+  try { await withTimeout(setDoc(doc(X.db, "mkp", pid), d)); closeM(); toast(old ? "✅ حُفظت بيانات المؤثر" : "✅ أُضيف المؤثر للقائمة") } catch (e) { BUSY = false; errM(errTxt(e)) }
+}
+function tpSync() { const r = g("mk-tr"), w = g("mk-tpw"), sel = g("mk-tpid"), nw = g("mk-tpnw"); if (!r || !w) return; w.style.display = r.value === "inf" ? "" : "none"; nw.style.display = sel.value === "+" ? "" : "none"; if (sel.value === "+") g("mk-tpn").focus(); if (sel.value && r.value === "inf") { const q = g("mk-rq"); if (q) q.checked = true } }
 async function partyPick() {
   const sel = g("mk-dpid"), nw = g("mk-dnw"), tw = g("mk-dtw"), h = g("mk-dph"); if (!sel) return; const isNew = sel.value === "+";
   nw.style.display = isNew ? "" : "none"; tw.style.display = isNew ? "" : "none"; h.className = "ibh"; h.textContent = "";
@@ -348,15 +378,20 @@ async function dealSave(did) {
   if (n.length < 2) return errM("اكتب اسم المؤثر"); if (!dl) return errM("اكتب المطلوب من المؤثر"); if (isNaN(amt) || amt <= 0) return errM("اكتب المبلغ"); if (isNaN(fl)) return errM("عدد المتابعين رقم غير صحيح");
   if (!ibanOk(ib)) return errM("الآيبان غير صحيح"); if (an.length < 2) return errM("اكتب اسم صاحب الحساب");
   const d = {c: c.id, n, pf, dl, amt, st: "pend", by: old ? old.by : {e: me(), n: myN()}, ts: old ? old.ts : Date.now(), ib: 1}; if (pid) d.pid = pid; if (ty) d.ty = ty; if (pnew) { if (pf) pnew.pf = pf; if (h) pnew.h = h } if (h) d.h = h; if (fl > 0) d.fl = fl; if (dt) d.dt = dt; if (old) { d.upd = Date.now(); if (old.cn) d.cn = old.cn; if (old.an) d.an = old.an }
-  const ibd = {ib, an, ts: Date.now()}; if (bn) ibd.bn = bn; BUSY = true; const id = did || nid();
-  try { const b = writeBatch(X.db); if (pnew) b.set(doc(X.db, "mkp", pid), pnew); b.set(doc(X.db, "mkdi", id), ibd); b.set(doc(X.db, "mkd", id), d); await withTimeout(b.commit()); IBC.delete(id);
+  const ibd = {ib, an, ts: Date.now()}; if (bn) ibd.bn = bn; const tk = old ? old.tk || "" : g("mkm").dataset.tk || ""; if (tk) d.tk = tk; BUSY = true; const id = did || nid();
+  try { const b = writeBatch(X.db); if (pnew) b.set(doc(X.db, "mkp", pid), pnew); b.set(doc(X.db, "mkdi", id), ibd); b.set(doc(X.db, "mkd", id), d);
+    /* المهمة المرتبطة تنتقل «بانتظار الاعتماد» مع الاتفاق */ const T = tk ? M.T.get(tk) : null; if (T && T.st !== "rev" && T.st !== "done" && (role().mgr || T.as === me())) b.update(tRef(tk), {st: "rev", sb: stampMe(), upd: Date.now()});
+    await withTimeout(b.commit()); IBC.delete(id);
     closeM(); toast(old && old.st !== "no" ? "✅ حُفظ الاتفاق" : "✅ أُرسل الاتفاق لمدير التسويق للاعتماد"); pg(["d:" + id]); if (!old) setTimeout(() => openItem("d:" + id), 400) } catch (e) { BUSY = false; errM(errTxt(e)) }
 }
 async function dealOk(id) { const d = M.D.get(id); if (!d || BUSY) return; if (!confirm(`اعتماد الاتفاق مع ${d.n} بمبلغ ${money(d.amt)} ريال؟ سيصل للمالية للتحويل.`)) return; BUSY = true;
-  try { await withTimeout(updateDoc(doc(X.db, "mkd", id), {st: "ok", ap: stampMe(), upd: Date.now()})); BUSY = false; toast("✅ اعتُمد ووصل إشعار للمالية"); pg(["d:" + id]) } catch (e) { BUSY = false; toast(errTxt(e), "er") } }
+  try { const b = writeBatch(X.db); b.update(doc(X.db, "mkd", id), {st: "ok", ap: stampMe(), upd: Date.now()}); const T = d.tk ? M.T.get(d.tk) : null; if (T && T.st !== "done") b.update(tRef(T.id), {st: "done", dn: stampMe(), ok: stampMe(), upd: Date.now()});
+    await withTimeout(b.commit()); BUSY = false; toast(T ? "✅ اعتُمد الاتفاق وأُنجزت مهمته، ووصل إشعار للمالية" : "✅ اعتُمد ووصل إشعار للمالية"); pg(["d:" + id]) } catch (e) { BUSY = false; toast(errTxt(e), "er") } }
 function reasonForm(id, kind) { const d = M.D.get(id); if (!d) return; modal(`<h3>${kind === "no" ? "رفض الاتفاق" : "إلغاء الاتفاق المعتمد"}</h3><p class="sub"><bdi data-notr>${E(d.n)}</bdi> · ${money(d.amt)} ريال</p><label class="lb" for="mk-why">السبب (يصل لمن سجّله)</label><textarea id="mk-why" rows="3" maxlength="300"></textarea>${foot(["whysave", id, kind], kind === "no" ? "رفض" : "إلغاء الاتفاق")}`, "why", d.c); focusL("mk-why") }
 async function whySave(id, kind) { const v = String(g("mk-why").value || "").trim().slice(0, 300); if (v.length < 2) return errM("اكتب السبب"); if (BUSY) return; BUSY = true;
-  try { await withTimeout(updateDoc(doc(X.db, "mkd", id), {st: kind, ap: stampMe({note: v}), upd: Date.now()})); closeM(); toast(kind === "no" ? "تم الرفض ووصل السبب لمن سجّله" : "أُلغي الاتفاق"); pg(["d:" + id]) } catch (e) { BUSY = false; errM(errTxt(e)) } }
+  try { const d = M.D.get(id), b = writeBatch(X.db); b.update(doc(X.db, "mkd", id), {st: kind, ap: stampMe({note: v}), upd: Date.now()});
+    const T = d && d.tk ? M.T.get(d.tk) : null; if (T && (T.st === "rev" || T.st === "done")) { const n = Object.assign({}, T, {st: "doing", rt: stampMe({note: v}), rn: N(T.rn) + 1, upd: Date.now()}); delete n.id; delete n.dn; delete n.ok; b.set(tRef(T.id), n) }
+    await withTimeout(b.commit()); closeM(); toast(kind === "no" ? "تم الرفض ووصل السبب لمن سجّله" : "أُلغي الاتفاق"); pg(["d:" + id]) } catch (e) { BUSY = false; errM(errTxt(e)) } }
 async function payForm(id) {
   const d = M.D.get(id); if (!d) return; modal(`<h3>💸 تحويل لمؤثر</h3><p class="sub">جاري تحميل بيانات التحويل…</p>`, "pay", id);
   const ib = await loadIb(id); if (!g("mkm") || g("mkm").dataset.mkv !== "pay") return; const c = M.C.get(d.c);
@@ -372,7 +407,7 @@ async function paySave(id) { const ref = String(g("mk-ref").value || "").trim().
   try { await withTimeout(updateDoc(doc(X.db, "mkd", id), {st: "paid", pd: stampMe(ref ? {ref} : {}), upd: Date.now()})); closeM(); toast("✔ تم السداد. أرفق إيصال التحويل من صفحة الاتفاق"); pg(["d:" + id]); openItem("d:" + id) } catch (e) { BUSY = false; errM(errTxt(e)) } }
 async function ibView(id) { if (IBC.has(id)) { IBC.delete(id); render(); return } const ib = await loadIb(id); if (!ib) { toast("لا يمكنك عرض بيانات التحويل", "er"); return } IBC.set(id, ib); render() }
 async function dealDel(id) { const d = M.D.get(id); if (!d || !confirm(`حذف الاتفاق مع ${d.n}؟`)) return; if (DR.id === id) closeDrawer(true);
-  try { await purge("mkd", id); const b = writeBatch(X.db); b.delete(doc(X.db, "mkdi", id)); b.delete(doc(X.db, "mkd", id)); await withTimeout(b.commit()); toast("حُذف الاتفاق") } catch (e) { toast(errTxt(e), "er") } }
+  try { await purge("mkd", id); const b = writeBatch(X.db); b.delete(doc(X.db, "mkdi", id)); b.delete(doc(X.db, "mkd", id)); const T = d.tk ? M.T.get(d.tk) : null; if (T && T.st === "rev" && (role().mgr || T.as === me())) b.update(tRef(T.id), {st: "doing", upd: Date.now()}); await withTimeout(b.commit()); toast("حُذف الاتفاق") } catch (e) { toast(errTxt(e), "er") } }
 function dresForm(d) { const r = d.rs || {}; modal(`<h3>📊 نتائج المؤثر</h3><p class="sub"><bdi data-notr>${E(d.n)}</bdi> · ${money(d.amt)} ريال</p>
   <div class="g3"><div><label class="lb" for="mk-rv">المشاهدات</label><input id="mk-rv" inputmode="numeric" dir="ltr" value="${r.v ? E(r.v) : ""}"></div><div><label class="lb" for="mk-re">التفاعلات</label><input id="mk-re" inputmode="numeric" dir="ltr" value="${r.e ? E(r.e) : ""}"></div><div><label class="lb" for="mk-rsl">مبيعات منسوبة (ريال)</label><input id="mk-rsl" inputmode="decimal" dir="ltr" value="${r.sl ? E(r.sl) : ""}"></div></div>
   <label class="lb" for="mk-rn">ملاحظة (اختياري)</label><input id="mk-rn" maxlength="300" value="${E(r.note || "")}">${foot(["drsave", d.id], "حفظ")}`, "dres", d.c) }
@@ -414,7 +449,7 @@ function onClick(e) {
   if (a === "pg") { closeDrawer(true); return go({pg: v, c: v === "camps" ? "" : S.c, q: v === "camps" ? S.q : ""}) }
   if (a === "open") { const ok = M.C.has(i); if (ok) { S.who = ""; S.wr = ""; S.cm = ""; go({pg: "c", c: i, v: ck.dataset.mks || S.v}) } return }
   if (a === "v") return go({v}); if (a === "f") return go({f: ck.dataset.mkf}); if (a === "lay") return go({lay: v});
-  if (a === "pf") return go({pf: ck.dataset.mkf}); if (a === "pvw") return go({pv: v}); if (a === "pone") return go({pq: v, pv: "deals", pf: "all"});
+  if (a === "pf") return go({pf: ck.dataset.mkf}); if (a === "pvw") return go({pv: v}); if (a === "pone") return go({pg: "pay", pq: v, pv: "deals", pf: "all"}); if (a === "iff") return go({if: ck.dataset.mkf});
   if (a === "who") return go({who: i || ""}); if (a === "tm") return go({tm: S.tm === i ? "" : i});
   if (a === "cal") { const cur = /^\d{4}-\d{2}$/.test(S.cm) ? S.cm : today().slice(0, 7); return go({cm: v === "0" ? today().slice(0, 7) : ymAdd(cur, +v)}) }
   if (a === "topen") return openDrawer("t", i); if (a === "dopen") return openDrawer("d", i); if (a === "dx") return closeDrawer(); if (a === "dtab") { DR.tab = v; return drawerPaint() }
@@ -428,6 +463,8 @@ function onClick(e) {
   if (a === "tnew" && c) return taskForm(c, null, {st: ck.dataset.mks || "", du: v || ""}); if (a === "tedit") { const x = M.T.get(i); if (x && M.C.get(x.c)) taskForm(M.C.get(x.c), x); return }
   if (a === "tsave") return taskSave(i); if (a === "tdel") return taskDel(i); if (a === "tpl" && c) return tplForm(c); if (a === "tplsave") return tplSave();
   if (a === "tgo") return tgo(i, ck.dataset.mks); if (a === "retsave") return returnSave(i); if (a === "trs") { const x = M.T.get(i); if (x) resForm(x); return } if (a === "trsave") return resSave(i);
+  if (a === "padd") return partyForm(null); if (a === "pedit") { const p = M.P.get(i); if (p) partyForm(p, i); return } if (a === "psave") return partySave(i);
+  if (a === "tdeal") { const x = M.T.get(i), c1 = x && M.C.get(x.c); if (c1) dealForm(c1, null, {pid: x.pid, tk: x.id}); return }
   if (a === "dnew" && c) return dealForm(c, null); if (a === "dedit") { const d = M.D.get(i); if (d && M.C.get(d.c)) dealForm(M.C.get(d.c), d); return } if (a === "dsave") return dealSave(i);
   if (a === "dok") return dealOk(i); if (a === "dno") return reasonForm(i, "no"); if (a === "dxl") return reasonForm(i, "x"); if (a === "whysave") return whySave(i, ck.dataset.mkk); if (a === "ddel") return dealDel(i);
   if (a === "pay") return payForm(i); if (a === "paysave") return paySave(i); if (a === "dres") { const d = M.D.get(i); if (d) dresForm(d); return } if (a === "drsave") return dresSave(i);
@@ -441,7 +478,8 @@ function onChange(e) {
   if (t.matches('[data-mkc="wr"]')) return go({wr: t.value});
   if (t.id === "msd-file") { const L = Array.from(t.files || []); t.value = ""; if (!role().ro) addFiles(L); return }
   if (t.matches("#mkm [data-kk]")) { const r = t.closest("[data-kr]"), l = r && r.querySelector("[data-kl]"); if (l) l.style.display = t.value === "oth" ? "" : "none"; return }
-  if (t.id === "mk-tr" && !g("mkm").dataset.rqt) { const q = g("mk-rq"); if (q) q.checked = !!rl(t.value)[4]; return }// مهمة جديدة: الاعتماد حسب مسار العمل
+  if (t.id === "mk-tr") { if (!g("mkm").dataset.rqt) { const q = g("mk-rq"); if (q) q.checked = !!rl(t.value)[4] } return tpSync() }
+  if (t.id === "mk-tpid") return tpSync();// مهمة جديدة: الاعتماد حسب مسار العمل
   if (t.id === "mk-rq") g("mkm").dataset.rqt = "1";
   if (t.id === "mk-dpid") return partyPick();
 }
@@ -449,6 +487,8 @@ function onInput(e) {
   if (!X) return; const t = e.target; if (!inMk(t)) return;
   if (t.id === "ms-q") { S.q = t.value; return schedule() }
   if (t.id === "ms-pq") { S.pq = t.value; return schedule() }
+  if (t.id === "ms-iq") { S.iq = t.value; return schedule() }
+  if (t.id === "mk-tpn" || t.id === "mk-pn") { const h = g(t.id === "mk-pn" ? "mk-pnh" : "mk-tph"), ex = t.readOnly ? null : partyByName(t.value); if (h) { h.className = ex ? "ibh bad" : "ibh"; h.textContent = ex ? "هذا الاسم مسجّل من قبل باسم «" + ex + "»." : "" } return }
   if (t.id === "mk-dn") return dnHint();
   if (t.id === "msd-t") { t.style.height = ""; t.style.height = Math.min(140, t.scrollHeight) + "px"; return }
   if (t.id === "mk-ib") return ibHint();
@@ -472,5 +512,5 @@ function onDrag(e) {
   if (e.type === "drop") { e.preventDefault(); const id = DRAG; DRAG = ""; col.classList.remove("over"); ROOT.classList.remove("dragging"); moveTask(id, col.dataset.drop) }
 }
 // للاختبار والتشخيص فقط
-export const mkState = () => ({S: Object.assign({}, S), DR: {k: DR.k, id: DR.id, cm: DR.cm.length, at: DR.at.length}, n: {C: M.C.size, T: M.T.size, D: M.D.size, X: M.X.size}});
+export const mkState = () => ({S: Object.assign({}, S), DR: {k: DR.k, id: DR.id, cm: DR.cm.length, at: DR.at.length}, n: {C: M.C.size, T: M.T.size, D: M.D.size, X: M.X.size, P: M.P.size}, tl: Array.from(M.T.values()).filter(x => x.pid).map(x => ({id: x.id, t: x.t, st: x.st, rq: !!x.rq})), dl: Array.from(M.D.values()).filter(x => x.tk).map(x => ({n: x.n, st: x.st, tk: x.tk, amt: x.amt}))});
 export const mkMove = (id, st) => moveTask(id, st);

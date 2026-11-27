@@ -173,6 +173,13 @@ html.tz-en .ms-bk,html.tz-en .ms-cn .ms-ib{transform:scaleX(-1)}
 html.lite .msd-p,html.lite .msd-bg{animation:none}
 /* الطباعة */
 body.mkpr>*:not(#mkpr){display:none!important}#mkpr{display:none}body.mkpr #mkpr{display:block}
+/* 🤝 (v274) قائمة المؤثرين + مهمة مربوطة بمؤثر */
+.ms-il{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.ms-ic{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 14px;display:flex;flex-direction:column;gap:7px;min-width:0}.ms-ic.due{border-color:rgba(208,138,44,.6)}
+.ms-ic header,.ms-ic footer{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.ms-ic>b{font-size:16px;overflow-wrap:anywhere}.ms-ic>small{color:var(--mut);font-size:12.5px}
+.ms-ic .nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;background:var(--soft);border-radius:12px;padding:8px}.ms-ic .nums small{display:block;color:var(--mut);font-size:11px}.ms-ic .nums b{font-size:14.5px;font-variant-numeric:tabular-nums}.ms-ic .nums .wn b{color:var(--w)}
+.ms-tp{border:1px solid rgba(208,138,44,.5);background:linear-gradient(180deg,rgba(208,138,44,.1),transparent);border-radius:14px;padding:11px 13px;margin:0 0 12px}.ms-tp .h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ms-tp .h b{font-size:15px}.ms-tp p{margin:7px 0 0;font-size:13px;line-height:1.7}.ms-tp small{display:block;margin-top:5px;color:var(--mut);font-size:12px}
+@media (max-width:560px){.ms-il{grid-template-columns:1fr}}
 @media print{#mkpr{font-size:12.5px;color:#111}#mkpr h1{font-size:20px;margin:0 0 4px}#mkpr h2{font-size:15px;margin:16px 0 6px;border-bottom:2px solid #8a5a83;padding-bottom:3px}#mkpr table{width:100%;border-collapse:collapse}#mkpr th,#mkpr td{border:1px solid #ccc;padding:5px 6px;text-align:start}#mkpr th{background:#f3ecf2}
  #mkpr .kv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}#mkpr .kv div{border:1px solid #ccc;border-radius:8px;padding:6px 8px}#mkpr .kv small{display:block;color:#555}#mkpr .kv b{font-size:15px}#mkpr p{margin:4px 0}}
 `;
