@@ -2,7 +2,7 @@
 // A = {M:{C,T,D,X}, S (حالة العرض), DR (الدرج), WD (الأسماء), IBC (آيبانات مكشوفة), role:{mgr,team,fin,all,ro}, me, t (اليوم), now, loaded, seen(id)}
 // كل زر عليه data-mkq (الفعل) و data-mki (الرقم) و data-mkv / data-mks (قيمة)، والأحداث كلها في mkt.js.
 import {E, N, money, big, pct, dmy, dm, days, addD, CH, PF, RL, XK, CST, DST, TST, TCOL, PRI, CLR, lab, rl, tasksOf, dealsOf, exOf, kpOf, kpName, isLate, clStat,
-  spend, timeP, tkStat, kpP, health, insights, queue, buckets, workload, feed, monthGrid, MONTHS, WDAYS, taskCan, ibanFmt, ibanMask, PTY, normName, dealKey, parties} from "./mkt-core.js";
+  spend, timeP, tkStat, kpP, health, insights, queue, buckets, workload, feed, monthGrid, MONTHS, WDAYS, taskCan, ibanFmt, ibanMask, PTY, normName, dealKey, parties, ADP, adOf, adSum} from "./mkt-core.js";
 
 // ---------- قطع صغيرة ----------
 const vals = m => Array.from(m.values());
@@ -225,6 +225,22 @@ function infPage(A) {
     <footer>${camps.length ? camps.slice(0, 3).map(c => `<span class="ms-ch" data-notr>${E(c)}</span>`).join("") + (camps.length > 3 ? `<span class="ms-ch">+${camps.length - 3}</span>` : "") : `<span class="ms-mu">لم يشارك في حملة بعد</span>`}<span class="ms-sp"></span>${st && st.L.length ? btn("pone", "عرض تحويلاته", {c: "sm", v: p.n}) : ""}</footer></article>` }).join("")}</div>` : empty("لا نتائج", "جرّب كلمة أخرى أو فلتراً آخر."));
 }
 
+// ---------- 📢 (v275) صرف الإعلان الممول يوماً بيوم ----------
+function adBox(A, x, can) {
+  const L = adOf(A.M, x.id), tot = L.reduce((a, e) => a + N(e.a), 0), ab = N(x.ab), nd = new Set(L.map(e => e.dt)).size, up = ab ? pct(tot, ab) : 0, td = L.filter(e => e.dt === A.t).reduce((a, e) => a + N(e.a), 0),
+    add = !A.role.ro && (can.mine || A.role.mgr || A.role.team), part = !A.role.all;
+  return `<section class="ms-ad"><div class="h"><b>📢 صرف الإعلان${x.ap ? " · " + E(lab(ADP, x.ap)) : ""}</b><span class="ms-sp"></span>${add ? btn("adnew", "＋ سجّل صرف اليوم", {c: "p sm", i: x.id}) : ""}</div>
+  <div class="ms-tl sm"><div class="${ab && tot > ab ? "r" : ""}"><small>صُرف حتى الآن</small><b>${money(tot)}</b></div><div><small>ميزانية الإعلان</small><b>${ab ? money(ab) : "—"}</b></div><div class="${td ? "k" : "wn"}"><small>اليوم</small><b>${td ? money(td) : "لم يُسجَّل"}</b></div><div><small>متوسط اليوم</small><b>${nd ? money(Math.round(tot / nd)) : "—"}</b></div></div>
+  ${ab ? `<div class="ms-bar ${up > 100 ? "r" : up >= 85 ? "w" : "k"}"><i style="width:${Math.min(100, up)}%"></i></div><small class="ms-mu">${up}% من ميزانية الإعلان · الباقي ${money(ab - tot)} ريال</small>` : ""}
+  ${L.length ? `<div class="rows">${L.map(e => { const own = !A.role.ro && (A.role.mgr || (e.by && e.by.e === A.me)); return `<div class="rw"><span>${E(dmy(e.dt))}</span><b>${money(e.a)}</b><small data-notr>${E(e.nt || "")}${e.nt ? " · " : ""}${E(e.by && e.by.n || "")}</small>${own ? btn("adedit", "✏️", {c: "sm", i: e.id, t: "تعديل"}) + btn("xdel", "🗑", {c: "sm", i: e.id, t: "حذف"}) : ""}</div>` }).join("")}</div>` : `<p class="ms-mu">لم يُسجَّل صرف بعد. سجّل كل يوم ما صرفه الإعلان على المنصة، فيُخصم من ميزانية الحملة مباشرة.</p>`}
+  ${part ? `<small class="ms-mu">يظهر لك ما سجّلته أنت.</small>` : ""}</section>`;
+}
+function adPlat(A, c) {
+  const G = {}; exOf(A.M, c.id).filter(x => x.k === "ads").forEach(x => { const k = x.ap || "-"; G[k] = (G[k] || 0) + N(x.a) }); const K = Object.keys(G).sort((a, b) => G[b] - G[a]); if (!K.length) return "";
+  const B = {}; tasksOf(A.M, c.id).filter(t => t.r === "ad" && t.ap && N(t.ab)).forEach(t => { B[t.ap] = (B[t.ap] || 0) + N(t.ab) }); const tot = K.reduce((a, k) => a + G[k], 0);
+  return `<section class="ms-bx"><h3>الإعلانات الممولة حسب المنصة <small>${money(tot)} ريال</small></h3><div class="ms-adp">${K.map(k => { const p = pct(G[k], tot); return `<div><span>${k === "-" ? "بلا منصة محددة" : E(lab(ADP, k))}</span><div class="ms-bar"><i style="width:${p}%"></i></div><b>${money(G[k])}</b><small>${B[k] ? "من " + money(B[k]) : p + "%"}</small></div>` }).join("")}</div></section>`;
+}
+
 // ---------- مساحة الحملة ----------
 export function viewsOf(A) { return A.role.all ? [["ov", "الملخّص"], ["board", "اللوحة"], ["list", "قائمة المهام"], ["cal", "التقويم"], ["inf", "المؤثرون"], ["bud", "الميزانية"], ["res", "النتائج"]] : [["board", "اللوحة"], ["list", "قائمة المهام"], ["cal", "التقويم"], ["inf", "المؤثرون"]] }
 function campPage(A, c) {
@@ -251,7 +267,7 @@ function taskFilter(A, c) {
 function tCard(A, x) {
   const r = rl(x.r), cs = clStat(x), late = isLate(x, A.t), can = taskCan(x, A.role, A.me), drag = !A.role.ro && (can.edit || can.mine);
   return `<article class="ms-kc${late ? " late" : ""}${x.st === "done" ? " dn" : ""}" style="--wc:${r[3]}"${drag ? ` draggable="true" data-drag="${E(x.id)}"` : ""} data-mkq="topen" data-mki="${E(x.id)}" tabindex="0" role="button">
-  <div class="k1">${ws(x.r)}${x.pid ? `<span class="ms-ty ${partyOf(A, x.pid).ty}" data-notr>🤝 ${E(partyOf(A, x.pid).n)}</span>` : ""}${N(x.pr) ? `<span class="ms-pr p${N(x.pr)}">${PRI[N(x.pr)]}</span>` : ""}${x.rq ? `<span class="ms-rq" title="يحتاج اعتماد مدير التسويق">✓ اعتماد</span>` : ""}</div>
+  <div class="k1">${ws(x.r)}${x.pid ? `<span class="ms-ty ${partyOf(A, x.pid).ty}" data-notr>🤝 ${E(partyOf(A, x.pid).n)}</span>` : ""}${x.r === "ad" && (x.ap || adSum(A.M, x.id)) ? `<span class="ms-ch">${x.ap ? E(lab(ADP, x.ap)) : "إعلان"}${adSum(A.M, x.id) ? " · صُرف " + money(adSum(A.M, x.id)) : ""}</span>` : ""}${N(x.pr) ? `<span class="ms-pr p${N(x.pr)}">${PRI[N(x.pr)]}</span>` : ""}${x.rq ? `<span class="ms-rq" title="يحتاج اعتماد مدير التسويق">✓ اعتماد</span>` : ""}</div>
   <b data-notr>${E(x.t)}</b>${cs.n ? `<div class="ms-bar k xs"><i style="width:${pct(cs.k, cs.n)}%"></i></div>` : ""}
   <div class="k2">${dueChip(x, A.t)}${counters(A, x)}<span class="ms-sp"></span>${av(A, x.as)}</div></article>`;
 }
@@ -301,10 +317,10 @@ function budView(A, c) {
   return `<div class="ms-tl"><div><small>الميزانية</small><b>${money(bud)}</b><em>ريال</em></div><div class="${up > 100 ? "r" : up >= 85 ? "wn" : ""}"><small>المصروف</small><b>${money(s.tot)}</b><em>${up}% من الميزانية</em></div><div class="${s.wait ? "wn" : ""}"><small>معتمد لم يُحوَّل</small><b>${money(s.wait)}</b><em>عند المالية</em></div><div class="${bud - s.tot < 0 ? "r" : "k"}"><small>المتبقي</small><b>${money(bud - s.tot)}</b><em>${s.pend ? "واتفاقات معلّقة " + money(s.pend) : "ريال"}</em></div></div>
   <div class="ms-2"><section class="ms-bx"><h3>أين ذهب المصروف</h3><div class="ms-bud">${donut(parts, 150, 20, `<b>${up}%</b><small>من الميزانية</small>`)}<div class="ms-lg">${parts.filter(p => p.v > 0).map(p => `<div><i style="background:${p.c}"></i><span>${p.l}</span><b>${money(p.v)}</b></div>`).join("") || `<span class="ms-mu">لا مصروف بعد</span>`}</div></div></section>
   <section class="ms-bx"><h3>الصرف مقابل الوقت والإنجاز</h3><div class="ms-pace">${meter("الميزانية", up, barC(up), up + "%")}${meter("الوقت", tp, "t", tp + "%")}${meter("المهام", ts.p, "k", ts.p + "%")}</div><p class="ms-mu">المصروف = اتفاقات المؤثرين المعتمدة (حتى قبل التحويل) + المصروفات المسجّلة.</p></section></div>
-  <section class="ms-bx"><h3>المصروفات <small>${L.length + inf.length}</small><span class="ms-sp"></span>${btn("csv", "⬇️ إكسل", {c: "sm"})}${can && c.st !== "x" ? btn("xnew", "＋ مصروف", {c: "p sm"}) : ""}</h3>
+  ${adPlat(A, c)}<section class="ms-bx"><h3>المصروفات <small>${L.length + inf.length}</small><span class="ms-sp"></span>${btn("csv", "⬇️ إكسل", {c: "sm"})}${can && c.st !== "x" ? btn("xnew", "＋ مصروف", {c: "p sm"}) : ""}</h3>
   ${L.length || inf.length ? `<div class="ms-tw"><table class="ms-tb"><thead><tr><th>التاريخ</th><th>البند</th><th>البيان</th><th>المبلغ</th><th>سجّله</th><th></th></tr></thead><tbody>
   ${inf.map(d => `<tr data-mkq="dopen" data-mki="${E(d.id)}" tabindex="0" role="button"><td data-l="التاريخ">${E(dmy(d.dt)) || "—"}</td><td data-l="البند">المؤثرون</td><td data-l="البيان"><span data-notr>${E(d.n)}</span> · ${E(DST[d.st] || "")}</td><td class="n" data-l="المبلغ">${money(d.amt)}</td><td data-l="سجّله" data-notr>${E(d.by && d.by.n || "")}</td><td></td></tr>`).join("")}
-  ${L.map(x => { const own = A.role.mgr || (x.by && x.by.e === A.me); return `<tr><td data-l="التاريخ">${E(dmy(x.dt))}</td><td data-l="البند">${E(lab(XK, x.k))}</td><td data-l="البيان" data-notr>${E(x.nt || "")}</td><td class="n" data-l="المبلغ">${money(x.a)}</td><td data-l="سجّله" data-notr>${E(x.by && x.by.n || "")}</td><td>${can && own ? btn("xedit", "✏️", {c: "sm", i: x.id, t: "تعديل"}) + btn("xdel", "🗑", {c: "sm", i: x.id, t: "حذف"}) : ""}</td></tr>` }).join("")}</tbody></table></div>` : `<p class="ms-mu">لا مصروفات مسجّلة.</p>`}</section>`;
+  ${L.map(x => { const own = A.role.mgr || (x.by && x.by.e === A.me); return `<tr><td data-l="التاريخ">${E(dmy(x.dt))}</td><td data-l="البند">${E(lab(XK, x.k))}</td><td data-l="البيان">${x.ap ? `<span class="ms-ch">${E(lab(ADP, x.ap))}</span> ` : ""}<span data-notr>${E(x.nt || "")}</span></td><td class="n" data-l="المبلغ">${money(x.a)}</td><td data-l="سجّله" data-notr>${E(x.by && x.by.n || "")}</td><td>${can && own ? btn("xedit", "✏️", {c: "sm", i: x.id, t: "تعديل"}) + btn("xdel", "🗑", {c: "sm", i: x.id, t: "حذف"}) : ""}</td></tr>` }).join("")}</tbody></table></div>` : `<p class="ms-mu">لا مصروفات مسجّلة.</p>`}</section>`;
 }
 function kpList(A, c) { const kps = kpOf(c); return kps.length ? `<div class="ms-kp">${kps.map(k => { const p = pct(N(k.v), N(k.t)); return `<div class="k"><span>${E(kpName(k))}</span><b>${big(k.v)} <small>من ${big(k.t)}</small></b><div class="ms-bar ${p >= 100 ? "k" : ""}"><i style="width:${Math.min(100, p)}%"></i></div><small>${p}%</small></div>` }).join("")}</div>` : `<p class="ms-mu">لم تُحدَّد أهداف بالأرقام لهذه الحملة.</p>` }
 const insBox = (A, c, n) => `<div class="ms-ins">${insights(A.M, c, A.t).slice(0, n || 99).map(x => `<div class="${x[0]}">${E(x[1])}</div>`).join("")}</div>`;
@@ -355,7 +371,7 @@ function taskDrawer(A, x) {
   const note = x.st === "rev" ? `<div class="ms-nt rev"><b>📥 بانتظار اعتماد مدير التسويق</b>${stamp(A, x.sb, "أرسله")}${N(x.rn) ? `<small>الجولة ${N(x.rn) + 1}</small>` : ""}</div>`
     : x.st === "done" && x.ok ? `<div class="ms-nt ok"><b>✅ اعتُمد العمل</b>${stamp(A, x.ok, "اعتمده")}</div>` : x.st === "done" ? `<div class="ms-nt ok"><b>✅ أُنجزت</b>${stamp(A, x.dn, "أنهاها")}</div>`
     : x.rt && x.st !== "done" && N(x.rt.at) >= N(x.sb && x.sb.at) - 1 ? `<div class="ms-nt ret"><b>↩️ أُعيد للتعديل${N(x.rn) ? " (الجولة " + N(x.rn) + ")" : ""}</b><p data-notr>${E(x.rt.note || "")}</p>${stamp(A, x.rt, "أعاده")}</div>` : "";
-  const main = `${acts ? `<div class="msd-ac">${acts}</div>` : ""}${note}${x.pid ? taskParty(A, x, deal) : ""}
+  const main = `${acts ? `<div class="msd-ac">${acts}</div>` : ""}${note}${x.pid ? taskParty(A, x, deal) : ""}${x.r === "ad" ? adBox(A, x, can) : ""}
   <dl class="ms-meta"><div><dt>المسؤول عن المهمة</dt><dd>${av(A, x.as)}<span data-notr>${E(nameOf(A, x.as))}</span></dd></div><div><dt>الموعد</dt><dd class="${late ? "r" : ""}">${x.du ? E(dmy(x.du)) : "—"}${late ? " · متأخرة" : ""}</dd></div>
   <div><dt>البداية</dt><dd>${x.sd ? E(dmy(x.sd)) : "—"}</dd></div><div><dt>الأولوية</dt><dd><span class="ms-pr p${N(x.pr)}">${PRI[N(x.pr)]}</span></dd></div>
   <div><dt>الاعتماد</dt><dd>${x.rq ? "يحتاج اعتماد مدير التسويق" : "لا يحتاج اعتماداً"}</dd></div><div><dt>أسندها</dt><dd data-notr>${E(x.by && x.by.n || "")}</dd></div></dl>

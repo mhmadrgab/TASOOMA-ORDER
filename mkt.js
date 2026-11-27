@@ -9,7 +9,7 @@
 import {collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, onSnapshot, query, where, withTimeout} from "./fb.js";
 import {loadAtts, putAtt, dropAtt, readFile, fileErr, openRef, FILE_ACCEPT} from "./att.js";
 import {E, N, money, today, dmy, addD, nid, num, CH, PF, KP, RL, XK, DST, PRI, CLR, TPL, lab, rl, tasksOf, dealsOf, exOf, kpOf, kpName,
-  spend, queue, ibanNorm, ibanOk, ibanFmt, taskCan, ymAdd, PTY, normName, partyKey, dealKey, parties} from "./mkt-core.js";
+  spend, queue, ibanNorm, ibanOk, ibanFmt, taskCan, ymAdd, PTY, normName, partyKey, dealKey, parties, ADP, adOf} from "./mkt-core.js";
 import {topHtml, bodyHtml, drawerHtml, reportHtml, viewsOf, nameOf as nameOfA, av as avA} from "./mkt-views.js";
 import {CSS} from "./mkt-css.js";
 export {CH, ibanOk, ibanNorm} from "./mkt-core.js";
@@ -61,7 +61,7 @@ function start() {
   sub(collection(db, "mkp"), M.P);// 🤝 (v272) دليل المشاهير وشركات الدعاية
   sub(collection(db, "mkt"), RAW);// القواعد تُرجع ما يحق له فقط: كل المهام لمن يرى الكل، ومهام حملاته لعضو الفريق
   if (X.all) { sub(collection(db, "mkd"), M.D); sub(collection(db, "mkx"), M.X); sub(collection(db, "mkc"), M.C, true) }
-  else { sub(query(collection(db, "mkd"), where("by.e", "==", m)), M.D); sub(query(collection(db, "mkc"), where("tm", "array-contains", m)), M.C, true) }
+  else { sub(query(collection(db, "mkx"), where("by.e", "==", m)), M.X); /* 📢 (v275) ما سجّله من صرف الإعلانات */ sub(query(collection(db, "mkd"), where("by.e", "==", m)), M.D); sub(query(collection(db, "mkc"), where("tm", "array-contains", m)), M.C, true) }
 }
 // المهام الظاهرة: لمن لا يرى الكل = مهامه + مهام الحملات التي هو في فريقها (نفس القاعدة في السيرفر)
 function syncTasks() { M.T.clear(); const all = !!(X && X.all), m = me(); RAW.forEach((x, id) => { if (all || x.as === m || (x.by && x.by.e === m) || M.C.has(x.c)) M.T.set(id, x) }) }
@@ -262,6 +262,9 @@ function taskForm(c, x, pre) {
   <div id="mk-tpw"${r0 === "inf" ? "" : ' style="display:none"'}><label class="lb" for="mk-tpid">المؤثر (مشهور أو شركة دعاية)</label><select id="mk-tpid"${x && dealOfTask(x.id) ? " disabled" : ""}><option value="">— بدون تحديد الآن —</option>${partyList().map(p => `<option value="${E(p.id)}"${x && x.pid === p.id ? " selected" : ""}>${E(p.n)} · ${PTY[p.ty] || ""}</option>`).join("")}<option value="+">＋ إضافة مؤثر جديد</option></select>
   <div class="g2" id="mk-tpnw" style="display:none"><div><label class="lb" for="mk-tpn">اسم المؤثر الجديد</label><input id="mk-tpn" maxlength="60"></div><div><label class="lb" for="mk-tpt">النوع</label><select id="mk-tpt"><option value="p">مشهور (شخص)</option><option value="c">شركة دعاية</option></select></div></div>
   <div class="ibh" id="mk-tph" aria-live="polite">${x && dealOfTask(x.id) ? "سُجّل اتفاق لهذه المهمة، فلا يتغيّر المؤثر." : "عند اختيار المؤثر: المسؤول يسجّل الاتفاق والآيبان من المهمة نفسها، وبعد اعتمادك يُخصم المبلغ من ميزانية الحملة."}</div></div>
+  <div class="g2" id="mk-taw"${r0 === "ad" ? "" : ' style="display:none"'}><div><label class="lb" for="mk-tap">منصة الإعلان</label><select id="mk-tap"><option value="">— اختر —</option>${ADP.map(a => `<option value="${a[0]}"${x && x.ap === a[0] ? " selected" : ""}>${a[1]}</option>`).join("")}</select></div>
+  <div><label class="lb" for="mk-tab">ميزانية الإعلان (ريال، اختياري)</label><input id="mk-tab" inputmode="decimal" dir="ltr" value="${x && x.ab ? E(x.ab) : ""}" placeholder="0"></div>
+  <div class="ibh" style="grid-column:1/-1">المسؤول يسجّل من المهمة كل يوم ما صرفه الإعلان، فيُخصم من ميزانية الحملة مباشرة.</div></div>
   <div class="g3"><div><label class="lb" for="mk-ts">البداية (اختياري)</label><input id="mk-ts" type="date" value="${E(x ? x.sd || "" : "")}"></div><div><label class="lb" for="mk-td">الموعد النهائي</label><input id="mk-td" type="date" value="${E(x ? x.du || "" : pre.du || addD(t, 3))}"></div>
   <div><label class="lb" for="mk-tp">الأولوية</label><select id="mk-tp">${PRI.map((p, i) => `<option value="${i}"${N(x && x.pr) === i ? " selected" : ""}>${p}</option>`).join("")}</select></div></div>
   <label class="ck"><input type="checkbox" id="mk-rq"${rq ? " checked" : ""}${x && x.st === "rev" ? " disabled" : ""}><span><b>يحتاج اعتمادك قبل الإنهاء</b><small>المسؤول يرسل العمل ومرفقاته للمراجعة، وأنت تعتمده أو تعيده بملاحظة.</small></span></label>
@@ -278,11 +281,13 @@ async function taskSave(tid) {
     if (sv === "+") { const pn = clean(g("mk-tpn").value).slice(0, 60); if (pn.length < 2) return errM("اكتب اسم المؤثر الجديد"); const ex = partyByName(pn); if (ex) return errM("هذا الاسم مسجّل من قبل باسم «" + ex + "». اختره من القائمة."); pid = await partyKey(pn); if (M.P.has(pid)) return errM("هذا الاسم مسجّل من قبل. اختره من القائمة."); pnew = {n: pn, ty: g("mk-tpt").value === "c" ? "c" : "p", by: {e: me(), n: myN()}, ts: Date.now()} }
     else if (sv) { if (!M.P.has(sv)) return errM("اختر المؤثر من القائمة"); pid = sv }
     if (pid && t.length < 2) t = "التعاقد مع " + (pnew ? pnew.n : M.P.get(pid).n) }
+  const ap = r === "ad" ? g("mk-tap").value : "", ab = r === "ad" ? num(g("mk-tab").value) : 0; if (isNaN(ab) || ab < 0) return errM("ميزانية الإعلان رقم غير صحيح");
+  if (r === "ad" && !ap) return errM("اختر منصة الإعلان"); if (r === "ad" && t.length < 2) t = "إعلان ممول على " + lab(ADP, ap);
   if (t.length < 2) return errM("اكتب المهمة"); if (!as) return errM("اختر المسؤول"); if (sd && du && sd > du) return errM("البداية بعد الموعد النهائي");
   const lines = String(g("mk-tc").value || "").split(/\n/).map(s => s.trim().slice(0, 120)).filter(Boolean).slice(0, 20), ocl = old && Array.isArray(old.cl) ? old.cl : [], cl = lines.map(s => { const o = ocl.find(k => k.t === s); return {t: s, k: !!(o && o.k)} });
   const d = old ? Object.assign({}, old) : {c: c.id, st: mm.dataset.mkst === "doing" ? "doing" : "todo", by: {e: me(), n: myN()}, ts: Date.now()}; delete d.id;
   d.t = t.slice(0, 140); d.r = r; d.as = as; const setOr = (k, v) => { if (v) d[k] = v; else delete d[k] };
-  setOr("du", du); setOr("sd", sd); setOr("nt", nt); setOr("cl", cl.length ? cl : null); setOr("pr", pr); setOr("pid", pid); if (rq || pid) d.rq = true; else delete d.rq; if (old) d.upd = Date.now();
+  setOr("du", du); setOr("sd", sd); setOr("nt", nt); setOr("cl", cl.length ? cl : null); setOr("pr", pr); setOr("pid", pid); setOr("ap", ap); setOr("ab", ab > 0 ? ab : 0); if (rq || pid) d.rq = true; else delete d.rq; if (old) d.upd = Date.now();
   if (old && old.st === "rev" && !rq && !pid) return errM("المهمة الآن بانتظار الاعتماد: اعتمدها أو أعدها أولاً");
   const id = tid || nid(), tm = Array.isArray(c.tm) ? c.tm.slice() : []; BUSY = true;
   try { const b = writeBatch(X.db); if (tm.indexOf(as) < 0) { tm.push(as); b.update(doc(X.db, "mkc", c.id), {tm, upd: Date.now()}) } if (pnew) b.set(doc(X.db, "mkp", pid), pnew); b.set(tRef(id), d); await withTimeout(b.commit());
@@ -355,7 +360,7 @@ async function partySave(id) {
   const d = {n, ty, by: old ? old.by : {e: me(), n: myN()}, ts: old ? old.ts : Date.now()}; if (pf) d.pf = pf; if (h) d.h = h; if (ph) d.ph = ph; if (old) d.upd = Date.now(); BUSY = true;
   try { await withTimeout(setDoc(doc(X.db, "mkp", pid), d)); closeM(); toast(old ? "✅ حُفظت بيانات المؤثر" : "✅ أُضيف المؤثر للقائمة") } catch (e) { BUSY = false; errM(errTxt(e)) }
 }
-function tpSync() { const r = g("mk-tr"), w = g("mk-tpw"), sel = g("mk-tpid"), nw = g("mk-tpnw"); if (!r || !w) return; w.style.display = r.value === "inf" ? "" : "none"; nw.style.display = sel.value === "+" ? "" : "none"; if (sel.value === "+") g("mk-tpn").focus(); if (sel.value && r.value === "inf") { const q = g("mk-rq"); if (q) q.checked = true } }
+function tpSync() { const r = g("mk-tr"), w = g("mk-tpw"), sel = g("mk-tpid"), nw = g("mk-tpnw"); if (!r || !w) return; w.style.display = r.value === "inf" ? "" : "none"; if (g("mk-taw")) g("mk-taw").style.display = r.value === "ad" ? "" : "none"; nw.style.display = sel.value === "+" ? "" : "none"; if (sel.value === "+") g("mk-tpn").focus(); if (sel.value && r.value === "inf") { const q = g("mk-rq"); if (q) q.checked = true } }
 async function partyPick() {
   const sel = g("mk-dpid"), nw = g("mk-dnw"), tw = g("mk-dtw"), h = g("mk-dph"); if (!sel) return; const isNew = sel.value === "+";
   nw.style.display = isNew ? "" : "none"; tw.style.display = isNew ? "" : "none"; h.className = "ibh"; h.textContent = "";
@@ -417,6 +422,18 @@ async function dresSave(id) { const v = num(g("mk-rv").value), e = num(g("mk-re"
 function exForm(c, x) { modal(`<h3>${x ? "تعديل مصروف" : "مصروف جديد"}</h3><p class="sub">حملة «<bdi data-notr>${E(c.n)}</bdi>»</p>
   <div class="g3"><div><label class="lb" for="mk-xk">البند</label><select id="mk-xk">${XK.filter(k => k[0] !== "inf").map(k => `<option value="${k[0]}"${x && x.k === k[0] ? " selected" : ""}>${k[1]}</option>`).join("")}</select></div><div><label class="lb" for="mk-xa">المبلغ (ريال)</label><input id="mk-xa" inputmode="decimal" dir="ltr" value="${x ? E(x.a) : ""}"></div><div><label class="lb" for="mk-xd">التاريخ</label><input id="mk-xd" type="date" value="${E(x ? x.dt : today())}"></div></div>
   <label class="lb" for="mk-xn">البيان</label><input id="mk-xn" maxlength="200" value="${x ? E(x.nt || "") : ""}" placeholder="مثال: إعلان ممول على إنستغرام أسبوع">${foot(["xsave", x ? x.id : ""], "حفظ")}`, "ex", c.id); focusL("mk-xa") }
+// 📢 (v275) صرف يوم لإعلان ممول (مصروف «إعلانات ممولة» مربوط بالمهمة)
+function adForm(x, e) { const c = M.C.get(x.c), L = adOf(M, x.id), tot = L.reduce((a, y) => a + N(y.a), 0);
+  modal(`<h3>${e ? "تعديل صرف يوم" : "صرف الإعلان اليوم"}</h3><p class="sub"><bdi data-notr>${E(x.t)}</bdi>${x.ap ? " · " + E(lab(ADP, x.ap)) : ""} · حملة «<bdi data-notr>${E(c ? c.n : "")}</bdi>»</p>
+  <div class="g2"><div><label class="lb" for="mk-ad">اليوم</label><input id="mk-ad" type="date" max="${today()}" value="${E(e ? e.dt : today())}"></div><div><label class="lb" for="mk-aa">ما صُرف في هذا اليوم (ريال)</label><input id="mk-aa" inputmode="decimal" dir="ltr" value="${e ? E(e.a) : ""}" placeholder="0"></div></div>
+  <div class="ibh" id="mk-adh" aria-live="polite"></div>
+  <label class="lb" for="mk-an2">ملاحظة (اختياري)</label><input id="mk-an2" maxlength="200" value="${e ? E(e.nt || "") : ""}" placeholder="مثال: إعلان الخصم · 12 ألف مشاهدة">
+  <p class="sub">صُرف على هذا الإعلان حتى الآن ${money(tot)} ريال${N(x.ab) ? " من " + money(x.ab) : ""}.</p>${foot(["adsave", e ? e.id : ""], e ? "حفظ" : "تسجيل الصرف")}`, "ad", x.id); adHint(); focusL("mk-aa") }
+function adHint() { const mm = g("mkm"), h = g("mk-adh"), d = g("mk-ad"); if (!h || !d || mm.dataset.mkv !== "ad") return; const sv = (g("mkm").querySelector("[data-mkq=adsave]") || {dataset: {}}).dataset.mki || "", s = adOf(M, mm.dataset.mki).filter(y => y.dt === d.value && y.id !== sv).reduce((a, y) => a + N(y.a), 0); h.className = "ibh"; h.textContent = s ? "مسجَّل لهذا اليوم " + money(s) + " ريال من قبل. ما تكتبه الآن يُضاف إليه." : "" }
+async function adSave(eid) { if (BUSY) return; const x = M.T.get(g("mkm").dataset.mki); if (!x) return; const old = eid ? M.X.get(eid) : null, a = num(g("mk-aa").value), dt = g("mk-ad").value, nt = String(g("mk-an2").value || "").trim().slice(0, 200);
+  if (isNaN(a) || a <= 0) return errM("اكتب المبلغ المصروف"); if (!dt) return errM("اختر اليوم"); if (dt > today()) return errM("لا يُسجَّل صرف ليوم لم يأتِ بعد");
+  const d = {c: x.c, k: "ads", a, dt, tk: x.id, by: old ? old.by : {e: me(), n: myN()}, ts: old ? old.ts : Date.now()}; if (x.ap) d.ap = x.ap; if (nt) d.nt = nt; if (old) d.upd = Date.now(); BUSY = true;
+  try { await withTimeout(setDoc(doc(X.db, "mkx", eid || nid()), d)); closeM(); toast(old ? "✅ حُفظ التعديل" : "✅ سُجّل صرف اليوم وخُصم من ميزانية الحملة") } catch (er) { BUSY = false; errM(errTxt(er)) } }
 async function exSave(xid) { if (BUSY) return; const c = M.C.get(g("mkm").dataset.mki); if (!c) return; const old = xid ? M.X.get(xid) : null, a = num(g("mk-xa").value), dt = g("mk-xd").value, nt = String(g("mk-xn").value || "").trim().slice(0, 200);
   if (isNaN(a) || a <= 0) return errM("اكتب المبلغ"); if (!dt) return errM("اختر التاريخ"); const d = {c: c.id, k: g("mk-xk").value, a, dt, by: old ? old.by : {e: me(), n: myN()}, ts: old ? old.ts : Date.now()}; if (nt) d.nt = nt; if (old) d.upd = Date.now(); BUSY = true;
   try { await withTimeout(setDoc(doc(X.db, "mkx", xid || nid()), d)); closeM(); toast("✅ حُفظ المصروف") } catch (e) { BUSY = false; errM(errTxt(e)) } }
@@ -463,6 +480,7 @@ function onClick(e) {
   if (a === "tnew" && c) return taskForm(c, null, {st: ck.dataset.mks || "", du: v || ""}); if (a === "tedit") { const x = M.T.get(i); if (x && M.C.get(x.c)) taskForm(M.C.get(x.c), x); return }
   if (a === "tsave") return taskSave(i); if (a === "tdel") return taskDel(i); if (a === "tpl" && c) return tplForm(c); if (a === "tplsave") return tplSave();
   if (a === "tgo") return tgo(i, ck.dataset.mks); if (a === "retsave") return returnSave(i); if (a === "trs") { const x = M.T.get(i); if (x) resForm(x); return } if (a === "trsave") return resSave(i);
+  if (a === "adnew") { const x = M.T.get(i); if (x) adForm(x, null); return } if (a === "adedit") { const e1 = M.X.get(i), x = e1 && M.T.get(e1.tk); if (x) adForm(x, e1); return } if (a === "adsave") return adSave(i);
   if (a === "padd") return partyForm(null); if (a === "pedit") { const p = M.P.get(i); if (p) partyForm(p, i); return } if (a === "psave") return partySave(i);
   if (a === "tdeal") { const x = M.T.get(i), c1 = x && M.C.get(x.c); if (c1) dealForm(c1, null, {pid: x.pid, tk: x.id}); return }
   if (a === "dnew" && c) return dealForm(c, null); if (a === "dedit") { const d = M.D.get(i); if (d && M.C.get(d.c)) dealForm(M.C.get(d.c), d); return } if (a === "dsave") return dealSave(i);
@@ -479,7 +497,7 @@ function onChange(e) {
   if (t.id === "msd-file") { const L = Array.from(t.files || []); t.value = ""; if (!role().ro) addFiles(L); return }
   if (t.matches("#mkm [data-kk]")) { const r = t.closest("[data-kr]"), l = r && r.querySelector("[data-kl]"); if (l) l.style.display = t.value === "oth" ? "" : "none"; return }
   if (t.id === "mk-tr") { if (!g("mkm").dataset.rqt) { const q = g("mk-rq"); if (q) q.checked = !!rl(t.value)[4] } return tpSync() }
-  if (t.id === "mk-tpid") return tpSync();// مهمة جديدة: الاعتماد حسب مسار العمل
+  if (t.id === "mk-tpid") return tpSync(); if (t.id === "mk-ad") return adHint();// مهمة جديدة: الاعتماد حسب مسار العمل
   if (t.id === "mk-rq") g("mkm").dataset.rqt = "1";
   if (t.id === "mk-dpid") return partyPick();
 }

@@ -51,6 +51,10 @@ const vals = m => m ? Array.from(m.values()) : [];
 export const tasksOf = (M, c) => vals(M.T).filter(t => t.c === c);
 export const dealsOf = (M, c) => vals(M.D).filter(d => d.c === c);
 export const exOf = (M, c) => vals(M.X).filter(x => x.c === c);
+// 📢 (v275) منصات الإعلانات الممولة + الصرف اليومي المسجّل على مهمة إعلان (الأحدث أولاً)
+export const ADP = [["sc", "سناب شات"], ["tt", "تيك توك"], ["meta", "ميتا (إنستغرام وفيسبوك)"], ["gg", "جوجل"], ["x", "إكس"], ["yt", "يوتيوب"], ["oth", "منصة أخرى"]];
+export const adOf = (M, tid) => vals(M.X).filter(x => x.tk === tid).sort((a, b) => String(b.dt).localeCompare(String(a.dt)) || N(b.ts) - N(a.ts));
+export const adSum = (M, tid) => adOf(M, tid).reduce((a, x) => a + N(x.a), 0);
 export const kpOf = c => Array.isArray(c && c.kp) ? c.kp : [];
 export const kpName = k => k.k === "oth" && k.l ? k.l : lab(KP, k.k);
 export const isOpen = x => x.st !== "done";
