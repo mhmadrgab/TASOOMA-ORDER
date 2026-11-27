@@ -9,7 +9,7 @@
 import {collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, onSnapshot, query, where, withTimeout} from "./fb.js";
 import {loadAtts, putAtt, dropAtt, readFile, fileErr, openRef, FILE_ACCEPT} from "./att.js";
 import {E, N, money, today, dmy, addD, nid, num, CH, PF, KP, RL, XK, DST, PRI, CLR, TPL, lab, rl, tasksOf, dealsOf, exOf, kpOf, kpName,
-  spend, queue, ibanNorm, ibanOk, ibanFmt, taskCan, ymAdd} from "./mkt-core.js";
+  spend, queue, ibanNorm, ibanOk, ibanFmt, taskCan, ymAdd, PTY, normName, partyKey, dealKey, parties} from "./mkt-core.js";
 import {topHtml, bodyHtml, drawerHtml, reportHtml, viewsOf, nameOf as nameOfA, av as avA} from "./mkt-views.js";
 import {CSS} from "./mkt-css.js";
 export {CH, ibanOk, ibanNorm} from "./mkt-core.js";
@@ -17,8 +17,8 @@ export {CH, ibanOk, ibanNorm} from "./mkt-core.js";
 // ---------- الحالة ----------
 const g = id => document.getElementById(id);
 let X = null, ROOT = null, TOP = null, BODY = null, ON = false, LOADED = false, BUSY = false, UN = [], PEND = null, WD = new Map(), SEEN = {}, RT = 0, DRAG = "";
-const RAW = new Map(), M = {C: new Map(), T: new Map(), D: new Map(), X: new Map()}, IBC = new Map();
-const S = {pg: "home", c: "", v: "", f: "act", lay: "cards", q: "", cm: "", who: "", wr: "", tm: ""};
+const RAW = new Map(), M = {C: new Map(), T: new Map(), D: new Map(), X: new Map(), P: new Map()}, IBC = new Map();
+const S = {pg: "home", c: "", v: "", f: "act", lay: "cards", q: "", cm: "", who: "", wr: "", tm: "", pq: "", pf: "all", pv: "deals"};
 const DR = {k: "", id: "", tab: "cm", cm: [], cmOk: false, at: [], atOk: false, up: 0, un: null, busy: false, back: null};
 const SKEY = "tz_mk_ui", SEENK = () => "tz_mk_seen_" + me();
 const me = () => X && X.me ? String(X.me.e || "").toLowerCase() : "";
@@ -46,7 +46,7 @@ export function initMk(ctx) {
 }
 export function stopMk() {
   UN.forEach(f => { try { f() } catch (e) {} }); UN = []; ON = false; LOADED = false; BUSY = false; PEND = null; closeDrawer(true);
-  RAW.clear(); M.C.clear(); M.T.clear(); M.D.clear(); M.X.clear(); IBC.clear(); WD = new Map();
+  RAW.clear(); M.C.clear(); M.T.clear(); M.D.clear(); M.X.clear(); M.P.clear(); IBC.clear(); WD = new Map();
   document.removeEventListener("click", onClick); document.removeEventListener("change", onChange); document.removeEventListener("input", onInput); document.removeEventListener("keydown", onKey);
   ["dragstart", "dragend", "dragover", "dragleave", "drop"].forEach(k => document.removeEventListener(k, onDrag));
   ["mkm", "msd", "mkpr"].forEach(i => { const m = g(i); if (m) m.remove() }); if (ROOT) ROOT.remove(); ROOT = TOP = BODY = null; X = null;
@@ -58,6 +58,7 @@ function sub(q, map, last) {
 function start() {
   if (ON || !X) return; ON = true; const db = X.db, m = me();
   UN.push(onSnapshot(collection(db, "whdir"), s => { WD = new Map(); s.docs.forEach(d => WD.set(d.id.toLowerCase(), d.data())); changed() }, () => {}));
+  sub(collection(db, "mkp"), M.P);// 🤝 (v272) دليل المشاهير وشركات الدعاية
   sub(collection(db, "mkt"), RAW);// القواعد تُرجع ما يحق له فقط: كل المهام لمن يرى الكل، ومهام حملاته لعضو الفريق
   if (X.all) { sub(collection(db, "mkd"), M.D); sub(collection(db, "mkx"), M.X); sub(collection(db, "mkc"), M.C, true) }
   else { sub(query(collection(db, "mkd"), where("by.e", "==", m)), M.D); sub(query(collection(db, "mkc"), where("tm", "array-contains", m)), M.C, true) }
@@ -110,7 +111,7 @@ function openDrawer(k, id) {
   <input type="file" id="msd-file" multiple hidden accept="${E(FILE_ACCEPT)}"></aside>`;
   d.classList.add("on"); document.documentElement.classList.add("msd-on");
   const col = k === "t" ? "mkt" : "mkd";
-  try { DR.un = onSnapshot(collection(X.db, col, id, "cm"), s => { if (DR.k !== k || DR.id !== id) return; DR.cm = s.docs.map(x => Object.assign({id: x.id}, x.data())).sort((a, b) => N(a.ts) - N(b.ts)); DR.cmOk = true; markSeen(); drawerPaint(); const m = g("msd-m"); if (m && DR.tab === "cm" && DR.scr) m.scrollTop = m.scrollHeight; DR.scr = true },
+  try { DR.un = onSnapshot(collection(X.db, col, id, "cm"), s => { if (DR.k !== k || DR.id !== id) return; const was = DR.cmOk ? DR.cm.length : -1; DR.cm = s.docs.map(x => Object.assign({id: x.id}, x.data())).sort((a, b) => N(a.ts) - N(b.ts)); DR.cmOk = true; markSeen(); drawerPaint(); const m = g("msd-m"); if (m && DR.tab === "cm" && was >= 0 && DR.cm.length > was) m.scrollTop = m.scrollHeight /* تعليق جديد فقط ينزل لآخر النقاش */ },
     () => { DR.cmOk = true; drawerPaint() }) } catch (e) { DR.cmOk = true }
   loadAt(); drawerPaint();
   setTimeout(() => { const b = d.querySelector('[data-mkq="dx"].ms-ib'); if (b) b.focus() }, 40);
@@ -307,26 +308,48 @@ async function dealForm(c, d) {
   const ib = d ? await loadIb(d.id) : null;
   modal(`<h3>${d ? (d.st === "no" ? "تصحيح الاتفاق وإعادة إرساله" : "تعديل الاتفاق") : "اتفاق جديد مع مؤثر"}</h3><p class="sub">حملة «<bdi data-notr>${E(c.n)}</bdi>» · يُرسل لمدير التسويق للاعتماد، ثم للمالية للتحويل.</p>
   ${d && d.st === "no" && d.ap && d.ap.note ? `<div class="ms-ins"><div class="bad" data-notr>سبب الرفض: ${E(d.ap.note)}</div></div>` : ""}
-  <div class="g2"><div><label class="lb" for="mk-dn">اسم المؤثر</label><input id="mk-dn" maxlength="60" value="${d ? E(d.n) : ""}"></div><div><label class="lb" for="mk-dp">المنصة</label><select id="mk-dp">${PF.map(x => `<option value="${x[0]}"${d && d.pf === x[0] ? " selected" : ""}>${x[1]}</option>`).join("")}</select></div>
+  ${d ? "" : `<label class="lb" for="mk-dpid">المشهور أو شركة الدعاية</label><select id="mk-dpid"><option value="">— اختر من المسجّلين —</option>${partyList().map(p => `<option value="${E(p.id)}">${E(p.n)} · ${PTY[p.ty] || ""}</option>`).join("")}<option value="+">＋ جهة جديدة لم تُسجَّل من قبل</option></select><div class="ibh" id="mk-dph" aria-live="polite"></div>`}
+  <div class="g2"><div id="mk-dnw"${d ? "" : ' style="display:none"'}><label class="lb" for="mk-dn">${d ? "الاسم" : "اسم الجهة الجديدة"}</label><input id="mk-dn" maxlength="60" value="${d ? E(d.n) : ""}"${d && d.pid ? " readonly" : ""}><div class="ibh" id="mk-dnh" aria-live="polite"></div></div>
+  <div id="mk-dtw"${d ? ' style="display:none"' : ' style="display:none"'}><label class="lb" for="mk-dty">النوع</label><select id="mk-dty"><option value="p">مشهور (شخص)</option><option value="c">شركة دعاية</option></select></div>
+  <div><label class="lb" for="mk-dp">المنصة</label><select id="mk-dp">${PF.map(x => `<option value="${x[0]}"${d && d.pf === x[0] ? " selected" : ""}>${x[1]}</option>`).join("")}</select></div>
   <div><label class="lb" for="mk-dh">الحساب (اختياري)</label><input id="mk-dh" maxlength="60" dir="ltr" value="${d ? E(d.h || "") : ""}" placeholder="@name"></div><div><label class="lb" for="mk-df">عدد المتابعين (اختياري)</label><input id="mk-df" inputmode="numeric" dir="ltr" value="${d && d.fl ? E(d.fl) : ""}"></div></div>
   <label class="lb" for="mk-dl">المطلوب منه</label><input id="mk-dl" maxlength="300" value="${d ? E(d.dl) : ""}" placeholder="مثال: 3 ستوريات + ريل واحد + زيارة فرع">
   <div class="g2"><div><label class="lb" for="mk-da">المبلغ المتفق عليه (ريال)</label><input id="mk-da" inputmode="decimal" dir="ltr" value="${d ? E(d.amt) : ""}"></div><div><label class="lb" for="mk-dd">تاريخ النشر (اختياري)</label><input id="mk-dd" type="date" value="${d ? E(d.dt || "") : ""}"></div></div>
   <label class="lb" for="mk-ib">الآيبان (IBAN)</label><input id="mk-ib" maxlength="42" dir="ltr" class="ms-ib0" autocomplete="off" value="${ib ? E(ibanFmt(ib.ib)) : ""}" placeholder="SA00 0000 0000 0000 0000 0000"><div class="ibh" id="mk-ibh" aria-live="polite"></div>
   <div class="g2"><div><label class="lb" for="mk-an">اسم صاحب الحساب كما في البنك</label><input id="mk-an" maxlength="80" value="${ib ? E(ib.an) : ""}"></div><div><label class="lb" for="mk-bn">البنك (اختياري)</label><input id="mk-bn" maxlength="40" value="${ib ? E(ib.bn || "") : ""}"></div></div>
   <p class="sub">بعد الحفظ يمكنك إرفاق العقد من صفحة الاتفاق.</p>${foot(["dsave", d ? d.id : ""], d ? (d.st === "no" ? "إعادة الإرسال للاعتماد" : "حفظ") : "إرسال للاعتماد")}`, "deal", c.id);
-  ibHint(); focusL("mk-dn");
+  ibHint(); focusL(d ? "mk-dn" : "mk-dpid");
 }
 function ibHint() { const i = g("mk-ib"), h = g("mk-ibh"); if (!i || !h) return; const v = ibanNorm(i.value); if (!v) { h.className = "ibh"; h.textContent = ""; return }
   if (ibanOk(v)) { h.className = "ibh ok"; h.textContent = "✓ آيبان صحيح" + (v.slice(0, 2) === "SA" ? " (سعودي)" : "") } else { h.className = "ibh bad"; h.textContent = v.slice(0, 2) === "SA" && v.length < 24 ? "الآيبان السعودي 24 حرفاً (المكتوب " + v.length + ")" : "الآيبان غير صحيح، راجع الأرقام" } }
+// 🤝 (v272) الجهات المسجّلة + من لهم اتفاقات قديمة بلا تسجيل
+const partyList = () => Array.from(M.P.entries()).map(x => ({id: x[0], n: x[1].n, ty: x[1].ty})).sort((a, b) => String(a.n).localeCompare(String(b.n), "ar"));
+const partyByName = n => { const k = normName(n); if (!k) return null; const r = partyList().find(p => normName(p.n) === k); if (r) return r.n; const d = Array.from(M.D.values()).find(x => normName(x.n) === k); return d ? d.n : null };
+function dnHint() { const i = g("mk-dn"), h = g("mk-dnh"), sel = g("mk-dpid"); if (!i || !h || !sel || sel.value !== "+") return; const ex = partyByName(i.value); h.className = ex ? "ibh bad" : "ibh"; h.textContent = ex ? "هذا الاسم مسجّل من قبل باسم «" + ex + "». اختره من القائمة بدل إضافته من جديد." : "" }
+async function partyPick() {
+  const sel = g("mk-dpid"), nw = g("mk-dnw"), tw = g("mk-dtw"), h = g("mk-dph"); if (!sel) return; const isNew = sel.value === "+";
+  nw.style.display = isNew ? "" : "none"; tw.style.display = isNew ? "" : "none"; h.className = "ibh"; h.textContent = "";
+  if (isNew) { ["mk-dn", "mk-ib", "mk-an", "mk-bn"].forEach(k => { g(k).value = "" }); ibHint(); g("mk-dn").focus(); return }
+  const p = M.P.get(sel.value); if (!p) return; const st = parties(M).get(sel.value);
+  if (st && st.L.length) { h.className = "ibh ok"; h.textContent = "له " + st.L.length + (st.L.length === 1 ? " اتفاق سابق" : " اتفاقات سابقة") + " · حُوّل له " + money(st.paid) + " ريال في " + st.nPaid + " تحويل · الباقي " + money(st.wait) + " ريال" }
+  if (p.pf && g("mk-dp")) g("mk-dp").value = p.pf; if (p.h && g("mk-dh") && !g("mk-dh").value) g("mk-dh").value = p.h;
+  // بيانات التحويل من آخر اتفاق لنفس الجهة (لمن يحق له رؤيتها) لتوفير إعادة كتابتها
+  const last = st && st.L.slice().sort((a, b) => N(b.ts) - N(a.ts))[0]; if (last && g("mk-ib") && !g("mk-ib").value) { const ib = await loadIb(last.id); if (ib && g("mk-dpid") && g("mk-dpid").value === sel.value && !g("mk-ib").value) { g("mk-ib").value = ibanFmt(ib.ib); g("mk-an").value = ib.an || ""; g("mk-bn").value = ib.bn || ""; ibHint() } }
+}
 async function dealSave(did) {
   if (BUSY) return; const c = M.C.get(g("mkm").dataset.mki); if (!c) return; const old = did ? M.D.get(did) : null, clean = s => String(s || "").trim().replace(/[<>"'&\\]/g, "");
-  const n = String(g("mk-dn").value || "").trim().slice(0, 60), pf = g("mk-dp").value, h = String(g("mk-dh").value || "").trim().slice(0, 60), fl = num(g("mk-df").value), dl = String(g("mk-dl").value || "").trim().slice(0, 300), amt = num(g("mk-da").value), dt = g("mk-dd").value;
+  // الجهة: مسجّلة من قبل (pid) أو جديدة تُسجَّل الآن. الاسم المسجّل لا يُضاف مرة ثانية
+  let pid = old ? old.pid || "" : "", ty = old ? old.ty || "" : "", pnew = null, n0 = String(g("mk-dn").value || "").trim().slice(0, 60);
+  if (!old) { const sv = g("mk-dpid").value; if (!sv) return errM("اختر المشهور أو شركة الدعاية، أو اختر «جهة جديدة»");
+    if (sv === "+") { if (n0.length < 2) return errM("اكتب اسم الجهة الجديدة"); const ex = partyByName(n0); if (ex) return errM("هذا الاسم مسجّل من قبل باسم «" + ex + "». اختره من القائمة بدل إضافته من جديد."); n0 = clean(n0); ty = g("mk-dty").value === "c" ? "c" : "p"; pid = await partyKey(n0); if (M.P.has(pid)) return errM("هذا الاسم مسجّل من قبل. اختره من القائمة."); pnew = {n: n0, ty, by: {e: me(), n: myN()}, ts: Date.now()} }
+    else { const p = M.P.get(sv); if (!p) return errM("اختر الجهة من القائمة"); pid = sv; ty = p.ty; n0 = p.n } }
+  const n = n0, pf = g("mk-dp").value, h = String(g("mk-dh").value || "").trim().slice(0, 60), fl = num(g("mk-df").value), dl = String(g("mk-dl").value || "").trim().slice(0, 300), amt = num(g("mk-da").value), dt = g("mk-dd").value;
   const ib = ibanNorm(g("mk-ib").value), an = clean(g("mk-an").value).slice(0, 80), bn = clean(g("mk-bn").value).slice(0, 40);
   if (n.length < 2) return errM("اكتب اسم المؤثر"); if (!dl) return errM("اكتب المطلوب من المؤثر"); if (isNaN(amt) || amt <= 0) return errM("اكتب المبلغ"); if (isNaN(fl)) return errM("عدد المتابعين رقم غير صحيح");
   if (!ibanOk(ib)) return errM("الآيبان غير صحيح"); if (an.length < 2) return errM("اكتب اسم صاحب الحساب");
-  const d = {c: c.id, n, pf, dl, amt, st: "pend", by: old ? old.by : {e: me(), n: myN()}, ts: old ? old.ts : Date.now(), ib: 1}; if (h) d.h = h; if (fl > 0) d.fl = fl; if (dt) d.dt = dt; if (old) { d.upd = Date.now(); if (old.cn) d.cn = old.cn; if (old.an) d.an = old.an }
+  const d = {c: c.id, n, pf, dl, amt, st: "pend", by: old ? old.by : {e: me(), n: myN()}, ts: old ? old.ts : Date.now(), ib: 1}; if (pid) d.pid = pid; if (ty) d.ty = ty; if (pnew) { if (pf) pnew.pf = pf; if (h) pnew.h = h } if (h) d.h = h; if (fl > 0) d.fl = fl; if (dt) d.dt = dt; if (old) { d.upd = Date.now(); if (old.cn) d.cn = old.cn; if (old.an) d.an = old.an }
   const ibd = {ib, an, ts: Date.now()}; if (bn) ibd.bn = bn; BUSY = true; const id = did || nid();
-  try { const b = writeBatch(X.db); b.set(doc(X.db, "mkdi", id), ibd); b.set(doc(X.db, "mkd", id), d); await withTimeout(b.commit()); IBC.delete(id);
+  try { const b = writeBatch(X.db); if (pnew) b.set(doc(X.db, "mkp", pid), pnew); b.set(doc(X.db, "mkdi", id), ibd); b.set(doc(X.db, "mkd", id), d); await withTimeout(b.commit()); IBC.delete(id);
     closeM(); toast(old && old.st !== "no" ? "✅ حُفظ الاتفاق" : "✅ أُرسل الاتفاق لمدير التسويق للاعتماد"); pg(["d:" + id]); if (!old) setTimeout(() => openItem("d:" + id), 400) } catch (e) { BUSY = false; errM(errTxt(e)) }
 }
 async function dealOk(id) { const d = M.D.get(id); if (!d || BUSY) return; if (!confirm(`اعتماد الاتفاق مع ${d.n} بمبلغ ${money(d.amt)} ريال؟ سيصل للمالية للتحويل.`)) return; BUSY = true;
@@ -338,14 +361,15 @@ async function payForm(id) {
   const d = M.D.get(id); if (!d) return; modal(`<h3>💸 تحويل لمؤثر</h3><p class="sub">جاري تحميل بيانات التحويل…</p>`, "pay", id);
   const ib = await loadIb(id); if (!g("mkm") || g("mkm").dataset.mkv !== "pay") return; const c = M.C.get(d.c);
   modal(`<h3>💸 تحويل لمؤثر</h3><p class="sub">حملة «<bdi data-notr>${E(c ? c.n : "")}</bdi>» · اعتمده <bdi data-notr>${E(d.ap && d.ap.n || "")}</bdi></p>
-  <div class="pay"><div><span>المؤثر</span><b data-notr>${E(d.n)}</b></div><div><span>المبلغ</span><b>${money(d.amt)} ريال</b></div>
+  ${(() => { const p = parties(M).get(dealKey(d)); return p && (p.nPaid || p.L.length > 1) ? `<div class="ms-ins"><div class="info">سجل هذه الجهة: حُوّل لها ${money(p.paid)} ريال في ${p.nPaid} تحويل، والباقي لها الآن ${money(p.wait)} ريال (${p.L.length} اتفاقات).</div></div>` : "" })()}
+  <div class="pay"><div><span>${PTY[d.ty] || "المؤثر"}</span><b data-notr>${E(d.n)}</b></div><div><span>المبلغ</span><b>${money(d.amt)} ريال</b></div>
   <div><span>الآيبان</span><span class="ibr"><b class="ms-ib0">${ib ? E(ibanFmt(ib.ib)) : "—"}</b>${ib ? `<button type="button" class="ms-b sm" data-mkq="ibcp" data-mkv="${E(ib.ib)}">نسخ</button>` : ""}</span></div>
   <div><span>صاحب الحساب</span><b data-notr>${ib ? E(ib.an) : "—"}</b></div>${ib && ib.bn ? `<div><span>البنك</span><b data-notr>${E(ib.bn)}</b></div>` : ""}<div><span>المطلوب منه</span><span data-notr>${E(d.dl)}</span></div></div>
   ${ib && !ibanOk(ib.ib) ? `<div class="ms-ins"><div class="bad">تنبيه: رقم الآيبان لا يجتاز فحص الصحة. تأكّد منه قبل التحويل.</div></div>` : ""}
   <label class="lb" for="mk-ref">رقم مرجع التحويل من البنك</label><input id="mk-ref" maxlength="60" dir="ltr"><p class="sub">بعد التسجيل يمكنك إرفاق إيصال التحويل من صفحة الاتفاق.</p>${foot(["paysave", id], "✔ تم التحويل")}`, "pay", id); focusL("mk-ref");
 }
 async function paySave(id) { const ref = String(g("mk-ref").value || "").trim().slice(0, 60); if (ref.length < 2) return errM("اكتب رقم مرجع التحويل"); if (BUSY) return; BUSY = true;
-  try { await withTimeout(updateDoc(doc(X.db, "mkd", id), {st: "paid", pd: stampMe({ref}), upd: Date.now()})); closeM(); toast("✅ سُجّل التحويل. أرفق الإيصال من صفحة الاتفاق"); pg(["d:" + id]); openItem("d:" + id) } catch (e) { BUSY = false; errM(errTxt(e)) } }
+  try { await withTimeout(updateDoc(doc(X.db, "mkd", id), {st: "paid", pd: stampMe({ref}), upd: Date.now()})); closeM(); toast("✔ تم السداد. أرفق إيصال التحويل من صفحة الاتفاق"); pg(["d:" + id]); openItem("d:" + id) } catch (e) { BUSY = false; errM(errTxt(e)) } }
 async function ibView(id) { if (IBC.has(id)) { IBC.delete(id); render(); return } const ib = await loadIb(id); if (!ib) { toast("لا يمكنك عرض بيانات التحويل", "er"); return } IBC.set(id, ib); render() }
 async function dealDel(id) { const d = M.D.get(id); if (!d || !confirm(`حذف الاتفاق مع ${d.n}؟`)) return; if (DR.id === id) closeDrawer(true);
   try { await purge("mkd", id); const b = writeBatch(X.db); b.delete(doc(X.db, "mkdi", id)); b.delete(doc(X.db, "mkd", id)); await withTimeout(b.commit()); toast("حُذف الاتفاق") } catch (e) { toast(errTxt(e), "er") } }
@@ -390,6 +414,7 @@ function onClick(e) {
   if (a === "pg") { closeDrawer(true); return go({pg: v, c: v === "camps" ? "" : S.c, q: v === "camps" ? S.q : ""}) }
   if (a === "open") { const ok = M.C.has(i); if (ok) { S.who = ""; S.wr = ""; S.cm = ""; go({pg: "c", c: i, v: ck.dataset.mks || S.v}) } return }
   if (a === "v") return go({v}); if (a === "f") return go({f: ck.dataset.mkf}); if (a === "lay") return go({lay: v});
+  if (a === "pf") return go({pf: ck.dataset.mkf}); if (a === "pvw") return go({pv: v}); if (a === "pone") return go({pq: v, pv: "deals", pf: "all"});
   if (a === "who") return go({who: i || ""}); if (a === "tm") return go({tm: S.tm === i ? "" : i});
   if (a === "cal") { const cur = /^\d{4}-\d{2}$/.test(S.cm) ? S.cm : today().slice(0, 7); return go({cm: v === "0" ? today().slice(0, 7) : ymAdd(cur, +v)}) }
   if (a === "topen") return openDrawer("t", i); if (a === "dopen") return openDrawer("d", i); if (a === "dx") return closeDrawer(); if (a === "dtab") { DR.tab = v; return drawerPaint() }
@@ -418,10 +443,13 @@ function onChange(e) {
   if (t.matches("#mkm [data-kk]")) { const r = t.closest("[data-kr]"), l = r && r.querySelector("[data-kl]"); if (l) l.style.display = t.value === "oth" ? "" : "none"; return }
   if (t.id === "mk-tr" && !g("mkm").dataset.rqt) { const q = g("mk-rq"); if (q) q.checked = !!rl(t.value)[4]; return }// مهمة جديدة: الاعتماد حسب مسار العمل
   if (t.id === "mk-rq") g("mkm").dataset.rqt = "1";
+  if (t.id === "mk-dpid") return partyPick();
 }
 function onInput(e) {
   if (!X) return; const t = e.target; if (!inMk(t)) return;
   if (t.id === "ms-q") { S.q = t.value; return schedule() }
+  if (t.id === "ms-pq") { S.pq = t.value; return schedule() }
+  if (t.id === "mk-dn") return dnHint();
   if (t.id === "msd-t") { t.style.height = ""; t.style.height = Math.min(140, t.scrollHeight) + "px"; return }
   if (t.id === "mk-ib") return ibHint();
   if (t.id === "mk-pq") { const q = String(t.value || "").trim(); document.querySelectorAll("#mk-ppl [data-pn]").forEach(l => { l.style.display = !q || l.dataset.pn.indexOf(q) >= 0 ? "" : "none" }) }

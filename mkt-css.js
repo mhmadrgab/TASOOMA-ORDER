@@ -128,6 +128,27 @@ html.tz-en .ms-bk,html.tz-en .ms-cn .ms-ib{transform:scaleX(-1)}
 .msd-f{display:flex;gap:8px;align-items:flex-end;padding:10px 14px;border-top:1px solid var(--line);background:var(--card)}.msd-f textarea{flex:1;resize:none;min-height:40px;max-height:140px;border-radius:12px;border:1px solid var(--line);background:var(--bg,transparent);color:var(--ink);padding:9px 12px;font:inherit;font-size:14px;line-height:1.6}.msd-f textarea:focus{outline:2px solid var(--acc,#8a5a83);outline-offset:-1px}
 .ms-amt{display:flex;align-items:baseline;gap:6px}.ms-amt b{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}.ms-amt small{color:var(--mut)}.ms-amt span{margin-inline-start:auto}
 .ms-ib0{font-family:ui-monospace,Consolas,monospace;direction:ltr;unicode-bidi:isolate;letter-spacing:.5px}.ms-ibx{display:grid;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:13.5px}.ms-ibx b{font-size:15px}.ms-ibx div{display:flex;gap:6px}
+/* 🤝 (v272) التحويلات والجهات */
+.ms-ty{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:99px;white-space:nowrap;color:#8a5a12;background:rgba(208,138,44,.16)}.ms-ty.c{color:#2d68ad;background:rgba(61,124,201,.15)}
+[data-theme=dark] .ms-ty{color:#f0c68a}[data-theme=dark] .ms-ty.c{color:#9cc3f0}
+.ms-paid{display:grid;gap:2px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#6f7d45,#4c6b2a);color:#fff;box-shadow:0 10px 24px -10px rgba(76,107,42,.7)}.ms-paid b{font-size:20px}.ms-paid span{font-size:14px;font-variant-numeric:tabular-nums}.ms-paid small{font-size:12px;opacity:.9;color:#fff}.ms-paid small b,.ms-wait small b{font-size:inherit}
+.ms-paid.sm{display:inline-block;padding:3px 12px;border-radius:99px;font-size:12.5px;font-weight:800;box-shadow:none;justify-self:start}
+.ms-wait{display:grid;gap:2px;padding:12px 16px;border-radius:14px;background:rgba(208,138,44,.16);color:var(--w);border:1px dashed rgba(208,138,44,.6)}.ms-wait b{font-size:16px}.ms-wait small{font-size:12px;color:inherit}
+.ms-pb{padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--soft);display:grid;gap:4px}.ms-pb .h{display:flex;justify-content:space-between;gap:8px;font-size:13px}.ms-pb .h small{color:var(--mut)}.ms-pb p{margin:0;font-size:13.5px;line-height:1.8}.ms-pb small{color:var(--mut);font-size:12px}
+.ms-pb b.wn,.ms-py .pl b.wn{color:var(--w)}.ms-pb b.k,.ms-py .pl b.k{color:var(--ok)}
+.ms-in.big{flex:1 1 320px;min-height:42px;font-size:14.5px}.ms-tl .hot{border-color:rgba(208,138,44,.7);background:linear-gradient(180deg,rgba(208,138,44,.14),var(--card));box-shadow:0 10px 26px -14px rgba(208,138,44,.8)}
+.ms-pyl{display:grid;gap:10px}
+.ms-py{display:grid;grid-template-columns:170px minmax(0,1.4fr) 150px minmax(0,1.3fr) auto;gap:6px 16px;align-items:center;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--card);cursor:pointer;border-inline-start:8px solid var(--c-doing);transition:box-shadow .15s,transform .15s}
+.ms-py:hover,.ms-py:focus-visible{box-shadow:0 10px 24px -12px rgba(42,29,44,.35);transform:translateY(-1px);outline:0}
+.ms-py .st{display:grid;gap:2px;padding:9px 12px;border-radius:12px;text-align:center;background:rgba(208,138,44,.16);color:var(--w)}.ms-py .st b{font-size:14px}.ms-py .st small{font-size:11.5px;color:inherit;opacity:.85}
+.ms-py.paid{border-inline-start-color:var(--c-done);background:linear-gradient(90deg,rgba(111,125,69,.1),var(--card) 45%)}html[dir=ltr] .ms-py.paid{background:linear-gradient(270deg,rgba(111,125,69,.1),var(--card) 45%)}
+.ms-py.paid .st{background:linear-gradient(135deg,#6f7d45,#4c6b2a);color:#fff}.ms-py.paid .st b{font-size:15px}
+.ms-py .nm{min-width:0;display:grid;gap:4px}.ms-py .nm>b{font-size:16px}.ms-py .nm>span{display:flex;gap:6px;flex-wrap:wrap}.ms-py .nm small{color:var(--mut);font-size:12.5px;line-height:1.6}
+.ms-py .amo{text-align:center}.ms-py .amo b{display:block;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}.ms-py .amo small{color:var(--mut);font-size:12px}
+.ms-py .pl{font-size:12.5px;color:var(--mut);line-height:1.8}.ms-py .pl b{color:var(--ink);font-variant-numeric:tabular-nums}
+.ms-ptb td.due{color:var(--w)}
+@media (max-width:1100px){.ms-py{grid-template-columns:150px minmax(0,1fr) auto}.ms-py .pl{grid-column:1/-1}.ms-py .ac{grid-column:1/-1}}
+@media (max-width:760px){.ms-py{grid-template-columns:1fr auto}.ms-py .st{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center}}
 /* النماذج */
 #mkm{position:fixed;inset:0;z-index:79;display:none;align-items:center;justify-content:center;background:rgba(20,12,20,.5);padding:16px}#mkm.on{display:flex}
 #mkm>div{background:var(--card);color:var(--ink);border-radius:18px;padding:20px;width:min(620px,100%);max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}#mkm h3{margin:0 0 4px;font-size:18px}#mkm .sub{color:var(--mut);font-size:13px;margin:0 0 10px;line-height:1.7}

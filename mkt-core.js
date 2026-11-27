@@ -57,6 +57,21 @@ export const isOpen = x => x.st !== "done";
 export const isLate = (x, t) => x.st !== "done" && x.st !== "rev" && !!x.du && x.du < t;
 export const clStat = x => { const L = Array.isArray(x.cl) ? x.cl : []; return {n: L.length, k: L.filter(y => y && y.k).length} };
 
+// ---------- 🤝 (v272) الجهات: مشهور أو شركة دعاية ----------
+export const PTY = {p: "مشهور", c: "شركة دعاية"};
+// توحيد الاسم (نفس دالة القاعدة mkp_key): بلا تشكيل ولا مسافات، والهمزات والتاء المربوطة موحّدة
+export const normName = n => String(n == null ? "" : n).replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s+/g, "").toLowerCase();
+export async function partyKey(n) { const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(normName(n))); return "p" + Array.from(new Uint8Array(h)).map(x => (x < 16 ? "0" : "") + x.toString(16)).join("").slice(0, 32) }
+export const dealKey = d => d.pid || "n:" + normName(d.n);
+// ملخّص كل جهة من اتفاقاتها: المعتمد tot، المحوَّل paid في nPaid تحويلاً، الباقي wait، والمعلّق pend
+export function parties(M) {
+  const P = new Map();
+  vals(M.D).forEach(d => { const k = dealKey(d); let p = P.get(k);
+    if (!p) { const reg = d.pid && M.P ? M.P.get(d.pid) : null; p = {k, n: reg ? reg.n : d.n, ty: (reg && reg.ty) || d.ty || "p", L: [], tot: 0, paid: 0, wait: 0, pend: 0, nPaid: 0, last: 0}; P.set(k, p) }
+    p.L.push(d); const a = N(d.amt);
+    if (d.st === "paid") { p.paid += a; p.tot += a; p.nPaid++; p.last = Math.max(p.last, N(d.pd && d.pd.at)) } else if (d.st === "ok") { p.wait += a; p.tot += a } else if (d.st === "pend") p.pend += a });
+  return P;
+}
 // المصروف = الاتفاقات المعتمدة (حتى قبل التحويل) + المصروفات المسجّلة
 export function spend(M, c) {
   const by = {}; XK.forEach(k => { by[k[0]] = 0 }); let paid = 0, wait = 0, pend = 0;
