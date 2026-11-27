@@ -24,7 +24,7 @@ const SEP="\u0001";
 export const DEF={min:2,keep:2,slow:0,days:60,stale:5,ex:["000-SERVER"],wh:"001-WEARHOUSE",ov:[]};
 let X=null,ROOT=null,DATA=null,CFG=Object.assign({},DEF),META=null,LOADED=false,LOADING=false,BUSY="",REP=[],SOLDC={},SENT=[],un=[],MFAIL={};// MFAIL: شهور تاريخ فشل تحميلها
 const SENT_DAYS=14;// طلب التحويل المُنشأ يبقى معلَّماً على اقتراحه 14 يوماً (حتى يظهر أثره في تقرير السيستم)
-let UI={tab:"home",dp:"",hx:"",hk:"n",bh:60,ba:30,bs:"cover",bx:"",trv:"pair",st:"",vn:"",q:"",sold:1,min:"",per:"ytd",from:"",to:"",fr:"",tt:"",code:"",cl:"",sz:"",show:"b",son:"",lim:200,aq:"",a:null,rec:null};
+let UI={tab:"home",dp:"",hx:"",hk:"n",bh:60,ba:30,bs:"cover",bx:"",trv:"pair",st:"",vn:"",q:"",sold:1,min:"",per:"ytd",from:"",to:"",fr:"",tt:"",code:"",cl:"",sz:"",pf:"",pt:"",psort:"q",pxd:"",show:"b",son:"",lim:200,aq:"",a:null,rec:null};
 
 /* ============ 1) قراءة الملفات ============ */
 const dec=s=>s.indexOf("&")<0?s:s.replace(/&(#x?[0-9a-fA-F]+|lt|gt|quot|apos|amp);/g,(m,k)=>k==="lt"?"<":k==="gt"?">":k==="quot"?'"':k==="apos"?"'":k==="amp"?"&":k.charAt(1)==="x"||k.charAt(1)==="X"?String.fromCodePoint(parseInt(k.slice(2),16)||32):String.fromCodePoint(parseInt(k.slice(1),10)||32));
@@ -204,11 +204,26 @@ export function rcvMap(D,from,to){const m=new Map();for(const ym in D.d){if(ym+"
 export function purchStat(D,o){
  o=o||{};const from=o.from||"0000",to=o.to||"9999",fs=o.store?D.sti.get(o.store):undefined;if(o.store&&fs===undefined)return null;
  const ids=o.code?new Set((D.code.get(String(o.code).trim())||[]).filter(ki=>(!o.cl||D.k[ki][1]===o.cl)&&(!o.z||D.k[ki][2]===o.z))):null;if(ids&&!ids.size)return null;
- let q=0,n=0,last="";const byM={},byS=new Map(),byV=new Map(),byC=new Map();
- for(const ym in D.d){if(ym+"-31"<from||ym+"-01">to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){const v=r[i+4];if(!(v>0))continue;const ki=r[i],ti=r[i+1];if(ids&&!ids.has(ki))continue;if(fs!==undefined&&ti!==fs)continue;const d=ymd(ym,r[i+2]);if(d<from||d>to)continue;
-  q+=v;n++;if(d>last)last=d;byM[ym]=(byM[ym]||0)+v;byS.set(ti,(byS.get(ti)||0)+v);byV.set(ki,(byV.get(ki)||0)+v);const c=D.k[ki][0];byC.set(c,(byC.get(c)||0)+v)}}
+ let q=0,n=0,ret=0,last="";const byM={},byS=new Map(),byV=new Map(),byC=new Map();
+ for(const ym in D.d){if(ym+"-31"<from||ym+"-01">to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){const v=r[i+4];if(!v)continue;const ki=r[i],ti=r[i+1];if(ids&&!ids.has(ki))continue;if(fs!==undefined&&ti!==fs)continue;const d=ymd(ym,r[i+2]);if(d<from||d>to)continue;
+  q+=v;n++;if(v<0)ret-=v;else if(d>last)last=d;byM[ym]=(byM[ym]||0)+v;byS.set(ti,(byS.get(ti)||0)+v);byV.set(ki,(byV.get(ki)||0)+v);const c=D.k[ki][0];byC.set(c,(byC.get(c)||0)+v)}}
  const srt=m=>[...m].map(x=>({k:x[0],q:x[1]})).sort((a,b)=>b.q-a.q);
- return {q,n,last,byM,stores:srt(byS),vars:srt(byV),codes:srt(byC)};
+ return {q,n,ret,last,byM,stores:srt(byS),vars:srt(byV),codes:srt(byC)};
+}
+/* (v276) سجل المشتريات: متى اشترينا وكم مرة (المرة = يوم استلام)، أول وآخر شراء، كل يوم استلام بأصنافه، ولكل لون ومقاس ولكل كود.
+   من نفس سطور ملف المشتريات (الخانة الخامسة في مستندات الشهور). vendor = مورد الصنف */
+export function purchLog(D,o){
+ o=o||{};const from=o.from||"0000",to=o.to||"9999",fs=o.store?D.sti.get(o.store):undefined,fv=o.vendor?D.vn.indexOf(o.vendor):-2;if((o.store&&fs===undefined)||(o.vendor&&fv<0))return null;
+ const ids=o.code?new Set((D.code.get(String(o.code).trim())||[]).filter(ki=>(!o.cl||D.k[ki][1]===o.cl)&&(!o.z||D.k[ki][2]===o.z))):null;if(ids&&!ids.size)return null;
+ let q=0,n=0,ret=0,first="",last="";const byM={},byD=new Map(),V=new Map(),C=new Map();
+ for(const ym in D.d){if(ym+"-31"<from||ym+"-01">to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){const v=r[i+4];if(!v)continue;const ki=r[i],ti=r[i+1];if(ids&&!ids.has(ki))continue;if(fs!==undefined&&ti!==fs)continue;if(fv!==-2&&D.k[ki][3]!==fv)continue;const d=ymd(ym,r[i+2]);if(d<from||d>to)continue;
+  const pos=v>0;q+=v;n++;if(!pos)ret-=v;else{if(!first||d<first)first=d;if(d>last)last=d}byM[ym]=(byM[ym]||0)+v;// السالب = مرتجع للمورد: يدخل الصافي ولا يُحسب «مرة شراء»
+  let e=byD.get(d);if(!e){e={d,q:0,p:0,n:0,it:[]};byD.set(d,e)}e.q+=v;e.n++;if(pos)e.p+=v;if(ids)e.it.push([ki,ti,v]);
+  let x=V.get(ki);if(!x){x={k:ki,q:0,last:"",ds:new Set()};V.set(ki,x)}x.q+=v;if(pos){x.ds.add(d);if(d>x.last)x.last=d}
+  const c=D.k[ki][0];let y=C.get(c);if(!y){y={k:c,vi:D.k[ki][3],q:0,first:"",last:"",ds:new Set()};C.set(c,y)}y.q+=v;if(pos){y.ds.add(d);if(d>y.last)y.last=d;if(!y.first||d<y.first)y.first=d}}}
+ const fin=m=>[...m.values()].map(x=>{x.times=x.ds.size;delete x.ds;return x}).sort((a,b)=>b.q-a.q);
+ let times=0;byD.forEach(e=>{if(e.p>0)times++});
+ return {q,n,ret,first,last,times,byM,dates:[...byD.values()].sort((a,b)=>a.d<b.d?1:-1),vars:fin(V),codes:fin(C)};
 }
 /* (v209) الكمية المطلوبة للفرع = ما يكفيه cov يوماً من بيعه (ولا تقل عن حد النواقص). cov من القواعد (عنصر {t:"cov",min} داخل ov، الافتراضي 14، صفر = إكمال الحد فقط).
    تعمل فقط حين يُعرف عدد أيام المبيعات (days): من النداء، أو طول الفترة، أو setEnv({days}) لمبيعات «من أول السنة». بلا أيام = إكمال الحد كما كان. */
@@ -338,6 +353,14 @@ export function salesQuery(D,o){
  for(const ym in D.d){if(ym+"-31"<o.from||ym+"-01">o.to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){if(!ids.has(r[i]))continue;if(fs!==undefined&&r[i+1]!==fs)continue;const d=ymd(ym,r[i+2]);if(d<o.from||d>o.to)continue;const n=r[i+3];if(!n)continue;
    total+=n;if(n<0)ret-=n;byDay[d]=(byDay[d]||0)+n;bySt[r[i+1]]=(bySt[r[i+1]]||0)+n;byK[r[i]]=(byK[r[i]]||0)+n}}
  return {total,ret,byDay,bySt,byK};
+}
+// (v276) مبيعات كل الأكواد في فترة (وفرع ومورد اختيارياً) من ملفات التاريخ: المجموع، يوماً بيوم، لكل فرع، ولكل كود
+export function salesOverview(D,o){
+ o=o||{};const fs=o.store?D.sti.get(o.store):undefined,fv=o.vendor?D.vn.indexOf(o.vendor):-2;if((o.store&&fs===undefined)||(o.vendor&&fv<0))return null;
+ let total=0,ret=0;const byDay={},bySt={},C=new Map();
+ for(const ym in D.d){if(ym+"-31"<o.from||ym+"-01">o.to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){const n=r[i+3];if(!n)continue;const ki=r[i],ti=r[i+1];if(fs!==undefined&&ti!==fs)continue;if(fv!==-2&&D.k[ki][3]!==fv)continue;const d=ymd(ym,r[i+2]);if(d<o.from||d>o.to)continue;
+  total+=n;if(n<0)ret-=n;byDay[d]=(byDay[d]||0)+n;bySt[ti]=(bySt[ti]||0)+n;const c=D.k[ki][0];C.set(c,(C.get(c)||0)+n)}}
+ return {total,ret,byDay,bySt,codes:[...C].map(x=>({k:x[0],q:x[1]})).sort((a,b)=>b.q-a.q)};
 }
 /* ---- (v174) بطاقات «اسأل»: كل رقم هنا جمع مباشر من صفوف الملفين، بلا تقدير ---- */
 // يمرّ على صفوف ملفات التاريخ داخل الفترة: fn(صنف، فرع، اليوم، الكمية)
@@ -1166,7 +1189,7 @@ const CSS=`.stk-lqn{margin:8px 0 0;padding:8px 10px;border-radius:10px;backgroun
 html.lite .an,html.lite .an *,html.lite .stk-rg circle.f.an{animation:none!important}@media (prefers-reduced-motion:reduce){.stk-dch .c i,.stk-bc,.stk-hb .hbr,.stk-hb .tr i,.stk-tc,.stk-bd,.stk-rg circle.f,.stk-bc .mr circle.f{animation:none!important}}
 :where([data-theme=dark]) .stk-dhero{background:radial-gradient(120% 140% at 0% 0%,#7b5576 0%,#5a3856 40%,#2c1a2b 100%)}:where([data-theme=dark]) .stk-mk.bad b,:where([data-theme=dark]) .stk-bc ul li.z b{color:#f1a5a0}
 @media print{.stk-tabs,.stk-bar,.stk-drop,.stk-more{display:none!important}#pa.stkp{font-size:10pt}#pa.stkp .ph h2{font-size:17pt}#pa.stkp .ps{font-size:14pt;font-weight:700;margin:0 0 2mm;unicode-bidi:plaintext}#pa.stkp .pi{font-size:9pt;color:#444;margin:0 0 3mm}#pa.stkp .pt{width:100%;border-collapse:collapse}#pa.stkp .pt th,#pa.stkp .pt td{border:1px solid #777;padding:1.3mm 1.6mm;text-align:center;font-size:9.5pt;unicode-bidi:plaintext}#pa.stkp .pt th{background:#eee;font-size:9pt}#pa.stkp .pt td.bl{min-width:26mm}}`;
-const TABS=[["home","📊","لوحة اليوم"],["out","📦","نفد من المستودع"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["sales","📅","مبيعات بالتاريخ"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
+const TABS=[["home","📊","لوحة اليوم"],["out","📦","نفد من المستودع"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["pur","📥","المشتريات"],["sales","📅","المبيعات"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
 const fmt=n=>String(Math.round(N(n))).replace(/\B(?=(\d{3})+(?!\d))/g,",");
 const dts=t=>{if(!t)return "";const d=new Date(N(t));return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+" "+p2(d.getHours())+":"+p2(d.getMinutes())};
 // ‎ قبل النص: اسم المخزن «003-EL MALQA» يُعرض بترتيبه داخل قائمة عربية (كان يظهر «EL MALQA-003»)
@@ -1872,18 +1895,60 @@ function pivotView(code,P,pr,pc,pv){
  ${M.rows.map(r=>`<tr${isWhR(r)?` class="whr"`:""}><td class="s">${lab(pr,r.k)}</td>${colsL.map(c=>{const x=M.cell(r.k,c.k);return `<td class="${cls(x,isWhR(r)||(pc==="store"&&c.k===M.wh),pr==="store"?r.k:c.k)}">${val(x)}</td>`}).join("")}<td class="t">${val(r)}</td></tr>`).join("")}
  <tr class="tot"><td class="s">الإجمالي</td>${colsL.map(c=>`<td>${val(c)}</td>`).join("")}<td>${val(M.tot)}</td></tr></tbody></table></div></div>`;
 }
+/* (v276) 📥 قسم «المشتريات»: من ملف المشتريات المرفوع. بكود: كم مرة اشتريناه (المرة = يوم استلام)، أول وآخر شراء، كل مرة بألوانها ومقاساتها.
+   بلا كود: كل الأكواد المشتراة في الفترة (الكمية، عدد المرات، آخر شراء) ولكل شهر */
+function vPur(){
+ const code=String(UI.code||"").trim(),td=today();if(!UI.pf)UI.pf=td.slice(0,4)+"-01-01";if(!UI.pt)UI.pt=td;
+ const ids=DATA.code.get(code)||[],cols=[...new Set(ids.map(k=>DATA.k[k][1]))].sort(),szs=[...new Set(ids.filter(k=>!UI.cl||DATA.k[k][1]===UI.cl).map(k=>DATA.k[k][2]))].sort((a,b)=>zk(a)-zk(b));
+ const bar=`<div class="stk-bar"><label>الكود<input type="text" data-sf="code" id="stk-code" list="stk-codes" value="${E(UI.code)}" placeholder="اكتب الكود أو اتركه لكل الأكواد" dir="ltr" autocomplete="off"></label>${cBtn()}${code?`<label>اللون<select data-sf="cl" id="stk-cl">${opt(cols,UI.cl,"كل الألوان")}</select></label><label>المقاس<select data-sf="sz" id="stk-sz">${opt(szs,UI.sz,"كل المقاسات")}</select></label>`:`<label>المورد<select data-sf="vn" id="stk-vn">${opt(vendors(),UI.vn,"كل الموردين")}</select></label>`}<label>من يوم<input type="date" data-sf="pf" id="stk-pf" value="${E(UI.pf)}"></label><label>إلى يوم<input type="date" data-sf="pt" id="stk-pt" value="${E(UI.pt)}"></label><span class="sp"></span><button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div><datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
+ const rm=rcvMonths();
+ if(!rm.length){LASTX=null;return bar+em(`لم يُرفع ملف المشتريات بعد.<br>ارفعه من تبويب «الملفات» (تقرير الكمية المستلمة من المورد بالتاريخ) لتسأل: متى اشترينا الصنف، وكم مرة، ومتى آخر شراء. <button class="bt s" type="button" data-sk="tab" data-t="up">افتح «الملفات»</button>`)}
+ if(!(UI.pf<=UI.pt)){LASTX=null;return bar+em("تاريخ البداية بعد تاريخ النهاية.")}
+ const miss=months(UI.pf,UI.pt).filter(ym=>rm.indexOf(ym)<0&&ym<=td.slice(0,7)),note=`<div class="stk-rep${miss.length?" w":""}">من ملف المشتريات (الكمية المستلمة من المورد). «المرة» = يوم استلام.${miss.length?` شهور لم يُرفع ملف مشترياتها: <b data-notr dir="ltr">${E(miss.join("، "))}</b>.`:""}</div>`;
+ const R=purchLog(DATA,{code,cl:code?UI.cl:"",z:code?UI.sz:"",vendor:code?"":UI.vn,from:UI.pf,to:UI.pt});
+ if(!R){LASTX=null;return bar+em(code?`الكود <b data-notr dir="ltr">${E(code)}</b> غير موجود في ملف الكميات.`:"لا بيانات بهذه الشروط.")}
+ const dl=d=>`<bdi data-notr dir="ltr">${E(d||"—")}</bdi>`,ago=d=>d?Math.max(0,Math.round((new Date(td+"T12:00:00")-new Date(d+"T12:00:00"))/864e5)):null;
+ const ms=Object.keys(R.byM).sort(),mmx=Math.max(1,...ms.map(m=>R.byM[m])),mon=ms.length?ms.map(m=>`<div class="stk-day"><span data-notr>${m}</span><i style="width:${Math.round(R.byM[m]/mmx*62)}%"></i><b>${fmt(R.byM[m])}</b></div>`).join(""):"<p>لا مشتريات في الفترة.</p>";
+ if(code){
+  const K=codeCard(DATA,CFG,code,{cl:UI.cl,z:UI.sz}),a=ago(R.last),vn=ids.length&&DATA.k[ids[0]][3]>=0?DATA.vn[DATA.k[ids[0]][3]]||"":"";
+  LASTX={name:"مشتريات-"+code,head:["التاريخ","اللون","المقاس","المخزن","الكمية"],rows:()=>{const o=[];R.dates.forEach(e=>e.it.forEach(x=>o.push([e.d,DATA.k[x[0]][1],DATA.k[x[0]][2],DATA.st[x[1]],x[2]])));return o},prn:{ttl:"مشتريات الكود "+code,sub:UI.pf+" → "+UI.pt}};
+  const T=[tile(fmt(R.q),R.ret?"قطعة اشتريناها (الصافي بعد المرتجع)":"قطعة اشتريناها في الفترة","k"),tile(fmt(R.times),"مرة شراء (يوم استلام)","k"),tile(R.last||"—",R.last?"آخر شراء"+(a!=null?" · منذ "+fmt(a)+" يوماً":""):"لم نشترِه في الفترة"),tile(R.first||"—","أول شراء في الفترة")];
+  if(R.ret)T.push(tile(fmt(R.ret),"قطعة مرتجعة للمورد","bad"));if(R.times)T.push(tile(fmt((R.q+R.ret)/R.times),"متوسط الكمية في المرة"));if(K)T.push(tile(fmt(K.wh),"في المستودع الآن"),tile(fmt(K.br),"في الفروع الآن"),tile(fmt(K.allSold),"بيع من أول السنة"));
+  const rows=R.dates.map(e=>{const op=UI.pxd===e.d;return `<tr class="stk-pdr${op?" on":""}"><td>${dl(e.d)}${e.p<=0?" <small>مرتجع للمورد</small>":""}</td><td class="n${e.q<0?" z":""}"><b>${fmt(e.q)}</b></td><td class="n">${fmt(e.it.length)}</td><td><button class="bt s" type="button" data-sk="pxd" data-d="${E(e.d)}">${op?"إخفاء":"التفاصيل"}</button></td></tr>`+(op?`<tr><td colspan="4" style="padding:0 8px 10px"><table class="stk-t"><thead><tr><th>اللون والمقاس</th><th>المخزن</th><th class="n">الكمية</th></tr></thead><tbody>${e.it.slice().sort((x,y)=>cmpK(DATA.k[x[0]],DATA.k[y[0]])).map(x=>`<tr><td>${varL(x[0])}</td><td>${sn(x[1])}</td><td class="n">${fmt(x[2])}</td></tr>`).join("")}</tbody></table></td></tr>`:"")}).join("");
+  return bar+note+`<div class="stk-ttl"><h3>📥 مشتريات <bdi dir="ltr" data-notr>${E(code)}</bdi>${UI.cl||UI.sz?` <small data-notr>${E([UI.cl,UI.sz].filter(Boolean).join(" · "))}</small>`:""}</h3>${vn?`<small>المورد: <bdi data-notr>${E(vn)}</bdi></small>`:""}</div><div class="stk-tiles">${T.join("")}</div>
+  <div class="stk-act"><button class="bt" type="button" data-sk="tab" data-t="sales">📅 مبيعات هذا الكود</button><button class="bt" type="button" data-sk="tab" data-t="item">🔍 تحليل الصنف</button></div>
+  ${R.times?`<div class="stk-up"><div class="stk-card"><h3>كل مرة شراء (${fmt(R.times)})</h3><table class="stk-t"><thead><tr><th>التاريخ</th><th class="n">الكمية</th><th class="n">ألوان ومقاسات</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="stk-card"><h3>لكل شهر</h3>${mon}<h3 style="margin-top:14px">لكل لون ومقاس</h3><table class="stk-t"><thead><tr><th>اللون والمقاس</th><th class="n">الكمية</th><th class="n">مرات</th><th class="n">آخر شراء</th></tr></thead><tbody>${R.vars.slice(0,80).map(v=>`<tr><td>${varL(v.k)}</td><td class="n"><b>${fmt(v.q)}</b></td><td class="n">${fmt(v.times)}</td><td class="n">${dl(v.last)}</td></tr>`).join("")}</tbody></table></div></div>`:em("لم نشترِ هذا الكود في الفترة المختارة. وسّع الفترة أو تأكد أن ملف المشتريات يغطيها.")}`}
+ const srt=UI.psort==="last"?(x,y)=>(x.last<y.last?1:x.last>y.last?-1:y.q-x.q):UI.psort==="times"?(x,y)=>y.times-x.times||y.q-x.q:(x,y)=>y.q-x.q,L=R.codes.slice().sort(srt),vnm=c=>c.vi>=0?DATA.vn[c.vi]||"":"";
+ LASTX={name:"مشتريات-"+UI.pf+"-"+UI.pt,head:["الكود","المورد","الكمية","عدد المرات","أول شراء","آخر شراء"],rows:()=>L.map(c=>[c.k,vnm(c),c.q,c.times,c.first,c.last]),prn:{ttl:"المشتريات",sub:UI.pf+" → "+UI.pt}};
+ const T=[tile(fmt(R.q),R.ret?"قطعة اشتريناها (الصافي بعد المرتجع)":"قطعة اشتريناها في الفترة","k"),tile(fmt(R.codes.length),"كود اشترينا منه","k"),tile(fmt(R.times),"يوم استلام"),tile(R.last||"—","آخر يوم استلام")];if(R.ret)T.push(tile(fmt(R.ret),"قطعة مرتجعة للمورد","bad"));
+ return bar+note+`<div class="stk-tiles">${T.join("")}</div>
+ <div class="stk-up"><div class="stk-card"><h3>الأكواد المشتراة (${fmt(L.length)})</h3><div class="stk-bar" style="margin:0 0 8px"><label>رتّب حسب<select data-sf="psort" id="stk-psort"><option value="q"${!UI.psort||UI.psort==="q"?" selected":""}>الأكثر كمية</option><option value="last"${UI.psort==="last"?" selected":""}>الأحدث شراءً</option><option value="times"${UI.psort==="times"?" selected":""}>الأكثر مرات</option></select></label></div>
+ ${L.length?`<div class="tw"><table class="stk-t"><thead><tr><th>الكود</th><th>المورد</th><th class="n">الكمية</th><th class="n">مرات</th><th class="n">آخر شراء</th></tr></thead><tbody>${L.slice(0,100).map(c=>`<tr><td><a href="#" data-sk="icode" data-c="${E(c.k)}" style="color:inherit" data-notr dir="ltr">${E(c.k)}</a></td><td data-notr>${E(vnm(c))}</td><td class="n"><b>${fmt(c.q)}</b></td><td class="n">${fmt(c.times)}</td><td class="n">${dl(c.last)}</td></tr>`).join("")}</tbody></table></div>${L.length>100?`<p class="stk-src">معروض 100 من ${fmt(L.length)}. القائمة كلها في «إكسل».</p>`:""}`:"<p>لا مشتريات في الفترة.</p>"}</div>
+ <div class="stk-card"><h3>لكل شهر</h3>${mon}<h3 style="margin-top:14px">آخر أيام الاستلام</h3>${R.dates.slice(0,12).map(e=>`<div class="stk-day"><span data-notr>${e.d}</span><b>${fmt(e.q)}</b><small style="color:var(--mut)">${fmt(e.n)} سطر</small></div>`).join("")}</div></div>`;
+}
 function vSales(){
  const code=String(UI.code||"").trim(),end=META&&META.q&&META.q.to?addDays(META.q.to,-1):today();if(!UI.from)UI.from=addDays(end,-29);if(!UI.to)UI.to=end;
  const ids=DATA.code.get(code)||[],cols=[...new Set(ids.map(k=>DATA.k[k][1]))].sort(),szs=[...new Set(ids.filter(k=>!UI.cl||DATA.k[k][1]===UI.cl).map(k=>DATA.k[k][2]))].sort((a,b)=>zk(a)-zk(b));
  const bar=`<div class="stk-bar"><label>الكود<input type="text" data-sf="code" id="stk-code" list="stk-codes" value="${E(UI.code)}" placeholder="اكتب الكود" dir="ltr" autocomplete="off"></label>${cBtn()}<label>اللون<select data-sf="cl" id="stk-cl">${opt(cols,UI.cl,"كل الألوان")}</select></label><label>المقاس<select data-sf="sz" id="stk-sz">${opt(szs,UI.sz,"كل المقاسات")}</select></label><label>الفرع<select data-sf="st" id="stk-st">${opt(stores(0),UI.st,"كل الفروع")}</select></label><label>من يوم<input type="date" data-sf="from" id="stk-from" value="${E(UI.from)}"></label><label>إلى يوم<input type="date" data-sf="to" id="stk-to" value="${E(UI.to)}"></label><span class="sp"></span><button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div><datalist id="stk-codes">${[...DATA.code.keys()].sort().slice(0,3000).map(c=>`<option value="${E(c)}">`).join("")}</datalist>`;
  if(!dHas()){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">لم يُرفع ملف التاريخ بعد.<br>ارفعه من تبويب «الملفات» لتسأل: كم بيع من الكود في فرع من يوم إلى يوم.</div></div>`}
- if(!code){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">اكتب الكود واختر الفرع والفترة.</div></div>`}
  if(!(UI.from<=UI.to)){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">تاريخ البداية بعد تاريخ النهاية.</div></div>`}
- const P={from:UI.from,to:UI.to},R=salesQuery(DATA,{code,cl:UI.cl,z:UI.sz,store:UI.st,from:UI.from,to:UI.to});
+ const P={from:UI.from,to:UI.to},dayBars=(by,ds,mx)=>ds.length?ds.map(d=>`<div class="stk-day"><span data-notr>${d}</span><i class="${by[d]<0?"m":""}" style="width:${Math.round(Math.abs(by[d])/mx*62)}%"></i><b>${fmt(by[d])}</b></div>`).join(""):`<p>لا مبيعات في الفترة.</p>`;
+ if(!code){// (v276) بلا كود: مبيعات الفترة كلها (الفروع والأكواد الأكثر مبيعاً ويوماً بيوم)
+  const O=salesOverview(DATA,{from:UI.from,to:UI.to,store:UI.st,vendor:UI.vn});if(!O){LASTX=null;return bar+em("لا بيانات بهذه الشروط.")}
+  const ds=Object.keys(O.byDay).sort(),mx=Math.max(1,...ds.map(d=>Math.abs(O.byDay[d]))),ss=Object.keys(O.bySt).map(Number).sort((a,b)=>O.bySt[b]-O.bySt[a]),best=ds.slice().sort((a,b)=>O.byDay[b]-O.byDay[a])[0];
+  LASTX={name:"مبيعات-"+UI.from+"-"+UI.to,head:["الكود","الكمية"],rows:()=>O.codes.map(c=>[c.k,c.q]).concat([["",""],["الفرع","الكمية"]]).concat(ss.map(t=>[DATA.st[t],O.bySt[t]])),prn:{ttl:"المبيعات",sub:UI.from+" → "+UI.to}};
+  return bar+`<div class="stk-bar"><label>المورد<select data-sf="vn" id="stk-vn">${opt(vendors(),UI.vn,"كل الموردين")}</select></label><span class="stk-src" style="margin:0">اكتب كوداً في الأعلى لترى مبيعاته وحده، أو اضغط أي كود في الجدول.</span></div>`+gapNote(P)+`<div class="stk-sum"><span><b>${fmt(O.total)}</b>قطعة مباعة (الصافي)</span>${O.ret?`<span><b>${fmt(O.ret)}</b>مرتجع</span>`:""}<span><b>${ds.length}</b>يوم فيه حركة</span><span><b>${ds.length?fmt(O.total/ds.length):0}</b>متوسط اليوم</span>${best?`<span><b data-notr>${fmt(O.byDay[best])}</b>أعلى يوم (<bdi data-notr dir="ltr">${E(best)}</bdi>)</span>`:""}<span><b>${fmt(O.codes.filter(c=>c.q>0).length)}</b>كود بيع منه</span></div>
+  <div class="stk-up"><div class="stk-card"><h3>الأكواد الأكثر مبيعاً</h3>${O.codes.length?`<table class="stk-t"><thead><tr><th class="n">#</th><th>الكود</th><th class="n">الكمية</th><th class="n">النصيب</th></tr></thead><tbody>${O.codes.slice(0,40).map((c,i)=>`<tr><td class="n rk">${i+1}</td><td><a href="#" data-sk="icode" data-c="${E(c.k)}" style="color:inherit" data-notr dir="ltr">${E(c.k)}</a></td><td class="n"><b>${fmt(c.q)}</b></td><td class="n">${O.total>0?pct(c.q/O.total):""}</td></tr>`).join("")}</tbody></table>${O.codes.length>40?`<p class="stk-src">معروض 40 من ${fmt(O.codes.length)}. القائمة كلها في «إكسل».</p>`:""}`:`<p>لا مبيعات في الفترة.</p>`}</div>
+  <div class="stk-card"><h3>حسب الفرع</h3>${ss.length?`<table class="stk-t"><tbody>${ss.map(t=>`<tr><td>${sn(t)}</td><td class="n"><b>${fmt(O.bySt[t])}</b></td><td class="n">${O.total?Math.round(O.bySt[t]/O.total*100)+"%":""}</td></tr>`).join("")}</tbody></table>`:`<p>لا مبيعات في الفترة.</p>`}</div></div>
+  <div class="stk-card" style="margin-top:12px"><h3>يوماً بيوم</h3>${dayBars(O.byDay,ds,mx)}</div>`}
+ const R=salesQuery(DATA,{code,cl:UI.cl,z:UI.sz,store:UI.st,from:UI.from,to:UI.to});
  if(!R){LASTX=null;return bar+`<div class="stk-pan"><div class="stk-em">الكود <b data-notr dir="ltr">${E(code)}</b> غير موجود.</div></div>`}
+ const PB=rcvMonths().length?purchLog(DATA,{code,cl:UI.cl,z:UI.sz,from:UI.from,to:UI.to}):null;
  const days=Object.keys(R.byDay).sort(),mx=Math.max(1,...days.map(d=>Math.abs(R.byDay[d]))),sts=Object.keys(R.bySt).map(Number).sort((a,b)=>R.bySt[b]-R.bySt[a]),ks=Object.keys(R.byK).map(Number).sort((a,b)=>R.byK[b]-R.byK[a]);
  LASTX={name:"مبيعات-"+code+"-"+UI.from+"-"+UI.to,head:["اليوم","الكمية"],rows:()=>days.map(d=>[d,R.byDay[d]]).concat([["",""],["الفرع","الكمية"]]).concat(sts.map(t=>[DATA.st[t],R.bySt[t]]))};
- return bar+gapNote(P)+`<div class="stk-sum"><span><b>${fmt(R.total)}</b>قطعة مباعة (الصافي)</span>${R.ret?`<span><b>${fmt(R.ret)}</b>مرتجع</span>`:""}<span><b>${days.length}</b>يوم فيه حركة</span><span><b>${sts.length}</b>فرع</span></div>
+ return bar+gapNote(P)+`<div class="stk-sum"><span><b>${fmt(R.total)}</b>قطعة مباعة (الصافي)</span>${R.ret?`<span><b>${fmt(R.ret)}</b>مرتجع</span>`:""}<span><b>${days.length}</b>يوم فيه حركة</span><span><b>${sts.length}</b>فرع</span>${days.length?`<span><b data-notr dir="ltr">${E(days[0])}</b>أول بيع في الفترة</span><span><b data-notr dir="ltr">${E(days[days.length-1])}</b>آخر بيع في الفترة</span>`:""}${PB?`<span><b>${fmt(PB.q)}</b>اشتريناه في نفس الفترة</span>`:""}</div>
+ <div class="stk-act"><button class="bt" type="button" data-sk="tab" data-t="pur">📥 مشتريات هذا الكود</button><button class="bt" type="button" data-sk="tab" data-t="item">🔍 تحليل الصنف</button></div>
  <div class="stk-up"><div class="stk-card"><h3>حسب الفرع</h3>${sts.length?`<table class="stk-t"><tbody>${sts.map(t=>`<tr><td>${sn(t)}</td><td class="n"><b>${R.bySt[t]}</b></td><td class="n">${R.total?Math.round(R.bySt[t]/R.total*100)+"%":""}</td></tr>`).join("")}</tbody></table>`:`<p>لا مبيعات في الفترة.</p>`}
  ${ks.length>1?`<h3 style="margin-top:14px">حسب اللون والمقاس</h3><table class="stk-t"><tbody>${ks.slice(0,40).map(k=>`<tr><td data-notr>${E(DATA.k[k][1]||"—")} · ${E(DATA.k[k][2]||"—")}</td><td class="n"><b>${R.byK[k]}</b></td></tr>`).join("")}</tbody></table>`:""}</div>
  <div class="stk-card"><h3>يوماً بيوم</h3>${days.length?days.map(d=>`<div class="stk-day"><span data-notr>${d}</span><i class="${R.byDay[d]<0?"m":""}" style="width:${Math.round(Math.abs(R.byDay[d])/mx*62)}%"></i><b>${R.byDay[d]}</b></div>`).join(""):`<p>لا مبيعات في الفترة.</p>`}</div></div>`;
@@ -2205,7 +2270,7 @@ function ansBuy(a,P){
  const upB=`<button class="bt s" type="button" data-sk="tab" data-t="up">افتح «الملفات»</button>`;
  if(!rm.length){LASTX=null;return em(`لم يُرفع ملف المشتريات لهذه الفترة بعد. ارفعه من تبويب «الملفات» (التقرير الذي فيه الكمية المستلمة من المورد) لأعرف كم اشترينا. ${upB}`)}
  const S=purchStat(DATA,{code:a.code,cl:a.cl,z:a.z,store:a.store,from:R.from,to:R.to});if(!S){LASTX=null;return em(a.code?`الكود <b data-notr dir="ltr">${E(a.code)}</b> غير موجود في ملف الكميات.`:"لا بيانات بهذه الشروط.")}
- const T=[tile(fmt(S.q),"قطعة اشتريناها (استلام من المورد)","k"),tile(S.last||"—","آخر يوم استلام")];if(!a.code)T.push(tile(fmt(S.codes.length),"كود اشترينا منه"));T.push(tile(fmt(Object.keys(S.byM).length),"شهر فيه استلام"));
+ const T=[tile(fmt(S.q),S.ret?"قطعة اشتريناها (الصافي بعد المرتجع)":"قطعة اشتريناها (استلام من المورد)","k"),tile(S.last||"—","آخر يوم استلام")];if(S.ret)T.push(tile(fmt(S.ret),"قطعة مرتجعة للمورد","bad"));if(!a.code)T.push(tile(fmt(S.codes.length),"كود اشترينا منه"));T.push(tile(fmt(Object.keys(S.byM).length),"شهر فيه استلام"));
  const mt=Object.keys(S.byM).sort().map(ym=>`<tr><td data-notr dir="ltr">${E(ym)}</td><td class="n">${fmt(S.byM[ym])}</td></tr>`).join("");
  let body="";
  if(a.code){LASTX={name:"مشتريات-"+a.code,head:["اللون والمقاس","الكمية"],rows:()=>S.vars.map(v=>[DATA.k[v.k].slice(1,3).join(" "),v.q])};
@@ -2348,7 +2413,7 @@ function body(){
  // ملف الكميات أقدم من اليوم: الأرصدة المعروضة ليست أرصدة اللحظة
  const old=q&&q.to&&q.to<today()?Math.round((new Date(today()+"T12:00:00")-new Date(q.to+"T12:00:00"))/864e5):0;
  const stl=has&&old>0&&t!=="up"?`<div class="stk-rep w">ملف الكميات المرفوع قديم (${old===1?"من أمس":"منذ "+old+" يوماً"}): الأرصدة هنا حتى نهاية يوم <b data-notr>${E(qEnd())}</b>. ارفع ملف اليوم من تبويب «الملفات» لتكون الأرقام محدَّثة.</div>`:"";
- let v="";try{v=t==="up"?vUp():!has?vUp():t==="home"?vHome():t==="buy"?vBuy():t==="dist"?vDist():t==="ask"?vAsk():t==="need"?vNeed():t==="tr"?vTr():t==="out"?vOut():t==="plan"?vPlan():t==="item"?vItem():t==="sales"?vSales():t==="stale"?vStale():vCfg()}catch(e){v=`<div class="stk-rep r">تعذّر عرض هذا التبويب (${E(String(e&&e.message||e).slice(0,80))}).</div>`}
+ let v="";try{v=t==="up"?vUp():!has?vUp():t==="home"?vHome():t==="buy"?vBuy():t==="dist"?vDist():t==="ask"?vAsk():t==="need"?vNeed():t==="tr"?vTr():t==="out"?vOut():t==="plan"?vPlan():t==="item"?vItem():t==="pur"?vPur():t==="sales"?vSales():t==="stale"?vStale():vCfg()}catch(e){v=`<div class="stk-rep r">تعذّر عرض هذا التبويب (${E(String(e&&e.message||e).slice(0,80))}).</div>`}
  const mf=Object.keys(MFAIL).sort(),mfl=mf.join(" · "),fail=mf.length&&t!=="up"&&t!=="cfg"?`<div class="stk-rep r">تعذّر تحميل مبيعات هذه الشهور من ملفات التاريخ: <b data-notr>${E(mfl)}</b>، فالمبيعات المعروضة للفترة ناقصة بقدرها. تأكد من الإنترنت ثم <button class="bt s" type="button" data-sk="mretry">أعد المحاولة</button></div>`:"";
  return hd+tabs+busy+(t!=="cfg"?stl:"")+fail+v;
 }
@@ -2361,7 +2426,7 @@ function paint(keepFocus){
  if(id&&keepFocus!==false){const el=g(id);if(el&&el.focus){try{el.focus({preventScroll:true});if(s0&&s0[0]!=null&&el.setSelectionRange)el.setSelectionRange(s0[0],s0[1])}catch(e){}}}
  // فترة تحتاج شهوراً لم تُحمَّل بعد
  const homeNeed=()=>{const p=period(),e=qEnd(),f0=prevYm(e.slice(0,7))+"-01",f6=addDays(e,-59),b=dHas()?{from:f0<f6?f0:f6,to:e}:null;return p&&b?{from:p.from<b.from?p.from:b.from,to:p.to>b.to?p.to:b.to}:p||b};
- const P=UI.tab==="home"?homeNeed():UI.tab==="item"?itemNeed():UI.tab==="ask"?askNeed():UI.tab==="sales"?(UI.from&&UI.to&&UI.from<=UI.to&&UI.code?{from:UI.from,to:UI.to}:null):(UI.tab==="up"||UI.tab==="cfg"?null:period());
+ const P=UI.tab==="home"?homeNeed():UI.tab==="item"?itemNeed():UI.tab==="ask"?askNeed():UI.tab==="sales"?(UI.from&&UI.to&&UI.from<=UI.to?{from:UI.from,to:UI.to}:null):UI.tab==="pur"?(UI.pf&&UI.pt&&UI.pf<=UI.pt&&rcvMonths().length?{from:UI.pf,to:UI.pt}:null):(UI.tab==="up"||UI.tab==="cfg"?null:period());
  if(P&&!BUSY&&META&&META.d&&DATA&&months(P.from,P.to).some(ym=>META.d[ym]&&!DATA.d[ym]&&!MFAIL[ym]))needMonths(P.from,P.to);
  // (v248) شهور المشتريات اللازمة لاستثناء المستلم حديثاً من الراكد
  else if(!BUSY&&DATA&&DATA.has&&UI.tab!=="up"&&UI.tab!=="cfg"){const RR=rcvRange();if(RR&&months(RR.from,RR.to).some(ym=>META.d[ym]&&!DATA.d[ym]&&!MFAIL[ym]))needMonths(RR.from,RR.to)}
@@ -2458,7 +2523,8 @@ function wire(){
   else if(a==="hprn")printDash();
   else if(a==="hst"){e.preventDefault();UI.q="";UI.vn="";UI.st=t.dataset.v||"";UI.sold=1;UI.tab="need";UI.lim=200;paint(false);window.scrollTo(0,0)}
   // (v181) تحليل صنف
-  else if(a==="icode"){UI.code=t.dataset.c||"";UI.cl="";UI.sz="";paint(false)}
+  else if(a==="pxd"){UI.pxd=UI.pxd===t.dataset.d?"":String(t.dataset.d||"");paint(false)}
+  else if(a==="icode"){e.preventDefault();UI.code=t.dataset.c||"";UI.cl="";UI.sz="";paint(false)}
   else if(a==="ineed"||a==="istale"||a==="itr"){UI.q=UI.code;UI.st="";UI.vn="";UI.fr="";UI.tt="";if(a==="ineed")UI.sold=1;UI.tab=a==="ineed"?"need":a==="istale"?"stale":"tr";UI.lim=200;paint(false);window.scrollTo(0,0)}
   else if(a==="ivn"){e.preventDefault();const v=t.dataset.v||"";UI.tab="ask";UI.aq="المورد "+v;UI.a=parseAsk(UI.aq,askCtx());UI.a.vendor=v;UI.a.amb.vendor=[];UI.lim=200;paint(false);window.scrollTo(0,0)}
   else if(a==="pswap"){const r=UI.pr||"store",c=UI.pc===undefined?"size":UI.pc;if(c){UI.pr=c;UI.pc=r;paint()}}
