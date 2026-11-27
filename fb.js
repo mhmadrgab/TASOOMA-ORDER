@@ -129,7 +129,7 @@ export async function ping(auth, ids, chats, trips, gifts, mnts, pos, cus, ers, 
   try {
     const u0 = a => [...new Set((a || []).filter(Boolean))]; ids = u0(ids); chats = u0(chats); trips = u0(trips); gifts = u0(gifts); mnts = u0(mnts); pos = u0(pos); cus = u0(cus); ers = u0(ers); oils = u0(oils); dcs = u0(dcs);
     // ✅ (v243) tks = المهام: "رقم" (إسناد/إنهاء) أو "رقم/رقم التعليق" (تعليق جديد)
-    mks = u0(mks).filter(x => /^[td]:[A-Za-z0-9_-]{1,64}$/.test(x));/* 📣 (v246) mks = الحملات التسويقية: "t:مهمة" أو "d:اتفاق مؤثر" */
+    mks = u0(mks).filter(x => /^[td]:[A-Za-z0-9_-]{1,64}(:[A-Za-z0-9_-]{1,64})?$/.test(x));/* (v266) والثالث = رقم تعليق *//* 📣 (v246) mks = الحملات التسويقية: "t:مهمة" أو "d:اتفاق مؤثر" */
     tks = u0(tks); const tkc = tks.filter(x => String(x).includes("/")); tks = tks.filter(x => !String(x).includes("/"));// 🧾 (v241) dcs = يوميات الفروع · 🛢 (v232) oils = بلاغات تغيير الزيت · 💼 (v219) cus = حركات عهدة الفروع · 🧭 (v223) ers = المشاوير
     chats.filter(c => /^g_/.test(c)).forEach(c => multiPush(auth, "/grp", {gid: c.slice(2)})); chats = chats.filter(c => !/^g_/.test(c));
     // 📦 (18 نوفمبر 2026) مرحلة الحاوية (ميناء / متجهة / وصلت المستودع) تُذاع للمديرين والمحاسبين، والفروع عند الوصول. على دفعات، والسيرفر يمنع التكرار

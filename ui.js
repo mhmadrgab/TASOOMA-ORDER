@@ -272,7 +272,7 @@
  addEventListener("online",upd);addEventListener("focus",upd);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)upd();tick()});
  // 2) هل ينفع نعمل ريفرش دلوقتي من غير ما نضيّع شغل؟
- const MOD="#mkm,#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#zbx,#bciv,#anniv,#annm,#annp,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,.cm,.fm,.gfm,.mdl,.wkm,.ov";
+ const MOD="#mkm,#msd,#tzset,#pws,#prm,#mtm,#pom,#clm,#osh,#xm,#wkm,#zbx,#bciv,#anniv,#annm,#annp,#bcgi,#bcm,#pfm,#pfc,#wrm,#md,#em,#npm,#uim,.cm,.fm,.gfm,.mdl,.wkm,.ov";
  const overlayOpen=()=>{if(document.getElementById("tz-news"))return true;try{return [...document.querySelectorAll(MOD)].some(e=>e.classList.contains("on")&&!e.classList.contains("is-closing"))}catch(x){return false}};
  const typing=()=>{const a=document.activeElement;if(!a)return false;const t=a.tagName;
   if(a.isContentEditable)return String(a.textContent||"").length>0;
@@ -557,7 +557,7 @@ document.addEventListener("click",function(e){var t=e.target&&e.target.closest?e
 (function(){
  if(window.tzGlide)return;
  var D=document,H=D.documentElement;
- var T=[[".ws-seg","c"],[".tkx-seg","c"],[".g5-seg","c"],[".stk-seg","c"],[".po-tabs","c"],[".cl-sub","c"],[".mkp-sb","t"],[".g5-tabs","t"],[".stg-nav","s"],[".stk-tabs","s"],[".tkx-sl","r"],["#tzn-nav","d"],["#bnv","d"]];
+ var T=[[".ws-seg","c"],[".tkx-seg","c"],[".g5-seg","c"],[".stk-seg","c"],[".po-tabs","c"],[".cl-sub","c"],[".ms-vt","t"],[".ms-nav","c"],[".ms-seg","c"],[".g5-tabs","t"],[".stg-nav","s"],[".stk-tabs","s"],[".tkx-sl","r"],["#tzn-nav","d"],["#bnv","d"]];
  var SIDE=".tzn-i,button.bnv-i";
  var mm=function(q){try{return window.matchMedia?matchMedia(q):null}catch(e){return null}};
  var RM=mm("(prefers-reduced-motion: reduce)"),FINE=mm("(hover:hover) and (pointer:fine)");

@@ -160,7 +160,7 @@ import {initAnn,stopAnn,annBtn} from "./ann.js";
 import {initShort,stopShort,shortView,weeklyCfgView} from "./short.js";
 import {initBCus,stopBCus,bcusView,bcusPend} from "./bcus.js";// 💼 (v218) عهدة الفروع
 import {initDay,stopDay,dcView,dcPend} from "./bday.js";// 🧾 (v241) يومية الفروع
-import {initMk,stopMk,mkView,mkCount,mkOpen,mkVisible} from "./mkt.js";// 📣 (v246) الحملات التسويقية
+import {initMk,stopMk,mkView,mkMount,mkCount,mkOpen,mkVisible} from "./mkt.js";// 📣 (v246) الحملات التسويقية
 import {initTasks,stopTasks,tkView,tkCount,tkOpen,tkStats} from "./tasks.js";// ✅ (v243) المهام والتذكيرات
 import {initSpace,stopSpace,spaceMount,spaceGo} from "./space.js";// 🗂 (v245) «مساحتي» مكان قسم المهام (نفس المعرّف tk)
 import {initStaff,view as staffView,permView,lockView,stop as stopStaff,syncDir,staffName,OWNER_NAME} from "./staff.js";
@@ -440,7 +440,7 @@ function start(){
   if(tb&&okTab(tb))tab=tb;
   if(rq&&/^[A-Za-z0-9_-]{6,40}$/.test(rq)&&okTab("req")){tab="req";deepReq(rq)}
   const tkq=q.get("tk");if(tkq&&okTab("tk")){tab="tk";spaceGo("tasks");tkOpen(tkq)}
-   const mkq=q.get("mk");if(mkq&&/^[A-Za-z0-9_-]{1,64}$/.test(mkq)){mkOpen(mkq);if(okTab("mk"))tab="mk"}// 📣 (v246) إشعار حملة ← يفتحها// ✅ (v243) إشعار مهمة ← يفتحها
+   const mkq=q.get("mk");if(mkq&&/^[A-Za-z0-9_-]{1,64}$/.test(mkq)){mkOpen(mkq,q.get("mi")||"");if(okTab("mk"))tab="mk"}// 📣 (v246) إشعار حملة ← يفتحها// ✅ (v243) إشعار مهمة ← يفتحها
   if(rq||tb||tkq)try{history.replaceState(null,"",location.pathname)}catch(e){}}
  draw();
 }
@@ -554,11 +554,12 @@ function drawNow(){
  fixSub();shell();navSync();topSync();
  if(HT.getAttribute("data-tab")!==tab){HT.setAttribute("data-tab",tab);try{sessionStorage.setItem("tz_tab",tab)}catch(x){}}
  // (v184) تحليل المخزون مفتوح ومركَّب: لا نعيد بناء الصفحة مع كل تحديث لحظي (كان يُنزع المديول ويُعاد، فتُقفل القوائم المفتوحة ويطير المؤشر من الخانة أثناء الكتابة)
- const stkOn=(tab==="stk"&&g("stkhost")&&g("stkhost").firstElementChild&&g("stkhost").firstElementChild.id==="stk")||(tab==="tk"&&g("wshost")&&g("wshost").firstElementChild&&g("wshost").firstElementChild.id==="wsp");// 🗂 (v245) مساحتي كذلك
+ const stkOn=(tab==="stk"&&g("stkhost")&&g("stkhost").firstElementChild&&g("stkhost").firstElementChild.id==="stk")||(tab==="tk"&&g("wshost")&&g("wshost").firstElementChild&&g("wshost").firstElementChild.id==="wsp")||(tab==="mk"&&g("mkhost")&&g("mkhost").firstElementChild&&g("mkhost").firstElementChild.id==="mkp");/* 📣 (v266) استوديو التسويق عنصر ثابت كذلك */// 🗂 (v245) مساحتي كذلك
  if(!stkOn)g("tzm").innerHTML=`${tab==="chat"?"":backupNag()}${tab==="chat"?`<div id="bchost"></div>`:tab==="req"?reqView():tab==="cus"?cusView():tab==="bcus"?bcusView():tab==="dc"?dcView():tab==="tk"?`<div id="wshost"></div>`:tab==="mk"?mkView():tab==="fl"?fleetView():tab==="sh"?"":tab==="set"?setView():tab==="log"?logView():tab==="gift"?giftsView():tab==="mnt"?mntView():tab==="po"?poView():tab==="rcv"?poRcvView():tab==="stk"?`<div id="stkhost"></div>`:tab==="wk"?wkView():brView()}`;
  showSheet();
  if(tab==="chat")mountWh(g("bchost"));else hideWh();// الدردشة عنصر ثابت بيتحط في مكانه (الكتابة والتسجيل مايضيعوش)
  if(tab==="stk")stockMount(g("stkhost"));
+ if(tab==="mk")mkMount(g("mkhost"));
  if(tab==="tk")spaceMount(g("wshost"));// 🗂 (v245) مساحتي: عنصر ثابت (الكتابة في الملاحظة ماتضيعش مع التحديث اللحظي)// تحليل المخزون: عنصر ثابت كذلك
  wireButtons();document.getElementById("bell").hidden=!("Notification" in window);adminHdr();
  if(!stkOn){window.scrollTo(0,keep);restoreUi(ui)}
