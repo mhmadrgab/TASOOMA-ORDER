@@ -201,7 +201,7 @@ const qv = v => '"' + String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"
 const msOf = t => { const n = Date.parse(t); return isNaN(n) ? 0 : n };
 function hubOf(c) {
   let h = HUBS.get(c); if (h) return h;
-  h = {c, subs: new Set(), live: null, pend: null, dirty: false, downAt: 0, tries: 0, rt: null, kt: null, gone: null, cur: null, polling: false, np: 0, hidAt: 0, discAt: 0, seen: new Map()};
+  h = {c, subs: new Set(), live: null, pend: null, dirty: false, downAt: 0, tries: 0, rt: null, kt: null, gone: null, cur: null, polling: false, np: 0, hidAt: 0, discAt: 0, seen: new Map(), sides: [], sq: [], st: null};
   HUBS.set(c, h);
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => { if (document.hidden) { h.hidAt = Date.now(); return } const away = h.hidAt ? Date.now() - h.hidAt : 0; h.hidAt = 0; wake(h, away) });
@@ -213,7 +213,7 @@ function hubOf(c) {
 }
 function hubFilters(h) {
   const cols = new Set(), paths = new Set();
-  h.subs.forEach(s => s.isDoc ? paths.add(s.path) : cols.add(s.col));
+  h.subs.forEach(s => { if (s.side) return; s.isDoc ? paths.add(s.path) : cols.add(s.col) });
   const out = [], add = (f, arr) => { arr.sort(); for (let i = 0; i < arr.length; i += 90) { const p = arr.slice(i, i + 90); out.push(p.length === 1 ? `${f}=eq.${p[0]}` : `${f}=in.(${p.join(",")})`) } };
   add("col", [...cols]); add("path", [...paths]);
   return out;
@@ -244,6 +244,7 @@ async function hubConnect(h) {
   let me;
   try {
     me = c.channel("tzl" + (++SEQ) + "_" + Math.random().toString(36).slice(2, 7)); me._k = key;
+    me._set = new Set([...h.subs].filter(s => !s.side).map(keyOf));
     fs.forEach(f => me.on("postgres_changes", {event: "*", schema: "public", table: "docs", filter: f}, ev => { if (h.live === me || h.pend === me) hubDispatch(h, ev) }));
     h.pend = me;
     me.subscribe(st => {
@@ -311,12 +312,56 @@ function tick(h) {
   if (!h.live && !h.pend && !h.rt) hubConnect(h);
   if (Date.now() >= h.np) hubPoll(h);
 }
+// ⚡ (v270) القنوات الجانبية: سماع يُضاف والقناة الرئيسية شغّالة ومستقرة (فتح محادثة، فتح قسم) كان يهدم قناة الصفحة كلها
+// ويبنيها من جديد (ثانية أو اثنتان بلا لايف للطلبات وكل شيء). الآن يأخذ قناة صغيرة له وحده، والرئيسية لا تُلمس.
+// شبكة الأمان (hubPoll) تغطي كل السماعات كما هي. بحد أقصى 6 قنوات جانبية، وبعدها الطريقة القديمة.
+const keyOf = s => s.isDoc ? "p:" + s.path : "c:" + s.col;
+const SIDE_MAX = 6;
+function sideFilters(set) {
+  const cols = [], paths = [];
+  set.forEach(k => (k[0] === "p" ? paths : cols).push(k.slice(2)));
+  const out = [], add = (f, arr) => { arr.sort(); for (let i = 0; i < arr.length; i += 90) { const p = arr.slice(i, i + 90); out.push(p.length === 1 ? `${f}=eq.${p[0]}` : `${f}=in.(${p.join(",")})`) } };
+  add("col", cols); add("path", paths);
+  return out;
+}
+function sideJoin(h, side) {
+  if (h.sides.indexOf(side) < 0) return;
+  let me = null;
+  const again = () => { if (side.ch !== me) return; side.ch = null; hubDrop(h, me); h.np = Math.min(h.np, Date.now() + 3000); clearTimeout(side.t); side.t = setTimeout(() => sideJoin(h, side), 3000) };
+  try {
+    me = h.c.channel("tzs" + (++SEQ) + "_" + Math.random().toString(36).slice(2, 7)); side.ch = me;
+    sideFilters(side.set).forEach(f => me.on("postgres_changes", {event: "*", schema: "public", table: "docs", filter: f}, ev => { if (side.ch === me) hubDispatch(h, ev) }));
+    me.subscribe(st => {
+      if (side.ch !== me) return;
+      if (st === "SUBSCRIBED") { h.np = 0; hubPoll(h); return }// اللي حصل وإحنا بنوصل
+      if (st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") again();
+    });
+  } catch (e) { side.ch = me; again() }
+}
+function sideOpen(h) {
+  h.st = null;
+  const subs = h.sq.filter(s => h.subs.has(s)); h.sq = [];
+  if (!subs.length) return;
+  const side = {set: new Set(subs.map(keyOf)), ch: null, t: null};
+  h.sides.push(side); sideJoin(h, side);
+}
+function sideSweep(h) {
+  if (!h.sides.length) return;
+  const used = new Set(); h.subs.forEach(s => { if (s.side) used.add(keyOf(s)) });
+  h.sides = h.sides.filter(x => { let u = false; x.set.forEach(k => { if (used.has(k)) u = true }); if (!u) { clearTimeout(x.t); const ch = x.ch; x.ch = null; hubDrop(h, ch) } return u });
+}
 function hubAdd(h, s) {
   h.subs.add(s); clearTimeout(h.gone); h.gone = null;
+  if (h.live && !h.pend && !h.kt && h.live._set) {
+    const k = keyOf(s);
+    if (h.live._set.has(k)) return;// القناة الرئيسية بتسمعه أصلاً
+    if (h.sides.some(x => x.set.has(k)) || h.sq.some(x => keyOf(x) === k)) { s.side = true; return }
+    if (h.sides.length < SIDE_MAX) { s.side = true; h.sq.push(s); if (!h.st) h.st = setTimeout(() => sideOpen(h), 40); return }
+  }
   if (!h.kt) h.kt = setTimeout(() => hubConnect(h), 40);// كل السماعات اللي بتتعمل مع بعض = قناة واحدة
 }
 function hubRemove(h, s) {
-  h.subs.delete(s);
+  h.subs.delete(s); if (s.side) sideSweep(h);
   if (!h.subs.size) { clearTimeout(h.gone); h.gone = setTimeout(() => { if (h.subs.size) return; const a = h.live, b = h.pend; h.live = h.pend = null; h.cur = null; clearTimeout(h.rt); h.rt = null; hubDrop(h, a); hubDrop(h, b) }, 20000) }
 }
 export function onSnapshot(target, next, onErr) {
@@ -359,7 +404,11 @@ export function onSnapshot(target, next, onErr) {
     if (isDoc) { if (!loaded) { pendDoc = ev; return } emitDoc(ev.eventType === "DELETE" ? null : ev.new && ev.new.data); return }
     if (!loaded) { pend.push(ev); return }
     // فيه limit: أسهل وأضمن نقرا تاني (القايمة ممكن تتزحزح)
-    if (q.lim != null) { clearTimeout(timer); timer = setTimeout(load, 250); return }
+    // ⚡ (v270) نطبّقه فوراً (ترتيب + قصّ على الحد) فيظهر في لحظته، ثم نقرأ من جديد للتأكيد كما كان
+    if (q.lim != null) {
+      const cut = sortDocs(q, apply(cur, ev)).slice(0, q.lim);
+      if (changes(cur, cut).length) emit(cut);
+      clearTimeout(timer); timer = setTimeout(load, 250); return }
     const nl = sortDocs(q, apply(cur, ev));
     if (!changes(cur, nl).length) return;// نفس اللي معانا (مثلاً وصل من اللايف ومن شبكة الأمان): مانرسمش تاني
     emit(nl);
