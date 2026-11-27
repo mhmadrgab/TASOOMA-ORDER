@@ -315,18 +315,19 @@ html.tz-thv::view-transition-new(root){animation:tz-thr var(--duration-very-slow
    إطار باذنجاني على شكل حرف L (القائمة + الشريط = الـ 30%)، والمحتوى بيج بزاوية مستديرة عند التقاء الإطار (الـ 60%)، والزيتوني للمؤشرات (الـ 10%).
    حاسوب (>1024px): القائمة ثابتة 264px وتُطوى إلى 76px (html.tzn-col). جوال وتابلت: درج ينزلق (html.tzn-open) بخلفية معتمة.
    الترتيب والشروط في TABS داخل admin.html. الاتجاه: يمين في العربية، ويسار في الإنجليزية (html.tz-en). */
-.tzs{--tzn-w:264px;--tzt-h:64px;--tzn-bg:#2a1d2c;--tzn-bg2:#211523;--tzn-ink:#eadfe8;--tzn-mut:#a893a6;--tzn-line:rgba(255,255,255,.08);--tzn-hov:rgba(255,255,255,.06);--tzn-act:rgba(180,138,171,.22)}
-html.tzn-col .tzs{--tzn-w:76px}
+.tzs{--tzn-w:264px;--tzt-h:64px;--tzn-bg:#2a1d2c;--tzn-bg2:#211523;--tzn-ink:#eadfe8;--tzn-mut:#a893a6;--tzn-line:rgba(255,255,255,.08);--tzn-hov:rgba(255,255,255,.06);--tzn-act:rgba(180,138,171,.22);--tzn-dur:280ms}
+html.tzn-col .tzs{--tzn-w:72px}
 :root[data-theme=dark] .tzs{--tzn-bg:#231826;--tzn-bg2:#1a111c}
 .tzn{position:fixed;top:0;bottom:0;right:0;width:var(--tzn-w);z-index:30;display:flex;flex-direction:column;color:var(--tzn-ink);
  background:linear-gradient(180deg,var(--tzn-bg) 0,var(--tzn-bg) var(--tzt-h),var(--tzn-bg2) 100%);
  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
- transition:width var(--duration-fast) var(--ease-smooth-out)}
+ transition:width var(--tzn-dur) var(--ease-smooth-out)}
 html.tz-en .tzn{right:auto;left:0}
-.tzw{margin-inline-start:var(--tzn-w);min-width:0;transition:margin var(--duration-fast) var(--ease-smooth-out)}
+.tzw{margin-inline-start:var(--tzn-w);min-width:0;transition:margin var(--tzn-dur) var(--ease-smooth-out)}
 .tzw main{max-width:1280px;padding:22px 24px 64px}
 /* --- رأس القائمة: الشعار --- */
-.tzn-hd{flex:none;position:relative;display:flex;align-items:center;gap:10px;height:var(--tzt-h);padding:0 16px 0 14px}
+.tzn-hd{flex:none;position:relative;display:flex;align-items:center;gap:10px;height:var(--tzt-h);padding:0 16px 0 14px;overflow:hidden;transition:padding var(--tzn-dur) var(--ease-smooth-out)}
+.tzn-l2,#tzn-who{transition:opacity var(--duration-quick) var(--ease-out),visibility 0s}
 .tzn-hd::after{content:"";position:absolute;bottom:0;right:16px;left:16px;height:1px;background:linear-gradient(90deg,transparent,rgba(164,180,110,.55),rgba(180,138,171,.7),transparent)}
 .tzn-br{flex:1;display:flex;align-items:center;gap:9px;min-width:0}
 .tzn-l1{height:36px;width:auto;flex:none;display:block}.tzn-l2{height:27px;width:auto;flex:none;display:block}
@@ -334,17 +335,23 @@ html.tz-en .tzn{right:auto;left:0}
 #tzn-who:empty{display:none}
 .tzn-x{display:none;flex:none;order:3;width:40px;height:40px;border:0;border-radius:12px;background:rgba(255,255,255,.06);color:#eadfe8;cursor:pointer;place-items:center}
 /* --- الأقسام --- */
-.tzn-sc{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:2px 12px 16px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent;overscroll-behavior:contain}
-.tzn-sc::-webkit-scrollbar{width:6px}.tzn-sc::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:6px}
-.tzn-g{margin-top:10px}.tzn-g:first-child{margin-top:8px}
-.tzn-gl{display:flex;align-items:center;gap:10px;height:24px;padding:0 10px;font-size:11.5px;font-weight:700;color:var(--tzn-mut);white-space:nowrap}
+/* (v268) بلا شريط تمرير (كان يزيح الأيقونات والكبسولة 10px في العربية)؛ التمرير بالعجلة واللمس والأسهم، وتلاشٍ أعلى وأسفل يبيّن أن هناك المزيد (data-fd من navFade) */
+.tzn-sc{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:2px 12px 14px;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain;transition:padding var(--tzn-dur) var(--ease-smooth-out)}
+.tzn-sc::-webkit-scrollbar{display:none;width:0;height:0}
+.tzn-sc[data-fd=t]{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 26px);mask-image:linear-gradient(180deg,transparent 0,#000 26px)}
+.tzn-sc[data-fd=b]{-webkit-mask-image:linear-gradient(0deg,transparent 0,#000 34px);mask-image:linear-gradient(0deg,transparent 0,#000 34px)}
+.tzn-sc[data-fd=tb]{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 26px,#000 calc(100% - 34px),transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 26px,#000 calc(100% - 34px),transparent 100%)}
+.tzn-g{margin-top:10px;transition:margin var(--tzn-dur) var(--ease-smooth-out)}.tzn-g:first-child{margin-top:8px}
+.tzn-gl{display:flex;align-items:center;gap:10px;height:24px;padding:0 10px;font-size:11.5px;font-weight:700;color:var(--tzn-mut);white-space:nowrap;overflow:hidden;transition:height var(--tzn-dur) var(--ease-smooth-out),padding var(--tzn-dur) var(--ease-smooth-out)}
+.tzn-gl span{flex:none;transition:opacity var(--duration-quick) var(--ease-out)}
 .tzn-gl::after{content:"";flex:1;height:1px;background:var(--tzn-line)}
 .tzn-i{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:40px;margin:1px 0;padding:0 12px;border:0;border-radius:11px;background:none;color:var(--tzn-ink);
  font:inherit;font-size:14.5px;font-weight:500;text-align:start;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;
- transition:background-color var(--duration-quick) var(--ease-out),color var(--duration-quick) var(--ease-out),transform .16s cubic-bezier(.2,.8,.2,1)}
+ transition:background-color var(--duration-quick) var(--ease-out),color var(--duration-quick) var(--ease-out),transform .16s cubic-bezier(.2,.8,.2,1),padding var(--tzn-dur) var(--ease-smooth-out),min-height var(--tzn-dur) var(--ease-smooth-out)}
 .tzn-ic{flex:none;width:24px;height:24px;display:grid;place-items:center;font-size:17.5px;line-height:1;color:#c9b3c6;transition:color var(--duration-quick) var(--ease-out)}
 .tzn-ic span.gi{margin:0!important;vertical-align:0!important;opacity:1!important}
-.tzn-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tzn-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;transition:opacity var(--duration-fast) var(--ease-out) 60ms}
+html.tzn-anim .tzn-tx{text-overflow:clip}html.tzn-anim .tzn-n{animation:none;opacity:0}
 .tzn-i:hover{background:var(--tzn-hov);color:#fff}
 .tzn-i.on{background:var(--tzn-act);color:#fff;font-weight:700}
 .tzn-i.on .tzn-ic{color:#f3e1ee}
@@ -353,8 +360,10 @@ html.tz-en .tzn{right:auto;left:0}
  transition:opacity var(--duration-quick) var(--ease-out),transform var(--duration-fast) var(--ease-smooth-out)}
 .tzn-i.on::before{opacity:1;transform:none}
 html.tz-en .tzn-i::before{right:auto;left:-12px;border-radius:0 4px 4px 0}
-.tzn-n{flex:none;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:#c0392b;color:#fff;font-size:11.5px;font-weight:800;line-height:20px;text-align:center;font-variant-numeric:tabular-nums;animation:tzn-pop var(--duration-fast) var(--ease-smooth-out) both}
+.tzn-n{flex:none;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:#c0392b;color:#fff;font-size:11.5px;font-weight:800;line-height:20px;text-align:center;font-variant-numeric:tabular-nums;animation:tzn-pop var(--duration-fast) var(--ease-smooth-out) both;transition:opacity var(--duration-quick) var(--ease-out)}
 @keyframes tzn-pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+@keyframes tzn-gin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes tzn-gfd{from{opacity:0}}
 /* أقسام «الإعدادات» تنفتح تحته */
 .tzn-sub{display:grid;grid-template-rows:0fr;visibility:hidden;transition:grid-template-rows var(--duration-fast) var(--ease-smooth-out),visibility 0s var(--duration-fast)}
 .tzn-sub>div{position:relative;min-height:0;overflow:hidden;padding-inline-start:30px}
@@ -369,8 +378,6 @@ html.tz-en .tzn-i::before{right:auto;left:-12px;border-radius:0 4px 4px 0}
 @media (pointer:coarse){.tzn-sub button{min-height:44px}}
 /* --- أسفل القائمة: المظهر، اللغة، النسخة الاحتياطية، الخروج، الطيّ --- */
 .tzn-ft{flex:none;position:relative;display:flex;flex-direction:column;gap:7px;padding:10px 12px 12px;border-top:1px solid var(--tzn-line)}
-/* تلاشٍ فوق أسفل القائمة: علامة أن هناك أقساماً أخرى بالتمرير */
-.tzn-ft::before{content:"";position:absolute;bottom:100%;right:0;left:0;height:22px;margin-bottom:1px;pointer-events:none;background:linear-gradient(180deg,transparent,var(--tzn-bg2))}
 .tzn .tzth{--th-bg:rgba(0,0,0,.26);--th-ink:#b9a6b7;--th-on:rgba(255,255,255,.13);--th-on-ink:#fff;--th-h:32px}
 .tzn .tzth::before{box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
 .tzn .tzth button{font-size:12.5px;gap:6px}
@@ -384,43 +391,72 @@ html.tz-en .tzn-i::before{right:auto;left:-12px;border-radius:0 4px 4px 0}
 .tzn-ft .tzn-out{color:#ffb4ac;border-color:rgba(255,138,128,.22);background:rgba(255,120,110,.07)}
 .tzn-ft .tzn-out:hover{background:rgba(255,120,110,.16)}
 #tzn-v{flex:none;color:rgba(255,255,255,.38);font-size:11px;font-variant-numeric:tabular-nums}#tzn-v:empty{display:none}
-.tzn-cb{flex:none;width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.1);border-radius:11px;background:rgba(255,255,255,.05);color:var(--tzn-ink);cursor:pointer}
-.tzn-cb:hover{background:rgba(255,255,255,.11)}
-.tzn-cb svg{transition:transform var(--duration-fast) var(--ease-smooth-out)}
-html.tz-en .tzn-cb svg{transform:scaleX(-1)}
-/* --- القائمة مطوية: أيقونات فقط (الحاسوب) --- */
+/* --- (v268) زر «الأدوات» أسفل القائمة (حاسوب): يفتح نافذة فيها المظهر واللغة والنسخة والخروج، فتبقى القائمة كلها للأقسام --- */
+.tzn-mb{display:none}
+.tzt-mc{display:none}.tzt-mm,.tzt-mc{place-items:center}.tzt-mm{display:grid}
 @media (min-width:1025px){
- html.tzn-col .tzn-hd{justify-content:center;padding:0}html.tzn-col .tzn-br{flex:none}
- html.tzn-col .tzn-l2,html.tzn-col #tzn-who,html.tzn-col .tzn-tx,html.tzn-col .tzn-sub,html.tzn-col .tzn-gl span,html.tzn-col #tzn-v{display:none}
- html.tzn-col .tzn-hd::after{right:14px;left:14px}
- html.tzn-col .tzn-gl{padding:0 14px;height:14px}
- html.tzn-col .tzn-g:first-child .tzn-gl{visibility:hidden;height:2px}
- html.tzn-col .tzn-i{justify-content:center;padding:0;gap:0;min-height:44px}
- html.tzn-col .tzn-n{position:absolute;top:3px;inset-inline-end:7px;min-width:18px;height:18px;line-height:18px;padding:0 4px;font-size:10.5px;box-shadow:0 0 0 2px var(--tzn-bg2)}
- html.tzn-col .tzn-ft{align-items:center;padding:10px 8px}
- html.tzn-col .tzn-fr{flex-direction:column;flex-wrap:nowrap}
- html.tzn-col .tzn-ft .tzn-b,html.tzn-col .tzn-ft #bkp{flex:none;width:44px;height:40px;padding:0;font-size:0;gap:0}
- html.tzn-col .tzn-ft .tzn-b span.gi,html.tzn-col .tzn-ft #bkp span.gi{font-size:18px!important;margin:0!important}
- html.tzn-col .tzn-ft .tzl-btn .tzl-t{display:none}
- html.tzn-col .tzn-cb{width:44px;height:40px}
- html.tzn-col .tzn-cb svg{transform:scaleX(-1)}html.tz-en.tzn-col .tzn-cb svg{transform:none}
- /* مفتاح المظهر المضغوط: الاختيار الحالي فقط، والضغط يدور */
- html.tzn-col .tzn .tzth{--th-cyc:1;grid-template-columns:1fr;width:44px;padding:0;background:none}
- html.tzn-col .tzn .tzth::before{display:none}
- html.tzn-col .tzn .tzth button{display:none;height:40px;border:1px solid rgba(255,255,255,.1);border-radius:11px;background:rgba(255,255,255,.05);color:var(--tzn-ink)}
- html.tzn-col .tzn .tzth button[aria-checked=true]{display:flex}
- html.tzn-col .tzn .tzth button span{display:none}
+ .tzn-mb{flex:none;display:flex;align-items:center;gap:10px;height:48px;margin:6px 12px 12px;padding:0 9px;overflow:hidden;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:rgba(255,255,255,.045);color:var(--tzn-ink);font:inherit;text-align:start;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background-color var(--duration-quick) var(--ease-out),border-color var(--duration-quick) var(--ease-out),transform .16s cubic-bezier(.2,.8,.2,1),height var(--tzn-dur) var(--ease-smooth-out),margin var(--tzn-dur) var(--ease-smooth-out),padding var(--tzn-dur) var(--ease-smooth-out)}
+ .tzn-mb:hover,html.tzn-more .tzn-mb{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.16)}
+ .tzn-mb:active{transform:scale(.97)}
+ .tzn-mi{position:relative;flex:none;width:28px;height:28px;display:grid;place-items:center;border-radius:9px;background:linear-gradient(180deg,rgba(201,163,194,.3),rgba(180,138,171,.16));color:#f0dcea;box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+ .tzn-mi svg{transition:transform var(--duration-medium) var(--ease-smooth-out)}
+ html.tzn-more .tzn-mi svg{transform:rotate(90deg)}
+ .tzn-mt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;line-height:1.15;white-space:nowrap;transition:opacity var(--duration-fast) var(--ease-out) 60ms}
+ .tzn-m1{font-size:13.5px;font-weight:700;color:#fff}
+ .tzn-m2{font-size:11px;font-weight:500;color:var(--tzn-mut);overflow:hidden;text-overflow:ellipsis}
+ .tzn-mc{flex:none;display:grid;place-items:center;color:var(--tzn-mut);transition:transform var(--duration-fast) var(--ease-smooth-out),opacity var(--duration-quick) var(--ease-out)}
+ html.tzn-more .tzn-mc{transform:rotate(180deg)}
+ /* تنبيه النسخة الاحتياطية (النقطة الحمراء على زر «نسخة») يظهر على زر الأدوات أيضاً */
+ .tzn:has(#bkp .bkd) .tzn-mi::after{content:"";position:absolute;top:-3px;inset-inline-start:-3px;width:9px;height:9px;border-radius:50%;background:#e5484d;box-shadow:0 0 0 2px var(--tzn-bg2)}
+ /* النافذة: نفس عناصر أسفل القائمة (بمعرّفاتها وأزرارها) لكنها عائمة فوق الزر */
+ .tzn-ft{position:fixed;z-index:3;bottom:72px;inset-inline-start:12px;width:240px;padding:12px;gap:8px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:#302133;box-shadow:0 22px 54px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.07);
+  opacity:0;visibility:hidden;pointer-events:none;transform:translateY(10px) scale(.96);transform-origin:50% 100%;
+  transition:opacity var(--duration-quick) var(--ease-out),transform var(--duration-fast) var(--ease-smooth-out),visibility 0s var(--duration-fast)}
+ html.tzn-more .tzn-ft{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition:opacity var(--duration-quick) var(--ease-out),transform var(--duration-fast) var(--ease-smooth-out),visibility 0s}
+ html.tzn-more .tzn{z-index:59}
+ :root[data-theme=dark] .tzn-ft{background:#2a1d2e}
+ .tzn-ft .tzn-fr{gap:7px}
+ .tzn-ft #tzn-v{flex:1 1 100%;text-align:center;padding-top:2px}
+ /* زر الشريط العلوي: أيقونة اللوحة بدل ☰، والسهم ينقلب مع الطيّ */
+ .tzt .tzt-m{display:grid;width:40px;height:40px;margin-inline-start:-8px;border-radius:12px;background:transparent;color:#cdb9ca;transition:background-color var(--duration-quick) var(--ease-out),color var(--duration-quick) var(--ease-out),transform .16s cubic-bezier(.2,.8,.2,1)}
+ .tzt .tzt-m:hover{background:rgba(255,255,255,.09);color:#fff}.tzt .tzt-m:active{transform:scale(.94)}
+ .tzt-mm{display:none}.tzt-mc{display:grid}
+ .tzt-mc .tzn-ar{transform-box:fill-box;transform-origin:center;transition:transform var(--tzn-dur) var(--ease-smooth-out)}
+ html.tzn-col .tzt-mc .tzn-ar{transform:scaleX(-1)}
+ html.tz-en .tzt-mc svg{transform:scaleX(-1)}
 }
-/* اللابتوب القصير: أسفل القائمة صفان فقط (اللغة والنسخة أيقونتان) حتى تتسع القائمة للأقسام */
-@media (min-width:1025px) and (max-height:760px){
- html:not(.tzn-col) .tzn-ft .tzl-btn,html:not(.tzn-col) .tzn-ft #bkp{flex:none;width:36px;padding:0;font-size:0;gap:0}
- html:not(.tzn-col) .tzn-ft .tzl-btn .tzl-t{display:none}
- html:not(.tzn-col) .tzn-ft #bkp span.gi{font-size:17px!important;margin:0!important}
- html:not(.tzn-col) .tzn-ft .tzn-out{flex:1 1 60px}
+/* --- (v268) القائمة مطوية (حاسوب): شريط أيقونات 72px. العناصر تبقى في مكانها (الأيقونة على نفس البعد من الحافة) والنص يذوب، فالطيّ والتوسيع حركة واحدة ناعمة --- */
+@media (min-width:1025px){
+ html.tzn-col .tzn-hd{padding-inline:18px 0}
+ html.tzn-col .tzn-l2,html.tzn-col #tzn-who{opacity:0;visibility:hidden;transition:opacity var(--duration-micro) var(--ease-out),visibility 0s var(--duration-micro)}
+ html.tzn-col .tzn-sc{padding-inline:14px}
+ html.tzn-col .tzn-g{margin-top:5px}
+ html.tzn-col .tzn-gl{height:9px;padding:0 12px;gap:0}
+ html.tzn-col .tzn-gl span{width:0;overflow:hidden;opacity:0}
+ html.tzn-col .tzn-g:first-child .tzn-gl{height:0}
+ html.tzn-col .tzn-i{min-height:36px;padding-inline:10px}
+ html.tzn-col .tzn-tx{opacity:0;transition:opacity var(--duration-micro) var(--ease-out)}
+ html.tzn-col .tzn-i.on+.tzn-sub{grid-template-rows:0fr;visibility:hidden;transition:grid-template-rows var(--duration-fast) var(--ease-smooth-out),visibility 0s var(--duration-fast)}
+ html.tzn-col .tzn-n{position:absolute;top:-4px;inset-inline-end:-4px;min-width:17px;height:17px;line-height:17px;padding:0 4px;font-size:10px;box-shadow:0 0 0 2.5px var(--tzn-bg2)}
+ html.tzn-col #tzn-nav.tzg>tz-g.p::before{inset-inline-start:-14px}
+ html.tzn-col .tzn-mb{height:40px;margin:6px 14px 12px;padding:0 7px;border-radius:12px}
+ html.tzn-col .tzn-mt,html.tzn-col .tzn-mc{opacity:0;transition:opacity var(--duration-micro) var(--ease-out)}
+ html.tzn-col .tzn-ft{bottom:12px;inset-inline-start:calc(var(--tzn-w) + 10px);width:252px;transform:translateX(12px) scale(.96);transform-origin:100% 100%}
+ html.tz-en.tzn-col .tzn-ft{transform:translateX(-12px) scale(.96);transform-origin:0 100%}
+ html.tzn-col.tzn-more .tzn-ft{transform:none}
 }
-#tzn-tip{position:fixed;z-index:95;transform:translateY(-50%) scale(.96);opacity:0;pointer-events:none;background:#16101a;color:#fff;font-size:13px;font-weight:600;line-height:1;padding:9px 12px;border-radius:9px;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.35);
- transition:opacity var(--duration-quick) var(--ease-out),transform var(--duration-quick) var(--ease-out)}
-#tzn-tip.on{opacity:1;transform:translateY(-50%)}
+/* اللابتوب القصير: عناصر الشريط المطوي أقصر قليلاً حتى تظهر كل الأقسام بلا تمرير */
+@media (min-width:1025px) and (max-height:800px){
+ html.tzn-col .tzn-i{min-height:34px;margin:1px 0}
+ html.tzn-col .tzn-g{margin-top:4px}html.tzn-col .tzn-gl{height:7px}
+}
+#tzn-tip{position:fixed;z-index:95;display:flex;align-items:center;gap:8px;transform:translate(8px,-50%);opacity:0;pointer-events:none;background:#1a121d;color:#fff;font-size:13px;font-weight:600;line-height:1;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);white-space:nowrap;box-shadow:0 10px 26px rgba(0,0,0,.4);
+ transition:opacity var(--duration-quick) var(--ease-out),transform var(--duration-fast) var(--ease-smooth-out),top 120ms var(--ease-smooth-out)}
+html.tz-en #tzn-tip{transform:translate(-8px,-50%)}
+#tzn-tip.on,html.tz-en #tzn-tip.on{opacity:1;transform:translate(0,-50%)}
+#tzn-tip::before{content:"";position:absolute;top:50%;inset-inline-start:-4px;width:8px;height:8px;margin-top:-4px;border-radius:2px;background:inherit;transform:rotate(45deg)}
+#tzn-tip b{flex:none;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#c0392b;color:#fff;font-size:10.5px;font-weight:800;line-height:18px;text-align:center;font-variant-numeric:tabular-nums}
 /* --- الشريط العلوي --- */
 .tzt{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:calc(var(--tzt-h) + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 22px 0;background:var(--tzn-bg);color:#fff}
 /* الزاوية المستديرة للمحتوى عند التقاء القائمة بالشريط */
@@ -456,7 +492,7 @@ html.tz-en .tzt-cr i{transform:rotate(-135deg)}
 html.tz-en .tzt .pfme{padding:0 5px 0 12px!important}
 .tzt .pfme .pfa{width:30px!important;height:30px!important}
 /* الورقة اليدوية: الإطار يملأ منطقة المحتوى (يتبع عرض القائمة وارتفاع الشريط) */
-.tzs>#sf{position:fixed;z-index:10;border:0;top:calc(var(--tzt-h) + env(safe-area-inset-top,0px));right:var(--tzn-w);left:0;width:calc(100% - var(--tzn-w));height:calc(100% - var(--tzt-h) - env(safe-area-inset-top,0px));background:var(--bg);transition:width var(--duration-fast) var(--ease-smooth-out),right var(--duration-fast) var(--ease-smooth-out),left var(--duration-fast) var(--ease-smooth-out)}
+.tzs>#sf{position:fixed;z-index:10;border:0;top:calc(var(--tzt-h) + env(safe-area-inset-top,0px));right:var(--tzn-w);left:0;width:calc(100% - var(--tzn-w));height:calc(100% - var(--tzt-h) - env(safe-area-inset-top,0px));background:var(--bg);transition:width var(--tzn-dur) var(--ease-smooth-out),right var(--tzn-dur) var(--ease-smooth-out),left var(--tzn-dur) var(--ease-smooth-out)}
 html.tz-en .tzs>#sf{right:0;left:var(--tzn-w)}
 .tzn-veil{display:none}
 /* --- جوال وتابلت: القائمة درج ينزلق --- */
@@ -468,6 +504,10 @@ html.tz-en .tzs>#sf{right:0;left:var(--tzn-w)}
  html.tzn-open .tzn{transform:none;visibility:visible;box-shadow:0 0 60px rgba(0,0,0,.5);transition:transform var(--duration-medium) var(--ease-smooth-out),visibility 0s,box-shadow var(--duration-medium)}
  .tzn-veil{display:block;position:fixed;inset:0;z-index:60;background:rgba(22,13,24,.55);opacity:0;pointer-events:none;transition:opacity var(--duration-fast) var(--ease-out)}
  html.tzn-open .tzn-veil{opacity:1;pointer-events:auto;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+ /* (v268) الدرج ينفتح والمجموعات تدخل واحدة بعد الأخرى */
+ html.tzn-open .tzn-g{animation:tzn-gin var(--duration-medium) var(--ease-smooth-out) both}
+ html.tzn-open .tzn-g:nth-child(2){animation-delay:45ms}html.tzn-open .tzn-g:nth-child(3){animation-delay:90ms}html.tzn-open .tzn-g:nth-child(4){animation-delay:135ms}html.tzn-open .tzn-g:nth-child(n+5){animation-delay:180ms}
+ html.tzn-open #tzn-nav>tz-g{animation:tzn-gfd var(--duration-medium) var(--ease-out) 120ms both}
  html.tzn-open,html.tzn-open body{overflow:hidden}
  .tzn-x{display:grid}.tzn-cb{display:none}
  .tzn-i{min-height:48px;margin:2px 0;font-size:15.5px;border-radius:12px}.tzn-gl{height:28px}.tzn-g{margin-top:14px}
@@ -490,8 +530,10 @@ html.tz-en .tzs>#sf{right:0;left:var(--tzn-w)}
 @media (max-width:380px){.tzt .live{display:none}.tzt h1{font-size:16.5px}}
 /* حلقة التركيز للكيبورد على الإطار الغامق: موف فاتح (لون --acc الغامق لا يظهر عليه) */
 .tzn :focus-visible,.tzt :focus-visible,.tzst-hd :focus-visible{outline-color:#e3c8dd}
-html.lite .tzn,html.lite .tzw,html.lite .tzn-i,html.lite .tzn-i::before,html.lite .tzn-sub,html.lite .tzn-veil,html.lite .tzs>#sf,html.lite .tzth::before,html.lite #tzn-tip{transition:none!important}
-html.lite .tzn-n{animation:none}
+html.lite .tzn,html.lite .tzw,html.lite .tzn-i,html.lite .tzn-i::before,html.lite .tzn-sub,html.lite .tzn-veil,html.lite .tzs>#sf,html.lite .tzth::before,html.lite #tzn-tip,
+html.lite .tzn-hd,html.lite .tzn-sc,html.lite .tzn-g,html.lite .tzn-gl,html.lite .tzn-gl span,html.lite .tzn-tx,html.lite .tzn-l2,html.lite #tzn-who,html.lite .tzn-mb,html.lite .tzn-mb *,html.lite .tzn-ft,html.lite .tzt-m,html.lite .tzt-mc .tzn-ar{transition:none!important}
+html.lite .tzn-n,html.lite .tzn-g,html.lite #tzn-nav>tz-g{animation:none!important}
+@media (prefers-reduced-motion:reduce){.tzn,.tzw,.tzn-hd,.tzn-sc,.tzn-g,.tzn-gl,.tzn-i,.tzn-tx,.tzn-mb,.tzn-mb *,.tzn-ft,.tzs>#sf,#tzn-tip,.tzt-mc .tzn-ar{transition:none!important}.tzn-g,.tzn-n,#tzn-nav>tz-g{animation:none!important}}
 @media print{.tzn,.tzt,.tzn-veil,#tzn-tip{display:none!important}.tzw{margin:0!important}}
 
 /* ================= ⚙ إعدادات الفرع والسائق (tzset.js، v172) ================= */

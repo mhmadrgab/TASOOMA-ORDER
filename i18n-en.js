@@ -5704,4 +5704,6 @@ export default {
 "عدد المتابعين":"Followers",
 "قائمة المهام":"Task list",
 "المسؤول عن المهمة":"Assignee",
+"الأدوات":"Tools",
+"المظهر · اللغة · الخروج":"Theme · Language · Log out",
 };
