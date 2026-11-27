@@ -247,7 +247,7 @@ async function campSave() {
   const clv = document.querySelector('#mkm input[name="mk-cl"]:checked'), d = {n: n.slice(0, 80), ch, from, to, bud, kp, tm, st: old ? old.st : "plan", by: old ? old.by : {e: me(), n: myN()}, ts: old ? old.ts : Date.now()};
   const gl = String(g("mk-gl").value || "").trim().slice(0, 400), nt = String(g("mk-nt").value || "").trim().slice(0, 1000); if (gl) d.gl = gl; if (nt) d.nt = nt; if (clv) d.cl = +clv.value; if (old && old.cd) d.cd = old.cd; if (old) d.upd = Date.now();
   BUSY = true; const cid = id || nid();
-  try { await withTimeout(setDoc(doc(X.db, "mkc", cid), d)); closeM(); toast(old ? "✅ حُفظت الحملة" : "✅ أُنشئت الحملة. أضف المهام الآن"); if (!old) go({pg: "c", c: cid, v: "board"}) } catch (e) { BUSY = false; errM(errTxt(e)) }
+  try { await withTimeout(setDoc(doc(X.db, "mkc", cid), d)); closeM(); toast(old ? "✅ حُفظت الحملة" : "✅ أُنشئت الحملة. أضف المهام الآن"); if (!old) { S.v = "board"; PEND = {c: cid, it: ""}; changed() } /* تُفتح الحملة الجديدة فور وصولها من القاعدة */ } catch (e) { BUSY = false; errM(errTxt(e)) }
 }
 const asOpts = (c, sel) => { const tm = Array.isArray(c.tm) ? c.tm : [], P = people(); return `<option value="">— اختر —</option><optgroup label="فريق الحملة">${tm.map(e => `<option value="${E(e)}"${sel === e ? " selected" : ""}>${E(nameOf(e))}</option>`).join("")}</optgroup><optgroup label="موظفون آخرون (يُضافون لفريق الحملة)">${P.filter(p => tm.indexOf(p.e) < 0).map(p => `<option value="${E(p.e)}">${E(p.n)}</option>`).join("")}</optgroup>` };
 function taskForm(c, x, pre) {
