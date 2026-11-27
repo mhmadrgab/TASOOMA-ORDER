@@ -366,10 +366,10 @@ async function payForm(id) {
   <div><span>الآيبان</span><span class="ibr"><b class="ms-ib0">${ib ? E(ibanFmt(ib.ib)) : "—"}</b>${ib ? `<button type="button" class="ms-b sm" data-mkq="ibcp" data-mkv="${E(ib.ib)}">نسخ</button>` : ""}</span></div>
   <div><span>صاحب الحساب</span><b data-notr>${ib ? E(ib.an) : "—"}</b></div>${ib && ib.bn ? `<div><span>البنك</span><b data-notr>${E(ib.bn)}</b></div>` : ""}<div><span>المطلوب منه</span><span data-notr>${E(d.dl)}</span></div></div>
   ${ib && !ibanOk(ib.ib) ? `<div class="ms-ins"><div class="bad">تنبيه: رقم الآيبان لا يجتاز فحص الصحة. تأكّد منه قبل التحويل.</div></div>` : ""}
-  <label class="lb" for="mk-ref">رقم مرجع التحويل من البنك</label><input id="mk-ref" maxlength="60" dir="ltr"><p class="sub">بعد التسجيل يمكنك إرفاق إيصال التحويل من صفحة الاتفاق.</p>${foot(["paysave", id], "✔ تم التحويل")}`, "pay", id); focusL("mk-ref");
+  <label class="lb" for="mk-ref">رقم مرجع التحويل من البنك (اختياري)</label><input id="mk-ref" maxlength="60" dir="ltr"><p class="sub">بعد التسجيل يمكنك إرفاق إيصال التحويل من صفحة الاتفاق.</p>${foot(["paysave", id], "✔ تم التحويل")}`, "pay", id); focusL("mk-ref");
 }
-async function paySave(id) { const ref = String(g("mk-ref").value || "").trim().slice(0, 60); if (ref.length < 2) return errM("اكتب رقم مرجع التحويل"); if (BUSY) return; BUSY = true;
-  try { await withTimeout(updateDoc(doc(X.db, "mkd", id), {st: "paid", pd: stampMe({ref}), upd: Date.now()})); closeM(); toast("✔ تم السداد. أرفق إيصال التحويل من صفحة الاتفاق"); pg(["d:" + id]); openItem("d:" + id) } catch (e) { BUSY = false; errM(errTxt(e)) } }
+async function paySave(id) { const ref = String(g("mk-ref").value || "").trim().slice(0, 60); if (BUSY) return; BUSY = true;
+  try { await withTimeout(updateDoc(doc(X.db, "mkd", id), {st: "paid", pd: stampMe(ref ? {ref} : {}), upd: Date.now()})); closeM(); toast("✔ تم السداد. أرفق إيصال التحويل من صفحة الاتفاق"); pg(["d:" + id]); openItem("d:" + id) } catch (e) { BUSY = false; errM(errTxt(e)) } }
 async function ibView(id) { if (IBC.has(id)) { IBC.delete(id); render(); return } const ib = await loadIb(id); if (!ib) { toast("لا يمكنك عرض بيانات التحويل", "er"); return } IBC.set(id, ib); render() }
 async function dealDel(id) { const d = M.D.get(id); if (!d || !confirm(`حذف الاتفاق مع ${d.n}؟`)) return; if (DR.id === id) closeDrawer(true);
   try { await purge("mkd", id); const b = writeBatch(X.db); b.delete(doc(X.db, "mkdi", id)); b.delete(doc(X.db, "mkd", id)); await withTimeout(b.commit()); toast("حُذف الاتفاق") } catch (e) { toast(errTxt(e), "er") } }

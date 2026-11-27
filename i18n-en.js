@@ -5760,4 +5760,5 @@ export default {
 "تحويل، والباقي لها الآن":"transfer(s), balance due now",
 "اتفاقات).":"deals).",
 "تم السداد. أرفق إيصال التحويل من صفحة الاتفاق":"Paid. Attach the transfer receipt from the deal page",
+"رقم مرجع التحويل من البنك (اختياري)":"Bank transfer reference (optional)",
 };
