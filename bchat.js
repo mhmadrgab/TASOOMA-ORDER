@@ -43,6 +43,8 @@ const RPL={};let EDT=null;
 let SRCH={on:false,q:"",hits:[],i:-1},TCH=null,TCID=null,TYP={},TYT=0,TYLAST=0;
 const EDIT_MS=15*6e4;// التعديل خلال 15 دقيقة (نفس القاعدة msg_edit_ok)
 const AUD=new Map();let SCR={t:0,end:true,l:0};
+// ⚡ (v269) رسائل لم تصل القاعدة بعد: تظهر فوراً في المحادثة. st: p جاري الإرسال · s أُرسلت (بانتظار ظهورها من القاعدة) · f لم تُرسل
+let PQ=[],PCH=Promise.resolve(),TOEND=false,LERR=false;
 const STYLE=`
 .bcv [hidden]{display:none!important}
 .bcv{position:relative;display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--card);color:var(--ink);height:100%}
@@ -181,6 +183,13 @@ html[dir="ltr"] .bcg.ot:not(.cont)::before{left:auto;right:-8px;clip-path:polygo
 .gfs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.gfs button{font:inherit;font-size:12.5px;font-weight:700;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer}
 .gft{font-weight:800;font-size:14px;margin:12px 0 4px}.gfi{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:12px;cursor:pointer}.gfi.on{background:var(--soft,#f6eee3)}.gfi input{width:20px;height:20px;flex:none}.gfi span{flex:1;min-width:0;font-weight:600}.gfa{color:#8a5a83;font-weight:700}
 .gff{display:flex;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--line);background:var(--soft,#f6eee3)}.gff button{flex:1;font:inherit;font-weight:800;border-radius:12px;padding:11px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}.gff .ok{background:#2a1d2c;color:#fff;border-color:#2a1d2c}.gff .del{color:#c4362b;border-color:#c4362b}
+.bcg.pend{opacity:.74}.bcg .pc{width:12px;height:12px;flex:none;opacity:.75}.bcg.fail{box-shadow:inset 0 0 0 1.5px #c0392b}
+.bcfail{align-self:flex-start;display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12px;color:#c0392b;margin:3px 4px 6px;font-weight:700}
+.bcfail button{font:inherit;font-size:12px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:999px;padding:4px 11px;cursor:pointer;min-height:30px}.bcfail button.x{border-color:transparent;color:#6d6656;font-weight:400}
+:where([data-theme=dark]) .bcfail{color:#ff8a7a}:where([data-theme=dark]) .bcfail button.x{color:#b9b0a2}
+/* ⌨️ (v269) الكيبورد على الجوال: النافذة تأخذ المساحة الظاهرة فقط، فالرأس وآخر الرسائل يبقيان أمامك */
+html.bc-kb #bcm{top:var(--bcvt,0px);bottom:auto;height:var(--bcvh,100dvh)}html.bc-kb #bcm .bcp{height:var(--bcvh,100dvh);padding-bottom:0}
+html.bc-kb .bcw:not(.one).open>.bcv{top:var(--bcvt,0px);bottom:auto;height:var(--bcvh,100dvh);padding-bottom:0}html.bc-kb .bcq{display:none}
 .bcseen{align-self:flex-start;display:flex;align-items:center;gap:4px;font-size:11.5px;color:#6d6656;margin:3px 4px 0;animation:ui-fade .3s ease both}
 .bcseen .tk{width:16px;height:11px;color:#8d8778}.bcseen .tk.rd{color:#2a9df4}
 @keyframes bc-in{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
@@ -322,6 +331,7 @@ const IC={
   lock:`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="11" height="11"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2zm-7-2a2 2 0 0 1 4 0v2h-4z"/></svg>`
 };
 // علامة الإرسال: ✓ وصلت، ✓✓ زرقا = اتقرت
+const PCLK=`<svg class="pc" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.6V8l2.2 1.6"/></svg>`;
 const tick=rd=>rd?`<svg class="tk rd" viewBox="0 0 18 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6l3.2 3.2L11 2M7.5 9.2 8.3 10 16.8 1.5"/></svg>`:`<svg class="tk" viewBox="0 0 18 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l3.2 3.2L14 2"/></svg>`;
 // لون ثابت للصورة الرمزية حسب الاسم
 const avc=s=>{let h=0;for(const ch of String(s))h=(h*31+ch.charCodeAt(0))>>>0;return "c"+(h%8)};
@@ -402,6 +412,8 @@ function wire(el){
     const t=e.target;
     if(t.closest("[data-bcq]")){const i=g("bcin"),q=t.closest("[data-bcq]").dataset.bcq;i.value=i.value?i.value+" "+q:q;i.focus();grow();return}
     if(t.closest("#bcsend"))return void sendText();
+    if(t.closest("[data-bcretry]"))return void pendRetry(t.closest("[data-bcretry]").dataset.bcretry);
+    if(t.closest("[data-bcdrop]"))return void pendDrop(t.closest("[data-bcdrop]").dataset.bcdrop,true);
     // (v178) قائمة الرسالة (زر الحاسوب)، الضغط على مقتطف الرد، وإلغاء الرد/التعديل
     if(t.closest("[data-bcmenu]")){const b=t.closest("[data-bcmenu]"),el=b.closest(".bcg[data-mid]");if(el){const r=b.getBoundingClientRect();openMenu(el.dataset.mid,{x:r.left+r.width/2})}return}
     if(t.closest("[data-rpgo]"))return void goTo(t.closest("[data-rpgo]").dataset.rpgo);
@@ -499,11 +511,12 @@ function listen(my){
   const cid=CUR;if(!cid)return;
   UNM=onSnapshot(query(sub(cid,"msgs"),orderBy("ts","desc"),limit(LIM)),sn=>{
     if(my!==GEN||cid!==CUR)return;
-    MSGS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m&&typeof m.by==="string").sort((a,b)=>N(a.ts)-N(b.ts));
+    MSGS=sn.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m&&typeof m.by==="string").sort((a,b)=>N(a.ts)-N(b.ts));LERR=false;
+    if(PQ.length){const ids=new Set(MSGS.map(m=>m.id));PQ=PQ.filter(p=>!(p.cid===cid&&ids.has(p.id)))}
     paintMsgs();markRead();
   },e=>{if(my!==GEN||!g("bcms"))return;
     // محادثة جديدة لا يزال مااتعملتش (لا يوجد ولا رسالة): مش غلط
-    if(e&&e.code==="permission-denied"&&!SUMS[cid]){MSGS=[];paintMsgs();return}
+    if(e&&e.code==="permission-denied"&&!SUMS[cid]){MSGS=[];LERR=true;paintMsgs();return}
     g("bcms").innerHTML=`<div class="bcmt">⚠️ تعذر تحميل الرسائل${e&&e.code==="permission-denied"?" (غير مسموح)":"، تأكد من الإنترنت"}</div>`});
 }
 // قُرئت إمتى: لو نفس يوم الإرسال الساعة بس، غير كده اليوم أيضاً
@@ -538,12 +551,15 @@ function paintMsgs(){
   const atEnd=box.scrollHeight-box.scrollTop-box.clientHeight<90,firstPaint=!box.querySelector(".bcg,.bcmt.ok");
   const I=[];if(MSGS.length>=LIM)I.push({k:"more",h:`<button class="bcmore" data-bcmore type="button">⬆ رسائل أقدم</button>`});
   let d="",prev=null,added=0;const NEWIDS=[];
-  const lastMe=[...MSGS].reverse().find(m=>mine(CUR,m.by));
+  // ⚡ (v269) رسائلي التي لم تظهر من القاعدة بعد
+  const myBy=isOld(CUR)?oldBy():X.me,myN=String(X.name()||"").trim().slice(0,60);
+  const PN=PQ.filter(p=>p.cid===CUR&&!MSGS.some(x=>x.id===p.id)).map(p=>({id:p.id,by:myBy,n:myN,ts:p.ts,...p.m,_p:p.st,_w:p.why||""})),ALL=PN.length?MSGS.concat(PN):MSGS;
+  const lastMe=[...ALL].reverse().find(m=>mine(CUR,m.by));
   const grp=isG(CUR),G=grp?SUMS[CUR]||{}:null,gms=grp&&Array.isArray(G.ms)?G.ms:[];
   // الجروب: كام عضو قرا الرسالة (من r في ملخّص الجروب)
   const readN=m=>gms.filter(p=>p!==m.by&&N((G.r||{})[gk(p)])>=N(m.ts)).length;
-  if(!MSGS.length)I.push({k:"empty",h:grp?`<div class="bcmt ok"><b>👥</b>لا توجد رسائل في الجروب بعد.<br>اكتب أول رسالة، أو أرسل صورة 📷 أو رسالة صوتية 🎤.<br><small>🔒 لا يرى الرسائل إلا أعضاء الجروب (${gms.length})</small></div>`:`<div class="bcmt ok"><b>👋</b>لا توجد رسائل بعد.<br>اكتب لـ ${E(pname(peerOf(CUR),CUR))} أي شيء، أو اضغط 🎤 وسجّل رسالة صوتية.<br><small>🔒 الرسائل هنا لا يراها أحد غيركم</small></div>`});
-  MSGS.forEach(m=>{const dd=dayOf(m.ts);if(dd!==d){d=dd;prev=null;I.push({k:"d:"+m.id,h:`<div class="bcday">${E(dd)}</div>`})}
+  if(!ALL.length)I.push({k:"empty",h:grp?`<div class="bcmt ok"><b>👥</b>لا توجد رسائل في الجروب بعد.<br>اكتب أول رسالة، أو أرسل صورة 📷 أو رسالة صوتية 🎤.<br><small>🔒 لا يرى الرسائل إلا أعضاء الجروب (${gms.length})</small></div>`:`<div class="bcmt ok"><b>👋</b>لا توجد رسائل بعد.<br>اكتب لـ ${E(pname(peerOf(CUR),CUR))} أي شيء، أو اضغط 🎤 وسجّل رسالة صوتية.<br><small>🔒 الرسائل هنا لا يراها أحد غيركم</small></div>`});
+  ALL.forEach(m=>{const dd=dayOf(m.ts);if(dd!==d){d=dd;prev=null;I.push({k:"d:"+m.id,h:`<div class="bcday">${E(dd)}</div>`})}
     const me=mine(CUR,m.by),isNew=!firstPaint&&!SEENM.has(m.id);if(isNew){added++;SEENM.add(m.id);NEWIDS.push(m.id)}
     // رسايل ورا بعض من نفس الشخص خلال 5 دقايق = مجموعة واحدة (من غير اسم ولا ذيل)، زي تطبيقات التواصل
     const cont=!!prev&&prev.by===m.by&&String(prev.n||"")===String(m.n||"")&&N(m.ts)-N(prev.ts)<5*6e4&&!(m.rq&&m.rq.no);prev=m;
@@ -563,16 +579,18 @@ function paintMsgs(){
     const who=!me&&!cont?`<i>${whoHtml(byParty(CUR,m.by),m)}</i>`:"";
     const rn=grp&&me?readN(m):0,allRd=grp?rn>=gms.length-1&&gms.length>1:!!m.rd;
     const rdT=me?(grp?`قرأها ${rn} من ${Math.max(0,gms.length-1)}`:m.rd?`قُرئت ${rdAt(m.rd,m.ts)}`:"لم تُقرأ بعد"):"";
-    I.push({k:"m:"+m.id,h:`<div class="bcg ${me?"me":"ot"}${cont?" cont":""}${m.img?" pic":""}" data-mid="${E(m.id)}">${who}${m.fw?`<span class="bcfwd">${IM.fwd}محوَّلة</span>`:""}${rq}${rpq}${body}<small${rdT?` title="${E(rdT)}"`:""}>${m.ed?`<span class="bced">معدّلة</span>`:""}${hm(m.ts)}${me?tick(allRd):""}</small><span class="bcsw">${IM.reply}</span><button class="bcmb" data-bcmenu type="button" aria-label="خيارات الرسالة" tabindex="-1">${IM.more}</button></div>`});
+    I.push({k:"m:"+m.id,h:`<div class="bcg ${me?"me":"ot"}${cont?" cont":""}${m.img?" pic":""}${m._p==="p"?" pend":m._p==="f"?" fail":""}" data-mid="${E(m.id)}">${who}${m.fw?`<span class="bcfwd">${IM.fwd}محوَّلة</span>`:""}${rq}${rpq}${body}<small${rdT?` title="${E(rdT)}"`:""}>${m.ed?`<span class="bced">معدّلة</span>`:""}${hm(m.ts)}${me?(m._p==="p"?PCLK:m._p==="f"?"":tick(allRd)):""}</small><span class="bcsw">${IM.reply}</span><button class="bcmb" data-bcmenu type="button" aria-label="خيارات الرسالة" tabindex="-1">${IM.more}</button></div>`});
     // تحت آخر رسالة ليا: "قُرئت الساعة كام" (زي "Seen" في تطبيقات التواصل)، وفي الجروب "قرأها كام من كام"
-    if(m===lastMe&&m===MSGS[MSGS.length-1])I.push({k:"seen",h:`<div class="bcseen">${grp?`${tick(allRd)} 👁 قرأها ${rn} من ${Math.max(0,gms.length-1)}`:m.rd?`${tick(1)} قُرئت ${rdAt(m.rd,m.ts)}`:`${tick(0)} لم تُقرأ بعد`}</div>`})});
-  if(firstPaint){SEENM=new Set(MSGS.map(m=>m.id));MC.clear();box.textContent=""}
+    if(m._p==="f")I.push({k:"f:"+m.id,h:`<div class="bcfail"><span>⚠️ ${m._w==="denied"?"غير مسموح بالإرسال في هذه المحادثة":m._w==="offline"?"لم تُرسل: لا يوجد اتصال بالإنترنت":"لم تُرسل الرسالة"}</span><button data-bcretry="${E(m.id)}" type="button">إعادة المحاولة</button><button class="x" data-bcdrop="${E(m.id)}" type="button">حذف</button></div>`});
+    if(m===lastMe&&m===ALL[ALL.length-1]&&m._p!=="p"&&m._p!=="f")I.push({k:"seen",h:`<div class="bcseen">${grp?`${tick(allRd)} 👁 قرأها ${rn} من ${Math.max(0,gms.length-1)}`:m.rd?`${tick(1)} قُرئت ${rdAt(m.rd,m.ts)}`:`${tick(0)} لم تُقرأ بعد`}</div>`})});
+  if(firstPaint){SEENM=new Set(ALL.map(m=>m.id));MC.clear();box.textContent=""}
   patch(box,I,MC);
   // حركة الظهور للرسائل الجديدة بس (الكلاس على العنصر نفسه، فإعادة الرسم ماتقطعهاش)
   if(!document.documentElement.classList.contains("lite"))NEWIDS.forEach(id=>{const c=MC.get("m:"+id);if(!c)return;const el=c.el;el.classList.add("in");el.addEventListener("animationend",()=>el.classList.remove("in"),{once:true})});
   if(keepTop){box.scrollTop=box.scrollHeight-keepTop.h+keepTop.t;keepTop=null}
-  else if(atEnd||firstPaint)box.scrollTop=box.scrollHeight;
+  else if(atEnd||firstPaint||TOEND)box.scrollTop=box.scrollHeight;
   else if(added){const last=MSGS[MSGS.length-1];if(last&&!mine(CUR,last.by))NEWB+=added}
+  TOEND=false;
   if(SRCH.on)searchMark(false);
   paintDown();
 }
@@ -752,12 +770,12 @@ function markRead(){
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)markRead()});
 // ---------- الإرسال ----------
-function write(cid,m,a,full,mid){
+function write(cid,m,a,full,mid,pre){
   // mid = رقم رسالة محجوز مسبقاً (ملف مقسوم: أجزاؤه fil/{mid}_{k} رُفعت قبل الرسالة)
   const ts=Date.now(),n=String(X.name()||"").trim().slice(0,60),b=writeBatch(X.db),ref=mid?subDoc(cid,"msgs",mid):doc(sub(cid,"msgs"));
-  const old=isOld(cid),by=old?oldBy():X.me,rq=m.fw?null:CTX[cid],msg={by,n,ts,...m,...(rq?{rq:{id:String(rq.id).slice(0,40),no:String(rq.no).slice(0,40)}}:{})};
+  const old=isOld(cid),by=old?oldBy():X.me,rq=(pre||m.fw)?null:CTX[cid],msg={by,n,ts,...m,...(rq?{rq:{id:String(rq.id).slice(0,40),no:String(rq.no).slice(0,40)}}:{})};
   // ↩️ (v178) الرد على رسالة: يُرسل مع أول رسالة بعده (نص أو صورة أو صوت أو ملف) ثم يختفي
-  const rp=m.fw?null:RPL[cid];if(rp){msg.rp={id:rp.id,t:rp.t,...(rp.n?{n:rp.n}:{})};delete RPL[cid];if(CUR===cid)paintBar()}
+  const rp=(pre||m.fw)?null:RPL[cid];if(rp){msg.rp={id:rp.id,t:rp.t,...(rp.n?{n:rp.n}:{})};delete RPL[cid];if(CUR===cid)paintBar()}
   if(a)b.set(subDoc(cid,"aud",ref.id),{a});
   if(full)b.set(subDoc(cid,m.f?"fil":"img",ref.id),m.f?{p:full}:{i:full});// الصورة بجودتها الكاملة لوحدها (بتتحمّل بس لما حد يفتحها)
   b.set(ref,msg);
@@ -783,24 +801,70 @@ function write(cid,m,a,full,mid){
   return b.commit();
 }
 async function deliver(cid,m,a,onOk,full,mid){
-  busy=true;const sb=g("bcsend");if(sb)sb.disabled=true;
+  busy=true;mid=mid||doc(sub(cid,"msgs")).id;
   try{await withTimeout(write(cid,m,a,full,mid),full?45000:20000);onOk&&onOk();X.ping(cid)}
   catch(x){
-    const w=await failReason(x);
-    // النت بطيء: الرسالة محفوظة على الجهاز وهتتبعت لوحدها (ما نبعتهاش مجدداً علشان ما تتكررش)
-    if(w==="slow"){onOk&&onOk();X.toast("⏳ الإنترنت بطيء: سترسل الرسالة تلقائياً فور تحسّن الاتصال");X.ping(cid)}
+    // 🛟 (v269) المهلة انتهت أو الاتصال انقطع: نسأل القاعدة هل الرسالة وصلت فعلاً. (كانت تقول «سترسل تلقائياً» ولا شيء يعيد الإرسال، فتضيع)
+    let there=false;try{const s0=await withTimeout(getDoc(subDoc(cid,"msgs",mid)),8000);there=s0.exists()}catch(e){}
+    const w=there?"":await failReason(x);
+    if(there){onOk&&onOk();X.ping(cid)}
+    else if(w==="slow"||w==="offline")X.toast(w==="offline"?FAIL_MSG.offline:"الإنترنت بطيء: لم تُرسل. حاول مجدداً",true);
     else{const p=peerOf(cid),gone=(p[0]==="w"&&!DIR[pv(p)])||(p[0]==="d"&&!DDIR[pv(p)]);
       X.toast(w==="denied"?(gone?"هذا الشخص لم يعد موجوداً. اختر شخصاً آخر":"غير مسموح لك بالإرسال في هذه المحادثة (ربما لم تتحدّث القواعد بعد)"):FAIL_MSG[w]||"تعذر الإرسال",true)}
   }
-  busy=false;if(g("bcsend"))g("bcsend").disabled=false;
+  busy=false;
 }
 function sendText(){
   if(EDT&&EDT.cid===CUR)return void saveEdit();
   typingSend(false);
-  const i=g("bcin");if(!i||!CUR||busy)return;
+  const i=g("bcin");if(!i||!CUR)return;
   const t=i.value.trim().slice(0,LEN),cid=CUR;if(!t)return;
-  deliver(cid,{t},null,()=>{DRAFT[cid]="";if(CUR===cid){i.value="";grow()}});
+  if(PQ.filter(p=>p.st!=="s").length>=30)return void X.toast("انتظر حتى تُرسل الرسائل السابقة",true);
+  // ⚡ (v269) الرسالة تظهر فوراً والخانة تفرغ؛ الإرسال في الخلفية بالترتيب
+  const m={t},rq=CTX[cid],rp=RPL[cid];
+  if(rq)m.rq={id:String(rq.id).slice(0,40),no:String(rq.no).slice(0,40)};
+  if(rp){m.rp={id:rp.id,t:rp.t,...(rp.n?{n:rp.n}:{})};delete RPL[cid];paintBar()}
+  i.value="";DRAFT[cid]="";grow();
+  pendAdd(cid,m);
 }
+function pendAdd(cid,m){
+  const now=Date.now();PQ=PQ.filter(p=>!(p.st==="s"&&now-p.ts>6e5));
+  const p={id:doc(sub(cid,"msgs")).id,cid,m,ts:now,st:"p"};PQ.push(p);
+  if(CUR===cid){TOEND=true;paintMsgs()}
+  pendRun(p);
+}
+function pendRun(p){p.st="p";p.why="";PCH=PCH.then(()=>pendSend(p)).catch(()=>{})}
+async function pendSend(p){
+  if(!X||PQ.indexOf(p)<0)return;
+  let ok=false,why="";
+  try{await withTimeout(write(p.cid,p.m,null,null,p.id,true),20000);ok=true}
+  catch(x){
+    // لم نتأكد (مهلة أو انقطاع): نسأل القاعدة هل وصلت فعلاً قبل أن نقول «لم تُرسل»
+    try{const s0=await withTimeout(getDoc(subDoc(p.cid,"msgs",p.id)),8000);ok=s0.exists()}catch(e){}
+    if(!ok)why=await failReason(x);
+  }
+  if(!X||PQ.indexOf(p)<0)return;
+  if(ok){p.st="s";X.ping(p.cid)}
+  else{p.st="f";p.why=why;
+    if(why==="denied"){const pr=peerOf(p.cid),gone=(pr[0]==="w"&&!DIR[pv(pr)])||(pr[0]==="d"&&!DDIR[pv(pr)]);X.toast(gone?"هذا الشخص لم يعد موجوداً. اختر شخصاً آخر":"غير مسموح لك بالإرسال في هذه المحادثة (ربما لم تتحدّث القواعد بعد)",true)}
+    else if(why==="quota")X.toast(FAIL_MSG.quota,true)}
+  if(MSGS.some(x=>x.id===p.id))PQ=PQ.filter(q=>q!==p);
+  if(CUR===p.cid){if(p.st==="f")TOEND=SCR.end;paintMsgs()}
+}
+function pendRetry(id){const p=PQ.find(q=>q.id===id);if(!p||p.st!=="f")return;pendRun(p);if(CUR===p.cid)paintMsgs()}
+function pendDrop(id,back){const p=PQ.find(q=>q.id===id);if(!p||p.st!=="f")return;PQ=PQ.filter(q=>q!==p);
+  // النص يرجع لخانة الكتابة لو فاضية، حتى لا يضيع ما كُتب
+  if(back&&CUR===p.cid){const i=g("bcin");if(i&&!i.value&&p.m&&p.m.t){i.value=p.m.t;DRAFT[p.cid]=p.m.t;grow()}paintMsgs()}}
+// ⌨️ (v269) الكيبورد على الجوال: نافذة الدردشة تتبع المساحة الظاهرة (visualViewport) بدل ارتفاع الشاشة كله
+let VVR=0;
+function vvSync(){VVR=0;const vv=window.visualViewport,de=document.documentElement;if(!vv)return;
+  const bm=g("bcm"),open=!!X&&((bm&&bm.className==="on")||(!modal()&&ROOT&&ROOT.classList.contains("open")));
+  const kb=open&&innerWidth<=820&&(innerHeight-vv.height>120||vv.offsetTop>1);
+  if(kb){de.style.setProperty("--bcvh",Math.round(vv.height)+"px");de.style.setProperty("--bcvt",Math.round(vv.offsetTop)+"px");de.classList.add("bc-kb")}
+  else if(de.classList.contains("bc-kb")){de.classList.remove("bc-kb");de.style.removeProperty("--bcvh");de.style.removeProperty("--bcvt")}
+  else return;
+  const b=g("bcms");if(b&&SCR.end)b.scrollTop=b.scrollHeight}
+if(typeof window!=="undefined"&&window.visualViewport){const f=()=>{if(!VVR)VVR=requestAnimationFrame(vvSync)};visualViewport.addEventListener("resize",f);visualViewport.addEventListener("scroll",f)}
 
 // ---------- 📷 الصور (بأعلى جودة تنفع في الخطة المجانية) ----------
 // الأصلية: أطول ضلع لحد 2048 بكسل وJPEG بأعلى جودة تدخل في مستند واحد (أقل من 950 كيلو حرف)، والمصغّرة 420 بكسل جوه الرسالة
@@ -1109,6 +1173,7 @@ export function initBChat(ctx){
         const who=pname(s._peer,cid);X.toast(`💬 ${who}: ${String(l.t).slice(0,70)}`);if(X.beep)X.beep();
         if(X.notify)X.notify("💬 "+who,String(l.t).slice(0,140),"g"+cid);
       }});
+    if(LERR&&CUR&&SUMS[CUR]){LERR=false;listen(GEN)}
     first=false;paintHead();if(CUR)paintMsgs();paintList();paintFab();markRead();
     if(!modal()&&X.onBadge)X.onBadge(unreadTotal());
   };
@@ -1139,7 +1204,7 @@ export function initBChat(ctx){
 export function stopBChat(){
   if(!X)return;stopRec(true);stopPlay();stopPres();clearInterval(PRT);[UNM,UNS,UNS2,UND,UNA,UNDD,UNG,UNBP].forEach(f=>f&&f());UNM=UNS=UNS2=UND=UNA=UNDD=UNG=UNBP=null;BP={};
   CUR=null;GEN++;MSGS=[];SUMS={};SO={};SN={};SG={};DIR={};DDIR={};AVA={};DRAFT={};CTX={};PEND=null;AUD.clear();
-  closeMenu();MC.clear();LC.clear();SEENM=new Set();EDT=null;Object.keys(RPL).forEach(k=>delete RPL[k]);
+  closeMenu();MC.clear();LC.clear();SEENM=new Set();EDT=null;PQ=[];LERR=false;document.documentElement.classList.remove("bc-kb");Object.keys(RPL).forEach(k=>delete RPL[k]);
   typingJoin(null);SRCH={on:false,q:"",hits:[],i:-1};{const v=g("bcfw");if(v)v.remove()}
   const m=g("bcm");if(m)m.remove();["bcfab","bcme"].forEach(id=>{const e=g(id);if(e)e.remove()});
   if(ROOT){ROOT.remove();ROOT=null}
