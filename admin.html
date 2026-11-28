@@ -411,8 +411,8 @@ function start(){
  }
  // تبويب الموظفين: المدير بيشوف بس، والتعديل لمالك النظام فقط (والقواعد بتمنع غير كده)
  if(adm)initStaff({setPw:adminSetPw,tmpPw,db,toast,tab:()=>tab==="set"&&(sub==="perm"||sub==="pm"||sub==="lk")?"stf":tab,redraw:draw,pw:()=>P,owner:ROLE.owner===true,root:ROLE.root===true,co:ROLE.co===true,lock:()=>LOCK,rootEmail:ADMIN_EMAIL,pm:ROLE.owner!==true&&!!(ROLE.p&&ROLE.p.pm),me:String(auth.currentUser&&auth.currentUser.email||"").toLowerCase(),name:ROLE.name,test:to=>pushTest(auth,to)});
- if(ROLE.owner===true)initStock({nav:()=>navSync(),db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});
- else if(ROLE.p.stk===true)initStock({nav:()=>navSync(),db,fb:{doc,getDoc,setDoc,writeBatch},toast,ro:true,me:{e:me,get n(){return ROLE.name||me}},branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});/* (v194) صلاحية «تحليل المخزون»: مشاهدة وتحليل فقط */// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
+ if(ROLE.owner===true)initStock({sv:true,nav:()=>navSync(),db,fb:{doc,getDoc,setDoc,writeBatch},toast,me:{e:me,get n(){return ROLE.name||me}},transfer:stockTransfer,dispatch:stockDispatch,branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});
+ else if(ROLE.p.stk===true)initStock({sv:ROLE.p.sv===true,nav:()=>navSync(),db,fb:{doc,getDoc,setDoc,writeBatch},toast,ro:true,me:{e:me,get n(){return ROLE.name||me}},branches:()=>BR.map(code),ship:()=>SH,reqs:()=>R.map(r=>({br:r.br,fr:r.tr&&r.tr.fr||"",ts:r.ts,st:r.st,rows:r.rows}))});/* (v194) صلاحية «تحليل المخزون»: مشاهدة وتحليل فقط */// 📊 تحليل المخزون (يحمّل بياناته عند فتح القسم فقط)
  initDash({redraw:draw});// لوحة الأداء أول تبويب الطلبات
  // النسخة الاحتياطية: لمالك النظام بس
  initBackup({db,toast,owner:ROLE.owner===true,redraw:draw});
@@ -813,7 +813,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)document.t
 const deny=async m=>{lastErr=m;stop();login(m);try{await signOut(auth)}catch(e){}};
 // صلاحيات الحساب من staff/{email}. المتابع (v) مالوش أي صلاحية تعديل حتى لو اتعلّم غلط
 // 👁 (v222) المتابع: يحتفظ بالصلاحيات التي يعلّمها له الأدمن أو مالك النظام (VWK) فيعمل في أقسامها، وباقي الأقسام مشاهدة فقط
-const VWK=["req","cus","fl","gift","mt","po","rcv","stk","ga","nc","dc","mk","mf"],vwP=p=>{const o={};VWK.forEach(k=>{if(p&&p[k]===true)o[k]=true});return o};
+const VWK=["req","cus","fl","gift","mt","po","rcv","stk","sv","ga","nc","dc","mk","mf"],vwP=p=>{const o={};VWK.forEach(k=>{if(p&&p[k]===true)o[k]=true});return o};
 const roleOf=s=>{const v=s.v===true,co=!v&&s.admin===true&&s.co===true;window.__tzCo=co;window.__tzRoot=false;return {admin:!v&&s.admin===true,owner:co,co,root:false,v,cw:!v&&s.cw===true,p:v?vwP(s.p):(s.p||{}),name:s.name||"",k:s.k||""}};
 async function enterStaff(u){
  const em=String(u.email||"").toLowerCase();

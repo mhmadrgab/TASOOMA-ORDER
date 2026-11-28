@@ -24,7 +24,7 @@ const SEP="\u0001";
 export const DEF={min:2,keep:2,slow:0,days:60,stale:5,ex:["000-SERVER"],wh:"001-WEARHOUSE",ov:[]};
 let X=null,ROOT=null,DATA=null,CFG=Object.assign({},DEF),META=null,LOADED=false,LOADING=false,BUSY="",REP=[],SOLDC={},SENT=[],un=[],MFAIL={};// MFAIL: شهور تاريخ فشل تحميلها
 const SENT_DAYS=14;// طلب التحويل المُنشأ يبقى معلَّماً على اقتراحه 14 يوماً (حتى يظهر أثره في تقرير السيستم)
-let UI={tab:"home",dp:"",hx:"",hk:"n",bh:60,ba:30,bs:"cover",bx:"",trv:"pair",st:"",vn:"",q:"",sold:1,min:"",per:"ytd",from:"",to:"",fr:"",tt:"",code:"",cl:"",sz:"",pf:"",pt:"",psort:"q",pxd:"",show:"b",son:"",lim:200,aq:"",a:null,rec:null};
+let UI={tab:"home",dp:"",hx:"",hk:"n",bh:60,ba:30,bs:"cover",bx:"",trv:"pair",st:"",vn:"",q:"",sold:1,min:"",per:"ytd",from:"",to:"",fr:"",tt:"",code:"",cl:"",sz:"",pf:"",pt:"",psort:"q",pxd:"",vf:"",vt:"",vs:"",show:"b",son:"",lim:200,aq:"",a:null,rec:null};
 
 /* ============ 1) قراءة الملفات ============ */
 const dec=s=>s.indexOf("&")<0?s:s.replace(/&(#x?[0-9a-fA-F]+|lt|gt|quot|apos|amp);/g,(m,k)=>k==="lt"?"<":k==="gt"?">":k==="quot"?'"':k==="apos"?"'":k==="amp"?"&":k.charAt(1)==="x"||k.charAt(1)==="X"?String.fromCodePoint(parseInt(k.slice(2),16)||32):String.fromCodePoint(parseInt(k.slice(1),10)||32));
@@ -121,12 +121,12 @@ export function ingest(){
 // ملف (File أو {name, arrayBuffer()}) ← ناتج ingest
 export async function readFile(file,onProg){
  const name=String(file.name||"");const buf=await file.arrayBuffer();
- if(/\.csv$|\.txt$/i.test(name)){const I=ingest();let t=new TextDecoder("utf-8").decode(buf);if(t.charCodeAt(0)===0xFEFF)t=t.slice(1);csvRows(t,I.row);return I.done()}
+ if(/\.csv$|\.txt$/i.test(name)){const I=ingest(),V=ingestV();let t=new TextDecoder("utf-8").decode(buf);if(t.charCodeAt(0)===0xFEFF)t=t.slice(1);csvRows(t,r=>{I.row(r);V.row(r)});const R0=I.done();if(R0.ok)return R0;const V0=V.done();return V0.ok?V0:R0}
  const Z=zipDir(buf);let shared=null;const sf=Z.F.find(f=>f.name==="xl/sharedStrings.xml");
  if(sf){let t="";await streamText(Z.open(sf),x=>{t+=x});shared=[];const re=/<(?:\w+:)?si>([\s\S]*?)<\/(?:\w+:)?si>/g;let m;while((m=re.exec(t))){let v="",q;RT.lastIndex=0;while((q=RT.exec(m[1])))v+=dec(q[1]);shared.push(v)}}
  // أكبر الأوراق أولاً (ورقة البيانات)، وأول ورقة رأسها صحيح تُعتمد
  const sheets=Z.F.filter(f=>/^xl\/worksheets\/[^\/]+\.xml$/.test(f.name)).sort((a,b)=>b.usz-a.usz).slice(0,4);
- for(const f of sheets){const I=ingest(),fd=rowFeeder(I.row,shared);await streamText(Z.open(f),x=>fd.push(x),n=>{if(onProg)onProg(f.usz?Math.min(1,n/f.usz):0)});const R=I.done();if(R.ok)return R}
+ for(const f of sheets){const I=ingest(),V=ingestV(),fd=rowFeeder(r=>{I.row(r);V.row(r)},shared);await streamText(Z.open(f),x=>fd.push(x),n=>{if(onProg)onProg(f.usz?Math.min(1,n/f.usz):0)});const R=I.done();if(R.ok)return R;const V0=V.done();if(V0.ok)return V0}
  return {ok:false};
 }
 // (v251) 📥 ملف إكسل/csv ← نص كل ورقة بأعمدة مفصولة بتاب (يستعمله أمر الشراء لقراءة «البيان» بـ parseStatement)
@@ -361,6 +361,48 @@ export function salesOverview(D,o){
  for(const ym in D.d){if(ym+"-31"<o.from||ym+"-01">o.to)continue;const r=D.d[ym];for(let i=0;i<r.length;i+=5){const n=r[i+3];if(!n)continue;const ki=r[i],ti=r[i+1];if(fs!==undefined&&ti!==fs)continue;if(fv!==-2&&D.k[ki][3]!==fv)continue;const d=ymd(ym,r[i+2]);if(d<o.from||d>o.to)continue;
   total+=n;if(n<0)ret-=n;byDay[d]=(byDay[d]||0)+n;bySt[ti]=(bySt[ti]||0)+n;const c=D.k[ki][0];C.set(c,(C.get(c)||0)+n)}}
  return {total,ret,byDay,bySt,codes:[...C].map(x=>({k:x[0],q:x[1]})).sort((a,b)=>b.q-a.q)};
+}
+/* (v277) 💰 قيمة مبيعات الفروع بالريال: تقرير Power BI بأعمدة (السنة، الشهر، اليوم، الفرع، Net Sales WoTax) بلا أكواد.
+   مجموعة مستقلة stkv (لمن له صلاحية sv فقط): stkv/meta + stkv/y2026 (مضغوط). كل ملف يستبدل أيام فترته فقط */
+const VAMT=["net sales wotax","net sales w/o tax","net sales","net_sales","sales amount","sales_amount","net amount","amount","قيمة المبيعات","المبيعات بالريال","صافي المبيعات","القيمة"];
+export function ingestV(){
+ let H=null,n=0,sum=0;const st=[],sti=new Map(),rows=[],days=new Set(),tot={},R={from:"",to:"",bad:0,nan:0,trunc:false};
+ const head=row=>{const low=row.map(c=>String(c).trim().toLowerCase()),fi=a=>low.findIndex(c=>a.indexOf(c)>=0),h={st:fi(HMAP.store),am:fi(VAMT),dt:fi(HMAP.dt)};
+  for(const p of [["yr","year"],["mo","month"],["dy","day"]]){let i=fi(HMAP[p[0]]);if(i<0)i=low.findIndex(c=>c.indexOf(" - ")>0&&c.split(" - ").pop().trim()===p[1]);h[p[0]]=i}
+  return fi(HMAP.code)>=0||h.st<0||h.am<0||!((h.mo>=0&&h.dy>=0)||h.dt>=0)?null:h};
+ function row(r){
+  if(!r.length)return;if(!H){H=head(r);return}
+  for(const c of r){const s=String(c==null?"":c);if(s.length<20)continue;if(/exceeded the allowed volume/i.test(s))R.trunc=true;
+   let m=/on or after (\d{1,2})\/(\d{1,2})\/(\d{4}) and is before (\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
+   if(m){const us=+m[2]>12||+m[5]>12,dm=(a,b,y)=>y+"-"+p2(us?+a:+b)+"-"+p2(us?+b:+a);R.from=dm(m[1],m[2],m[3]);R.to=dm(m[4],m[5],m[6])}
+   else{m=/on or after (\d{1,2})-([A-Za-z]{3})-(\d{2,4}) and is before (\d{1,2})-([A-Za-z]{3})-(\d{2,4})/.exec(s);if(m){const y=x=>x.length===2?2000+(+x):+x;R.from=y(m[3])+"-"+p2(MON[m[2].toLowerCase()]||1)+"-"+p2(+m[1]);R.to=y(m[6])+"-"+p2(MON[m[5].toLowerCase()]||1)+"-"+p2(+m[4])}}}
+  const store=String(r[H.st]==null?"":r[H.st]).trim();
+  if(!store){if(r.some(c=>/^total$/i.test(String(c==null?"":c).trim()))){const a=num(r[H.am]);if(a===a)tot.am=a}return}
+  let y=0,mo=0,dy=0;if(H.dt>=0&&H.mo<0){const d=dateOf(r[H.dt]);if(!d){R.bad++;return}y=d[0];mo=d[1];dy=d[2]}else{y=H.yr>=0?N(r[H.yr]):new Date().getFullYear();mo=moNum(r[H.mo]);dy=N(r[H.dy])}
+  if(!(y>=2000&&y<=2100&&mo>=1&&mo<=12&&dy>=1&&dy<=new Date(y,mo,0).getDate())){R.bad++;return}
+  const a=num(r[H.am]);if(a!==a){R.nan++;return}
+  let ti=sti.get(store);if(ti===undefined){ti=st.length;st.push(store);sti.set(store,ti)}
+  const d=y+"-"+p2(mo)+"-"+p2(dy);rows.push({d,s:store,a});sum+=a;n++;days.add(d)}
+ return {row,done:()=>Object.assign(R,{ok:!!H,type:"v",n,st,rows,days:[...days].sort(),sum,tot})};
+}
+const r2=x=>Math.round(x*100)/100;
+// صفوف سنة واحدة ← نص مضغوط الشكل: {y, st:[فروع], r:[شهر*100+يوم، فرع، مبلغ…]} (المكرر لنفس اليوم والفرع يُجمع)
+export function valPack(year,rows){
+ const st=[],sti=new Map(),m=new Map();for(const x of rows){if(x.d.slice(0,4)!==String(year))continue;let ti=sti.get(x.s);if(ti===undefined){ti=st.length;st.push(x.s);sti.set(x.s,ti)}const k=(+x.d.slice(5,7)*100+(+x.d.slice(8,10)))*1000+ti;m.set(k,(m.get(k)||0)+x.a)}
+ const r=[];[...m.keys()].sort((a,b)=>a-b).forEach(k=>{r.push(Math.floor(k/1000),k%1000,r2(m.get(k)))});return JSON.stringify({y:+year,st,r})};
+export function valUnpack(o){const out=[];if(!o||!Array.isArray(o.r)||!Array.isArray(o.st))return out;for(let i=0;i+2<o.r.length;i+=3){const md=o.r[i];out.push({d:o.y+"-"+p2(Math.floor(md/100))+"-"+p2(md%100),s:String(o.st[o.r[i+1]]||""),a:N(o.r[i+2])})}return out}
+// يستبدل أيام الفترة [from,to] (شاملة) بصفوف الملف الجديد ويبقي ما عداها
+export const valMerge=(old,nw,from,to)=>(old||[]).filter(x=>x.d<from||x.d>to).concat((nw||[]).filter(x=>x.d>=from&&x.d<=to));
+// مدى تواريخ مغطّاة (نصوص YYYY-MM-DD): يضيف [a,b] ويدمج المتلاصق
+export const cvDates=(list,a,b,nextDay)=>{const L=(list||[]).filter(r=>Array.isArray(r)&&r.length===2).map(r=>[String(r[0]),String(r[1])]);if(a&&b&&a<=b)L.push([a,b]);L.sort((p,r)=>p[0]<r[0]?-1:1);const o=[];for(const r of L){const l=o[o.length-1];if(l&&r[0]<=nextDay(l[1])){if(r[1]>l[1])l[1]=r[1]}else o.push([r[0],r[1]])}return o.slice(0,24)};
+// ملخّص الفترة: المجموع، يوماً بيوم، لكل شهر، لكل فرع (ومتوسط يومه)، وجدول الفرع × الشهر
+export function valStats(rows,o){
+ o=o||{};const from=o.from||"0000",to=o.to||"9999",byDay={},byM={},S=new Map();let total=0,n=0;
+ for(const x of rows||[]){if(x.d<from||x.d>to)continue;if(o.store&&x.s!==o.store)continue;total+=x.a;n++;byDay[x.d]=(byDay[x.d]||0)+x.a;const ym=x.d.slice(0,7);byM[ym]=(byM[ym]||0)+x.a;
+  let e=S.get(x.s);if(!e){e={s:x.s,a:0,ds:new Set(),m:{}};S.set(x.s,e)}e.a+=x.a;e.ds.add(x.d);e.m[ym]=(e.m[ym]||0)+x.a}
+ const days=Object.keys(byDay).sort();let best="";for(const d of days)if(!best||byDay[d]>byDay[best])best=d;
+ const stores=[...S.values()].map(e=>({s:e.s,a:e.a,days:e.ds.size,m:e.m})).sort((a,b)=>b.a-a.a);
+ return {total,n,days,byDay,byM,months:Object.keys(byM).sort(),stores,best,avg:days.length?total/days.length:0};
 }
 /* ---- (v174) بطاقات «اسأل»: كل رقم هنا جمع مباشر من صفوف الملفين، بلا تقدير ---- */
 // يمرّ على صفوف ملفات التاريخ داخل الفترة: fn(صنف، فرع، اليوم، الكمية)
@@ -1026,7 +1068,18 @@ async function onFiles(files){
  let TQ=false;const TY=new Set();// 🗄 (v234) اللي اتحفظ ← جداول قاعدة البيانات مرة واحدة بعد كل الملفات
  for(const f of [...files]){const nm=String(f.name||"ملف");
   try{BUSY="جاري قراءة "+nm+"…";paint();let last=0;const R=await readFile(f,p=>{const pc=Math.round(p*100);if(pc-last>=4){last=pc;const e=g("stk-pg");if(e)e.textContent=pc+"%"}});
-   if(!R.ok){REP.push({kind:"r",f:nm,t:"لم نتعرّف على أعمدة هذا الملف. المطلوب: DESCRIPTION2 و Store Name، ومعها SOLD_QTY و OH_QTY (ملف الكميات)، أو SOLD_QTY وأعمدة التاريخ (ملف التاريخ)، أو RCVD_QTY وأعمدة التاريخ (ملف المشتريات)."});continue}
+   if(!R.ok){REP.push({kind:"r",f:nm,t:"لم نتعرّف على أعمدة هذا الملف. المطلوب: DESCRIPTION2 و Store Name، ومعها SOLD_QTY و OH_QTY (ملف الكميات)، أو SOLD_QTY وأعمدة التاريخ (ملف التاريخ)، أو RCVD_QTY وأعمدة التاريخ (ملف المشتريات)، أو الفرع وأعمدة التاريخ و Net Sales WoTax بلا أكواد (ملف قيمة المبيعات)."});continue}
+   // 💰 (v277) ملف قيمة المبيعات بالريال
+   if(R.type==="v"){
+    if(R.nan){REP.push({kind:"r",f:nm,t:"في ملف قيمة المبيعات "+R.nan+" خانة مبلغ ليست رقماً، فلم يُحفظ."});continue}
+    if(R.trunc){REP.push({kind:"r",f:nm,t:"ملف قيمة المبيعات مقطوع من Power BI، فلم يُحفظ. نزّله على فترات أقصر."});continue}
+    if(R.tot.am!==undefined&&Math.abs(R.tot.am-R.sum)>1){REP.push({kind:"r",f:nm,t:"مجموع الصفوف لا يطابق سطر الإجمالي في ملف قيمة المبيعات ("+fmt(R.sum)+" والإجمالي "+fmt(R.tot.am)+")، فلم يُحفظ. أعد تنزيل التقرير."});continue}
+    if(!R.n){REP.push({kind:"w",f:nm,t:"ملف قيمة المبيعات ليس فيه أي سطر."});continue}
+    if(R.tot.am===undefined)REP.push({kind:"w",f:nm,t:"لا يوجد سطر إجمالي في ملف قيمة المبيعات، فلم تُراجَع مجاميعه."});
+    BUSY="جاري حفظ قيمة المبيعات…";paint();
+    try{const o=await saveV(R);REP.push({kind:"g",f:nm,t:"ملف قيمة المبيعات: "+R.n+" سطر · "+R.st.length+" فرع · "+R.days.length+" يوماً · من "+o.from+" إلى "+o.to+" · المجموع "+fmt(R.sum)+" ريال"+(R.tot.am!==undefined?" · مطابق لسطر الإجمالي":"")})}
+    catch(e){REP.push({kind:"r",f:nm,t:String(e&&e.message)==="valbig"?"ملف قيمة المبيعات أكبر من المسموح، نزّله على فترات أقصر.":"تعذّر حفظ قيمة المبيعات. تأكد من لصق القواعد الجديدة ومن الإنترنت ثم أعد الرفع."})}
+    if(R.bad)REP.push({kind:"w",f:nm,t:R.bad+" سطر تُرك لنقص التاريخ."});continue}
    // 📥 (v248) ملف المشتريات
    if(R.type==="r"){
     if(R.nan){REP.push({kind:"r",f:nm,t:"في ملف المشتريات "+R.nan+" خانة كمية ليست رقماً، فلم يُحفظ."});continue}
@@ -1189,7 +1242,7 @@ const CSS=`.stk-lqn{margin:8px 0 0;padding:8px 10px;border-radius:10px;backgroun
 html.lite .an,html.lite .an *,html.lite .stk-rg circle.f.an{animation:none!important}@media (prefers-reduced-motion:reduce){.stk-dch .c i,.stk-bc,.stk-hb .hbr,.stk-hb .tr i,.stk-tc,.stk-bd,.stk-rg circle.f,.stk-bc .mr circle.f{animation:none!important}}
 :where([data-theme=dark]) .stk-dhero{background:radial-gradient(120% 140% at 0% 0%,#7b5576 0%,#5a3856 40%,#2c1a2b 100%)}:where([data-theme=dark]) .stk-mk.bad b,:where([data-theme=dark]) .stk-bc ul li.z b{color:#f1a5a0}
 @media print{.stk-tabs,.stk-bar,.stk-drop,.stk-more{display:none!important}#pa.stkp{font-size:10pt}#pa.stkp .ph h2{font-size:17pt}#pa.stkp .ps{font-size:14pt;font-weight:700;margin:0 0 2mm;unicode-bidi:plaintext}#pa.stkp .pi{font-size:9pt;color:#444;margin:0 0 3mm}#pa.stkp .pt{width:100%;border-collapse:collapse}#pa.stkp .pt th,#pa.stkp .pt td{border:1px solid #777;padding:1.3mm 1.6mm;text-align:center;font-size:9.5pt;unicode-bidi:plaintext}#pa.stkp .pt th{background:#eee;font-size:9pt}#pa.stkp .pt td.bl{min-width:26mm}}`;
-const TABS=[["home","📊","لوحة اليوم"],["out","📦","نفد من المستودع"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["pur","📥","المشتريات"],["sales","📅","المبيعات"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
+const TABS=[["home","📊","لوحة اليوم"],["out","📦","نفد من المستودع"],["ask","💬","اسأل"],["need","🧺","نواقص الفروع"],["tr","🔄","تحويلات مقترحة"],["buy","🛒","الشراء المقترح"],["dist","🚚","توزيع حاوية"],["item","🔍","تحليل صنف"],["pur","📥","المشتريات"],["sales","📅","المبيعات"],["val","💰","مبيعات الفروع بالريال"],["stale","💤","الراكد"],["up","⬆️","الملفات"],["cfg","⚙","القواعد"]];
 const fmt=n=>String(Math.round(N(n))).replace(/\B(?=(\d{3})+(?!\d))/g,",");
 const dts=t=>{if(!t)return "";const d=new Date(N(t));return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+" "+p2(d.getHours())+":"+p2(d.getMinutes())};
 // ‎ قبل النص: اسم المخزن «003-EL MALQA» يُعرض بترتيبه داخل قائمة عربية (كان يظهر «EL MALQA-003»)
@@ -1927,6 +1980,48 @@ function vPur(){
  ${L.length?`<div class="tw"><table class="stk-t"><thead><tr><th>الكود</th><th>المورد</th><th class="n">الكمية</th><th class="n">مرات</th><th class="n">آخر شراء</th></tr></thead><tbody>${L.slice(0,100).map(c=>`<tr><td><a href="#" data-sk="icode" data-c="${E(c.k)}" style="color:inherit" data-notr dir="ltr">${E(c.k)}</a></td><td data-notr>${E(vnm(c))}</td><td class="n"><b>${fmt(c.q)}</b></td><td class="n">${fmt(c.times)}</td><td class="n">${dl(c.last)}</td></tr>`).join("")}</tbody></table></div>${L.length>100?`<p class="stk-src">معروض 100 من ${fmt(L.length)}. القائمة كلها في «إكسل».</p>`:""}`:"<p>لا مشتريات في الفترة.</p>"}</div>
  <div class="stk-card"><h3>لكل شهر</h3>${mon}<h3 style="margin-top:14px">آخر أيام الاستلام</h3>${R.dates.slice(0,12).map(e=>`<div class="stk-day"><span data-notr>${e.d}</span><b>${fmt(e.q)}</b><small style="color:var(--mut)">${fmt(e.n)} سطر</small></div>`).join("")}</div></div>`;
 }
+/* (v277) 💰 قسم «مبيعات الفروع بالريال»: يُحمَّل عند أول فتح فقط، ولمن له الصلاحية (X.sv) */
+let VALM=null,VALR=[],VALS=0;// VALS: 0 لم تُحمَّل، 1 جاري التحميل، 2 تمت، 3 فشل
+async function valLoad(quiet){
+ if(VALS===1||!X)return;VALS=1;
+ try{const fb=await FB(),m=await fb.getDoc(fb.doc(X.db,"stkv","meta"));VALM=m.exists()?m.data():null;const rows=[];
+  for(const y of Object.keys(VALM&&VALM.y||{}).sort()){const s=await fb.getDoc(fb.doc(X.db,"stkv","y"+y));if(s.exists())valUnpack(JSON.parse(await gun(String(s.data().z||"")))).forEach(x=>rows.push(x))}
+  VALR=rows;VALS=2}catch(e){VALS=3}
+ if(!quiet)paint()}
+async function saveV(R){
+ if(VALS!==2)await valLoad(true);if(VALS!==2)throw new Error("valload");
+ const fb=await FB(),from=R.from||R.days[0],to=R.from?addDays(R.to,-1):R.days[R.days.length-1],all=valMerge(VALR,R.rows,from,to),meta=Object.assign({v:1,y:{}},VALM||{});meta.y=Object.assign({},meta.y);
+ const ys=[];for(let y=+from.slice(0,4);y<=+to.slice(0,4)&&ys.length<6;y++)ys.push(String(y));
+ const keep=all.filter(x=>ys.indexOf(x.d.slice(0,4))<0);
+ for(const y of ys){const p=valPack(y,all),z=await gz(p);if(z.length>900000)throw new Error("valbig");const rows=valUnpack(JSON.parse(p));
+  await fb.setDoc(fb.doc(X.db,"stkv","y"+y),{v:1,z,at:Date.now()});
+  const a=y+"-01-01">from?y+"-01-01":from,b=y+"-12-31"<to?y+"-12-31":to,pm=meta.y[y]||{};let t=0;rows.forEach(x=>{t+=x.a;keep.push(x)});
+  meta.y[y]={n:rows.length,tot:r2(t),cv:cvDates(pm.cv,a,b,d=>addDays(d,1)),at:Date.now()}}
+ meta.at=Date.now();meta.by=by();await fb.setDoc(fb.doc(X.db,"stkv","meta"),meta);VALM=meta;VALR=keep;return {from,to}}
+const valLast=()=>{let l="";for(const x of VALR)if(x.d>l)l=x.d;return l};
+function vVal(){
+ const upB=`<button class="bt s" type="button" data-sk="tab" data-t="up">افتح «الملفات»</button>`,wait=`<div class="stk-busy">جاري تحميل مبيعات الفروع…</div>`;
+ if(!X.sv){LASTX=null;return em("هذا القسم يحتاج صلاحية «مبيعات الفروع بالريال» من جدول الصلاحيات.")}
+ if(VALS===0){valLoad();return wait}if(VALS===1)return wait;
+ if(VALS===3){LASTX=null;return em(`تعذّرت قراءة مبيعات الفروع بالريال. تأكد من الإنترنت ومن لصق القواعد الجديدة. <button class="bt s" type="button" data-sk="vretry">أعد المحاولة</button>`)}
+ if(!VALR.length){LASTX=null;return em(`لم يُرفع ملف قيمة المبيعات بعد.<br>ارفع من تبويب «الملفات» تقرير Power BI الذي أعمدته: السنة والشهر واليوم، الفرع، و<b data-notr dir="ltr">Net Sales WoTax</b>. ${X.ro?"":upB}`)}
+ const last=valLast();if(!UI.vf)UI.vf=last.slice(0,7)+"-01";if(!UI.vt)UI.vt=last;
+ const sts=[...new Set(VALR.map(x=>x.s))].sort(),st=sts.indexOf(UI.vs)>=0?UI.vs:"";
+ const bar=`<div class="stk-bar"><label>الفرع<select data-sf="vs" id="stk-vs">${opt(sts,st,"كل الفروع")}</select></label><label>من يوم<input type="date" data-sf="vf" id="stk-vf" value="${E(UI.vf)}"></label><label>إلى يوم<input type="date" data-sf="vt" id="stk-vt" value="${E(UI.vt)}"></label><button class="bt s" type="button" data-sk="vq" data-v="m">هذا الشهر</button><button class="bt s" type="button" data-sk="vq" data-v="pm">الشهر الماضي</button><button class="bt s" type="button" data-sk="vq" data-v="y">من أول السنة</button><span class="sp"></span><button class="bt" type="button" data-sk="prn">🖨 طباعة</button><button class="bt" type="button" data-sk="xls">⬇️ إكسل</button></div>`;
+ if(!(UI.vf<=UI.vt)){LASTX=null;return bar+em("تاريخ البداية بعد تاريخ النهاية.")}
+ const S=valStats(VALR,{from:UI.vf,to:UI.vt,store:st}),len=Math.round((new Date(UI.vt+"T12:00:00")-new Date(UI.vf+"T12:00:00"))/864e5)+1,P=valStats(VALR,{from:addDays(UI.vf,-len),to:addDays(UI.vf,-1),store:st});
+ const chg=P.total>0&&P.days.length>=S.days.length*0.8&&S.days.length?(S.total-P.total)/P.total:null,dl=d=>`<bdi data-notr dir="ltr">${E(d)}</bdi>`,nm=s=>`<bdi dir="ltr" data-notr>${E(s)}</bdi>`;
+ const src=`<div class="stk-rep">صافي المبيعات بالريال بلا ضريبة وبعد المرتجع، من ملف قيمة المبيعات المرفوع. آخر يوم في البيانات: ${dl(last)}.${UI.vt>last?" الفترة المختارة تمتد بعد آخر يوم مرفوع.":""}</div>`;
+ if(!S.n){LASTX=null;return bar+src+em("لا مبيعات مرفوعة في هذه الفترة.")}
+ const T=[tile(fmt(S.total),"ريال · صافي المبيعات","k"),tile(fmt(S.avg),"ريال · متوسط اليوم"),tile(fmt(S.byDay[S.best]),"ريال · أعلى يوم ("+S.best+")"),tile(fmt(S.days.length),"يوم فيه مبيعات")];
+ if(chg!=null)T.push(tile((chg>=0?"+":"")+(Math.round(chg*1000)/10)+"%","مقابل الـ"+fmt(len)+" يوماً السابقة",chg<0?"bad":""));if(!st&&S.stores.length)T.push(tile(S.stores[0].s,"الأعلى مبيعاً"));
+ const byD=S.days.length<=62,keys=byD?S.days:S.months,src2=byD?S.byDay:S.byM,mx=Math.max(1,...keys.map(k=>Math.abs(src2[k]))),bars=keys.map(k=>`<div class="stk-day"><span data-notr>${k}</span><i class="${src2[k]<0?"m":""}" style="width:${Math.round(Math.abs(src2[k])/mx*58)}%"></i><b>${fmt(src2[k])}</b></div>`).join("");
+ const mt=S.months.length>1?`<div class="stk-card" style="margin-top:12px"><h3>${st?"لكل شهر":"الفرع × الشهر"}</h3><div class="tw"><table class="stk-t"><thead><tr><th>الفرع</th>${S.months.map(m=>`<th class="n" data-notr>${m}</th>`).join("")}<th class="n">المجموع</th></tr></thead><tbody>${S.stores.map(e=>`<tr><td>${nm(e.s)}</td>${S.months.map(m=>`<td class="n">${e.m[m]?fmt(e.m[m]):""}</td>`).join("")}<td class="n"><b>${fmt(e.a)}</b></td></tr>`).join("")}${S.stores.length>1?`<tr><td><b>المجموع</b></td>${S.months.map(m=>`<td class="n"><b>${fmt(S.byM[m])}</b></td>`).join("")}<td class="n"><b>${fmt(S.total)}</b></td></tr>`:""}</tbody></table></div></div>`:"";
+ LASTX={name:"مبيعات-الفروع-بالريال-"+UI.vf+"-"+UI.vt,head:["الفرع"].concat(S.months,["المجموع","أيام البيع","متوسط اليوم"]),rows:()=>S.stores.map(e=>[e.s].concat(S.months.map(m=>r2(e.m[m]||0)),[r2(e.a),e.days,e.days?r2(e.a/e.days):0])).concat(st?[["",""],["اليوم","المبيعات"]].concat(S.days.map(d=>[d,r2(S.byDay[d])])):[]),prn:{ttl:"مبيعات الفروع بالريال"+(st?" · "+st:""),sub:UI.vf+" → "+UI.vt}};
+ return bar+src+`<div class="stk-tiles">${T.join("")}</div>
+ <div class="stk-up"><div class="stk-card"><h3>${st?nm(st):"ترتيب الفروع"}</h3><div class="tw"><table class="stk-t"><thead><tr><th class="n">#</th><th>الفرع</th><th class="n">المبيعات</th><th class="n">النصيب</th><th class="n">متوسط اليوم</th></tr></thead><tbody>${S.stores.map((e,i)=>`<tr><td class="n rk">${i+1}</td><td><a href="#" data-sk="vst" data-v="${E(e.s)}" style="color:inherit">${nm(e.s)}</a></td><td class="n"><b>${fmt(e.a)}</b></td><td class="n">${S.total>0?pct(e.a/S.total):""}</td><td class="n">${e.days?fmt(e.a/e.days):""}</td></tr>`).join("")}</tbody></table></div>${st?`<div class="stk-act"><button class="bt s" type="button" data-sk="vst" data-v="">عرض كل الفروع</button></div>`:`<p class="stk-src">اضغط اسم فرع لترى أيامه وحده.</p>`}</div>
+ <div class="stk-card"><h3>${byD?"يوماً بيوم":"شهراً بشهر"}</h3>${bars}</div></div>${mt}`;
+}
 function vSales(){
  const code=String(UI.code||"").trim(),end=META&&META.q&&META.q.to?addDays(META.q.to,-1):today();if(!UI.from)UI.from=addDays(end,-29);if(!UI.to)UI.to=end;
  const ids=DATA.code.get(code)||[],cols=[...new Set(ids.map(k=>DATA.k[k][1]))].sort(),szs=[...new Set(ids.filter(k=>!UI.cl||DATA.k[k][1]===UI.cl).map(k=>DATA.k[k][2]))].sort((a,b)=>zk(a)-zk(b));
@@ -2008,7 +2103,7 @@ function vUp(){
  <div class="stk-card"><h3>📅 ملف التاريخ</h3>${yms.length?`<p>${yms.length} شهر محفوظ · ${fmt(dsold)} قطعة مباعة${q?` · يغطي <b>${cov}%</b> من مبيعات ملف الكميات`:""}</p>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه السنة والشهر واليوم بلا كمية.</p>`}
  <div class="stk-mo">${need.map(ym=>d[ym]?`<span data-notr title="${fmt(d[ym].n)} · ${N(d[ym].dmin)}–${N(d[ym].dmax)}">${ym} ✓</span>`:`<span class="x" data-notr>${ym}</span>`).join("")}</div>
  <p style="margin-top:10px">Power BI يقطع التصدير عند 150 ألف سطر. نزّل ملف التاريخ على فترات (شهر أو شهرين) وارفعها كلها مرة واحدة للتأسيس، ثم يكفي كل يوم ملف الشهر الحالي: كل ملف يستبدل أيام فترته فقط.</p></div>
- ${(()=>{const rm=rcvMonths(),tq=rm.reduce((s,ym)=>s+N(d[ym].rq),0);return `<div class="stk-card"><h3>📥 ملف المشتريات</h3>${rm.length?`<p>${rm.length} شهر · ${fmt(tq)} قطعة مستلمة</p><div class="stk-mo">${rm.map(ym=>`<span data-notr title="${E(d[ym].rv.map(x=>x[0]+"–"+x[1]).join(", "))}">${ym} ✓</span>`).join("")}</div>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه الكود واللون والمقاس والمخزن و<b data-notr>RCVD_QTY</b> (الكمية المستلمة) والتاريخ، بلا مبيعات.</p>`}<p style="margin-top:10px">يُستخدم ليُستثنى من «الراكد» في كل الفروع ما استلمه المستودع (أو الفرع) خلال آخر ${fmt(freshOf(CFG))} يوماً. كل ملف يستبدل استلام أيام فترته فقط ولا يلمس المبيعات.</p></div>`})()}</div>${chk}`;
+ ${X.sv?`<div class="stk-card"><h3>💰 ملف قيمة المبيعات (بالريال)</h3><p>تقرير Power BI الذي أعمدته: السنة والشهر واليوم، الفرع، و<b data-notr dir="ltr">Net Sales WoTax</b> (بلا أكواد). ارفعه هنا مع باقي الملفات، وكل ملف يستبدل أيام فترته فقط. يظهر في قسم «مبيعات الفروع بالريال» لمن له صلاحيتها.</p>${VALM&&VALM.y?`<div class="stk-mo">${Object.keys(VALM.y).sort().map(y=>`<span data-notr>${E(y)} · ${fmt(N(VALM.y[y].tot))} ✓</span>`).join("")}</div>`:""}</div>`:""}${(()=>{const rm=rcvMonths(),tq=rm.reduce((s,ym)=>s+N(d[ym].rq),0);return `<div class="stk-card"><h3>📥 ملف المشتريات</h3>${rm.length?`<p>${rm.length} شهر · ${fmt(tq)} قطعة مستلمة</p><div class="stk-mo">${rm.map(ym=>`<span data-notr title="${E(d[ym].rv.map(x=>x[0]+"–"+x[1]).join(", "))}">${ym} ✓</span>`).join("")}</div>`:`<p>لم يُرفع بعد. هو التقرير الذي فيه الكود واللون والمقاس والمخزن و<b data-notr>RCVD_QTY</b> (الكمية المستلمة) والتاريخ، بلا مبيعات.</p>`}<p style="margin-top:10px">يُستخدم ليُستثنى من «الراكد» في كل الفروع ما استلمه المستودع (أو الفرع) خلال آخر ${fmt(freshOf(CFG))} يوماً. كل ملف يستبدل استلام أيام فترته فقط ولا يلمس المبيعات.</p></div>`})()}</div>${chk}`;
 }
 function vCfg(){
  const row=(k,t,s,mn)=>`<div class="f"><div><b>${t}</b><small>${s}</small></div><input type="number" min="${mn}" max="9999" data-cf="${k}" id="stk-c-${k}" value="${E(CFG[k])}"></div>`;
@@ -2405,15 +2500,15 @@ function ansCode(a,P){
 }
 function body(){
  if(LOADING&&!DATA)return `<div class="stk-busy">جاري تحميل بيانات المخزون…</div>`;
- if(X.ro&&UI.tab==="cfg")UI.tab="home";if(UI.tab==="plan")UI.tab="home";// (v194) صلاحية المشاهدة: بلا تبويب القواعد
+ if(X.ro&&UI.tab==="cfg")UI.tab="home";if(UI.tab==="val"&&!X.sv)UI.tab="home";if(UI.tab==="plan")UI.tab="home";// (v194) صلاحية المشاهدة: بلا تبويب القواعد
  const has=DATA&&DATA.has,t=has?UI.tab:"up",q=META&&META.q;if(has)envSync();
  const hd=`<div class="stk-hd"><div><small>${q?`آخر ملف كميات: <span data-notr dir="ltr">${dts(q.at)}</span> · ${fmt(q.skus)} صنف${q.to?` · المبيعات حتى <span data-notr dir="ltr">${E(addDays(q.to,-1))}</span>`:""}`:"ارفع ملف الكميات لتبدأ"}</small></div></div>`;
- const tabs=`<nav class="stk-tabs" aria-label="أقسام تحليل المخزون">${TABS.filter(a=>(has||a[0]==="up")&&!(X.ro&&a[0]==="cfg")).map(a=>`<button type="button" class="${t===a[0]?"on":""}" data-sk="tab" data-t="${a[0]}">${a[1]} ${a[2]}</button>`).join("")}</nav>`;
+ const tabs=`<nav class="stk-tabs" aria-label="أقسام تحليل المخزون">${TABS.filter(a=>(has||a[0]==="up")&&!(X.ro&&a[0]==="cfg")&&!(a[0]==="val"&&!X.sv)).map(a=>`<button type="button" class="${t===a[0]?"on":""}" data-sk="tab" data-t="${a[0]}">${a[1]} ${a[2]}</button>`).join("")}</nav>`;
  const busy=BUSY?`<div class="stk-busy">${E(BUSY)} <span id="stk-pg" data-notr></span></div>`:"";
  // ملف الكميات أقدم من اليوم: الأرصدة المعروضة ليست أرصدة اللحظة
  const old=q&&q.to&&q.to<today()?Math.round((new Date(today()+"T12:00:00")-new Date(q.to+"T12:00:00"))/864e5):0;
  const stl=has&&old>0&&t!=="up"?`<div class="stk-rep w">ملف الكميات المرفوع قديم (${old===1?"من أمس":"منذ "+old+" يوماً"}): الأرصدة هنا حتى نهاية يوم <b data-notr>${E(qEnd())}</b>. ارفع ملف اليوم من تبويب «الملفات» لتكون الأرقام محدَّثة.</div>`:"";
- let v="";try{v=t==="up"?vUp():!has?vUp():t==="home"?vHome():t==="buy"?vBuy():t==="dist"?vDist():t==="ask"?vAsk():t==="need"?vNeed():t==="tr"?vTr():t==="out"?vOut():t==="plan"?vPlan():t==="item"?vItem():t==="pur"?vPur():t==="sales"?vSales():t==="stale"?vStale():vCfg()}catch(e){v=`<div class="stk-rep r">تعذّر عرض هذا التبويب (${E(String(e&&e.message||e).slice(0,80))}).</div>`}
+ let v="";try{v=t==="up"?vUp():!has?vUp():t==="home"?vHome():t==="buy"?vBuy():t==="dist"?vDist():t==="ask"?vAsk():t==="need"?vNeed():t==="tr"?vTr():t==="out"?vOut():t==="plan"?vPlan():t==="item"?vItem():t==="pur"?vPur():t==="val"?vVal():t==="sales"?vSales():t==="stale"?vStale():vCfg()}catch(e){v=`<div class="stk-rep r">تعذّر عرض هذا التبويب (${E(String(e&&e.message||e).slice(0,80))}).</div>`}
  const mf=Object.keys(MFAIL).sort(),mfl=mf.join(" · "),fail=mf.length&&t!=="up"&&t!=="cfg"?`<div class="stk-rep r">تعذّر تحميل مبيعات هذه الشهور من ملفات التاريخ: <b data-notr>${E(mfl)}</b>، فالمبيعات المعروضة للفترة ناقصة بقدرها. تأكد من الإنترنت ثم <button class="bt s" type="button" data-sk="mretry">أعد المحاولة</button></div>`:"";
  return hd+tabs+busy+(t!=="cfg"?stl:"")+fail+v;
 }
@@ -2426,7 +2521,7 @@ function paint(keepFocus){
  if(id&&keepFocus!==false){const el=g(id);if(el&&el.focus){try{el.focus({preventScroll:true});if(s0&&s0[0]!=null&&el.setSelectionRange)el.setSelectionRange(s0[0],s0[1])}catch(e){}}}
  // فترة تحتاج شهوراً لم تُحمَّل بعد
  const homeNeed=()=>{const p=period(),e=qEnd(),f0=prevYm(e.slice(0,7))+"-01",f6=addDays(e,-59),b=dHas()?{from:f0<f6?f0:f6,to:e}:null;return p&&b?{from:p.from<b.from?p.from:b.from,to:p.to>b.to?p.to:b.to}:p||b};
- const P=UI.tab==="home"?homeNeed():UI.tab==="item"?itemNeed():UI.tab==="ask"?askNeed():UI.tab==="sales"?(UI.from&&UI.to&&UI.from<=UI.to?{from:UI.from,to:UI.to}:null):UI.tab==="pur"?(UI.pf&&UI.pt&&UI.pf<=UI.pt&&rcvMonths().length?{from:UI.pf,to:UI.pt}:null):(UI.tab==="up"||UI.tab==="cfg"?null:period());
+ const P=UI.tab==="home"?homeNeed():UI.tab==="item"?itemNeed():UI.tab==="ask"?askNeed():UI.tab==="sales"?(UI.from&&UI.to&&UI.from<=UI.to?{from:UI.from,to:UI.to}:null):UI.tab==="pur"?(UI.pf&&UI.pt&&UI.pf<=UI.pt&&rcvMonths().length?{from:UI.pf,to:UI.pt}:null):(UI.tab==="up"||UI.tab==="cfg"||UI.tab==="val"?null:period());
  if(P&&!BUSY&&META&&META.d&&DATA&&months(P.from,P.to).some(ym=>META.d[ym]&&!DATA.d[ym]&&!MFAIL[ym]))needMonths(P.from,P.to);
  // (v248) شهور المشتريات اللازمة لاستثناء المستلم حديثاً من الراكد
  else if(!BUSY&&DATA&&DATA.has&&UI.tab!=="up"&&UI.tab!=="cfg"){const RR=rcvRange();if(RR&&months(RR.from,RR.to).some(ym=>META.d[ym]&&!DATA.d[ym]&&!MFAIL[ym]))needMonths(RR.from,RR.to)}
@@ -2523,6 +2618,9 @@ function wire(){
   else if(a==="hprn")printDash();
   else if(a==="hst"){e.preventDefault();UI.q="";UI.vn="";UI.st=t.dataset.v||"";UI.sold=1;UI.tab="need";UI.lim=200;paint(false);window.scrollTo(0,0)}
   // (v181) تحليل صنف
+  else if(a==="vretry"){VALS=0;paint(false)}
+  else if(a==="vst"){e.preventDefault();UI.vs=String(t.dataset.v||"");paint(false);window.scrollTo(0,0)}
+  else if(a==="vq"){const l=valLast()||today(),v=t.dataset.v;if(v==="y"){UI.vf=l.slice(0,4)+"-01-01";UI.vt=l}else if(v==="pm"){const p=prevYm(l.slice(0,7));UI.vf=p+"-01";UI.vt=p+"-"+p2(dim(p))}else{UI.vf=l.slice(0,7)+"-01";UI.vt=l}paint(false)}
   else if(a==="pxd"){UI.pxd=UI.pxd===t.dataset.d?"":String(t.dataset.d||"");paint(false)}
   else if(a==="icode"){e.preventDefault();UI.code=t.dataset.c||"";UI.cl="";UI.sz="";paint(false)}
   else if(a==="ineed"||a==="istale"||a==="itr"){UI.q=UI.code;UI.st="";UI.vn="";UI.fr="";UI.tt="";if(a==="ineed")UI.sold=1;UI.tab=a==="ineed"?"need":a==="istale"?"stale":"tr";UI.lim=200;paint(false);window.scrollTo(0,0)}
@@ -2617,9 +2715,9 @@ export function stockMount(host){
  if(ROOT.parentNode!==host)host.appendChild(ROOT);
  if(!LOADED&&!LOADING)load();
 }
-export function stopStock(){un.forEach(f=>f());un=[];X=null;DATA=null;META=null;SENT=[];TRL=[];LOADED=false;LOADING=false;BUSY="";REP=[];SOLDC={};MFAIL={};CFG=Object.assign({},DEF);if(ROOT){ROOT.remove();ROOT=null}}
+export function stopStock(){un.forEach(f=>f());un=[];X=null;DATA=null;META=null;SENT=[];TRL=[];LOADED=false;LOADING=false;BUSY="";REP=[];SOLDC={};MFAIL={};VALM=null;VALR=[];VALS=0;CFG=Object.assign({},DEF);if(ROOT){ROOT.remove();ROOT=null}}
 // 🧭 (v226، طلب محمد: «خلي الأقسام تحت المديول في القائمة الجانبية») الأقسام المتاحة الآن، والمفتوح، والانتقال من القائمة
-export const stockTabs=()=>{if(!X)return [];const has=!!(DATA&&DATA.has);return TABS.filter(a=>(has||a[0]==="up")&&!(X.ro&&a[0]==="cfg")).map(a=>[a[0],a[1],a[2]])};
+export const stockTabs=()=>{if(!X)return [];const has=!!(DATA&&DATA.has);return TABS.filter(a=>(has||a[0]==="up")&&!(X.ro&&a[0]==="cfg")&&!(a[0]==="val"&&!X.sv)).map(a=>[a[0],a[1],a[2]])};
 export const stockTab=()=>DATA&&DATA.has?UI.tab:"up";
 export function stockGo(id){if(!X||!TABS.some(a=>a[0]===id))return;if(UI.tab!==id){UI.q="";UI.fr="";UI.tt="";UI.trx=null}UI.tab=id;UI.lim=200;if(ROOT){paint(false);try{window.scrollTo(0,0)}catch(e){}}}
 export const stockState=()=>({loaded:LOADED,has:!!(DATA&&DATA.has),meta:META,cfg:CFG,ui:UI,rep:REP,busy:BUSY});
