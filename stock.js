@@ -757,7 +757,7 @@ function askTable(ctx){
 const STW=new Set(["فرع","الفرع","بفرع","لفرع","محل","المحل","مخزن","المخزن","معرض","branch","store","shop"]),CDW=new Set(["كود","الكود","صنف","الصنف","موديل","الموديل","code","item","model","sku"]),SZW=new Set(["مقاس","المقاس","مقاسات","المقاسات","بمقاس","لمقاس","قياس","نمره","سايز","السايز","size"]);
 const UNITS={"يوم":1,"ايام":1,"يوما":1,"day":1,"days":1,"اسبوع":7,"اسابيع":7,"week":7,"weeks":7,"شهر":30,"شهور":30,"اشهر":30,"month":30,"months":30},DUAL={"يومين":2,"اسبوعين":14,"شهرين":60};
 // حشو الأسئلة بالعربية (بعد توحيد الحروف): لا يُسأل المستخدم عن معناه
-const ARFILL=new Set("بدون اخري الاخري باقي الباقي غيرها غيره كام كم وكام وكم باع باعت بيع بيعت اتباع اتباعت مباع مبيعات مبيعاته مبيعاتها مبيعا عنده عندها عندنا عندهم وعنده رصيد رصيده رصيدها رصيدا موجود متوفر متاح من في الي علي عن مع هل ايه ايش وش ما ماذا هو هي ده دي دا هذا هذه اللي الذي التي عايز عاوز اريد ابغي ابي اعرف اشوف شوف شوفلي وريني هات هاتلي قولي قلي كل منه منها فيه فيها بتاع بتاعه بتاعت سمحت ممكن طيب قطعه قطع حبه حبات عدد كميه كميات اجمالي مجموع لون الوان خلال فتره يوم ايام اسبوع شهر سنه بين حتي لحد الان دلوقتي حاليا كمان وكمان بس فقط ايضا تم قد كان كانت يكون نفس واحد منهم لنا لها عليه عليها اللى هناك هنا جدا اوي قوي حاجه شي شيء بقي يعني مثلا اذا لما عند الفتره المده وصل وصلت نزل نزلت دخل دخلت خرج طلع طلعت اجيب جيب جبلي عرفني اعطني اعطيني وريني خليني ابغا تبع حق حقه مال ماله استلم استلمت استلموا استلام مستلم وارد حلل حللي تحليل اعلي اقل اكثر اكتر ترتيب رتب رتبلي قارن مقارنه مقابل مين فين وين اين بيتباع يتباع تتباع بتتباع بيبيع بتبيع يبيع تبيع بيبيعوا بيتبيع قد اد قداش اصناف الاصناف بالاصناف الموديلات موديلات كله كلها جميع احذيه الاحذيه بالاحذيه حذاء الحذاء جزم نسبه النسبه بنسبه نصيب مخزون المخزون للكود بالكود للصنف بالصنف الاكواد بالاكواد".split(" "));
+const ARFILL=new Set("اعملي اعمل اعملى اعمللي سوي سويلي جهز جهزلي طلع طلعلي اطبع اطبعلي احترافي مفصل تفصيلي كامل شامل بمبيعات لمبيعات ينطبع للطباعه طباعه معين معينه بدون اخري الاخري باقي الباقي غيرها غيره كام كم وكام وكم باع باعت بيع بيعت اتباع اتباعت مباع مبيعات مبيعاته مبيعاتها مبيعا عنده عندها عندنا عندهم وعنده رصيد رصيده رصيدها رصيدا موجود متوفر متاح من في الي علي عن مع هل ايه ايش وش ما ماذا هو هي ده دي دا هذا هذه اللي الذي التي عايز عاوز اريد ابغي ابي اعرف اشوف شوف شوفلي وريني هات هاتلي قولي قلي كل منه منها فيه فيها بتاع بتاعه بتاعت سمحت ممكن طيب قطعه قطع حبه حبات عدد كميه كميات اجمالي مجموع لون الوان خلال فتره يوم ايام اسبوع شهر سنه بين حتي لحد الان دلوقتي حاليا كمان وكمان بس فقط ايضا تم قد كان كانت يكون نفس واحد منهم لنا لها عليه عليها اللى هناك هنا جدا اوي قوي حاجه شي شيء بقي يعني مثلا اذا لما عند الفتره المده وصل وصلت نزل نزلت دخل دخلت خرج طلع طلعت اجيب جيب جبلي عرفني اعطني اعطيني وريني خليني ابغا تبع حق حقه مال ماله استلم استلمت استلموا استلام مستلم وارد حلل حللي تحليل اعلي اقل اكثر اكتر ترتيب رتب رتبلي قارن مقارنه مقابل مين فين وين اين بيتباع يتباع تتباع بتتباع بيبيع بتبيع يبيع تبيع بيبيعوا بيتبيع قد اد قداش اصناف الاصناف بالاصناف الموديلات موديلات كله كلها جميع احذيه الاحذيه بالاحذيه حذاء الحذاء جزم نسبه النسبه بنسبه نصيب مخزون المخزون للكود بالكود للصنف بالصنف الاكواد بالاكواد".split(" "));
 const ENSTOP=new Set(["the","in","of","at","for","from","to","and","how","many","much","sold","sales","sale","stock","has","have","did","does","on","hand","qty","quantity","last","this","year","since","until","till","show","me","what","is","was","by","with","between","received","receive"]);
 /* (v180) نوع السؤال: ترتيب «أكثر/أقل»، «مين عنده»، المقارنة، والمورد */
 const RK_D=new Set(["اكتر","اكثر","الاكتر","الاكثر","اعلي","الاعلي","افضل","الافضل","اكبر","الاكبر","ترتيب","رتب","رتبلي","top","most","best","highest","rank","ranking"]),RK_A=new Set(["اقل","الاقل","اضعف","الاضعف","اسوا","الاسوا","اصغر","least","lowest","worst","bottom"]);
@@ -771,6 +771,7 @@ const STLW=new Set(["راكد","راكده","الراكد","الراكده","ر�
 const PREW=new Set(["تبدا","يبدا","بتبدا","بيبدا","تبتدي","يبتدي","بتبتدي","بيبتدي","بادئه","بادئته","بدايته","بدايتها","اوله","اولها","starts","start","starting","begin","begins","beginning","prefix"]),PRESK=new Set(["ب","بـ","برقم","رقم","بالرقم","من","with"]);
 const MONW=new Set(["بكام","بكم","فلوس","الفلوس","بالفلوس","ريال","الريال","بالريال","ريالات","قيمه","بقيمه","القيمه","مبلغ","بمبلغ","المبلغ","ايراد","الايراد","ايرادات","sar","riyal","riyals","money","revenue","amount","value"]),SHRW=new Set(["نسبه","النسبه","بنسبه","نصيب","نصيبه","حصه","حصته","share","percent","percentage"]),CATW=new Set(["الرياضيه","رياضيه","الرياضي","رياضي","الكلاسيك","كلاسيك","الكاجوال","كاجوال","الرسميه","رسميه","sport","sports","casual","classic"]);
 const mnyK=a=>!!(a&&a.money&&!a.code&&!a.pre&&!a.vendor&&!(a.vgrp&&a.vgrp.length)&&!(a.zs&&a.zs.length)&&!(a.cls&&a.cls.length)&&!a.need&&!a.buy&&!a.stale&&!a.where&&(!a.rank||!a.rank.by||a.rank.by==="store"));
+const REPW=new Set(["تقرير","التقرير","بتقرير","تقريرا","تقارير","كشف","بكشف","report","reports"]);
 const VMK=new Set(["مورد","المورد","للمورد","لمورد","بمورد","والمورد","vendor","supplier"]);
 // كلمات عامة في أسماء الموردين لا تدل وحدها على مورد بعينه
 const VGEN=new Set(["مورد","شركه","متنوع","تركي","تركيا","صيني","الصين","اسباني","اسبانيا","اسبانى","محلي","وطني","داخلي","قديم","ملابس","للملابس","مريح","مصنع","ابو","علي","احذيه","الاحذيه","حذاء","الحذاء","جزم","شنط","الشنط","عطور","العطور","شموع","الشموع","اكسسوارات"]);
@@ -789,7 +790,7 @@ const ds=(y,m,d)=>y+"-"+p2(m)+"-"+p2(d);
 // سؤال حر ← {kind, store, code, cl, z, per:"ytd"|"c", from, to, amb:{store,code,cl}, unk, rc}
 // ctx = {stores:[أسماء المخازن], codes:Map(كود←أصنافه), k:[[كود،لون،مقاس]], alias:[{k,s}], today, end (آخر يوم في البيانات), wh}
 export function parseAsk(text,ctx){
- const out={kind:"",store:"",code:"",cl:"",z:"",vendor:"",per:"ytd",from:"",to:"",amb:{store:[],code:[],cl:[],vendor:[]},unk:[],rc:false,rank:null,where:false,cmp:null,txt:String(text||"").slice(0,200),pre:"",money:false,share:false,cat:""};
+ const out={kind:"",store:"",code:"",cl:"",z:"",vendor:"",per:"ytd",from:"",to:"",amb:{store:[],code:[],cl:[],vendor:[]},unk:[],rc:false,rank:null,where:false,cmp:null,txt:String(text||"").slice(0,200),pre:"",money:false,share:false,cat:"",report:false};
  // (v183) «13038+13040+13037» و«13038,13040»: الزائد يفصل دائماً (لا كود فيه +)، والفاصلة بين رقمين تفصل لو كل جزء كود موجود (وإلا فهي رقم مثل 1,234)
  const isC=s=>ctx.codes.has(s)||ctx.codes.has(s.toUpperCase());
  const t=normAr(out.txt).replace(/[،؛؟?!()«»"'`:\[\]{}+]|,(?!\d)/g," ").split(/\s+/).map(w=>{if(w.indexOf(",")<0)return w;const p=w.split(",").filter(Boolean);return p.length>1&&p.every(isC)?p.join(" "):w}).join(" ").replace(/(\d)([ء-ي])/g,"$1 $2").replace(/([ء-ي])(\d)/g,"$1 $2").replace(/\s+/g," ").trim();if(!t)return out;// (v260) «13027اعلى» ملتصقة: الرقم والكلمة العربية كلمتان
@@ -827,6 +828,7 @@ export function parseAsk(text,ctx){
   else if(CMPW.has(w)){cmpW=true;U[i]=true}
   else if(WHW.has(w)){out.where=true;U[i]=true}
   else if(PREW.has(w)||PREW.has(B[i])){let j=i+1;while(j<W.length&&j<=i+2&&PRESK.has(W[j]))j++;const v=W[j];if(v&&!U[j]&&/^[0-9a-z-]{1,8}$/.test(v)&&/\d/.test(v)){out.pre=v;for(let q=i;q<=j;q++)U[q]=true;if(i>0&&!U[i-1]&&(CDW.has(W[i-1])||ENT_P[W[i-1]]==="code"||W[i-1]==="اللي"))U[i-1]=true;if(i>1&&U[i-1]&&!U[i-2]&&(CDW.has(W[i-2])||ENT_P[W[i-2]]==="code"))U[i-2]=true}}
+  else if(REPW.has(w)||REPW.has(B[i])){out.report=true;U[i]=true}
   else if(MONW.has(w)||MONW.has(B[i])){out.money=true;U[i]=true}
   else if(SHRW.has(w)){out.share=true;U[i]=true}
   else if(CATW.has(w)||CATW.has(B[i])){out.cat=w;U[i]=true}
@@ -1342,6 +1344,16 @@ html:not(.tz-en) .stk-ai-send svg{transform:scaleX(-1)}
 .stk-ai-sk.a{width:72%}.stk-ai-sk.b{width:54%}.stk-ai-sk.c{width:38%}
 @keyframes stkAiSh{to{background-position:-200% 0}}
 @media (max-width:640px){.stk-ai-hero{padding-top:14px}.stk-ai-hero h2{font-size:25px}.stk-ai-av.big{width:70px;height:70px}.stk-ai-box{border-radius:20px;padding-inline-start:12px}.stk-ai-box input{font-size:16px;height:48px}.stk-ai-send{padding:0 14px;height:46px}.stk-ai-send span{display:none}.stk-ai-spark{display:none}.stk-ai-sug{grid-template-columns:1fr}.stk-ai-ans{padding:12px 10px;border-radius:18px}.stk-ai:not(.idle) .stk-ai-hero h2 small{display:none}.stk-ai-ah .ok{display:none}}
+.stk-ai-rep{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-radius:16px;padding:12px 14px;margin:0 0 12px;background:linear-gradient(120deg,color-mix(in srgb,var(--ai2) 22%,var(--card)),color-mix(in srgb,var(--ai3) 14%,var(--card)));border:1px solid color-mix(in srgb,var(--ai2) 60%,var(--line))}
+.stk-ai-rep .tx{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.stk-ai-rep .tx b{font-size:15.5px;unicode-bidi:plaintext}
+.stk-ai-rep .tx small{color:var(--mut);font-size:12.5px;line-height:1.7}
+.stk-ai-rb{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;border:0;border-radius:14px;cursor:pointer;font:inherit;font-size:14.5px;font-weight:700;color:#fff;background:linear-gradient(120deg,var(--ai1),#6d4468);box-shadow:0 8px 18px -10px var(--ai1)}
+.stk-ai-rb:hover{filter:brightness(1.08)}
+.stk-ai-ah .rp{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;min-height:32px}
+.stk-ai-ah .rp:hover{border-color:var(--ai2)}
+.stk-ai-ah .ok{margin-inline-start:0}.stk-ai-ah .sp{flex:1}
+@media print{#pa.stkr .rh{display:flex;align-items:center;gap:4mm;background:#2a1d2c;color:#fff;border-radius:3mm;padding:3mm 4mm;margin:0 0 4mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}#pa.stkr .rw{width:13mm;height:13mm;border-radius:50%;background:#5a3856;display:grid;place-items:center;flex:0 0 auto}#pa.stkr .rw svg{width:64%;height:64%;fill:#f3e6ee}#pa.stkr .rt{flex:1;display:flex;flex-direction:column;text-align:start;align-items:flex-start}#pa.stkr .rt b{font-size:15pt}#pa.stkr .rt span{font-size:9pt;opacity:.85}#pa.stkr .rd{display:flex;flex-direction:column;align-items:flex-end;font-size:8.5pt}#pa.stkr .rd b{font-size:11pt}#pa.stkr .rtt{font-size:18pt;margin:0 0 1mm;color:#2a1d2c;unicode-bidi:plaintext}#pa.stkr .rs{font-size:10pt;color:#555;margin:0 0 4mm;unicode-bidi:plaintext}#pa.stkr .pks{grid-template-columns:repeat(4,1fr)}#pa.stkr .pk.m{border-inline-start-color:#6f7d45}#pa.stkr .pk b{font-size:13pt;unicode-bidi:plaintext}#pa.stkr .pt th{background:#efe6ee;color:#2a1d2c}#pa.stkr .pt tbody tr:nth-child(even) td{background:#faf6f9}#pa.stkr .pt td:nth-child(2){font-weight:700}#pa.stkr .pb{break-inside:auto}#pa.stkr .pb h3{break-after:avoid}#pa.stkr .pt thead{display:table-header-group}#pa.stkr .pt tr{break-inside:avoid}#pa.stkr .pm{font-size:8.5pt;color:#555;margin:1.5mm 0 0}#pa.stkr .rf{font-size:8.5pt;color:#444;border-top:1px solid #bbb;padding-top:2mm;margin:4mm 0 0;line-height:1.7;unicode-bidi:plaintext}}
 html.lite .stk-ai-box::after{display:none}html.lite .stk-ai *,html.lite .stk-ai *::before,html.lite .stk-ai *::after{animation:none!important}
 @media (prefers-reduced-motion:reduce){.stk-ai *,.stk-ai *::before,.stk-ai *::after{animation:none!important;transition:none!important}}
 @media print{.stk-ai-hero,.stk-ai-box,.stk-ai-sug,.stk-ai-more,.stk-ai-fu,.stk-ai-lbl{display:none!important}}
@@ -2376,7 +2388,8 @@ const aiSug=L=>L.length?`<div class="stk-ai-lbl">جرّب أن تسأل</div><di
 const aiMore=H=>`<div class="stk-ai-more">${H.length?`<div class="stk-chips"><i>آخر أسئلتك</i>${H.map(chip).join("")}</div>`:""}${lexBox()}</div>`;
 const aiQ=()=>`<div class="stk-ai-q"><small>سؤالك</small><b data-notr>${E(UI.aq)}</b></div>`;
 const aiThink=()=>`<div class="stk-ai-th" role="status"><div class="r">${aiAv("sm")}<span>ذيب يقرأ سؤالك ويحسب من ملفاتك</span><span class="stk-ai-dots"><i></i><i></i><i></i></span></div><div class="stk-ai-sk a"></div><div class="stk-ai-sk b"></div><div class="stk-ai-sk c"></div></div>`;
-const aiHead=ok=>`<div class="stk-ai-ah">${aiAv("sm")}<b>ذيب</b><small>${ok?"هذا ما وجدته في ملفاتك":"أحتاج توضيحاً منك"}</small>${ok?`<span class="ok">محسوب من ملفاتك</span>`:""}</div>`;
+const aiHead=ok=>`<div class="stk-ai-ah">${aiAv("sm")}<b>ذيب</b><small>${ok?"هذا ما وجدته في ملفاتك":"أحتاج توضيحاً منك"}</small><span class="sp"></span>${ok?`<button class="rp" type="button" data-sk="rprn">📄 تقرير للطباعة</button><span class="ok">محسوب من ملفاتك</span>`:""}</div>`;
+const aiRep=a=>`<div class="stk-ai-rep"><div class="tx"><b>📄 جهّزتُ لك التقرير</b><small>فيه الملخّص والجداول من الأرقام المعروضة هنا، بشعار تاسومة وتاريخ اليوم. اضغط الزر ثم اختر الطابعة أو «حفظ كـ PDF».</small></div><button class="stk-ai-rb" type="button" data-sk="rprn">🖨 اطبع التقرير</button></div>`;
 // أسئلة متابعة من سياق الجواب: تُعرض فقط لو القواعد تفهمها كاملة
 function aiFU(a,K,X0){
  const o=[],p3=a.store?cd(a.store):"",sb=p3?"فرع "+(ALIAS[p3]?ALIAS[p3][0].replace(/ه$/,"ة"):p3):"",c=a.code;
@@ -2388,6 +2401,58 @@ function aiFU(a,K,X0){
  for(const x of X0||[])if(o.length<6)o.push(x);
  const cur=normAr(UI.aq||""),ctx=askCtx(),ok=[];for(const q of o){if(ok.length>=4)break;if(normAr(q)===cur||ok.indexOf(q)>=0)continue;try{if(!askFailK(parseAsk(q,ctx)))ok.push(q)}catch(e){}}
  return ok.length?`<div class="stk-ai-fu"><i>اسأل بعدها</i>${ok.map(x=>`<button type="button" data-sk="ex" data-x="${E(x)}" data-notr>${E(x)}</button>`).join("")}</div>`:"";
+}
+/* (v283) 📄 «اعملي تقرير»: تقرير احترافي يُطبع (أو يُحفظ PDF) من جواب «اسأل». الأرقام من نفس دوال البطاقات، بلا حساب جديد */
+function askRep(a,P,K){
+ const R={ttl:"",sub:[],k:[],s:[],per:P?"من "+P.from+" إلى "+P.to:"من أول السنة حتى "+qEnd()},kp=(v,l,c)=>R.k.push({v:String(v),l,c:c||""});
+ const sec=(h,head,rows,max)=>{const m=max||50;if(rows.length)R.s.push({h,head,rows:rows.slice(0,m),all:rows.length})},pc=x=>x==null?"—":pct(x),stN=ti=>DATA.st[ti];
+ if(a.store&&K!=="s")R.sub.push("الفرع: "+a.store);if(a.vendor&&K!=="v")R.sub.push("المورد: "+a.vendor);
+ if(K==="v"){const V=vendorCard(DATA,CFG,a.vendor,{store:a.store,period:P});if(!V)return null;R.ttl="تقرير مبيعات المورد: "+a.vendor;
+  kp(fmt(V.sold),"قطعة مباعة (الصافي)","m");kp(fmt(V.on),a.store?"قطعة عند الفرع":"قطعة رصيد (المستودع والفروع)");if(!a.store){kp(fmt(V.wh),"قطعة في المستودع");kp(fmt(V.br),"قطعة في الفروع")}
+  kp(fmt(V.codes.length),"كود له رصيد أو مبيعات");if(V.rank){kp(V.rank+" / "+V.of,"ترتيبه بين الموردين");kp(pc(V.share),"نصيبه من المبيعات","m")}kp(fmt(V.reorder.length),"كود نفد من المستودع وهو يُباع",V.reorder.length?"r":"");
+  sec("أكواد المورد مرتّبة بالمبيعات",["الكود","المبيعات","النصيب من مبيعات المورد","الرصيد","رصيد المستودع"],V.codes.map(c=>[c.code,fmt(c.sold),pc(V.sold>0?c.sold/V.sold:null),fmt(c.on),fmt(c.wh)]),60);
+  if(!a.store)sec("المبيعات والرصيد في كل فرع",["الفرع","المبيعات","النصيب","الرصيد"],V.stores.map(s=>[stN(s.ti),fmt(s.sold),pc(V.sold>0?s.sold/V.sold:null),fmt(s.on)]),60);
+  sec("نفد من المستودع وهو يُباع (يحتاج طلباً من المورد)",["الكود","المبيعات",a.store?"رصيد الفرع":"رصيد الفروع"],V.reorder.map(c=>[c.code,fmt(c.sold),fmt(a.store?c.on:c.on-c.wh)]),40)}
+ else if(K==="c"&&a.code){const C0=codeCard(DATA,CFG,a.code,{cl:a.cl,z:a.z,store:a.store,period:P,drange:P?null:yearR()});if(!C0||C0.none)return null;
+  R.ttl="تقرير مبيعات الكود: "+[a.code,a.cl,a.z].filter(Boolean).join(" · ");const x0=DATA.k[C0.ids[0]];if(x0[3]>=0&&DATA.vn[x0[3]])R.sub.push("المورد: "+DATA.vn[x0[3]]);
+  if(a.store){kp(fmt(C0.sold),"قطعة باعها الفرع (الصافي)","m");kp(fmt(C0.on),"قطعة عند الفرع الآن");kp(fmt(C0.wh),"قطعة في المستودع");if(C0.rc!=null)kp(fmt(C0.rc),"قطعة استلمها الفرع من أول السنة");if(C0.rank){kp(C0.rank+" / "+C0.of,"ترتيب الفرع في هذا الصنف");kp(pc(C0.share),"نصيبه من مبيعات الصنف")}
+   sec("الألوان والمقاسات عند الفرع",["اللون","المقاس","مبيعات الفرع","رصيد الفرع","رصيد المستودع"],C0.vars.filter(v=>v.on||v.sold||v.wh).map(v=>{const x=DATA.k[v.ki];return [x[1]||"—",x[2]||"—",fmt(v.sold),fmt(v.on),fmt(v.wh)]}),120)}
+  else{kp(fmt(C0.sold),"قطعة مباعة (الصافي)","m");kp(fmt(C0.nSold),"فرع باع منه");kp(fmt(C0.wh),"قطعة في المستودع");kp(fmt(C0.br),"قطعة في الفروع");if(C0.thru!=null)kp(pc(C0.thru),"نسبة ما بيع منه");if(C0.rc!=null)kp(fmt(C0.rc),"قطعة استلمتها الفروع من أول السنة");
+   sec("المبيعات والرصيد في كل فرع",["الفرع","المبيعات","النصيب","الرصيد"],C0.stores.map(s=>[stN(s.ti),fmt(s.sold),pc(C0.allSold>0?s.sold/C0.allSold:null),fmt(s.on)]),60);
+   sec("الألوان والمقاسات",["اللون","المقاس","المبيعات","رصيد الفروع","رصيد المستودع"],C0.vars.filter(v=>v.wh||v.br||v.sold).map(v=>{const x=DATA.k[v.ki];return [x[1]||"—",x[2]||"—",fmt(v.sold),fmt(v.br),fmt(v.wh)]}),120)}
+  const S=codeShare(DATA,CFG,a.code,{store:a.store,period:P});if(S&&S.shareAll!=null){if(S.shareV!=null)kp(pc(S.shareV),"من مبيعات مورده");kp(S.rankAll+" / "+S.nAll,"ترتيبه بين كل الأكواد")}
+  const PR=P||buyR(a),rm=months(PR.from,PR.to).filter(ym=>META&&META.d&&META.d[ym]&&Array.isArray(META.d[ym].rv)&&META.d[ym].rv.length);
+  if(rm.length&&rm.every(ym=>DATA.d[ym])){const L=purchLog(DATA,Object.assign({code:a.code,cl:a.cl,z:a.z,from:PR.from,to:PR.to},PURO()));if(L&&L.times){kp(fmt(L.q),"قطعة اشتريناها");kp(fmt(L.times)+" · "+(L.last||"—"),"مرات الشراء · آخر شراء");sec("مرات الشراء (استلام المستودع من المورد)",["التاريخ","الكمية"],L.dates.map(e=>[e.d,fmt(e.q)]),40)}}}
+ else if(K==="z"||K==="pf"){const A=attrCard(DATA,CFG,K==="pf"?{pre:a.pre,store:a.store,vendor:a.vendor,period:P}:{zs:a.zs,cls:a.cls,store:a.store,vendor:a.vendor,period:P});if(!A||!A.nCodes)return null;
+  const isZ=a.zs&&a.zs.length;R.ttl=K==="pf"?"تقرير مبيعات الأكواد التي تبدأ بـ "+a.pre:isZ?"تقرير مبيعات "+(a.zs.length>1?"المقاسات ":"المقاس ")+a.zs.join(" · ")+(a.cls&&a.cls.length?" باللون «"+(a.cn||"")+"»":""):"تقرير مبيعات اللون «"+(a.cn||"")+"»";
+  kp(fmt(A.sold),"قطعة مباعة (الصافي)","m");kp(pc(A.share),"من كل مبيعات "+(a.vendor?"المورد":a.store?"الفرع":"الشركة"),"m");kp(fmt(A.br),a.store?"قطعة عند الفرع الآن":"قطعة في الفروع الآن");kp(fmt(A.wh),"قطعة في المستودع");kp(fmt(A.nSold)+" / "+fmt(A.nCodes),"كود باع منه / عدد الأكواد");kp(fmt(A.noWh),"كود يُباع والمستودع خالٍ منه",A.noWh?"r":"");
+  if(K==="z"&&A.groups.length>1)sec(A.byCl?"ألوان السيستم في هذا اللون":"كل مقاس وحده",[A.byCl?"اللون":"المقاس","المبيعات","من كل المبيعات","رصيد الفروع","رصيد المستودع"],A.groups.map(g=>[g.k||"—",fmt(g.sold),pc(g.share),fmt(g.on-g.wh),fmt(g.wh)]),60);
+  sec("المبيعات في كل فرع",["الفرع","المبيعات","من مبيعات الفرع","رصيده"],A.stores.map(e=>[stN(e.ti),fmt(e.sold),pc(e.share),fmt(e.on)]),60);
+  sec("الأكواد مرتّبة بالمبيعات",["الكود","المورد","المبيعات","النصيب",a.store?"رصيد الفرع":"الرصيد","رصيد المستودع"],A.codes.map(c=>[c.code,vnOf(c.vi)||"—",fmt(c.sold),pc(A.sold>0?c.sold/A.sold:null),fmt(c.on),fmt(c.wh)]),60)}
+ else if(K==="s"&&a.store){const S=storeCard(DATA,CFG,a.store,P);if(!S)return null;R.ttl="تقرير الفرع: "+a.store;
+  kp(fmt(S.sold),"قطعة باعها (الصافي)","m");kp(fmt(S.on),"قطعة عنده الآن");kp(fmt(S.inSt),"صنف له رصيد عنده");if(S.rc!=null)kp(fmt(S.rc),"قطعة استلمها من أول السنة");if(S.rank){kp(S.rank+" / "+S.of,"ترتيبه بين الفروع");kp(pc(S.share),"نصيبه من مبيعات الفروع")}
+  if(S.short){kp(fmt(S.short.n),"صنف يبيعه ورصيده ناقص","r");kp(fmt(S.idle.n),"صنف راكد عنده")}kp(fmt(S.out.length),"صنف نفد عنده وهو يبيعه",S.out.length?"r":"");
+  sec("أعلى الأكواد مبيعاً في الفرع",["الكود","المبيعات","الرصيد"],S.top.map(c=>[c.code,fmt(c.sold),fmt(c.on)]),50);
+  sec("حسب المورد",["المورد","المبيعات","الرصيد"],S.vendors.filter(v=>v.sold||v.on).map(v=>[v.v||"—",fmt(v.sold),fmt(v.on)]),40);
+  sec("نفد عنده وهو يبيعه",["الكود","اللون","المقاس","المبيعات","رصيد المستودع"],S.out.map(l=>{const x=DATA.k[l.ki];return [x[0],x[1]||"—",x[2]||"—",fmt(l.sold),fmt(l.wh)]}),60)}
+ else if(LASTX){let rows=LASTX.rows();const pr=LASTX.prn||{},rk=K==="r"&&a.rank?a.rank:null;if(!rows.length)return null;if(rk)rows=rows.slice(0,rk.n);R.ttl=rk?"تقرير: "+(rk.dir===1?"أقل ":"أعلى ")+rows.length+" "+(RKN[rk.by||"code"]||"")+" "+(rk.m==="on"?"رصيداً":rk.m==="rc"?"استلاماً":"مبيعاً"):K==="m"?"تقرير المبيعات بالريال"+(a.store?": "+a.store:" لكل الفروع"):"تقرير: "+(pr.ttl||String(LASTX.name||"").split("-").join(" "));if(pr.sub)R.sub.push(pr.sub);if(K==="m")R.sub=[];if(K==="m")R.per=(P?"من "+P.from+" إلى "+P.to:"من أول السنة")+" · بالريال";
+  kp(fmt(rows.length),"سطر في التقرير");sec("",LASTX.head,rows.map(r=>r.map(c=>typeof c==="number"?fmt(c):String(c==null?"":c))),400)}
+ else return null;
+ return R.ttl?R:null;
+}
+function printRep(){
+ const tell=m=>{if(X&&X.toast)X.toast(m)},pa=document.getElementById("pa"),a=UI.a;if(!pa||!a){tell("الطباعة غير متاحة هنا");return}
+ let R=null;try{R=askRep(a,askP(),kindA(a))}catch(e){}if(!R){tell("لا يوجد جواب يصلح تقريراً. اسأل عن مورد أو كود أو لون أو فرع أولاً.");return}
+ const q=META&&META.q,box=k=>`<div class="pk${k.c==="r"?" r":k.c==="m"?" m":""}"><b>${E(k.v)}</b><span>${E(k.l)}</span></div>`;
+ const tbl=s=>`<div class="pb">${s.h?`<h3>${E(s.h)}</h3>`:""}<table class="pt"><thead><tr><th>#</th>${s.head.map(h=>"<th>"+E(h)+"</th>").join("")}</tr></thead><tbody>${s.rows.map((r,i)=>"<tr><td>"+(i+1)+"</td>"+r.map(c=>"<td>"+E(c)+"</td>").join("")+"</tr>").join("")}</tbody></table>${s.all>s.rows.length?`<p class="pm">معروض أعلى ${s.rows.length} من ${fmt(s.all)}. القائمة كاملة في ملف الإكسل.</p>`:""}</div>`;
+ const kh=R.k.slice(0,12).map(box).join(""),sh2=R.s.map(tbl).join("");
+ pa.className="stkp stkd stkr";
+ pa.innerHTML=`<div class="rh"><span class="rw">${aiWolf}</span><div class="rt"><b>تاسومة</b><span>ذيب · مساعد المخزون</span></div><div class="rd"><span>تاريخ التقرير</span><b>${E(today())}</b></div></div>
+ <h2 class="rtt">${E(R.ttl)}</h2><p class="rs">${E([R.per].concat(R.sub).join(" · "))}</p>
+ <div class="pks">${kh}</div>${sh2}
+ <p class="rf">المصدر: ملفات السيستم المرفوعة على المنصة${q&&q.at?" (ملف الأرصدة: "+E(dts(q.at))+")":""}. الأرقام صافية بعد المرتجع، محسوبة مباشرة من الملفات بلا تقدير.${a.txt?" السؤال: «"+E(a.txt)+"»":""}</p>
+ <div class="sg"><span>أعدّه</span><span>اعتمده</span></div>`;
+ const off=()=>{pa.className="";window.removeEventListener("afterprint",off)};window.addEventListener("afterprint",off);setTimeout(()=>window.print(),80);
 }
 function vAsk(){
  const en=document.documentElement.classList.contains("tz-en"),a=UI.a,H=hGet(),X0=askEx(en);
@@ -2437,7 +2502,7 @@ function vAsk(){
  else{LASTX=null;ans=em("لم أجد في سؤالك كوداً ولا فرعاً ولا مورداً.<br>اكتب كود الصنف (مثل الأمثلة في الأعلى) أو اسم الفرع أو رقمه أو اسم المورد، أو اخترها من القوائم.")}
  const vnote=a.vendor&&(K==="c"||K==="w")?`<div class="stk-rep">الجواب عن الكود كله؛ المورد لا يغيّر أرقام كود بعينه.</div>`:"";
  const okA=!!(ans&&K&&!perBad),rev=UI.rev;UI.rev=false;
- return sh("",aiQ()+`<div class="stk-ai-ans${rev?" rev":""}">${aiHead(okA)}${nt.join("")}${und}${gapNote(P)}${K==="x"&&B&&!cs?gapNote(B):""}${vnote}${ans}${ans&&K&&K!=="m"&&!perBad?src:""}${okA?aiFU(a,K,X0):""}</div>`+aiMore(H));
+ return sh("",aiQ()+`<div class="stk-ai-ans${rev?" rev":""}">${aiHead(okA)}${okA&&a.report?aiRep(a):""}${nt.join("")}${und}${gapNote(P)}${K==="x"&&B&&!cs?gapNote(B):""}${vnote}${ans}${ans&&K&&K!=="m"&&!perBad?src:""}${okA?aiFU(a,K,X0):""}</div>`+aiMore(H));
 }
 /* (v180) أجوبة الترتيب و«مين عنده» والمورد والمقارنة. الضغط على أي اسم في جدول يفتح بطاقته (rgo) */
 const stL=ti=>`<a href="#" data-sk="rgo" data-k="store" data-v="${E(DATA.st[ti])}" style="color:inherit">${sn(ti)}</a>`;
@@ -2731,6 +2796,7 @@ function wire(){
   else if(a==="more"){UI.lim+=400;paint()}
   else if(a==="xls")csv();
   else if(a==="prn")printX();
+  else if(a==="rprn")printRep();
   else if(a==="mkc")mkCode(t.dataset.c||"");
   else if(a==="ps"){UI.ps=t.dataset.v==="t"?"t":"n";UI.px="";paint(false)}
   else if(a==="pexp"){const v=String(t.dataset.v||"");UI.px=UI.px===v?"":v;paint(false);if(UI.px){const r=ROOT.querySelector("tr.oxo");if(r&&r.scrollIntoView)try{r.scrollIntoView({block:"nearest"})}catch(e){}}}
