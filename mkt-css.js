@@ -185,6 +185,29 @@ body.mkpr>*:not(#mkpr){display:none!important}#mkpr{display:none}body.mkpr #mkpr
 .ms-ad .rows{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow:auto}.ms-ad .rw{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px}.ms-ad .rw span{color:var(--mut);font-variant-numeric:tabular-nums;flex:0 0 auto}.ms-ad .rw b{font-variant-numeric:tabular-nums;flex:0 0 auto}.ms-ad .rw small{flex:1;min-width:0;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ms-adp{display:flex;flex-direction:column;gap:8px}.ms-adp>div{display:grid;grid-template-columns:minmax(120px,190px) 1fr auto 86px;gap:10px;align-items:center;font-size:13.5px}.ms-adp b{font-variant-numeric:tabular-nums}.ms-adp small{color:var(--mut);text-align:end}
 @media (max-width:560px){.ms-adp>div{grid-template-columns:1fr auto;}.ms-adp .ms-bar{grid-column:1/-1;order:3}.ms-adp small{grid-column:1/-1;order:4;text-align:start}}
+/* 📢 (v278) منصات الإعلان في نموذج المهمة + جدول الأيام × المنصات + نموذج صرف اليوم */
+#mkm .ms-apk{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#mkm .ms-apk .apk{display:flex;align-items:center;gap:8px;min-height:42px;padding:5px 10px;border:1px solid var(--line);border-radius:12px;cursor:pointer;font-size:13.5px;transition:border-color .15s,background-color .15s}
+#mkm .ms-apk .apk:has(input:checked){border-color:var(--acc,#8a5a83);background:var(--soft)}
+#mkm .ms-apk .apk input[type=checkbox]{width:18px;height:18px;flex:0 0 auto;margin:0;accent-color:var(--acc,#8a5a83)}
+#mkm .ms-apk .apk span{flex:1;min-width:0}
+#mkm .ms-apk .apk .apb{flex:0 0 116px;width:116px;min-width:0;margin:0;padding:5px 8px;font-size:13px;display:none}
+#mkm .ms-apk .apk input:checked~.apb{display:block}
+#mkm .ms-adf{display:flex;flex-direction:column;gap:6px}
+#mkm .ms-adf .rw{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:2px 10px;align-items:center}
+#mkm .ms-adf .rw label,#mkm .ms-adf .rw span{font-size:13.5px;font-weight:600}
+#mkm .ms-adf .rw input{margin:0;width:100%}
+#mkm .ms-adf .rw b{font-variant-numeric:tabular-nums}
+#mkm .ms-adf .rw small{grid-column:1/-1;color:var(--mut);font-size:12px;line-height:1.5}
+#mkm .ms-adf .rw small:empty{display:none}
+.ms-adp.sm>div{grid-template-columns:minmax(96px,150px) 1fr auto 78px;font-size:13px}
+.ms-adw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);max-height:300px;overflow-y:auto}
+.ms-adt{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.ms-adt th,.ms-adt td{padding:7px 10px;text-align:start;white-space:nowrap;border-bottom:1px solid var(--line)}
+.ms-adt th{position:sticky;top:0;background:var(--card);color:var(--mut);font-weight:600;font-size:12px;z-index:1}
+.ms-adt tfoot td{border-bottom:0;font-weight:700;background:var(--soft);position:sticky;bottom:0}
+.ms-adt td:last-child:has(button){width:1%;padding:3px 6px}
+@media (max-width:560px){#mkm .ms-apk{grid-template-columns:1fr}.ms-adp.sm>div{grid-template-columns:1fr auto}}
 @media print{#mkpr{font-size:12.5px;color:#111}#mkpr h1{font-size:20px;margin:0 0 4px}#mkpr h2{font-size:15px;margin:16px 0 6px;border-bottom:2px solid #8a5a83;padding-bottom:3px}#mkpr table{width:100%;border-collapse:collapse}#mkpr th,#mkpr td{border:1px solid #ccc;padding:5px 6px;text-align:start}#mkpr th{background:#f3ecf2}
  #mkpr .kv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}#mkpr .kv div{border:1px solid #ccc;border-radius:8px;padding:6px 8px}#mkpr .kv small{display:block;color:#555}#mkpr .kv b{font-size:15px}#mkpr p{margin:4px 0}}
 `;

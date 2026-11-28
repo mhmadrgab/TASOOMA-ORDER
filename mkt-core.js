@@ -55,6 +55,15 @@ export const exOf = (M, c) => vals(M.X).filter(x => x.c === c);
 export const ADP = [["sc", "سناب شات"], ["tt", "تيك توك"], ["meta", "ميتا (إنستغرام وفيسبوك)"], ["gg", "جوجل"], ["x", "إكس"], ["yt", "يوتيوب"], ["oth", "منصة أخرى"]];
 export const adOf = (M, tid) => vals(M.X).filter(x => x.tk === tid).sort((a, b) => String(b.dt).localeCompare(String(a.dt)) || N(b.ts) - N(a.ts));
 export const adSum = (M, tid) => adOf(M, tid).reduce((a, x) => a + N(x.a), 0);
+// 📢 (v278) المهمة على أكثر من منصة: aps = قائمة المنصات، abp = ميزانية كل منصة. المهام القديمة (ap واحدة) تُقرأ كما هي.
+export const ADS = {sc: "سناب", tt: "تيك توك", meta: "ميتا", gg: "جوجل", x: "إكس", yt: "يوتيوب", oth: "أخرى"};
+export const adPf = x => { const L = Array.isArray(x && x.aps) ? x.aps.filter((k, i, a) => ADP.some(q => q[0] === k) && a.indexOf(k) === i) : []; return L.length ? L : (x && x.ap ? [x.ap] : []) };
+export const adBud = (x, k) => { const b = x && x.abp && typeof x.abp === "object" ? N(x.abp[k]) : 0; if (b) return b; const P = adPf(x); return x && !x.abp && P.length === 1 && P[0] === k ? N(x.ab) : 0 };
+export const adKey = (P, e) => e.ap && P.indexOf(e.ap) >= 0 ? e.ap : (!e.ap && P.length === 1 ? P[0] : "-");
+// جدول الأيام × المنصات لمهمة إعلان: «-» = صرف قديم بلا منصة من منصات المهمة
+export const adGrid = (M, x) => { const P = adPf(x), sum = {}, by = {}; let tot = 0;
+  adOf(M, x.id).forEach(e => { const k = adKey(P, e), a = N(e.a), d = by[e.dt] || (by[e.dt] = {dt: e.dt, v: {}, tot: 0, n: 0}); d.v[k] = (d.v[k] || 0) + a; d.tot += a; d.n++; sum[k] = (sum[k] || 0) + a; tot += a });
+  return {P, cols: P.concat(sum["-"] ? ["-"] : []), sum, tot, days: Object.keys(by).sort().reverse().map(k => by[k])} };
 export const kpOf = c => Array.isArray(c && c.kp) ? c.kp : [];
 export const kpName = k => k.k === "oth" && k.l ? k.l : lab(KP, k.k);
 export const isOpen = x => x.st !== "done";
