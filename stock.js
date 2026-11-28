@@ -1354,6 +1354,23 @@ html:not(.tz-en) .stk-ai-send svg{transform:scaleX(-1)}
 .stk-ai-ah .rp:hover{border-color:var(--ai2)}
 .stk-ai-ah .ok{margin-inline-start:0}.stk-ai-ah .sp{flex:1}
 @media print{#pa.stkr .rh{display:flex;align-items:center;gap:4mm;background:#2a1d2c;color:#fff;border-radius:3mm;padding:3mm 4mm;margin:0 0 4mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}#pa.stkr .rw{width:13mm;height:13mm;border-radius:50%;background:#5a3856;display:grid;place-items:center;flex:0 0 auto}#pa.stkr .rw svg{width:64%;height:64%;fill:#f3e6ee}#pa.stkr .rt{flex:1;display:flex;flex-direction:column;text-align:start;align-items:flex-start}#pa.stkr .rt b{font-size:15pt}#pa.stkr .rt span{font-size:9pt;opacity:.85}#pa.stkr .rd{display:flex;flex-direction:column;align-items:flex-end;font-size:8.5pt}#pa.stkr .rd b{font-size:11pt}#pa.stkr .rtt{font-size:18pt;margin:0 0 1mm;color:#2a1d2c;unicode-bidi:plaintext}#pa.stkr .rs{font-size:10pt;color:#555;margin:0 0 4mm;unicode-bidi:plaintext}#pa.stkr .pks{grid-template-columns:repeat(4,1fr)}#pa.stkr .pk.m{border-inline-start-color:#6f7d45}#pa.stkr .pk b{font-size:13pt;unicode-bidi:plaintext}#pa.stkr .pt th{background:#efe6ee;color:#2a1d2c}#pa.stkr .pt tbody tr:nth-child(even) td{background:#faf6f9}#pa.stkr .pt td:nth-child(2){font-weight:700}#pa.stkr .pb{break-inside:auto}#pa.stkr .pb h3{break-after:avoid}#pa.stkr .pt thead{display:table-header-group}#pa.stkr .pt tr{break-inside:avoid}#pa.stkr .pm{font-size:8.5pt;color:#555;margin:1.5mm 0 0}#pa.stkr .rf{font-size:8.5pt;color:#444;border-top:1px solid #bbb;padding-top:2mm;margin:4mm 0 0;line-height:1.7;unicode-bidi:plaintext}}
+.stk-ai-hero h2{line-height:1.75;padding:.05em .08em .28em}
+.stk-ai:not(.idle) .stk-ai-hero h2{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 8px;line-height:1.75}
+.stk-ai:not(.idle) .stk-ai-hero h2 small{margin:0}
+.stk-ai-av svg{transform-origin:50% 72%;animation:stkAiWolf 5.5s ease-in-out infinite}
+@keyframes stkAiWolf{0%,100%{transform:rotate(0) translateY(0)}18%{transform:rotate(-6deg) translateY(-1px)}36%{transform:rotate(0) translateY(-2px)}54%{transform:rotate(6deg) translateY(-1px)}72%{transform:rotate(0) scale(1.06)}}
+.stk-ai-av.big{animation:stkAiFloat 4s ease-in-out infinite}
+@keyframes stkAiFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.stk-ai:focus-within .stk-ai-hero .stk-ai-av svg{animation-duration:2.2s}
+.stk-ai-av:hover svg{animation-duration:1.1s}
+.stk-ai-th .stk-ai-av svg{animation:stkAiSniff .65s ease-in-out infinite}
+@keyframes stkAiSniff{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg) translateY(-1px)}}
+.stk-ai-ans.rev .stk-ai-ah .stk-ai-av svg{animation:stkAiNod .75s cubic-bezier(.16,1,.3,1) 1,stkAiWolf 5.5s ease-in-out .75s infinite}
+@keyframes stkAiNod{0%{transform:scale(.5) rotate(-24deg)}60%{transform:scale(1.18) rotate(7deg)}100%{transform:none}}
+.stk-ai-snd{margin-inline-start:auto;flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--mut);cursor:pointer;display:grid;place-items:center;padding:0}
+.stk-ai-snd:hover{border-color:var(--ai2);color:var(--ai1)}
+.stk-ai-snd svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.stk-ai.idle .stk-ai-hero{position:relative}.stk-ai.idle .stk-ai-snd{position:absolute;top:10px;inset-inline-end:4px;margin:0}
 html.lite .stk-ai-box::after{display:none}html.lite .stk-ai *,html.lite .stk-ai *::before,html.lite .stk-ai *::after{animation:none!important}
 @media (prefers-reduced-motion:reduce){.stk-ai *,.stk-ai *::before,.stk-ai *::after{animation:none!important;transition:none!important}}
 @media print{.stk-ai-hero,.stk-ai-box,.stk-ai-sug,.stk-ai-more,.stk-ai-fu,.stk-ai-lbl{display:none!important}}
@@ -2263,8 +2280,9 @@ function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||
  const L=lexLoad();UI.a=parseAsk(q,askCtx());UI.a.q2="";hAdd(q);// (v212) القاموس اتشال: السؤال يُفهم كما كُتب
  // (v196) عدّاد التكرار + سجل ما لم يُفهم (على الجهاز)
  const e=L.f[q]||(L.f[q]={n:0,at:0});e.n=N(e.n)+1;e.at=Date.now();lexSave();const fk=askFailK(UI.a);if(fk)lexLogQ(q,fk);clearTimeout(AITH);
+ aiSnd("go");
  if(aiCalm()){UI.think=false;UI.rev=false;paint(false);return}
- UI.think=true;UI.rev=false;paint(false);AITH=setTimeout(()=>{UI.think=false;UI.rev=true;paint(false)},620)}
+ UI.think=true;UI.rev=false;paint(false);AITH=setTimeout(()=>{UI.think=false;UI.rev=true;paint(false);aiSnd("ok")},620)}
 let EXC=null;// أمثلة من بيانات الملف نفسه (أعلى كود وأعلى فرع مبيعاً)
 /* (v196) 📖 «اسأل» تتعلّم من المستخدم: قاموسه الخاص (كلمة أو عبارة ← معناها)، أسئلته المثبّتة والمتكررة، وسجل ما لم يُفهم.
    كله على الجهاز (localStorage.stk_lex). القاموس يستبدل العبارة بنص تفهمه القواعد الثابتة قبل الفهم، فالحساب نفسه لا يتغيّر */
@@ -2382,7 +2400,12 @@ const aiWolf=`<svg viewBox="80 60 352 390" aria-hidden="true">${WOLFP}</svg>`;
 const aiAv=c=>`<span class="stk-ai-av${c?" "+c:""}" data-noico>${aiWolf}</span>`;
 const aiCalm=()=>{try{return document.documentElement.classList.contains("lite")||(window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches)}catch(e){return true}};
 let AITH=0;
-const aiHero=()=>`<div class="stk-ai-hero">${aiAv(UI.a?"":"big")}<div><h2>ذيب<small>مساعد مخزون تاسومة</small></h2><p>اسألني عن أي صنف أو فرع أو مورد، بالقطع أو بالريال، ومعها الفترة إن أردت. أحسب الجواب مباشرة من ملفاتك المرفوعة، بلا تخمين.</p></div></div>`;
+let AIAC=null;const aiSndOn=()=>{try{return localStorage.getItem("stk_snd")!=="0"}catch(e){return true}};
+function aiSnd(k){if(!aiSndOn())return;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;AIAC=AIAC||new AC();if(AIAC.state==="suspended")AIAC.resume();const t=AIAC.currentTime,L=k==="ok"?[[880,0,.18],[1318.5,.1,.3]]:[[523.25,0,.1],[783.99,.07,.2]],v=k==="ok"?.045:.07;
+ for(const x of L){const o=AIAC.createOscillator(),g=AIAC.createGain();o.type="sine";o.frequency.value=x[0];g.gain.setValueAtTime(.0001,t+x[1]);g.gain.exponentialRampToValueAtTime(v,t+x[1]+.015);g.gain.exponentialRampToValueAtTime(.0001,t+x[1]+x[2]);o.connect(g);g.connect(AIAC.destination);o.start(t+x[1]);o.stop(t+x[1]+x[2]+.04)}}catch(e){}}
+const aiSndB=()=>`<button class="stk-ai-snd" type="button" data-sk="aisnd" data-noico title="${aiSndOn()?"إيقاف صوت الضغط":"تشغيل صوت الضغط"}" aria-label="${aiSndOn()?"إيقاف صوت الضغط":"تشغيل صوت الضغط"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/>${aiSndOn()?`<path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/>`:`<path d="M17 9l5 6M22 9l-5 6"/>`}</svg></button>`;
+
+const aiHero=()=>`<div class="stk-ai-hero">${aiAv(UI.a?"":"big")}<div><h2>ذيب<small>مساعد مخزون تاسومة</small></h2><p>اسألني عن أي صنف أو فرع أو مورد، بالقطع أو بالريال، ومعها الفترة إن أردت. أحسب الجواب مباشرة من ملفاتك المرفوعة، بلا تخمين.</p></div>${aiSndB()}</div>`;
 const aiBox=()=>`<div class="stk-ai-box${UI.think?" go":UI.rev?" lit":""}"><span class="stk-ai-bg"></span><svg class="stk-ai-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6c.4 1.2 1.3 2.1 2.5 2.5L22 12l-5.6 1.9c-1.2.4-2.1 1.3-2.5 2.5L12 22l-1.9-5.6c-.4-1.2-1.3-2.1-2.5-2.5L2 12l5.6-1.9c1.2-.4 2.1-1.3 2.5-2.5z"/></svg><input type="search" id="stk-ask" value="${E(UI.aq)}" placeholder="اسأل ذيب: كود، فرع، مورد، أو فترة" autocomplete="off" enterkeyhint="search" maxlength="200" aria-label="اسأل ذيب"><button class="stk-ai-send" type="button" data-sk="ask" data-noico><span>اسأل</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>`;
 const aiSug=L=>L.length?`<div class="stk-ai-lbl">جرّب أن تسأل</div><div class="stk-ai-sug">${L.slice(0,9).map((x,i)=>`<button type="button" data-sk="ex" data-x="${E(x)}" data-notr><i>${i+1}</i><span>${E(x)}</span></button>`).join("")}</div>`:"";
 const aiMore=H=>`<div class="stk-ai-more">${H.length?`<div class="stk-chips"><i>آخر أسئلتك</i>${H.map(chip).join("")}</div>`:""}${lexBox()}</div>`;
@@ -2797,6 +2820,7 @@ function wire(){
   else if(a==="xls")csv();
   else if(a==="prn")printX();
   else if(a==="rprn")printRep();
+  else if(a==="aisnd"){try{localStorage.setItem("stk_snd",aiSndOn()?"0":"1")}catch(e){}paint(false);aiSnd("go")}
   else if(a==="mkc")mkCode(t.dataset.c||"");
   else if(a==="ps"){UI.ps=t.dataset.v==="t"?"t":"n";UI.px="";paint(false)}
   else if(a==="pexp"){const v=String(t.dataset.v||"");UI.px=UI.px===v?"":v;paint(false);if(UI.px){const r=ROOT.querySelector("tr.oxo");if(r&&r.scrollIntoView)try{r.scrollIntoView({block:"nearest"})}catch(e){}}}
@@ -2948,7 +2972,7 @@ function wire(){
  // (v184) خانة الكود/البحث: الضغط عليها يحدّد ما فيها، فالكتابة تستبدله مباشرة (صنف آخر بلا مسح يدوي)
  let PF=0;ROOT.addEventListener("pointerdown",e=>{const t=e.target;PF=t&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")&&document.activeElement!==t?1:0});
  ROOT.addEventListener("focusin",e=>{const t=e.target;if(PF&&t&&t.select&&(t.id==="stk-code"||t.id==="stk-a-code"||t.id==="stk-q")){PF=0;setTimeout(()=>{try{if(document.activeElement===t)t.select()}catch(x){}},0)}});
- ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file"||t.dataset.fo)return;if(t.dataset.lx){if(UI.lx&&t.dataset.lx!=="t")UI.lx[t.dataset.lx]=t.value;return}if(t.id==="stk-ask"){UI.aq=t.value;return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.tq!==undefined||t.dataset.nq!==undefined||t.dataset.dw!==undefined||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
+ ROOT.addEventListener("input",e=>{const t=e.target;if(t.id==="stk-file"||t.dataset.fo)return;if(t.dataset.lx){if(UI.lx&&t.dataset.lx!=="t")UI.lx[t.dataset.lx]=t.value;return}if(t.id==="stk-ask"){UI.aq=t.value;if(!t.value.trim()&&(UI.a||UI.think)){UI.a=null;UI.think=false;UI.rev=false;clearTimeout(AITH);paint()}return}if(t.id==="stk-an"||t.id==="stk-a-ccodes"||t.id==="stk-dpt"||t.dataset.tq!==undefined||t.dataset.nq!==undefined||t.dataset.dw!==undefined||t.dataset.dx!==undefined||t.dataset.dl!==undefined||t.dataset.dr!==undefined||t.dataset.dv!==undefined)return;/* قائمة الأكواد تُطبَّق عند الخروج من الخانة أو Enter */if(t.tagName==="SELECT"||t.type==="checkbox"||t.type==="date")return;if(set(t))later()});
  // (v192) خانة التاريخ: أثناء كتابة السنة يمرّ المتصفح بتواريخ ناقصة (سنة 0002…) ويطلق change مع كل رقم، وإعادة الرسم كانت تقطع الكتابة («بيعلّق»).
  // فالتاريخ غير المعقول يُتجاهل، والمعقول يُطبَّق بعد توقف قصير عن الكتابة
  ROOT.addEventListener("change",e=>{const t=e.target;if(t.id==="stk-file"){const f=[...t.files];t.value="";onFiles(f);return}

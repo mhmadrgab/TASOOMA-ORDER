@@ -3401,6 +3401,8 @@ export default {
 "ذيب · مساعد المخزون":"Theeb · stock assistant",
 "تاريخ التقرير":"Report date",
 "أعدّه":"Prepared by",
+"إيقاف صوت الضغط":"Turn the click sound off",
+"تشغيل صوت الضغط":"Turn the click sound on",
 "لم أفهم من سؤالك:":"I did not understand this part of your question:",
 "— لم يدخل في الحساب.":"— it was not used in the calculation.",
 "«المستلم» غير متاح: عمود":"“Received” is not available: the column",
