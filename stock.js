@@ -483,14 +483,24 @@ function eachCell(D,P,ids,fn){
 }
 const idsOf=(D,o)=>o.code?(D.code.get(String(o.code).trim())||[]).filter(ki=>(!o.cl||D.k[ki][1]===o.cl)&&(!o.z||D.k[ki][2]===o.z)):((o.zs&&o.zs.length)||(o.cls&&o.cls.length))?attrIds(D,o):null;
 // (v210) أصناف كل الأكواد التي مقاسها/لونها من القائمة (سؤال «مقاس 40 في كل الأصناف»)
+/* (v281) نصيب كود من مبيعات مورده ومن كل المبيعات، وترتيبه بين أكواد المورد وبين كل الأكواد (في فرع لو حُدّد، وفي فترة لو حُدّدت) */
+export function codeShare(D,C,code,o){
+ o=o||{};const ids=D.code.get(code);if(!ids||!ids.length)return null;
+ const P=o.period?soldMap(D,o.period.from,o.period.to):null,fs=o.store?D.sti.get(o.store):undefined;if(o.store&&fs===undefined)return null;
+ const vi=D.k[ids[0]][3],M=new Map();let all=0;
+ eachCell(D,P,null,(ki,ti,v1,o1,s1)=>{if(fs!==undefined&&ti!==fs)return;all+=s1;const x=D.k[ki];let e=M.get(x[0]);if(!e){e={vi:x[3],sold:0};M.set(x[0],e)}e.sold+=s1});
+ const me=M.get(code)||{sold:0};let ven=0,nV=0,rV=1,rA=1;
+ M.forEach(e=>{if(e.vi===vi){ven+=e.sold;nV++;if(e.sold>me.sold)rV++}if(e.sold>me.sold)rA++});
+ return {sold:me.sold,all,ven,vi,nV,nAll:M.size,rankV:rV,rankAll:rA,shareV:ven>0?me.sold/ven:null,shareAll:all>0?me.sold/all:null};
+}
 const attrIds=(D,o)=>{const zs=o.zs&&o.zs.length?new Set(o.zs):null,cs=o.cls&&o.cls.length?new Set(o.cls):null,a=[];for(let ki=0;ki<D.k.length;ki++){const x=D.k[ki];if((!zs||zs.has(x[2]))&&(!cs||cs.has(x[1])))a.push(ki)}return a};
 /* (v210) بطاقة مقاس أو لون على كل الأكواد: المبيعات والرصيد ونصيبه من كل المبيعات وترتيبه بين المقاسات، ولكل فرع ولكل كود.
    كل رقم جمع مباشر من نفس صفوف الملفين (eachCell)، فالسطر المكتوب بموردين يُقسم كما في باقي البطاقات */
 export function attrCard(D,C,o){
- o=o||{};const zs=o.zs&&o.zs.length?new Set(o.zs):null,cs=o.cls&&o.cls.length?new Set(o.cls):null;if(!zs&&!cs)return null;
+ o=o||{};const zs=o.zs&&o.zs.length?new Set(o.zs):null,cs=o.cls&&o.cls.length?new Set(o.cls):null,pre=o.pre?String(o.pre).toLowerCase().replace(/\s+/g,""):"";if(!zs&&!cs&&!pre)return null;
  const P=o.period?soldMap(D,o.period.from,o.period.to):null,wh=D.sti.get(C.wh),ex=exSet(C,D),fs=o.store?D.sti.get(o.store):undefined,fv=o.vendor?D.vn.indexOf(o.vendor):-2;
  if((o.store&&fs===undefined)||(o.vendor&&fv<0))return null;
- const byCl=cs&&!zs,hit=ki=>{const x=D.k[ki];return (!zs||zs.has(x[2]))&&(!cs||cs.has(x[1]))};
+ const byCl=cs&&!zs,hit=ki=>{const x=D.k[ki];return (!zs||zs.has(x[2]))&&(!cs||cs.has(x[1]))&&(!pre||String(x[0]).toLowerCase().replace(/\s+/g,"").indexOf(pre)===0)};
  let sold=0,on=0,brOn=0,whOn=0,all=0;const G=new Map(),ST=new Map(),CD=new Map(),allZ=new Map(),stAll=new Map();
  eachCell(D,P,null,(ki,ti,vi,o1,s1)=>{if(fv!==-2&&vi!==fv)return;const x=D.k[ki],br=ti!==wh&&!ex.has(ti);
   if(fs===undefined||ti===fs){all+=s1;if(x[2])allZ.set(x[2],(allZ.get(x[2])||0)+s1)}
@@ -507,7 +517,7 @@ export function attrCard(D,C,o){
  groups.sort(byCl?(p,r)=>r.sold-p.sold:(p,r)=>zk(p.k)-zk(r.k)||(p.k<r.k?-1:p.k>r.k?1:0));
  const stores=[...ST.values()].map(e=>Object.assign(e,{share:stAll.get(e.ti)>0?e.sold/stAll.get(e.ti):null})).sort((p,r)=>r.sold-p.sold||r.on-p.on);
  const codes=[...CD.values()].filter(c=>c.sold!==0||c.on!==0||c.wh!==0).sort((p,r)=>r.sold-p.sold||r.on-p.on||(p.code<r.code?-1:1));
- return {sold,on,br:brOn,wh:whOn,all,share:all>0?sold/all:null,rank:!cs&&zs.size===1?rankOf(sold):0,of:allZ.size,groups,stores,codes,
+ return {sold,on,br:brOn,wh:whOn,all,share:all>0?sold/all:null,rank:!cs&&zs&&zs.size===1?rankOf(sold):0,of:allZ.size,groups,stores,codes,
   nCodes:codes.length,nSold:codes.filter(c=>c.sold>0).length,noWh:codes.filter(c=>c.sold>0&&c.wh<=0).length,byCl};
 }
 // ترتيب «أكثر/أقل»: by = code | store | vendor | color | size | var (لون ومقاس الكود)، m = sold | on، dir = -1 الأعلى أولاً، 1 الأقل أولاً.
@@ -747,7 +757,7 @@ function askTable(ctx){
 const STW=new Set(["فرع","الفرع","بفرع","لفرع","محل","المحل","مخزن","المخزن","معرض","branch","store","shop"]),CDW=new Set(["كود","الكود","صنف","الصنف","موديل","الموديل","code","item","model","sku"]),SZW=new Set(["مقاس","المقاس","مقاسات","المقاسات","بمقاس","لمقاس","قياس","نمره","سايز","السايز","size"]);
 const UNITS={"يوم":1,"ايام":1,"يوما":1,"day":1,"days":1,"اسبوع":7,"اسابيع":7,"week":7,"weeks":7,"شهر":30,"شهور":30,"اشهر":30,"month":30,"months":30},DUAL={"يومين":2,"اسبوعين":14,"شهرين":60};
 // حشو الأسئلة بالعربية (بعد توحيد الحروف): لا يُسأل المستخدم عن معناه
-const ARFILL=new Set("كام كم وكام وكم باع باعت بيع بيعت اتباع اتباعت مباع مبيعات مبيعاته مبيعاتها مبيعا عنده عندها عندنا عندهم وعنده رصيد رصيده رصيدها رصيدا موجود متوفر متاح من في الي علي عن مع هل ايه ايش وش ما ماذا هو هي ده دي دا هذا هذه اللي الذي التي عايز عاوز اريد ابغي ابي اعرف اشوف شوف شوفلي وريني هات هاتلي قولي قلي كل منه منها فيه فيها بتاع بتاعه بتاعت سمحت ممكن طيب قطعه قطع حبه حبات عدد كميه كميات اجمالي مجموع لون الوان خلال فتره يوم ايام اسبوع شهر سنه بين حتي لحد الان دلوقتي حاليا كمان وكمان بس فقط ايضا تم قد كان كانت يكون نفس واحد منهم لنا لها عليه عليها اللى هناك هنا جدا اوي قوي حاجه شي شيء بقي يعني مثلا اذا لما عند الفتره المده وصل وصلت نزل نزلت دخل دخلت خرج طلع طلعت اجيب جيب جبلي عرفني اعطني اعطيني وريني خليني ابغا تبع حق حقه مال ماله استلم استلمت استلموا استلام مستلم وارد حلل حللي تحليل اعلي اقل اكثر اكتر ترتيب رتب رتبلي قارن مقارنه مقابل مين فين وين اين بيتباع يتباع تتباع بتتباع بيبيع بتبيع يبيع تبيع بيبيعوا بيتبيع قد اد قداش اصناف الاصناف بالاصناف الموديلات موديلات كله كلها جميع احذيه الاحذيه بالاحذيه حذاء الحذاء جزم نسبه النسبه بنسبه نصيب مخزون المخزون للكود بالكود للصنف بالصنف الاكواد بالاكواد".split(" "));
+const ARFILL=new Set("بدون اخري الاخري باقي الباقي غيرها غيره كام كم وكام وكم باع باعت بيع بيعت اتباع اتباعت مباع مبيعات مبيعاته مبيعاتها مبيعا عنده عندها عندنا عندهم وعنده رصيد رصيده رصيدها رصيدا موجود متوفر متاح من في الي علي عن مع هل ايه ايش وش ما ماذا هو هي ده دي دا هذا هذه اللي الذي التي عايز عاوز اريد ابغي ابي اعرف اشوف شوف شوفلي وريني هات هاتلي قولي قلي كل منه منها فيه فيها بتاع بتاعه بتاعت سمحت ممكن طيب قطعه قطع حبه حبات عدد كميه كميات اجمالي مجموع لون الوان خلال فتره يوم ايام اسبوع شهر سنه بين حتي لحد الان دلوقتي حاليا كمان وكمان بس فقط ايضا تم قد كان كانت يكون نفس واحد منهم لنا لها عليه عليها اللى هناك هنا جدا اوي قوي حاجه شي شيء بقي يعني مثلا اذا لما عند الفتره المده وصل وصلت نزل نزلت دخل دخلت خرج طلع طلعت اجيب جيب جبلي عرفني اعطني اعطيني وريني خليني ابغا تبع حق حقه مال ماله استلم استلمت استلموا استلام مستلم وارد حلل حللي تحليل اعلي اقل اكثر اكتر ترتيب رتب رتبلي قارن مقارنه مقابل مين فين وين اين بيتباع يتباع تتباع بتتباع بيبيع بتبيع يبيع تبيع بيبيعوا بيتبيع قد اد قداش اصناف الاصناف بالاصناف الموديلات موديلات كله كلها جميع احذيه الاحذيه بالاحذيه حذاء الحذاء جزم نسبه النسبه بنسبه نصيب مخزون المخزون للكود بالكود للصنف بالصنف الاكواد بالاكواد".split(" "));
 const ENSTOP=new Set(["the","in","of","at","for","from","to","and","how","many","much","sold","sales","sale","stock","has","have","did","does","on","hand","qty","quantity","last","this","year","since","until","till","show","me","what","is","was","by","with","between","received","receive"]);
 /* (v180) نوع السؤال: ترتيب «أكثر/أقل»، «مين عنده»، المقارنة، والمورد */
 const RK_D=new Set(["اكتر","اكثر","الاكتر","الاكثر","اعلي","الاعلي","افضل","الافضل","اكبر","الاكبر","ترتيب","رتب","رتبلي","top","most","best","highest","rank","ranking"]),RK_A=new Set(["اقل","الاقل","اضعف","الاضعف","اسوا","الاسوا","اصغر","least","lowest","worst","bottom"]);
@@ -758,6 +768,9 @@ const CMPW=new Set(["قارن","قارنلي","قارني","قارنه","مقا�
 /* (v260) نواقص، مشتريات، وما لا يتحرك */
 const NEEDW=new Set(["ناقص","ناقصه","ناقصين","نواقص","النواقص","نقص","النقص","ينقص","تنقص","shortage","shortages","missing","short"]),BUYW=new Set(["اشترينا","اشتري","اشتريت","اشتروا","اشترت","مشتريات","المشتريات","مشترياتنا","شراء","الشراء","استوردنا","purchase","purchases","purchased","bought"]);
 const STLW=new Set(["راكد","راكده","الراكد","الراكده","رواكد","الرواكد","مابيتباعش","ماتباعش","مبيتباعش","مابتتباعش","ميتباعش","واقف","واقفه","stale","dead","idle"]),NEGW=new Set(["مش","مو","مب","غير","ما","لا","مابقاش","not"]),MOVW=new Set(["شغال","شغاله","شغالين","ماشي","ماشيه","ماشيين","بيتباع","يتباع","بتتباع","تتباع","بيتحرك","متحرك","متحركه","بيمشي","moving","selling"]);
+const PREW=new Set(["تبدا","يبدا","بتبدا","بيبدا","تبتدي","يبتدي","بتبتدي","بيبتدي","بادئه","بادئته","بدايته","بدايتها","اوله","اولها","starts","start","starting","begin","begins","beginning","prefix"]),PRESK=new Set(["ب","بـ","برقم","رقم","بالرقم","من","with"]);
+const MONW=new Set(["بكام","بكم","فلوس","الفلوس","بالفلوس","ريال","الريال","بالريال","ريالات","قيمه","بقيمه","القيمه","مبلغ","بمبلغ","المبلغ","ايراد","الايراد","ايرادات","sar","riyal","riyals","money","revenue","amount","value"]),SHRW=new Set(["نسبه","النسبه","بنسبه","نصيب","نصيبه","حصه","حصته","share","percent","percentage"]),CATW=new Set(["الرياضيه","رياضيه","الرياضي","رياضي","الكلاسيك","كلاسيك","الكاجوال","كاجوال","الرسميه","رسميه","sport","sports","casual","classic"]);
+const mnyK=a=>!!(a&&a.money&&!a.code&&!a.pre&&!a.vendor&&!(a.vgrp&&a.vgrp.length)&&!(a.zs&&a.zs.length)&&!(a.cls&&a.cls.length)&&!a.need&&!a.buy&&!a.stale&&!a.where&&(!a.rank||!a.rank.by||a.rank.by==="store"));
 const VMK=new Set(["مورد","المورد","للمورد","لمورد","بمورد","والمورد","vendor","supplier"]);
 // كلمات عامة في أسماء الموردين لا تدل وحدها على مورد بعينه
 const VGEN=new Set(["مورد","شركه","متنوع","تركي","تركيا","صيني","الصين","اسباني","اسبانيا","اسبانى","محلي","وطني","داخلي","قديم","ملابس","للملابس","مريح","مصنع","ابو","علي","احذيه","الاحذيه","حذاء","الحذاء","جزم","شنط","الشنط","عطور","العطور","شموع","الشموع","اكسسوارات"]);
@@ -776,12 +789,12 @@ const ds=(y,m,d)=>y+"-"+p2(m)+"-"+p2(d);
 // سؤال حر ← {kind, store, code, cl, z, per:"ytd"|"c", from, to, amb:{store,code,cl}, unk, rc}
 // ctx = {stores:[أسماء المخازن], codes:Map(كود←أصنافه), k:[[كود،لون،مقاس]], alias:[{k,s}], today, end (آخر يوم في البيانات), wh}
 export function parseAsk(text,ctx){
- const out={kind:"",store:"",code:"",cl:"",z:"",vendor:"",per:"ytd",from:"",to:"",amb:{store:[],code:[],cl:[],vendor:[]},unk:[],rc:false,rank:null,where:false,cmp:null,txt:String(text||"").slice(0,200)};
+ const out={kind:"",store:"",code:"",cl:"",z:"",vendor:"",per:"ytd",from:"",to:"",amb:{store:[],code:[],cl:[],vendor:[]},unk:[],rc:false,rank:null,where:false,cmp:null,txt:String(text||"").slice(0,200),pre:"",money:false,share:false,cat:""};
  // (v183) «13038+13040+13037» و«13038,13040»: الزائد يفصل دائماً (لا كود فيه +)، والفاصلة بين رقمين تفصل لو كل جزء كود موجود (وإلا فهي رقم مثل 1,234)
  const isC=s=>ctx.codes.has(s)||ctx.codes.has(s.toUpperCase());
  const t=normAr(out.txt).replace(/[،؛؟?!()«»"'`:\[\]{}+]|,(?!\d)/g," ").split(/\s+/).map(w=>{if(w.indexOf(",")<0)return w;const p=w.split(",").filter(Boolean);return p.length>1&&p.every(isC)?p.join(" "):w}).join(" ").replace(/(\d)([ء-ي])/g,"$1 $2").replace(/([ء-ي])(\d)/g,"$1 $2").replace(/\s+/g," ").trim();if(!t)return out;// (v260) «13027اعلى» ملتصقة: الرقم والكلمة العربية كلمتان
  out.rc=/استلم|مستلم|استلام|وارد|received|receiv/.test(t);
- const W=t.split(" "),U=W.map(()=>false),B=W.map(bare),end=ctx.end||ctx.today,ey=+end.slice(0,4),T=askTable(ctx);
+ const W=t.split(" ").map(w=>/^و./.test(w)&&(STW.has(w.slice(1))||CDW.has(w.slice(1))||VMK.has(w.slice(1)))?w.slice(1):w),U=W.map(()=>false),B=W.map(bare),end=ctx.end||ctx.today,ey=+end.slice(0,4),T=askTable(ctx);
  const isNum=w=>/^\d+$/.test(w);
  /* 1) التواريخ */
  const dts=[];let lastN=0,ytd=false;
@@ -813,6 +826,10 @@ export function parseAsk(text,ctx){
   if(RK_D.has(w)||RK_A.has(w)){if(!rk){rk=RK_A.has(w)?1:-1;rkI=i}U[i]=true}
   else if(CMPW.has(w)){cmpW=true;U[i]=true}
   else if(WHW.has(w)){out.where=true;U[i]=true}
+  else if(PREW.has(w)||PREW.has(B[i])){let j=i+1;while(j<W.length&&j<=i+2&&PRESK.has(W[j]))j++;const v=W[j];if(v&&!U[j]&&/^[0-9a-z-]{1,8}$/.test(v)&&/\d/.test(v)){out.pre=v;for(let q=i;q<=j;q++)U[q]=true;if(i>0&&!U[i-1]&&(CDW.has(W[i-1])||ENT_P[W[i-1]]==="code"||W[i-1]==="اللي"))U[i-1]=true;if(i>1&&U[i-1]&&!U[i-2]&&(CDW.has(W[i-2])||ENT_P[W[i-2]]==="code"))U[i-2]=true}}
+  else if(MONW.has(w)||MONW.has(B[i])){out.money=true;U[i]=true}
+  else if(SHRW.has(w)){out.share=true;U[i]=true}
+  else if(CATW.has(w)||CATW.has(B[i])){out.cat=w;U[i]=true}
   else if(NEEDW.has(w)||NEEDW.has(B[i])){out.need=true;U[i]=true}
   else if(BUYW.has(w)||BUYW.has(B[i])){out.buy=true;U[i]=true}
   else if(STLW.has(w)||STLW.has(B[i])){out.stale=true;U[i]=true}
@@ -861,6 +878,7 @@ export function parseAsk(text,ctx){
  if(!codes.length)for(let i=0;i<W.length;i++){if(U[i]||!isNum(W[i]))continue;const pv=W[i-1]||"";
   if(CDW.has(pv)&&W[i].length<5){const c=lower.get(("00000"+W[i]).slice(-5));if(c){codes.push(c);U[i]=true;continue}}
   if(W[i].length>=3){const sug=[],pad=W[i].length<5?("00000"+W[i]).slice(-5):"";lower.forEach((c,k)=>{if(sug.length<8&&(k.indexOf(W[i])===0||(pad&&k===pad)))sug.push(c)});if(sug.length){out.amb.code=sug;U[i]=true}}}
+ if(out.pre){let ok=false;lower.forEach((c,k)=>{if(!ok&&k.indexOf(out.pre)===0)ok=true});if(!ok){out.unk.push(out.pre);out.pre=""}else if(!codes.length)out.amb.code=[]}
  // (v182) كودان أو أكثر = مقارنة أكواد (حتى 15)، إلا لو السؤال مقارنة فترات أو فروع فيُسأل «أي كود؟» كما كان
  if(codes.length){out.code=codes[0];if(codes.length>1){if(!out.cmp){out.cmp={codes:codes.slice(0,15)};out.code=""}else out.amb.code=codes.slice()}}
  /* 3ب) (v180) المورد: بعد كلمة «مورد» تكفي كلمة أو أكثر من اسمه؛ وبلا «مورد» يُقبل اسمه كاملاً أو كلمة لا توجد إلا في اسمه */
@@ -904,7 +922,7 @@ export function parseAsk(text,ctx){
  if(cmpW&&!out.cmp)out.cmp={need:1};// «قارن» بلا فرعين ولا فترة: يُطلب منه ما يقارنه
  if(out.rc&&out.where&&!out.rank&&out.code&&!(out.cmp&&!out.cmp.need)){out.where=false;out.rank={dir:-1,n:40,by:"store",m:"rc"}}// (v191) «مين استلم الكود» = الفروع مرتّبة بالمستلم
  if(out.vendor||out.code)out.vgrp=null;
- out.kind=out.cmp&&!out.cmp.need?"x":out.rank?"r":out.buy?"p":out.need&&(out.code||out.store||out.vendor)?"n":out.stale?"st":out.where&&out.code&&!out.store?"w":out.vgrp&&out.vgrp.length&&!out.zs.length&&!out.cls.length?"vg":(out.zs.length||out.cls.length)&&!out.code?"z":out.vendor&&!out.code?"v":out.code&&out.store?"cs":out.code?"c":out.store?"s":"";return out;
+ out.kind=out.cmp&&!out.cmp.need?"x":out.pre&&!out.code?"pf":mnyK(out)?"m":out.rank?"r":out.buy?"p":out.need&&(out.code||out.store||out.vendor)?"n":out.stale?"st":out.where&&out.code&&!out.store?"w":out.vgrp&&out.vgrp.length&&!out.zs.length&&!out.cls.length?"vg":(out.zs.length||out.cls.length)&&!out.code?"z":out.vendor&&!out.code?"v":out.code&&out.store?"cs":out.code?"c":out.store?"s":"";return out;
 }
 const near=(a,b)=>Math.abs(N(a)-N(b))<1e-6;
 const dim=ym=>new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();// عدد أيام الشهر
@@ -2139,9 +2157,9 @@ const askP=()=>{const a=UI.a;return a&&a.per==="c"&&a.from&&a.to&&a.from<=a.to?{
 // (السنة كلها تُحمَّل فقط لو ملفات التاريخ تغطيها كاملة؛ وإلا فأيام البيع لا تُعرض أصلاً حتى لا يظهر رقم ناقص)
 const yearR=()=>{const R=dHas()?fullR():null;return R&&coverage(META,R).ok?R:null};
 const askB=()=>{const a=UI.a,b=a&&a.cmp&&a.cmp.b;return b&&b.from&&b.to&&b.from<=b.to?b:null};// الفترة التي تُقارن بها
-const askNeed=()=>{const a=UI.a;if(!a||!DATA||!DATA.has)return null;const P=askP(),B=askB();if(P&&B)return {from:P.from<B.from?P.from:B.from,to:P.to>B.to?P.to:B.to};const K=kindA(a);if(K==="p")return buyR(a);return P||(K==="c"?yearR():null)};
+const askNeed=()=>{const a=UI.a;if(!a||!DATA||!DATA.has)return null;const P=askP(),B=askB();if(P&&B)return {from:P.from<B.from?P.from:B.from,to:P.to>B.to?P.to:B.to};const K=kindA(a);if(K==="p")return buyR(a);return P||(K==="c"?(yearR()||(rcvMonths().length?buyR(a):null)):null)};
 // نوع الجواب من حقول السؤال الحالية (بعد أي تعديل من الشريط): x مقارنة، r ترتيب، w مين عنده، v مورد، c صنف، s فرع
-function kindA(a){if(!a)return "";const c=a.cmp;if(c&&((c.st&&c.st.length>1)||(c.a&&c.b)||(c.codes&&c.codes.length>1)))return "x";if(a.rank)return "r";if(a.buy)return "p";if(a.need&&(a.code||a.store||a.vendor))return "n";if(a.stale)return "st";if(a.where&&a.code&&!a.store)return "w";if(a.vgrp&&a.vgrp.length&&!a.vendor&&!a.code&&!((a.zs&&a.zs.length)||(a.cls&&a.cls.length)))return "vg";if(!a.code&&((a.zs&&a.zs.length)||(a.cls&&a.cls.length)))return "z";if(a.vendor&&!a.code)return "v";return a.code?"c":a.store?"s":""}
+function kindA(a){if(!a)return "";const c=a.cmp;if(c&&((c.st&&c.st.length>1)||(c.a&&c.b)||(c.codes&&c.codes.length>1)))return "x";if(a.pre&&!a.code)return "pf";if(mnyK(a))return "m";if(a.rank)return "r";if(a.buy)return "p";if(a.need&&(a.code||a.store||a.vendor))return "n";if(a.stale)return "st";if(a.where&&a.code&&!a.store)return "w";if(a.vgrp&&a.vgrp.length&&!a.vendor&&!a.code&&!((a.zs&&a.zs.length)||(a.cls&&a.cls.length)))return "vg";if(!a.code&&((a.zs&&a.zs.length)||(a.cls&&a.cls.length)))return "z";if(a.vendor&&!a.code)return "v";return a.code?"c":a.store?"s":""}
 const hGet=()=>{try{const a=JSON.parse(localStorage.getItem("stk_ask")||"[]");return Array.isArray(a)?a.filter(x=>typeof x==="string"&&x).slice(0,8):[]}catch(e){return []}};
 const hAdd=q=>{try{localStorage.setItem("stk_ask",JSON.stringify([q].concat(hGet().filter(x=>x!==q)).slice(0,8)))}catch(e){}};
 function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||!DATA||!DATA.has){UI.a=null;paint(false);return}
@@ -2281,6 +2299,7 @@ function vAsk(){
  if(a.cmp&&a.cmp.b&&!B)nt.push(`<div class="stk-rep w">فترة المقارنة: تاريخ البداية بعد تاريخ النهاية.</div>`);
  if(a.where&&!a.code&&K!=="r"&&K!=="x")nt.push(`<div class="stk-rep">«مين عنده» تحتاج كود الصنف: اكتبه في السؤال أو في خانة الكود.</div>`);
  if(K==="x"&&cs&&a.cmp.b)nt.push(`<div class="stk-rep">قارنتُ الفروع في الفترة الأولى فقط. لمقارنة فترتين اترك فرعاً واحداً.</div>`);
+ if(a.money&&K!=="m"&&!a.code)nt.push(`<div class="stk-rep w">💰 قيمة المبيعات بالريال متاحة بالفرع واليوم فقط (بلا أكواد ولا موردين). المعروض هنا بعدد القطع. اسأل مثلاً: «مبيعات فرع الملقا بالريال الشهر ده».</div>`);
  if(a.unk.length)nt.push('<div class="stk-rep">لم أفهم من سؤالك: <b data-notr>'+E(a.unk.join(" · "))+"</b> — لم يدخل في الحساب.</div>");
  const rcOld=!(META&&META.q&&META.q.rc!==undefined),upB=`<button class="bt s" type="button" data-sk="tab" data-t="up">افتح «الملفات»</button>`;// rcOld: ملف الكميات المحفوظ رُفع قبل تحديث المستلم
  if(a.rc&&!DATA.hasRc)nt.push(rcOld?`<div class="stk-rep w">«المستلم» لم يُحفظ بعد: ملف الكميات الموجود على المنصة رُفع قبل تحديث «المستلم». ارفع ملف الكميات مرة أخرى من تبويب «الملفات» ليظهر المستلم هنا. ${upB}</div>`:`<div class="stk-rep w">«المستلم» غير متاح: ملف الكميات المرفوع ليس فيه عمود استلام صالح لكل فرع. ارفع ملف كميات فيه عمود المستلم ليظهر هنا. المتاح الآن: الرصيد والمبيعات. ${upB}</div>`);
@@ -2297,6 +2316,8 @@ function vAsk(){
  else if(K==="p")ans=ansBuy(a,P);
  else if(K==="n")ans=ansNeed(a,P);
  else if(K==="st")ans=ansStale(a,P);
+ else if(K==="pf")ans=ansPre(a,P);
+ else if(K==="m")ans=ansMoney(a,P);
  else if(K==="vg")ans=ansVGroup(a,P);
  else if(K==="z")ans=ansAttr(a,P);
  else if(K==="v")ans=ansVendor(a,P);
@@ -2304,7 +2325,7 @@ function vAsk(){
  else if(a.store)ans=ansStore(a,P);
  else{LASTX=null;ans=em("لم أجد في سؤالك كوداً ولا فرعاً ولا مورداً.<br>اكتب كود الصنف (مثل الأمثلة في الأعلى) أو اسم الفرع أو رقمه أو اسم المورد، أو اخترها من القوائم.")}
  const vnote=a.vendor&&(K==="c"||K==="w")?`<div class="stk-rep">الجواب عن الكود كله؛ المورد لا يغيّر أرقام كود بعينه.</div>`:"";
- return box+und+nt.join("")+gapNote(P)+(K==="x"&&B&&!cs?gapNote(B):"")+vnote+ans+(ans&&K&&!perBad?src:"");
+ return box+und+nt.join("")+gapNote(P)+(K==="x"&&B&&!cs?gapNote(B):"")+vnote+ans+(ans&&K&&K!=="m"&&!perBad?src:"");
 }
 /* (v180) أجوبة الترتيب و«مين عنده» والمورد والمقارنة. الضغط على أي اسم في جدول يفتح بطاقته (rgo) */
 const stL=ti=>`<a href="#" data-sk="rgo" data-k="store" data-v="${E(DATA.st[ti])}" style="color:inherit">${sn(ti)}</a>`;
@@ -2405,6 +2426,60 @@ function ansStale(a,P){
  ${L.length?`<div class="stk-pan"><div class="tw"><table class="stk-t"><thead><tr><th>الفرع</th><th>الكود</th><th>اللون والمقاس</th><th class="n">الرصيد</th></tr></thead><tbody>${L.slice(0,80).map(l=>`<tr><td>${stL(l.ti)}</td><td>${codeL(DATA.k[l.ki][0])}</td><td>${varL(l.ki)}</td><td class="n"><b>${fmt(l.on)}</b></td></tr>`).join("")}</tbody></table></div>${L.length>80?`<p class="stk-src">معروض 80 من ${fmt(L.length)} (الأكبر رصيداً أولاً). القائمة كلها في «إكسل».</p>`:""}</div>`:em("لا أصناف راكدة بهذه الشروط 👌")}`;
 }
 /* (v260) كلمة تطابق أكثر من مورد («الشربات» = 4 موردين): مجموعهم معاً، وكل مورد وحده */
+/* (v281) «الكود يبدأ بـ»، قيمة المبيعات بالريال في «اسأل»، ونصيب الكود ومشترياته */
+const valSt=s=>{if(!s)return "";const all=[...new Set(VALR.map(x=>x.s))];if(all.indexOf(s)>=0)return s;const p=cd(s);for(const x of all)if(cd(x)===p)return x;return null};
+const monR=P=>{if(P)return P;const l=valLast()||today();return {from:l.slice(0,4)+"-01-01",to:l}};
+function ansMoney(a,P){
+ const wait=`<div class="stk-busy">جاري تحميل مبيعات الفروع…</div>`;
+ if(!X.sv){LASTX=null;return em("قيمة المبيعات بالريال تحتاج صلاحية «مبيعات الفروع بالريال» من جدول الصلاحيات.")}
+ if(VALS===0){valLoad();return wait}if(VALS===1)return wait;
+ if(VALS===3){LASTX=null;return em(`تعذّرت قراءة مبيعات الفروع بالريال. تأكد من الإنترنت ومن لصق القواعد الجديدة. <button class="bt s" type="button" data-sk="vretry">أعد المحاولة</button>`)}
+ if(!VALR.length){LASTX=null;return em("لم يُرفع ملف قيمة المبيعات بعد.")}
+ const R=monR(P),st=valSt(a.store);if(st===null){LASTX=null;return em("هذا الفرع غير موجود في ملف قيمة المبيعات.")}
+ const A=valStats(VALR,{from:R.from,to:R.to}),S=st?valStats(VALR,{from:R.from,to:R.to,store:st}):A,dl=d=>`<bdi data-notr dir="ltr">${E(d)}</bdi>`,nm=s=>`<bdi dir="ltr" data-notr>${E(s)}</bdi>`,last=valLast(),rTo=R.to>last?last:R.to;
+ const src=`<div class="stk-rep">صافي المبيعات بالريال بلا ضريبة وبعد المرتجع، من ملف قيمة المبيعات المرفوع، من ${dl(R.from)} إلى ${dl(rTo)}. قيمة المبيعات متاحة بالفرع واليوم فقط (بلا أكواد).</div>`;
+ if(!S.n){LASTX=null;return src+em("لا مبيعات مرفوعة في هذه الفترة.")}
+ const T=[tile(fmt(S.total),"ريال · صافي المبيعات","k"),tile(fmt(S.avg),"ريال · متوسط اليوم"),tile(fmt(S.days.length),"يوم فيه مبيعات")];
+ let body="";
+ if(st){const i=A.stores.findIndex(e=>e.s===st);if(i>=0)T.push(tile((i+1)+" / "+A.stores.length,"ترتيبه بين الفروع بالريال"),tile(pct(A.total>0?S.total/A.total:null),"نصيبه من مبيعات كل الفروع"));
+  const C0=a.store&&DATA.sti.has(a.store)?storeCard(DATA,CFG,a.store,P):null;
+  if(C0&&C0.sold>0&&(!P||coverage(META,P).ok)){T.push(tile(fmt(C0.sold),"قطعة باعها "+(P?"في الفترة":"من أول السنة")),tile(fmt(S.total/C0.sold),"ريال · متوسط سعر القطعة (تقريبي)"))}
+  LASTX={name:"ريال-"+cd(st),head:["الشهر","صافي المبيعات بالريال"],rows:()=>S.months.map(m=>[m,r2(S.byM[m])])};
+  const mx=Math.max(1,...S.months.map(m=>Math.abs(S.byM[m])));
+  body=`<div class="stk-card"><h3>شهراً بشهر</h3>${S.months.map(m=>`<div class="stk-day"><span data-notr>${m}</span><i class="${S.byM[m]<0?"m":""}" style="width:${Math.round(Math.abs(S.byM[m])/mx*58)}%"></i><b>${fmt(S.byM[m])}</b></div>`).join("")}</div>`}
+ else{if(S.stores.length)T.push(tile(S.stores[0].s,"الأعلى مبيعاً"),tile(fmt(S.stores.length),"فرع له مبيعات"));
+  const L=a.rank&&a.rank.dir===1?S.stores.slice().reverse():S.stores;
+  LASTX={name:"ريال-الفروع",head:["الفرع","صافي المبيعات بالريال","النصيب %","متوسط اليوم"],rows:()=>L.map(e=>[e.s,r2(e.a),S.total>0?Math.round(e.a/S.total*1000)/10:"",e.days?r2(e.a/e.days):""])};
+  body=`<div class="stk-pan"><h3 class="stk-ph">ترتيب الفروع بالريال</h3><div class="tw"><table class="stk-t"><thead><tr><th class="n">#</th><th>الفرع</th><th class="n">ريال</th><th class="n">النصيب</th><th class="n">متوسط اليوم</th></tr></thead><tbody>${L.map((e,i)=>`<tr><td class="n rk">${i+1}</td><td>${DATA.sti.has(e.s)?`<a href="#" data-sk="pick" data-k="store" data-v="${E(e.s)}" style="color:inherit">${nm(e.s)}</a>`:nm(e.s)}</td><td class="n"><b>${fmt(e.a)}</b></td><td class="n">${pct(S.total>0?e.a/S.total:null)}</td><td class="n">${e.days?fmt(e.a/e.days):"—"}</td></tr>`).join("")}</tbody></table></div></div>`}
+ return `<div class="stk-ttl"><h3>💰 المبيعات بالريال</h3>${st?`<small>الفرع: ${nm(st)}</small>`:"<small>كل الفروع</small>"}</div><div class="stk-tiles">${T.join("")}</div>
+ <div class="stk-act"><button class="bt" type="button" data-sk="goval">💰 افتح «مبيعات الفروع بالريال»</button>${a.store?`<button class="bt" type="button" data-sk="pick" data-k="money" data-v="">📦 بطاقة الفرع بالقطع</button><button class="bt" type="button" data-sk="pick" data-k="store" data-v="">كل الفروع</button>`:""}</div>${src}${body}`;
+}
+function ansPre(a,P){
+ const R=attrCard(DATA,CFG,{pre:a.pre,store:a.store,vendor:a.vendor,period:P}),offB=`<button class="bt s" type="button" data-sk="pick" data-k="pre" data-v="">✕ بلا شرط البداية</button>`;
+ if(!R){LASTX=null;return em("لا بيانات بهذه الشروط: الفرع أو المورد غير موجود في ملف الكميات.")}
+ const perW=P?"في الفترة":"من أول السنة",pre=`<bdi dir="ltr" data-notr>${E(a.pre)}</bdi>`,of=a.vendor?"المورد":a.store?"الفرع":"الشركة";
+ if(!R.nCodes){LASTX=null;return em(`لا يوجد كود يبدأ بـ ${pre}${a.vendor?" عند هذا المورد":""}${a.store?" في هذا الفرع":""}. ${offB}`)}
+ LASTX={name:"اكواد-تبدا-"+a.pre,head:["الكود","المورد","المبيعات","الرصيد","رصيد المستودع"],rows:()=>R.codes.map(c=>[c.code,vnOf(c.vi),c.sold,c.on,c.wh]),prn:{ttl:"الأكواد التي تبدأ بـ "+a.pre,sub:[a.vendor?"المورد: "+a.vendor:"",a.store?"الفرع: "+a.store:""].filter(Boolean).join(" · ")}};
+ const T=[tile(fmt(R.sold),"قطعة مباعة "+perW+" (الصافي)","k"),tile(pct(R.share),"من كل مبيعات "+of+" "+perW,"k"),tile(fmt(R.nSold)+" / "+fmt(R.nCodes),"كود باع منه / كود يبدأ بهذا الرقم"),tile(fmt(R.br),a.store?"قطعة عند الفرع الآن":"قطعة في الفروع الآن"),tile(fmt(R.wh),"قطعة في المستودع"),tile(fmt(R.noWh),"كود يُباع والمستودع خالٍ منه",R.noWh?"bad":"")];
+ const bar=(v,mx)=>'<i class="stk-zb" style="width:'+Math.max(2,Math.round(Math.max(0,v)/Math.max(1,mx)*100))+'%"></i>';
+ const top=R.codes.slice(0,60),cMx=Math.max(1,...top.map(c=>c.sold)),sMx=Math.max(1,...R.stores.map(e=>e.sold)),me=a.store?DATA.sti.get(a.store):-1;
+ const cdT=`<div class="stk-card"><h3>الأكواد (${fmt(R.nCodes)})</h3><div class="tw"><table class="stk-t"><thead><tr><th class="n">#</th><th>الكود</th><th>المورد</th><th class="n">باع</th><th></th><th class="n">النصيب</th><th class="n">${a.store?"رصيد الفرع":"الرصيد"}</th><th class="n">المستودع</th></tr></thead><tbody>${top.map((c,i)=>`<tr><td class="n rk">${i+1}</td><td class="c">${codeL(c.code)}</td><td data-notr style="white-space:normal">${E(vnOf(c.vi)||"—")}</td><td class="n"><b>${fmt(c.sold)}</b></td><td style="min-width:44px">${bar(c.sold,cMx)}</td><td class="n">${pct(R.sold>0?c.sold/R.sold:null)}</td><td class="n">${fmt(c.on)}</td><td class="n${c.wh<=0?" z":""}">${fmt(c.wh)}</td></tr>`).join("")}</tbody></table></div>${R.codes.length>top.length?`<p class="stk-src">معروض ${fmt(top.length)} من ${fmt(R.codes.length)} كوداً. القائمة كلها في «إكسل».</p>`:""}</div>`;
+ const stT=`<div class="stk-card"><h3>في كل فرع</h3><div class="tw"><table class="stk-t"><thead><tr><th>الفرع</th><th class="n">باع</th><th></th><th class="n">من مبيعات الفرع</th><th class="n">رصيده</th></tr></thead><tbody>${R.stores.map(e=>`<tr${e.ti===me?' class="fo"':""}><td>${stL(e.ti)}</td><td class="n"><b>${fmt(e.sold)}</b></td><td style="min-width:44px">${bar(e.sold,sMx)}</td><td class="n">${pct(e.share)}</td><td class="n${e.on<=0&&e.sold>0?" z":""}">${fmt(e.on)}</td></tr>`).join("")}</tbody></table></div></div>`;
+ return `<div class="stk-ttl"><h3>الأكواد التي تبدأ بـ ${pre}</h3>${ctxL(a)}</div><div class="stk-tiles">${T.join("")}</div><div class="stk-act">${offB}</div><div class="stk-up">${cdT}${stT}</div>`;
+}
+// إضافات بطاقة الصنف: مشترياته (من ملف المشتريات)، نصيبه من المبيعات لو سُئل عن النسبة، وملاحظة الفلوس
+function codeExtra(a,P){
+ const t=[],h=[],R=P||buyR(a),rm=months(R.from,R.to).filter(ym=>META&&META.d&&META.d[ym]&&Array.isArray(META.d[ym].rv)&&META.d[ym].rv.length);let pur=false;
+ if(rm.length&&rm.every(ym=>DATA.d[ym])){const S=purchLog(DATA,Object.assign({code:a.code,cl:a.cl,z:a.z,from:R.from,to:R.to},PURO()));pur=true;
+  if(S&&S.times)t.push(tile(fmt(S.q),"قطعة اشتريناها "+(P?"في الفترة":"من أول السنة")),tile(fmt(S.times),"مرة شراء"),tile(S.last||"—","آخر شراء","dt"));
+  else h.push(`<div class="stk-rep">لا مشتريات مسجّلة لهذا الصنف ${P?"في الفترة":"من أول السنة"} في ملف المشتريات المرفوع.</div>`)}
+ if(a.share){const S=codeShare(DATA,CFG,a.code,{store:a.store,period:P});if(S){const vn=vnOf(S.vi),of=a.store?"الفرع":"الشركة";
+  h.push(`<div class="stk-pan"><h3 class="stk-ph">نصيب الكود من المبيعات ${P?"في الفترة":"من أول السنة"}</h3><div class="stk-tiles">${vn?tile(pct(S.shareV),"من مبيعات مورده «"+E(vn)+"»"+(a.store?" في الفرع":""),"k")+tile(S.rankV+" / "+S.nV,"ترتيبه بين أكواد المورد"):""}${tile(pct(S.shareAll),"من كل مبيعات "+of,"k")}${tile(S.rankAll+" / "+S.nAll,"ترتيبه بين كل الأكواد")}</div>${a.cat?`<div class="stk-rep">لا يوجد في ملفات السيستم تصنيف باسم «<b data-notr>${E(a.cat)}</b>»، فحسبتُ النسبة داخل مورد الكود ومن كل المبيعات. لو المقصود أكواد محددة اكتبها معاً (مثل «قارن 13026 و13027») أو اكتب «الكود يبدأ 13».</div>`:""}</div>`)}}
+ if(a.money){let m="قيمة المبيعات بالريال لكود بعينه غير متاحة: ملف قيمة المبيعات المرفوع مجمّع بالفرع واليوم بلا أكواد، فالمعروض هنا عدد القطع. لمعرفة قيمة كل كود نحتاج تقريراً من Power BI فيه: الكود، الفرع، التاريخ، وصافي المبيعات.";
+  if(a.store&&X.sv){if(VALS===0)valLoad();else if(VALS===2&&VALR.length){const st=valSt(a.store),R2=monR(P);if(st){const V=valStats(VALR,{from:R2.from,to:R2.to,store:st});m+=` إجمالي مبيعات الفرع من كل الأصناف ${P?"في الفترة":"من أول السنة"}: <b data-notr dir="ltr">${fmt(V.total)}</b> ريال.`}}}
+  h.push(`<div class="stk-rep w">💰 ${m}</div>`)}
+ return {t,h:h.join(""),pur};
+}
 function ansVGroup(a,P){
  const RV=rankBy(DATA,CFG,{by:"vendor",store:a.store,period:P});if(!RV){LASTX=null;return em("لا بيانات بهذه الشروط.")}
  const set=new Set(a.vgrp.map(v=>DATA.vn.indexOf(v)).filter(i=>i>=0)),rows=RV.rows.filter(r=>set.has(r.k));let sold=0,on=0;rows.forEach(r=>{sold+=r.sold;on+=r.on});
@@ -2494,12 +2569,12 @@ function ansCode(a,P){
   const vs=R.vars.filter(v=>v.wh||v.br||v.sold);
   tabs=`<div class="stk-up"><div class="stk-card"><h3>الفروع</h3><table class="stk-t"><thead><tr><th>الفرع</th>${rcOn?`<th class="n">استلم</th>`:""}<th class="n">الرصيد</th><th class="n">المبيعات</th><th class="n">النصيب</th>${dat?`<th class="n">آخر بيع</th>`:""}</tr></thead><tbody>${R.stores.map(s=>`<tr><td><a href="#" data-sk="pick" data-k="store" data-v="${E(DATA.st[s.ti])}" style="color:inherit">${sn(s.ti)}</a></td>${rcOn?`<td class="n">${fmt(s.rc)}</td>`:""}<td class="n${s.on<=0?" z":""}">${fmt(s.on)}</td><td class="n"><b>${fmt(s.sold)}</b></td><td class="n">${R.allSold>0?pct(s.sold/R.allSold):"—"}</td>${dat?`<td class="n" data-notr>${E(s.last||"—")}</td>`:""}</tr>`).join("")}</tbody></table></div>
   <div class="stk-card"><h3>الألوان والمقاسات</h3><table class="stk-t"><thead><tr><th>اللون</th><th class="n">المقاس</th>${rcOn?`<th class="n">استلمته الفروع</th>`:""}<th class="n">المستودع</th><th class="n">الفروع</th><th class="n">المبيعات</th></tr></thead><tbody>${vs.slice(0,80).map(v=>{const x=DATA.k[v.ki];return `<tr><td data-notr>${E(x[1]||"—")}</td><td class="n" data-notr>${E(x[2]||"—")}</td>${rcOn?`<td class="n">${fmt(v.rc)}</td>`:""}<td class="n${v.wh<=0?" z":""}">${fmt(v.wh)}</td><td class="n">${fmt(v.br)}</td><td class="n"><b>${fmt(v.sold)}</b></td></tr>`}).join("")}</tbody></table></div></div>`}
- const nt=[];
+ const nt=[],XT=codeExtra(a,P);XT.t.forEach(x=>T.push(x));
  if(!P&&DR&&!loaded)nt.push(`<div class="stk-rep">أيام البيع وآخر يوم بيع تظهر بعد تحميل ملفات التاريخ…</div>`);
  if(!P&&!DR)nt.push(`<div class="stk-rep">عدد أيام البيع وأول وآخر يوم بيع والمرتجع تظهر هنا عندما تغطي ملفات التاريخ السنة كلها، أو عندما تختار فترة مرفوعة من خانة «الفترة». المبيعات والأرصدة أعلاه كاملة من ملف الكميات.</div>`);
  if(!P&&dat&&cov&&cov.ok&&!near(R.dnet,R.sold))nt.push(`<div class="stk-rep w">⚠️ ملفات التاريخ تعطي <b data-notr>${fmt(R.dnet)}</b> قطعة لهذا الصنف وملف الكميات يعطي <b data-notr>${fmt(R.sold)}</b>. المعروض من ملف الكميات. راجع «فحص المطابقة» في تبويب «الملفات».</div>`);
  return `<div class="stk-ttl"><h3 data-notr><bdi dir="ltr">${E(a.code)}</bdi>${sub?` <small>${E(sub)}</small>`:""}</h3><small data-notr>${x0[3]>=0?E(DATA.vn[x0[3]]):""}</small>${a.store?`<small>الفرع: ${sn(R.me.ti)}</small>`:""}</div><div class="stk-tiles">${T.join("")}</div>
- <div class="stk-act"><button class="bt" type="button" data-sk="goitem">🔍 جدول الصنف في كل الفروع</button>${dHas()?`<button class="bt" type="button" data-sk="gosales">📅 مبيعاته يوماً بيوم</button>`:""}${a.store?`<button class="bt" type="button" data-sk="pick" data-k="store" data-v="">كل الفروع لهذا الصنف</button>`:""}</div>${nt.join("")}${tabs}`;
+ <div class="stk-act"><button class="bt" type="button" data-sk="goitem">🔍 جدول الصنف في كل الفروع</button>${dHas()?`<button class="bt" type="button" data-sk="gosales">📅 مبيعاته يوماً بيوم</button>`:""}${a.store?`<button class="bt" type="button" data-sk="pick" data-k="store" data-v="">كل الفروع لهذا الصنف</button>`:""}${XT.pur?`<button class="bt" type="button" data-sk="gopur">📥 مشترياته بالتفصيل</button>`:""}</div>${nt.join("")}${XT.h}${tabs}`;
 }
 function body(){
  if(LOADING&&!DATA)return `<div class="stk-busy">جاري تحميل بيانات المخزون…</div>`;
@@ -2581,7 +2656,7 @@ function wire(){
   else if(a==="code"){e.preventDefault();UI.code=t.dataset.c;UI.tab="item";UI.cl="";UI.sz="";paint(false);window.scrollTo(0,0)}
   else if(a==="ask"){const el=g("stk-ask");doAsk(el?el.value:UI.aq)}
   else if(a==="ex")doAsk(t.dataset.x);
-  else if(a==="pick"&&UI.a){e.preventDefault();const k=t.dataset.k;if(k==="store"||k==="code"||k==="cl"||k==="vendor"){UI.a[k]=t.dataset.v||"";UI.a.amb[k]=[];if(k==="code"){UI.a.cl="";UI.a.z="";UI.a.amb.cl=[]}paint(false)}}
+  else if(a==="pick"&&UI.a){e.preventDefault();const k=t.dataset.k;if(k==="store"||k==="code"||k==="cl"||k==="vendor"){UI.a[k]=t.dataset.v||"";UI.a.amb[k]=[];if(k==="code"){UI.a.cl="";UI.a.z="";UI.a.amb.cl=[]}paint(false)}else if(k==="pre"){UI.a.pre="";paint(false)}else if(k==="money"){UI.a.money=false;paint(false)}}
   // (v180) اسم في جدول ترتيب أو مقارنة ← بطاقته (بلا ترتيب ولا مقارنة ولا «مين عنده»)
   else if(a==="rgo"&&UI.a){e.preventDefault();const q=UI.a,k=t.dataset.k,v=t.dataset.v||"";if(k!=="store"&&k!=="code"&&k!=="vendor")return;if(q.cmp&&q.cmp.st)q.store=k==="store"?v:"";q[k]=v;if(k==="code"){q.cl="";q.z="";if(q.zs&&q.zs.length===1)q.z=q.zs[0];q.zs=[];q.cls=[]}q.rank=null;q.where=false;q.cmp=null;UI.lim=200;paint(false);window.scrollTo(0,0)}
   // (v187) توزيع حاوية
@@ -2645,6 +2720,8 @@ function wire(){
    else if(a==="gosales"){UI.code=q.code;UI.cl=q.cl;UI.sz=q.z;UI.st=q.store;if(P){UI.from=P.from;UI.to=P.to}UI.tab="sales"}
    else{UI.st=q.store;UI.vn=q.vendor||"";UI.q=(q.need||q.stale)&&q.code?q.code:"";UI.tab=a==="goneed"?"need":"stale";if(P){UI.per="c";UI.from=P.from;UI.to=P.to}else UI.per="ytd"}
    UI.lim=200;paint(false);window.scrollTo(0,0)}
+  else if(a==="goval"&&UI.a){const q=UI.a,R=monR(askP());UI.vs=valSt(q.store)||"";UI.vf=R.from;UI.vt=R.to;UI.tab="val";paint(false);window.scrollTo(0,0)}
+  else if(a==="gopur"&&UI.a){const q=UI.a,P=askP();UI.code=q.code;UI.cl=q.cl;UI.sz=q.z;if(P){UI.pf=P.from;UI.pt=P.to}UI.tab="pur";paint(false);window.scrollTo(0,0)}
   else if(a==="recon")doRecon();
   else if(a==="pub")publish(false);
   else if(a==="tabs")tabAll();
