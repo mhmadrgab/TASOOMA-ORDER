@@ -193,8 +193,9 @@ body.mkpr>*:not(#mkpr){display:none!important}#mkpr{display:none}body.mkpr #mkpr
 #mkm .ms-apk .apk span{flex:1;min-width:0}
 #mkm .ms-apk .apk .apb{flex:0 0 116px;width:116px;min-width:0;margin:0;padding:5px 8px;font-size:13px;display:none}
 #mkm .ms-apk .apk input:checked~.apb{display:block}
+.ms-tl.sm.ms-t2{grid-template-columns:1fr 1fr}
 #mkm .ms-adf{display:flex;flex-direction:column;gap:6px}
-#mkm .ms-adf .rw{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:2px 10px;align-items:center}
+#mkm .ms-adf .rw{display:grid;grid-template-columns:minmax(0,1fr) 104px 104px 104px;gap:2px 8px;align-items:center}
 #mkm .ms-adf .rw label,#mkm .ms-adf .rw span{font-size:13.5px;font-weight:600}
 #mkm .ms-adf .rw input{margin:0;width:100%}
 #mkm .ms-adf .rw b{font-variant-numeric:tabular-nums}
@@ -207,7 +208,7 @@ body.mkpr>*:not(#mkpr){display:none!important}#mkpr{display:none}body.mkpr #mkpr
 .ms-adt th{position:sticky;top:0;background:var(--card);color:var(--mut);font-weight:600;font-size:12px;z-index:1}
 .ms-adt tfoot td{border-bottom:0;font-weight:700;background:var(--soft);position:sticky;bottom:0}
 .ms-adt td:last-child:has(button){width:1%;padding:3px 6px}
-@media (max-width:560px){#mkm .ms-apk{grid-template-columns:1fr}.ms-adp.sm>div{grid-template-columns:1fr auto}}
+@media (max-width:560px){#mkm .ms-adf .rw{grid-template-columns:1fr 1fr 1fr}#mkm .ms-adf .rw label,#mkm .ms-adf .rw>span{grid-column:1/-1}#mkm .ms-apk{grid-template-columns:1fr}.ms-adp.sm>div{grid-template-columns:1fr auto}}
 @media print{#mkpr{font-size:12.5px;color:#111}#mkpr h1{font-size:20px;margin:0 0 4px}#mkpr h2{font-size:15px;margin:16px 0 6px;border-bottom:2px solid #8a5a83;padding-bottom:3px}#mkpr table{width:100%;border-collapse:collapse}#mkpr th,#mkpr td{border:1px solid #ccc;padding:5px 6px;text-align:start}#mkpr th{background:#f3ecf2}
  #mkpr .kv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}#mkpr .kv div{border:1px solid #ccc;border-radius:8px;padding:6px 8px}#mkpr .kv small{display:block;color:#555}#mkpr .kv b{font-size:15px}#mkpr p{margin:4px 0}}
 `;

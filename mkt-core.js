@@ -61,9 +61,17 @@ export const adPf = x => { const L = Array.isArray(x && x.aps) ? x.aps.filter((k
 export const adBud = (x, k) => { const b = x && x.abp && typeof x.abp === "object" ? N(x.abp[k]) : 0; if (b) return b; const P = adPf(x); return x && !x.abp && P.length === 1 && P[0] === k ? N(x.ab) : 0 };
 export const adKey = (P, e) => e.ap && P.indexOf(e.ap) >= 0 ? e.ap : (!e.ap && P.length === 1 ? P[0] : "-");
 // جدول الأيام × المنصات لمهمة إعلان: «-» = صرف قديم بلا منصة من منصات المهمة
-export const adGrid = (M, x) => { const P = adPf(x), sum = {}, by = {}; let tot = 0;
-  adOf(M, x.id).forEach(e => { const k = adKey(P, e), a = N(e.a), d = by[e.dt] || (by[e.dt] = {dt: e.dt, v: {}, tot: 0, n: 0}); d.v[k] = (d.v[k] || 0) + a; d.tot += a; d.n++; sum[k] = (sum[k] || 0) + a; tot += a });
-  return {P, cols: P.concat(sum["-"] ? ["-"] : []), sum, tot, days: Object.keys(by).sort().reverse().map(k => by[k])} };
+export const adGrid = (M, x) => { const P = adPf(x), sum = {}, vw = {}, ck = {}, by = {}; let tot = 0, tvw = 0, tck = 0;
+  adOf(M, x.id).forEach(e => { const k = adKey(P, e), a = N(e.a), d = by[e.dt] || (by[e.dt] = {dt: e.dt, v: {}, tot: 0, n: 0, vw: 0, ck: 0}); d.v[k] = (d.v[k] || 0) + a; d.tot += a; d.n++; d.vw += N(e.vw); d.ck += N(e.ck); sum[k] = (sum[k] || 0) + a; vw[k] = (vw[k] || 0) + N(e.vw); ck[k] = (ck[k] || 0) + N(e.ck); tot += a; tvw += N(e.vw); tck += N(e.ck) });
+  return {P, cols: P.concat(sum["-"] ? ["-"] : []), sum, vw, ck, tot, tvw, tck, days: Object.keys(by).sort().reverse().map(k => by[k])} };
+// 👁 (v280) أداء الإعلانات الممولة في الحملة كلها: المصروف والمشاهدات والنقرات لكل منصة (من الصرف اليومي الذي كُتبت له مشاهدات أو نقرات)
+export const adPerf = (M, cid) => { const R = {a: 0, vw: 0, ck: 0, by: {}}; exOf(M, cid).filter(x => x.k === "ads" && (N(x.vw) || N(x.ck))).forEach(x => { const k = x.ap || "oth", e = R.by[k] || (R.by[k] = {a: 0, vw: 0, ck: 0}); e.a += N(x.a); e.vw += N(x.vw); e.ck += N(x.ck); R.a += N(x.a); R.vw += N(x.vw); R.ck += N(x.ck) }); return R };
+// 💰 (v280) مبيعات الفروع في فترة الحملة من ملف قيمة المبيعات (M.SV: يوم ← إجمالي كل الفروع)، مقابل نفس عدد الأيام قبلها. بلا بيانات = null
+export function campSales(M, c, t) { const SV = M && M.SV; if (!SV || !SV.size || !c || !c.from || c.from > t) return null;
+  const last = M.SVL || "", first = M.SVF || "", end = c.to && c.to < t ? c.to : t, to = last && last < end ? last : end; if (!last || to < c.from) return {wait: true, last};
+  const n = days(c.from, to) + 1, sum = (a, k) => { let s = 0; for (let i = 0; i < k; i++) s += N(SV.get(addD(a, i))); return Math.round(s * 100) / 100 };
+  const pf = addD(c.from, -n), cur = sum(c.from, n), pok = !!first && pf >= first, prev = pok ? sum(pf, n) : 0, diff = Math.round((cur - prev) * 100) / 100;
+  return {from: c.from, to, n, cur, prev, pok, diff, up: pok && prev > 0 ? Math.round(diff / prev * 100) : null, last, part: to < end} }
 export const kpOf = c => Array.isArray(c && c.kp) ? c.kp : [];
 export const kpName = k => k.k === "oth" && k.l ? k.l : lab(KP, k.k);
 export const isOpen = x => x.st !== "done";
@@ -131,8 +139,14 @@ export function insights(M, c, t) {
   const kps = kpOf(c); kps.forEach(k => { const v = N(k.v), tg = N(k.t); if (!tg) return; const p = pct(v, tg);
     if (p >= 100) out.push(["ok", `تحقق هدف «${kpName(k)}»: ${big(v)} من ${big(tg)} (${p}%).`]);
     else if (c.st === "live" && tp >= 40 && p < tp - 25) out.push(["warn", `هدف «${kpName(k)}» متأخر: تحقق ${p}% ومضى ${tp}% من المدة.`]) });
+  const sl = campSales(M, c, t), pfm = adPerf(M, c.id), slOk = !!(sl && !sl.wait);
+  if (slOk) { out.push([sl.up == null ? "info" : sl.up >= 0 ? "ok" : "warn", `مبيعات الفروع في فترة الحملة (${sl.n} يوماً): ${money(sl.cur)} ريال` + (sl.up == null ? "." : `، مقابل ${money(sl.prev)} في نفس عدد الأيام قبلها (${sl.up >= 0 ? "+" : ""}${sl.up}%).`)]);
+    if (s.tot > 0) out.push(["info", `كل ريال صُرف على الحملة قابله ${(sl.cur / s.tot).toFixed(1)} ريال مبيعات في فترتها` + (sl.up != null && sl.diff > 0 ? `، والزيادة عن الفترة السابقة ${money(sl.diff)} ريال (${(sl.diff / s.tot).toFixed(1)} ضعف المصروف).` : ".")]) }
+  if (pfm.vw || pfm.ck) { out.push(["info", `الإعلانات الممولة: ${big(pfm.vw)} مشاهدة و${big(pfm.ck)} نقرة` + (pfm.vw ? ` · تكلفة 1000 مشاهدة ${(pfm.a / pfm.vw * 1000).toFixed(1)} ريال` : "") + (pfm.ck ? ` · تكلفة النقرة ${(pfm.a / pfm.ck).toFixed(2)} ريال` : "") + "."]);
+    const bp = Object.keys(pfm.by).filter(k => pfm.by[k].ck > 0).map(k => ({k, v: pfm.by[k].a / pfm.by[k].ck})).sort((a, b) => a.v - b.v);
+    if (bp.length >= 2) out.push(["ok", `أقل تكلفة للنقرة: ${ADS[bp[0].k] || bp[0].k} (${bp[0].v.toFixed(2)} ريال)، والأعلى: ${ADS[bp[bp.length - 1].k] || bp[bp.length - 1].k} (${bp[bp.length - 1].v.toFixed(2)} ريال).`]) }
   const sp = s.tot; if (sp > 0) {
-    const rev = kps.find(k => k.k === "rev" && N(k.v) > 0); if (rev) out.push([N(rev.v) >= sp ? "ok" : "warn", `العائد: كل ريال صُرف أعاد ${(N(rev.v) / sp).toFixed(1)} ريال مبيعات (${money(rev.v)} مبيعات مقابل ${money(sp)} مصروف).`]);
+    const rev = !slOk && kps.find(k => k.k === "rev" && N(k.v) > 0); if (rev) out.push([N(rev.v) >= sp ? "ok" : "warn", `العائد: كل ريال صُرف أعاد ${(N(rev.v) / sp).toFixed(1)} ريال مبيعات (${money(rev.v)} مبيعات مقابل ${money(sp)} مصروف).`]);
     const rc = kps.find(k => (k.k === "reach" || k.k === "views") && N(k.v) > 0); if (rc) out.push(["info", `${rc.k === "reach" ? "تكلفة الوصول لكل 1000 شخص:" : "تكلفة كل 1000 مشاهدة:"} ${(sp / N(rc.v) * 1000).toFixed(1)} ريال.`]);
     const od = kps.find(k => k.k === "ord" && N(k.v) > 0); if (od) out.push(["info", `تكلفة الطلب الواحد: ${money(sp / N(od.v))} ريال.`]);
   }

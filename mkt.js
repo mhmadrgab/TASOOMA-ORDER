@@ -46,7 +46,7 @@ export function initMk(ctx) {
 }
 export function stopMk() {
   UN.forEach(f => { try { f() } catch (e) {} }); UN = []; ON = false; LOADED = false; BUSY = false; PEND = null; closeDrawer(true);
-  RAW.clear(); M.C.clear(); M.T.clear(); M.D.clear(); M.X.clear(); M.P.clear(); IBC.clear(); WD = new Map();
+  RAW.clear(); M.C.clear(); M.T.clear(); M.D.clear(); M.X.clear(); M.P.clear(); IBC.clear(); WD = new Map(); M.SV = null; M.SVL = M.SVF = ""; SVM = null; SVD = {}; SVOK = false; SVBUSY = false; SVTRY = {};
   document.removeEventListener("click", onClick); document.removeEventListener("change", onChange); document.removeEventListener("input", onInput); document.removeEventListener("keydown", onKey);
   ["dragstart", "dragend", "dragover", "dragleave", "drop"].forEach(k => document.removeEventListener(k, onDrag));
   ["mkm", "msd", "mkpr"].forEach(i => { const m = g(i); if (m) m.remove() }); if (ROOT) ROOT.remove(); ROOT = TOP = BODY = null; X = null;
@@ -55,10 +55,31 @@ function sub(q, map, last) {
   UN.push(onSnapshot(q, s => { map.clear(); s.docs.forEach(d => map.set(d.id, Object.assign({id: d.id}, d.data()))); if (last) LOADED = true; changed() },
     () => { if (last) { LOADED = true; toast("تعذّرت قراءة الحملات. ربما لم تتحدّث قواعد المنصة بعد", "er"); changed() } }));
 }
+// 💰 (v280) مبيعات الفروع اليومية لقياس الحملات: mksv/yYYYY = {d:{"MMDD": إجمالي كل الفروع}} يقرؤها مدير التسويق.
+// ينشرها جهاز الأدمن/مالك النظام وحده: يسمع stkv/meta (ملف قيمة المبيعات في «تحليل المخزون») وكل ما يتغيّر يعيد حساب إجمالي كل يوم ويكتبه.
+// ⚠️ شكل stkv/yYYYY (مضغوط gzip ثم base64، {y, st:[فروع], r:[شهر×100+يوم، رقم الفرع، المبلغ…]}) = valPack في stock.js: لو تغيّر هناك يتغيّر هنا.
+let SVM = null, SVD = {}, SVOK = false, SVBUSY = false, SVTRY = {};
+const svGun = async z => { const b = atob(z), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"))).text() };
+const p2 = v => (v < 10 ? "0" : "") + v;
+function svBuild() { const m = new Map(); let lo = "", hi = ""; Object.keys(SVD).forEach(y => { const d = SVD[y] && SVD[y].d || {}; Object.keys(d).forEach(k => { const dt = y + "-" + k.slice(0, 2) + "-" + k.slice(2); m.set(dt, N(d[k])); if (!lo || dt < lo) lo = dt; if (dt > hi) hi = dt }) }); M.SV = m; M.SVF = lo; M.SVL = hi }
+async function svSync() {
+  if (!X || !SVM || !SVOK || SVBUSY) return; const ys = Object.keys(SVM.y || {}).filter(y => /^20\d\d$/.test(y) && N(SVD[y] && SVD[y].src) !== N(SVM.y[y].at) && SVTRY[y] !== N(SVM.y[y].at)); if (!ys.length) return; SVBUSY = true;
+  for (const y of ys) { const src = N(SVM.y[y].at); SVTRY[y] = src;
+    try { const s = await getDoc(doc(X.db, "stkv", "y" + y)); if (!s.exists()) continue; const o = JSON.parse(await svGun(String(s.data().z || ""))), d = {}; if (!o || !Array.isArray(o.r)) continue;
+      for (let i = 0; i + 2 < o.r.length; i += 3) { const md = N(o.r[i]), k = p2(Math.floor(md / 100)) + p2(md % 100); d[k] = (d[k] || 0) + N(o.r[i + 2]) } Object.keys(d).forEach(k => { d[k] = Math.round(d[k] * 100) / 100 });
+      const cv = (Array.isArray(SVM.y[y].cv) ? SVM.y[y].cv : []).filter(r => Array.isArray(r)).slice(0, 40).map(r => [String(r[0] || ""), String(r[1] || "")]);
+      await setDoc(doc(X.db, "mksv", "y" + y), {v: 1, y: String(y), d, cv, src, at: Date.now(), by: {e: me(), n: myN()}}) } catch (e) {} }
+  SVBUSY = false;
+}
+function svStart(db) {
+  if (!X.mgr) return; M.SV = new Map();
+  UN.push(onSnapshot(collection(db, "mksv"), s => { SVD = {}; s.docs.forEach(d => { if (/^y20\d\d$/.test(d.id)) SVD[d.id.slice(1)] = d.data() }); SVOK = true; svBuild(); changed(); svSync() }, () => { SVOK = true }));
+  if (X.fin) UN.push(onSnapshot(doc(db, "stkv", "meta"), s => { SVM = s.exists() ? s.data() : null; svSync() }, () => {}));
+}
 function start() {
   if (ON || !X) return; ON = true; const db = X.db, m = me();
   UN.push(onSnapshot(collection(db, "whdir"), s => { WD = new Map(); s.docs.forEach(d => WD.set(d.id.toLowerCase(), d.data())); changed() }, () => {}));
-  sub(collection(db, "mkp"), M.P);// 🤝 (v272) دليل المشاهير وشركات الدعاية
+  svStart(db); sub(collection(db, "mkp"), M.P);// 🤝 (v272) دليل المشاهير وشركات الدعاية
   sub(collection(db, "mkt"), RAW);// القواعد تُرجع ما يحق له فقط: كل المهام لمن يرى الكل، ومهام حملاته لعضو الفريق
   if (X.all) { sub(collection(db, "mkd"), M.D); sub(collection(db, "mkx"), M.X); sub(collection(db, "mkc"), M.C, true) }
   else { sub(query(collection(db, "mkx"), where("by.e", "==", m)), M.X); /* 📢 (v275) ما سجّله من صرف الإعلانات */ sub(query(collection(db, "mkd"), where("by.e", "==", m)), M.D); sub(query(collection(db, "mkc"), where("tm", "array-contains", m)), M.C, true) }
@@ -431,22 +452,25 @@ function adForm(x, dt) { const c = M.C.get(x.c), tot = adOf(M, x.id).reduce((a, 
   modal(`<h3>صرف الإعلان اليومي</h3><p class="sub"><bdi data-notr>${E(x.t)}</bdi> · حملة «<bdi data-notr>${E(c ? c.n : "")}</bdi>»</p>
   <label class="lb" for="mk-ad">اليوم</label><input id="mk-ad" type="date" max="${today()}" value="${E(dt || today())}">
   <label class="lb">${P.length > 1 ? "ما صرفته كل منصة في هذا اليوم (ريال)" : "ما صُرف في هذا اليوم (ريال)"}</label><div id="mk-adr" class="ms-adf"></div>
-  <div class="ibh" id="mk-adh" aria-live="polite"></div>
+  <div class="ibh">المشاهدات والنقرات اختيارية، من تقرير المنصة لنفس اليوم.</div><div class="ibh" id="mk-adh" aria-live="polite"></div>
   <label class="lb" for="mk-an2">ملاحظة (اختياري)</label><input id="mk-an2" maxlength="200" placeholder="مثال: إعلان الخصم · 12 ألف مشاهدة">
   <p class="sub">صُرف على هذا الإعلان حتى الآن ${money(tot)} ريال${N(x.ab) ? " من " + money(x.ab) : ""}.</p>${foot(["adsave", ""], "حفظ صرف اليوم")}`, "ad", x.id); adDay(); const f = g("mkm").querySelector("[data-mkda]"); if (f) try { f.focus() } catch (er) {} }
 function adDay() { const mm = g("mkm"), bx = g("mk-adr"), d = g("mk-ad"); if (!bx || !d || mm.dataset.mkv !== "ad") return; const x = M.T.get(mm.dataset.mki); if (!x) return; const SL = adSlots(x, d.value), one1 = SL.filter(s => s.e), nt = g("mk-an2");
   bx.innerHTML = SL.map(s => { const nm = s.k === "-" ? "غير محددة" : lab(ADP, s.k), b = s.k === "-" ? 0 : adBud(x, s.k), hint = s.e ? "مسجَّل لهذا اليوم. عدّل الرقم، أو امسحه لحذفه." : s.n ? "مسجَّل " + money(s.sum) + " ريال من قبل. ما تكتبه الآن يُضاف إليه." : b ? "ميزانيتها " + money(b) + " ريال" : "";
-    return s.k === "-" && !s.e ? `<div class="rw"><span>${nm}</span><b>${money(s.sum)}</b><small></small></div>` : `<div class="rw"><label for="mk-da-${s.k === "-" ? "na" : s.k}">${E(nm)}</label><input id="mk-da-${s.k === "-" ? "na" : s.k}" data-mkda="${s.k}" inputmode="decimal" dir="ltr" value="${s.e ? E(s.e.a) : ""}" placeholder="0"><small>${hint}</small></div>` }).join("");
+    return s.k === "-" && !s.e ? `<div class="rw"><span>${nm}</span><b>${money(s.sum)}</b><small></small></div>` : `<div class="rw"><label for="mk-da-${s.k === "-" ? "na" : s.k}">${E(nm)}</label><input id="mk-da-${s.k === "-" ? "na" : s.k}" data-mkda="${s.k}" inputmode="decimal" dir="ltr" value="${s.e ? E(s.e.a) : ""}" placeholder="المبلغ" aria-label="المبلغ بالريال"><input data-mkdv="${s.k}" inputmode="numeric" dir="ltr" value="${s.e && s.e.vw != null ? E(s.e.vw) : ""}" placeholder="المشاهدات" aria-label="عدد المشاهدات"><input data-mkdc="${s.k}" inputmode="numeric" dir="ltr" value="${s.e && s.e.ck != null ? E(s.e.ck) : ""}" placeholder="النقرات" aria-label="عدد النقرات"><small>${hint}</small></div>` }).join("");
   if (nt && !nt.dataset.touched) nt.value = one1.length ? String(one1[0].e.nt || "") : ""; adTot() }
 function adTot() { const h = g("mk-adh"); if (!h) return; let s = 0, k = 0; [].forEach.call(g("mkm").querySelectorAll("[data-mkda]"), el => { const a = num(el.value); if (String(el.value || "").trim() && !isNaN(a) && a > 0) { s += a; k++ } }); h.className = "ibh"; h.textContent = k ? "إجمالي هذا اليوم " + money(Math.round(s * 100) / 100) + " ريال" + (k > 1 ? " على " + k + " منصات" : "") : "" }
 function apSync() { const w = g("mk-taw"), h = g("mk-tah"); if (!w || !h) return; let n = 0, s = 0; [].forEach.call(w.querySelectorAll("[data-mkap]"), el => { if (!el.checked) return; n++; const bi = w.querySelector('[data-mkab="' + el.dataset.mkap + '"]'), b = bi && String(bi.value || "").trim() ? num(bi.value) : 0; if (!isNaN(b) && b > 0) s += b });
   h.className = "ibh"; h.textContent = !n ? "المسؤول يسجّل من المهمة كل يوم ما صرفته كل منصة، فيُخصم من ميزانية الحملة مباشرة." : (n === 1 ? "منصة واحدة" : n === 2 ? "منصتان" : n + " منصات") + (s ? " · إجمالي ميزانية الإعلان " + money(Math.round(s * 100) / 100) + " ريال" : "") + ". المسؤول يسجّل كل يوم ما صرفته كل منصة." }
 async function adSave() { if (BUSY) return; const x = M.T.get(g("mkm").dataset.mki); if (!x) return; const dt = g("mk-ad").value, nt = String(g("mk-an2").value || "").trim().slice(0, 200);
   if (!dt) return errM("اختر اليوم"); if (dt > today()) return errM("لا يُسجَّل صرف ليوم لم يأتِ بعد"); const ops = []; let bad = false;
+  let lone = false; const cnt = sel => { const el = g("mkm").querySelector(sel), raw = el ? String(el.value || "").trim() : ""; if (!raw) return null; const v = num(raw); if (isNaN(v) || v < 0) { bad = true; return null } return Math.round(v) };
   adSlots(x, dt).forEach(s => { const el = g("mkm").querySelector('[data-mkda="' + s.k + '"]'); if (!el) return; const raw = String(el.value || "").trim(), a = raw ? num(raw) : 0; if (isNaN(a) || a < 0) { bad = true; return }
-    if (s.e) { if (!a) ops.push({del: s.e.id}); else if (a !== N(s.e.a) || nt !== String(s.e.nt || "")) { const d = Object.assign({}, s.e, {a, upd: Date.now()}); delete d.id; if (nt) d.nt = nt; else delete d.nt; ops.push({id: s.e.id, d}) } }
-    else if (a > 0) { const d = {c: x.c, k: "ads", a, dt, tk: x.id, by: {e: me(), n: myN()}, ts: Date.now()}; if (s.k !== "-") d.ap = s.k; if (nt) d.nt = nt; ops.push({id: nid(), d}) } });
-  if (bad) return errM("اكتب المبلغ رقماً صحيحاً"); if (!ops.length) return errM(adPf(x).length > 1 ? "اكتب ما صرفته منصة واحدة على الأقل في هذا اليوم" : "اكتب المبلغ المصروف"); BUSY = true;
+    const vw = cnt('[data-mkdv="' + s.k + '"]'), ck = cnt('[data-mkdc="' + s.k + '"]'); if (!a && (vw || ck)) { lone = true; return }
+    const put = d => { if (vw != null) d.vw = vw; else delete d.vw; if (ck != null) d.ck = ck; else delete d.ck; if (nt) d.nt = nt; else delete d.nt; return d }, same = (o, v) => (o == null ? null : N(o)) === v;
+    if (s.e) { if (!a) ops.push({del: s.e.id}); else if (a !== N(s.e.a) || nt !== String(s.e.nt || "") || !same(s.e.vw, vw) || !same(s.e.ck, ck)) { const d = put(Object.assign({}, s.e, {a, upd: Date.now()})); delete d.id; ops.push({id: s.e.id, d}) } }
+    else if (a > 0) { const d = put({c: x.c, k: "ads", a, dt, tk: x.id, by: {e: me(), n: myN()}, ts: Date.now()}); if (s.k !== "-") d.ap = s.k; ops.push({id: nid(), d}) } });
+  if (bad) return errM("اكتب الأرقام صحيحة (المبلغ والمشاهدات والنقرات)"); if (lone) return errM("اكتب مبلغ الصرف للمنصة التي كتبت مشاهداتها أو نقراتها"); if (!ops.length) return errM(adPf(x).length > 1 ? "اكتب ما صرفته منصة واحدة على الأقل في هذا اليوم" : "اكتب المبلغ المصروف"); BUSY = true;
   try { const b = writeBatch(X.db); ops.forEach(o => { if (o.del) b.delete(doc(X.db, "mkx", o.del)); else b.set(doc(X.db, "mkx", o.id), o.d) }); await withTimeout(b.commit()); closeM(); toast("✅ حُفظ صرف اليوم وخُصم من ميزانية الحملة") } catch (er) { BUSY = false; errM(errTxt(er)) } }
 async function exSave(xid) { if (BUSY) return; const c = M.C.get(g("mkm").dataset.mki); if (!c) return; const old = xid ? M.X.get(xid) : null, a = num(g("mk-xa").value), dt = g("mk-xd").value, nt = String(g("mk-xn").value || "").trim().slice(0, 200);
   if (isNaN(a) || a <= 0) return errM("اكتب المبلغ"); if (!dt) return errM("اختر التاريخ"); const d = {c: c.id, k: g("mk-xk").value, a, dt, by: old ? old.by : {e: me(), n: myN()}, ts: old ? old.ts : Date.now()}; if (nt) d.nt = nt; if (old) d.upd = Date.now(); BUSY = true;
