@@ -1260,6 +1260,91 @@ const CSS=`.stk-lqn{margin:8px 0 0;padding:8px 10px;border-radius:10px;backgroun
 .stk-chs{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.stk-chip{display:inline-flex;gap:8px;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:inherit;text-decoration:none;font-weight:800}.stk-chip:hover{border-color:var(--acc)}.stk-chip small{font-weight:500;color:var(--mut)}
 @media (max-width:1100px){.stk-rgs,.stk-mks{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){.stk-dhero{grid-template-columns:1fr;grid-template-areas:"x" "s" "a";padding:16px}.stk-dhero .hs{flex-wrap:wrap}.stk-dhero .hn{flex:1 1 40%;min-width:0}.stk-dhero .hn b{font-size:22px}.stk-dhero .bt.p,.stk-dhero .ha .stk-seg{flex:1 1 100%}.stk-rg .rw{width:104px}.stk-rg .v b{font-size:20px}.stk-mk{padding:10px}.stk-mk>i{width:36px;height:36px;font-size:17px}.stk-mk b{font-size:19px}.stk-bcs,.stk-tcs{grid-template-columns:1fr}}
+@property --ai-a{syntax:"<angle>";inherits:false;initial-value:0deg}
+.stk-ai{--ai1:#8a5a83;--ai2:#b48aab;--ai3:#6f7d45;--ai4:#d9a441;max-width:1040px;margin:0 auto 14px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.stk-ai-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:26px 12px 2px}
+.stk-ai:not(.idle) .stk-ai-hero{flex-direction:row;text-align:start;padding:2px 4px 0;gap:10px;align-items:center}
+.stk-ai:not(.idle) .stk-ai-hero p{display:none}
+.stk-ai-hero h2{margin:8px 0 0;font-size:30px;line-height:1.2;font-weight:800;background:linear-gradient(100deg,var(--ai1),var(--ai2) 45%,var(--ai3));-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:0}
+.stk-ai-hero h2 small{display:block;font-size:14px;font-weight:600;color:var(--mut);-webkit-text-fill-color:var(--mut);margin-top:4px}
+.stk-ai:not(.idle) .stk-ai-hero h2{font-size:19px;margin:0}
+.stk-ai:not(.idle) .stk-ai-hero h2 small{display:inline;font-size:12.5px;margin:0 8px}
+.stk-ai-hero p{margin:4px 0 0;max-width:560px;color:var(--mut);font-size:14.5px;line-height:1.9}
+.stk-ai-av{position:relative;flex:0 0 auto;width:38px;height:38px;border-radius:50%;display:inline-grid;place-items:center;background:radial-gradient(120% 120% at 30% 20%,#7b5576,#3a2439 60%,#2a1d2c);box-shadow:0 0 0 2px color-mix(in srgb,var(--ai2) 55%,transparent),0 6px 18px -8px rgba(42,29,44,.7)}
+.stk-ai-av svg{width:64%;height:64%;fill:#f3e6ee;display:block}
+.stk-ai-av.big{width:86px;height:86px}
+.stk-ai-av.big::before,.stk-ai-av.big::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--ai2) 60%,transparent);opacity:0;animation:stkAiRing 3.2s ease-out infinite}
+.stk-ai-av.big::after{animation-delay:1.6s}
+.stk-ai-av.sm{width:30px;height:30px}
+@keyframes stkAiRing{0%{transform:scale(.86);opacity:.7}100%{transform:scale(1.35);opacity:0}}
+.stk-ai-box{position:relative;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:22px;padding:8px 8px 8px 8px;padding-inline-start:16px;isolation:isolate;box-shadow:0 10px 30px -18px rgba(42,29,44,.45)}
+.stk-ai-box::before{content:"";position:absolute;inset:-2px;border-radius:24px;z-index:-1;background:conic-gradient(from var(--ai-a),var(--ai1),var(--ai2),var(--ai4),var(--ai3),var(--ai1));opacity:.38;transition:opacity .25s ease}
+.stk-ai-box::after{content:"";position:absolute;inset:-6px;border-radius:28px;z-index:-2;background:conic-gradient(from var(--ai-a),var(--ai1),var(--ai2),var(--ai4),var(--ai3),var(--ai1));filter:blur(18px);opacity:0;transition:opacity .35s ease}
+.stk-ai-box>*{position:relative}
+.stk-ai-box .stk-ai-bg{position:absolute;inset:0;border-radius:22px;background:var(--card);z-index:-1}
+.stk-ai-box:focus-within::before{opacity:.9}
+.stk-ai-box:focus-within::after{opacity:.35}
+.stk-ai-box.go::before{opacity:1;animation:stkAiSpin 1.5s linear infinite}
+.stk-ai-box.go::after{opacity:.85;animation:stkAiSpin 1.5s linear infinite,stkAiPulse 1.1s ease-in-out infinite}
+.stk-ai-box.lit::after{animation:stkAiOut 1.4s ease-out both}
+.stk-ai-box.lit::before{animation:stkAiOutB 1.4s ease-out both}
+@keyframes stkAiSpin{to{--ai-a:360deg}}
+@keyframes stkAiPulse{0%,100%{filter:blur(16px)}50%{filter:blur(26px)}}
+@keyframes stkAiOut{0%{opacity:.85}100%{opacity:0}}
+@keyframes stkAiOutB{0%{opacity:1}100%{opacity:.38}}
+.stk-ai-box input{flex:1;min-width:0;height:52px;margin:0;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;font:inherit;font-size:17px;color:var(--ink);padding:0 4px}
+.stk-ai-box input::placeholder{color:var(--mut);opacity:.85}
+.stk-ai-box input::-webkit-search-cancel-button{display:none}
+.stk-ai-spark{flex:0 0 auto;width:22px;height:22px;fill:var(--ai1)}
+:where([data-theme=dark]) .stk-ai-spark{fill:var(--ai2)}
+.stk-ai-send{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 20px;border:0;border-radius:16px;cursor:pointer;font:inherit;font-size:15.5px;font-weight:700;color:#fff;background:linear-gradient(120deg,var(--ai1),#6d4468);box-shadow:0 8px 18px -10px var(--ai1);transition:transform .15s ease,filter .15s ease}
+.stk-ai-send:hover{filter:brightness(1.08)}
+.stk-ai-send:active{transform:scale(.96)}
+.stk-ai-send svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+html:not(.tz-en) .stk-ai-send svg{transform:scaleX(-1)}
+.stk-ai-sug{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.stk-ai-sug button{display:flex;align-items:center;gap:10px;text-align:start;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:16px;padding:12px 14px;font:inherit;font-size:14.5px;line-height:1.6;cursor:pointer;min-height:56px;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;unicode-bidi:plaintext}
+.stk-ai-sug button:hover{border-color:var(--ai2);transform:translateY(-2px);box-shadow:0 10px 22px -16px rgba(42,29,44,.6)}
+.stk-ai-sug button i{flex:0 0 auto;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-style:normal;background:color-mix(in srgb,var(--ai2) 22%,transparent);color:var(--ai1);font-weight:800;font-size:13px}
+:where([data-theme=dark]) .stk-ai-sug button i{color:var(--ai2)}
+.stk-ai-lbl{display:flex;align-items:center;gap:8px;margin:4px 4px -4px;color:var(--mut);font-size:12.5px;font-weight:700}
+.stk-ai-lbl::after{content:"";flex:1;height:1px;background:var(--line)}
+.stk-ai-more{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:10px 14px 12px}
+.stk-ai-more .stk-chips:first-child{margin-top:2px}
+.stk-ai-q{align-self:flex-start;max-width:min(100%,720px);display:flex;flex-direction:column;gap:2px;background:linear-gradient(120deg,var(--ai1),#6d4468);color:#fff;border-radius:18px;border-start-start-radius:6px;padding:10px 16px;box-shadow:0 10px 22px -16px var(--ai1)}
+.stk-ai-q small{font-size:11.5px;opacity:.8;font-weight:600}
+.stk-ai-q b{font-size:15.5px;font-weight:600;line-height:1.7;unicode-bidi:plaintext;overflow-wrap:anywhere}
+.stk-ai-ans{position:relative;background:color-mix(in srgb,var(--card) 70%,transparent);border:1px solid var(--line);border-radius:22px;padding:14px 14px 12px;min-width:0}
+.stk-ai-ans::before{content:"";position:absolute;inset-inline:22px;top:-1px;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--ai1),var(--ai2),var(--ai3))}
+.stk-ai-ah{display:flex;align-items:center;gap:10px;margin:2px 2px 12px}
+.stk-ai-ah b{font-size:16px}
+.stk-ai-ah small{color:var(--mut);font-size:12.5px}
+.stk-ai-ah .ok{margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--olive,#6f7d45);background:color-mix(in srgb,var(--olive,#6f7d45) 14%,transparent);border-radius:999px;padding:4px 10px}
+.stk-ai-ans.rev>*{animation:stkAiUp .5s cubic-bezier(.16,1,.3,1) both}
+.stk-ai-ans.rev>*:nth-child(2){animation-delay:.05s}.stk-ai-ans.rev>*:nth-child(3){animation-delay:.1s}.stk-ai-ans.rev>*:nth-child(4){animation-delay:.15s}.stk-ai-ans.rev>*:nth-child(5){animation-delay:.2s}.stk-ai-ans.rev>*:nth-child(n+6){animation-delay:.25s}
+@keyframes stkAiUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.stk-ai-ans .stk-und{background:color-mix(in srgb,var(--ai2) 9%,var(--card));border-style:dashed}
+.stk-ai-ans .stk-src{display:flex;gap:8px;align-items:flex-start;border-top:1px dashed var(--line);padding-top:10px;margin:14px 4px 0}
+.stk-ai-ans .stk-src::before{content:"";flex:0 0 auto;width:8px;height:8px;margin-top:8px;border-radius:50%;background:var(--olive,#6f7d45)}
+.stk-ai-fu{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 2px 0}
+.stk-ai-fu i{font-style:normal;color:var(--mut);font-size:12.5px;font-weight:700}
+.stk-ai-fu button{border:1px solid color-mix(in srgb,var(--ai2) 55%,var(--line));background:color-mix(in srgb,var(--ai2) 10%,var(--card));color:var(--ink);border-radius:999px;padding:6px 14px;font:inherit;font-size:13.5px;cursor:pointer;min-height:36px;unicode-bidi:plaintext;transition:background .15s ease,transform .15s ease}
+.stk-ai-fu button:hover{background:color-mix(in srgb,var(--ai2) 24%,var(--card));transform:translateY(-1px)}
+.stk-ai-th{display:flex;flex-direction:column;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px}
+.stk-ai-th .r{display:flex;align-items:center;gap:10px;font-weight:700}
+.stk-ai-th .r .stk-ai-av{animation:stkAiBeat 1s ease-in-out infinite}
+@keyframes stkAiBeat{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+.stk-ai-dots{display:inline-flex;gap:4px;margin-inline-start:2px}
+.stk-ai-dots i{width:6px;height:6px;border-radius:50%;background:var(--ai1);animation:stkAiDot 1s ease-in-out infinite}
+.stk-ai-dots i:nth-child(2){animation-delay:.15s}.stk-ai-dots i:nth-child(3){animation-delay:.3s}
+@keyframes stkAiDot{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-5px);opacity:1}}
+.stk-ai-sk{height:14px;border-radius:8px;background:linear-gradient(90deg,var(--soft) 25%,color-mix(in srgb,var(--ai2) 26%,var(--soft)) 50%,var(--soft) 75%);background-size:200% 100%;animation:stkAiSh 1.1s linear infinite}
+.stk-ai-sk.a{width:72%}.stk-ai-sk.b{width:54%}.stk-ai-sk.c{width:38%}
+@keyframes stkAiSh{to{background-position:-200% 0}}
+@media (max-width:640px){.stk-ai-hero{padding-top:14px}.stk-ai-hero h2{font-size:25px}.stk-ai-av.big{width:70px;height:70px}.stk-ai-box{border-radius:20px;padding-inline-start:12px}.stk-ai-box input{font-size:16px;height:48px}.stk-ai-send{padding:0 14px;height:46px}.stk-ai-send span{display:none}.stk-ai-spark{display:none}.stk-ai-sug{grid-template-columns:1fr}.stk-ai-ans{padding:12px 10px;border-radius:18px}.stk-ai:not(.idle) .stk-ai-hero h2 small{display:none}.stk-ai-ah .ok{display:none}}
+html.lite .stk-ai-box::after{display:none}html.lite .stk-ai *,html.lite .stk-ai *::before,html.lite .stk-ai *::after{animation:none!important}
+@media (prefers-reduced-motion:reduce){.stk-ai *,.stk-ai *::before,.stk-ai *::after{animation:none!important;transition:none!important}}
+@media print{.stk-ai-hero,.stk-ai-box,.stk-ai-sug,.stk-ai-more,.stk-ai-fu,.stk-ai-lbl{display:none!important}}
 html.lite .an,html.lite .an *,html.lite .stk-rg circle.f.an{animation:none!important}@media (prefers-reduced-motion:reduce){.stk-dch .c i,.stk-bc,.stk-hb .hbr,.stk-hb .tr i,.stk-tc,.stk-bd,.stk-rg circle.f,.stk-bc .mr circle.f{animation:none!important}}
 :where([data-theme=dark]) .stk-dhero{background:radial-gradient(120% 140% at 0% 0%,#7b5576 0%,#5a3856 40%,#2c1a2b 100%)}:where([data-theme=dark]) .stk-mk.bad b,:where([data-theme=dark]) .stk-bc ul li.z b{color:#f1a5a0}
 @media print{.stk-tabs,.stk-bar,.stk-drop,.stk-more{display:none!important}#pa.stkp{font-size:10pt}#pa.stkp .ph h2{font-size:17pt}#pa.stkp .ps{font-size:14pt;font-weight:700;margin:0 0 2mm;unicode-bidi:plaintext}#pa.stkp .pi{font-size:9pt;color:#444;margin:0 0 3mm}#pa.stkp .pt{width:100%;border-collapse:collapse}#pa.stkp .pt th,#pa.stkp .pt td{border:1px solid #777;padding:1.3mm 1.6mm;text-align:center;font-size:9.5pt;unicode-bidi:plaintext}#pa.stkp .pt th{background:#eee;font-size:9pt}#pa.stkp .pt td.bl{min-width:26mm}}`;
@@ -2162,10 +2247,12 @@ const askNeed=()=>{const a=UI.a;if(!a||!DATA||!DATA.has)return null;const P=askP
 function kindA(a){if(!a)return "";const c=a.cmp;if(c&&((c.st&&c.st.length>1)||(c.a&&c.b)||(c.codes&&c.codes.length>1)))return "x";if(a.pre&&!a.code)return "pf";if(mnyK(a))return "m";if(a.rank)return "r";if(a.buy)return "p";if(a.need&&(a.code||a.store||a.vendor))return "n";if(a.stale)return "st";if(a.where&&a.code&&!a.store)return "w";if(a.vgrp&&a.vgrp.length&&!a.vendor&&!a.code&&!((a.zs&&a.zs.length)||(a.cls&&a.cls.length)))return "vg";if(!a.code&&((a.zs&&a.zs.length)||(a.cls&&a.cls.length)))return "z";if(a.vendor&&!a.code)return "v";return a.code?"c":a.store?"s":""}
 const hGet=()=>{try{const a=JSON.parse(localStorage.getItem("stk_ask")||"[]");return Array.isArray(a)?a.filter(x=>typeof x==="string"&&x).slice(0,8):[]}catch(e){return []}};
 const hAdd=q=>{try{localStorage.setItem("stk_ask",JSON.stringify([q].concat(hGet().filter(x=>x!==q)).slice(0,8)))}catch(e){}};
-function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||!DATA||!DATA.has){UI.a=null;paint(false);return}
+function doAsk(q){q=String(q||"").trim().slice(0,200);UI.aq=q;UI.lim=200;if(!q||!DATA||!DATA.has){UI.a=null;UI.think=false;clearTimeout(AITH);paint(false);return}
  const L=lexLoad();UI.a=parseAsk(q,askCtx());UI.a.q2="";hAdd(q);// (v212) القاموس اتشال: السؤال يُفهم كما كُتب
  // (v196) عدّاد التكرار + سجل ما لم يُفهم (على الجهاز)
- const e=L.f[q]||(L.f[q]={n:0,at:0});e.n=N(e.n)+1;e.at=Date.now();lexSave();const fk=askFailK(UI.a);if(fk)lexLogQ(q,fk);paint(false)}
+ const e=L.f[q]||(L.f[q]={n:0,at:0});e.n=N(e.n)+1;e.at=Date.now();lexSave();const fk=askFailK(UI.a);if(fk)lexLogQ(q,fk);clearTimeout(AITH);
+ if(aiCalm()){UI.think=false;UI.rev=false;paint(false);return}
+ UI.think=true;UI.rev=false;paint(false);AITH=setTimeout(()=>{UI.think=false;UI.rev=true;paint(false)},620)}
 let EXC=null;// أمثلة من بيانات الملف نفسه (أعلى كود وأعلى فرع مبيعاً)
 /* (v196) 📖 «اسأل» تتعلّم من المستخدم: قاموسه الخاص (كلمة أو عبارة ← معناها)، أسئلته المثبّتة والمتكررة، وسجل ما لم يُفهم.
    كله على الجهاز (localStorage.stk_lex). القاموس يستبدل العبارة بنص تفهمه القواعد الثابتة قبل الفهم، فالحساب نفسه لا يتغيّر */
@@ -2277,12 +2364,36 @@ function askEx(en){
  return out;
 }
 const chip=x=>`<button type="button" data-sk="ex" data-x="${E(x)}" data-notr>${E(x)}</button>`;
+const WOLFP=`<path d="M139.5 87L142.5 88L175.5 130L129 212.5ZM370.5 87L373.5 87L374.5 94L384.5 211L383 213.5L336.5 130ZM197.5 135L314.5 135L314.5 138L249.5 219L250.5 273L259 275.5L262.5 270L262.5 221L269 214.5L305.5 306L290 344.5L267.5 334L281.5 318L282.5 307L268 292.5L262 289.5L247 290.5L230.5 305L230.5 318L244.5 334L225 343.5L222 343.5L219.5 340L206.5 305L242.5 217L247.5 199ZM327.5 141L330.5 143L352 184.5L320 171.5L297.5 179ZM183.5 142L188.5 145L215 179.5L192 171.5L160.5 184ZM192.5 185L233.5 201L232.5 209L211 261.5L201 257.5L175.5 240L154.5 202ZM315.5 186L327 187.5L357 200.5L357.5 203L335.5 242L303 262.5L299.5 259L278.5 202ZM192.5 203L199 202.5L205.5 213L212.5 230L209 237.5L202 236.5L173.5 217L173.5 212L177 208.5ZM312.5 203L326 204.5L335 208.5L339.5 215L334 221.5L320 230.5L308 237.5L304 237.5L300.5 235L299.5 230ZM144.5 213L150.5 219L164.5 244L164.5 248L128.5 308L126 308.5L125.5 247ZM365.5 213L368.5 213L386.5 246L386 308.5L347.5 248ZM174.5 256L205.5 275L194.5 302L194.5 311L214.5 358L249.5 387L249 425.5L165 374.5L127.5 333ZM334.5 257L340.5 259L384.5 334L345 376.5L263 425.5L262.5 387L299.5 356L318.5 309L307.5 274ZM254.5 343L281.5 355L257 375.5L231.5 356L232 353.5Z"/>`;
+/* (v282) 🐺 هوية «ذيب»: مساعد مخزون تاسومة (الذيب من شعار المنصة). واجهة فقط: الفهم بالقواعد والحساب جمع مباشر كما كان */
+const aiWolf=`<svg viewBox="80 60 352 390" aria-hidden="true">${WOLFP}</svg>`;
+const aiAv=c=>`<span class="stk-ai-av${c?" "+c:""}" data-noico>${aiWolf}</span>`;
+const aiCalm=()=>{try{return document.documentElement.classList.contains("lite")||(window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches)}catch(e){return true}};
+let AITH=0;
+const aiHero=()=>`<div class="stk-ai-hero">${aiAv(UI.a?"":"big")}<div><h2>ذيب<small>مساعد مخزون تاسومة</small></h2><p>اسألني عن أي صنف أو فرع أو مورد، بالقطع أو بالريال، ومعها الفترة إن أردت. أحسب الجواب مباشرة من ملفاتك المرفوعة، بلا تخمين.</p></div></div>`;
+const aiBox=()=>`<div class="stk-ai-box${UI.think?" go":UI.rev?" lit":""}"><span class="stk-ai-bg"></span><svg class="stk-ai-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.6c.4 1.2 1.3 2.1 2.5 2.5L22 12l-5.6 1.9c-1.2.4-2.1 1.3-2.5 2.5L12 22l-1.9-5.6c-.4-1.2-1.3-2.1-2.5-2.5L2 12l5.6-1.9c1.2-.4 2.1-1.3 2.5-2.5z"/></svg><input type="search" id="stk-ask" value="${E(UI.aq)}" placeholder="اسأل ذيب: كود، فرع، مورد، أو فترة" autocomplete="off" enterkeyhint="search" maxlength="200" aria-label="اسأل ذيب"><button class="stk-ai-send" type="button" data-sk="ask" data-noico><span>اسأل</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>`;
+const aiSug=L=>L.length?`<div class="stk-ai-lbl">جرّب أن تسأل</div><div class="stk-ai-sug">${L.slice(0,9).map((x,i)=>`<button type="button" data-sk="ex" data-x="${E(x)}" data-notr><i>${i+1}</i><span>${E(x)}</span></button>`).join("")}</div>`:"";
+const aiMore=H=>`<div class="stk-ai-more">${H.length?`<div class="stk-chips"><i>آخر أسئلتك</i>${H.map(chip).join("")}</div>`:""}${lexBox()}</div>`;
+const aiQ=()=>`<div class="stk-ai-q"><small>سؤالك</small><b data-notr>${E(UI.aq)}</b></div>`;
+const aiThink=()=>`<div class="stk-ai-th" role="status"><div class="r">${aiAv("sm")}<span>ذيب يقرأ سؤالك ويحسب من ملفاتك</span><span class="stk-ai-dots"><i></i><i></i><i></i></span></div><div class="stk-ai-sk a"></div><div class="stk-ai-sk b"></div><div class="stk-ai-sk c"></div></div>`;
+const aiHead=ok=>`<div class="stk-ai-ah">${aiAv("sm")}<b>ذيب</b><small>${ok?"هذا ما وجدته في ملفاتك":"أحتاج توضيحاً منك"}</small>${ok?`<span class="ok">محسوب من ملفاتك</span>`:""}</div>`;
+// أسئلة متابعة من سياق الجواب: تُعرض فقط لو القواعد تفهمها كاملة
+function aiFU(a,K,X0){
+ const o=[],p3=a.store?cd(a.store):"",sb=p3?"فرع "+(ALIAS[p3]?ALIAS[p3][0].replace(/ه$/,"ة"):p3):"",c=a.code;
+ if(c){o.push("مين عنده "+c,c+" ناقص فين");if(rcvMonths().length&&K!=="p")o.push("اشترينا كام من "+c);o.push("نسبة مبيعات "+c);if(dHas())o.push(c+" آخر 30 يوم")}
+ else if(a.vendor){o.push("أكثر 10 أكواد مبيعاً المورد "+a.vendor,"نواقص المورد "+a.vendor)}
+ else if(sb){if(K!=="n")o.push("نواقص "+sb);o.push("أكثر 10 أكواد مبيعاً في "+sb);if(X.sv&&K!=="m")o.push("مبيعات "+sb+" بالريال");if(K==="m")o.push(sb+" باع كم وعنده كم")}
+ else if(K==="m")o.push("مبيعات الفروع بالريال الشهر ده");
+ if(X.sv&&K!=="m"&&!sb&&!c)o.push("أعلى فرع مبيعات بالريال");
+ for(const x of X0||[])if(o.length<6)o.push(x);
+ const cur=normAr(UI.aq||""),ctx=askCtx(),ok=[];for(const q of o){if(ok.length>=4)break;if(normAr(q)===cur||ok.indexOf(q)>=0)continue;try{if(!askFailK(parseAsk(q,ctx)))ok.push(q)}catch(e){}}
+ return ok.length?`<div class="stk-ai-fu"><i>اسأل بعدها</i>${ok.map(x=>`<button type="button" data-sk="ex" data-x="${E(x)}" data-notr>${E(x)}</button>`).join("")}</div>`:"";
+}
 function vAsk(){
  const en=document.documentElement.classList.contains("tz-en"),a=UI.a,H=hGet(),X0=askEx(en);
- const box=`<div class="stk-card stk-ask"><h3>💬 اسأل عن أي صنف أو فرع أو مورد</h3><p>اكتب الكود أو الفرع أو المورد، ومعها الفترة إن أردت. وتستطيع أن تسأل: «أكثر 10 أكواد مبيعاً»، «مين عنده الكود»، «قارن فرعين» أو «قارن عدة أكواد»، أو «الشهر ده مقابل اللي فات». كل رقم يُحسب مباشرة من الملفين المرفوعين.</p>
- <div class="stk-askb"><input type="search" id="stk-ask" value="${E(UI.aq)}" placeholder="الكود، الفرع، المورد، الفترة" autocomplete="off" enterkeyhint="search" maxlength="200"><button class="bt p" type="button" data-sk="ask">اسأل</button></div>
- ${X0.length?`<div class="stk-chips"><i>أمثلة</i>${X0.map(chip).join("")}</div>`:""}${H.length?`<div class="stk-chips"><i>آخر أسئلتك</i>${H.map(chip).join("")}</div>`:""}${lexBox()}</div>`;
- if(!a){LASTX=null;return box}
+ const hero=aiHero(),bx=aiBox(),sh=(cls,inner)=>`<div class="stk-ai${cls}">${hero}${bx}${inner}</div>`;
+ if(!a){LASTX=null;return sh(" idle",aiSug(X0)+aiMore(H))}
+ if(UI.think){LASTX=null;return sh("",aiQ()+aiThink())}
  const P=askP(),ids=a.code?DATA.code.get(a.code)||[]:[],cols=[...new Set(ids.map(k=>DATA.k[k][1]))].sort(),szs=[...new Set(ids.filter(k=>!a.cl||DATA.k[k][1]===a.cl).map(k=>DATA.k[k][2]))].sort((x,y)=>zk(x)-zk(y));
  const curZ=a.z,pEnd=P?P.to:"",K=kindA(a),B=askB(),cs=a.cmp&&a.cmp.st&&a.cmp.st.length>1?a.cmp.st:null,r=a.rank;
  const stSel=cs?cs.map((s,i)=>`<label>${i?"مع":"قارن"}<select data-af="cst" data-i="${i}" id="stk-a-cs${i}">${opt(stores(0),s,"— بلا —")}</select></label>`).join("")+(cs.length<4?`<label>فرع آخر<select data-af="cst" data-i="${cs.length}" id="stk-a-cs${cs.length}">${opt(stores(0),"","— أضف —")}</select></label>`:""):`<label>الفرع<select data-af="store" id="stk-a-st">${opt(stores(0),a.store,"كل الفروع")}</select></label>`;
@@ -2325,7 +2436,8 @@ function vAsk(){
  else if(a.store)ans=ansStore(a,P);
  else{LASTX=null;ans=em("لم أجد في سؤالك كوداً ولا فرعاً ولا مورداً.<br>اكتب كود الصنف (مثل الأمثلة في الأعلى) أو اسم الفرع أو رقمه أو اسم المورد، أو اخترها من القوائم.")}
  const vnote=a.vendor&&(K==="c"||K==="w")?`<div class="stk-rep">الجواب عن الكود كله؛ المورد لا يغيّر أرقام كود بعينه.</div>`:"";
- return box+und+nt.join("")+gapNote(P)+(K==="x"&&B&&!cs?gapNote(B):"")+vnote+ans+(ans&&K&&K!=="m"&&!perBad?src:"");
+ const okA=!!(ans&&K&&!perBad),rev=UI.rev;UI.rev=false;
+ return sh("",aiQ()+`<div class="stk-ai-ans${rev?" rev":""}">${aiHead(okA)}${nt.join("")}${und}${gapNote(P)}${K==="x"&&B&&!cs?gapNote(B):""}${vnote}${ans}${ans&&K&&K!=="m"&&!perBad?src:""}${okA?aiFU(a,K,X0):""}</div>`+aiMore(H));
 }
 /* (v180) أجوبة الترتيب و«مين عنده» والمورد والمقارنة. الضغط على أي اسم في جدول يفتح بطاقته (rgo) */
 const stL=ti=>`<a href="#" data-sk="rgo" data-k="store" data-v="${E(DATA.st[ti])}" style="color:inherit">${sn(ti)}</a>`;
